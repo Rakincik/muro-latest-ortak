@@ -13,3 +13,11 @@ docker-compose*.yml
 ! .env.example
 
 tests
+
+src/MURO.API/wwwroot/uploads
+src/MURO.API/wwwroot/hls
+src/MURO.API/wwwroot/podcasts
+temp_extract
+temp-check
+tmp
+temp
