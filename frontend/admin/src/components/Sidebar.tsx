@@ -26,8 +26,8 @@ const sections = [
         title: "YÖNETİM",
         items: [
             { label: "Kullanıcılar", href: "/dashboard/users", icon: Users, roles: ["Admin", "SuperAdmin", "Assistant"] },
-            { label: "Gruplar", href: "/dashboard/groups", icon: FolderTree, roles: ["Admin", "SuperAdmin", "Assistant"] },
-            { label: "Paketler", href: "/dashboard/packages", icon: Package, roles: ["Admin", "SuperAdmin", "Assistant"] },
+            { label: "Gruplar", href: "/dashboard/groups", icon: FolderTree, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "groups" },
+            { label: "Paketler", href: "/dashboard/packages", icon: Package, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "packages" },
             { label: "Dersler", href: "/dashboard/courses", icon: BookOpen, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
         ]
     },
@@ -35,33 +35,33 @@ const sections = [
         title: "AKADEMİK",
         items: [
             { label: "Sınavlar", href: "/dashboard/exams", icon: FileText, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "exams" },
-            { label: "Takvim", href: "/dashboard/calendar", icon: CalendarDays, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
-            { label: "Ödevler", href: "/dashboard/assignments", icon: ClipboardList, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
+            { label: "Takvim", href: "/dashboard/calendar", icon: CalendarDays, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"], featureKey: "calendar" },
+            { label: "Ödevler", href: "/dashboard/assignments", icon: ClipboardList, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"], featureKey: "assignments" },
         ]
     },
     {
         title: "İLETİŞİM",
         items: [
-            { label: "Bildirimler", href: "/dashboard/notifications", icon: Bell, roles: ["Admin", "SuperAdmin", "Assistant"] },
-            { label: "Soru Sor", href: "/dashboard/questions", icon: MessageCircleQuestion, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
-            { label: "Destek", href: "/dashboard/support", icon: HeadphonesIcon, roles: ["Admin", "SuperAdmin", "Assistant"] },
+            { label: "Bildirimler", href: "/dashboard/notifications", icon: Bell, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "notifications" },
+            { label: "Soru Sor", href: "/dashboard/questions", icon: MessageCircleQuestion, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"], featureKey: "questions" },
+            { label: "Destek", href: "/dashboard/support", icon: HeadphonesIcon, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "support" },
         ]
     },
     {
         title: "İÇERİK",
         items: [
-            { label: "Medya Kütüphanesi", href: "/dashboard/media", icon: PlaySquare, roles: ["Admin", "SuperAdmin", "Assistant"] },
+            { label: "Medya Kütüphanesi", href: "/dashboard/media", icon: PlaySquare, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "mediaLibrary" },
             { label: "Podcast", href: "/dashboard/podcasts", icon: Mic2, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "podcast" },
         ]
     },
     {
         title: "ANALİZ",
         items: [
-            { label: "Performans", href: "/dashboard/analytics", icon: BarChart3, roles: ["Admin", "SuperAdmin", "Assistant"] },
-            { label: "Sınav Sonuçları", href: "/dashboard/exam-results", icon: Trophy, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
-            { label: "Öğrenci Karnesi", href: "/dashboard/student-scorecard", icon: User, roles: ["Admin", "SuperAdmin", "Assistant"] },
-            { label: "Devam Raporu", href: "/dashboard/course-attendance", icon: CalendarCheck, roles: ["Admin", "SuperAdmin", "Assistant"] },
-            { label: "Muhasebe", href: "/dashboard/accounting", icon: Wallet, roles: ["Admin", "SuperAdmin", "Assistant", "Accountant"] },
+            { label: "Performans", href: "/dashboard/analytics", icon: BarChart3, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "analytics" },
+            { label: "Sınav Sonuçları", href: "/dashboard/exam-results", icon: Trophy, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"], featureKey: "examResults" },
+            { label: "Öğrenci Karnesi", href: "/dashboard/student-scorecard", icon: User, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "studentScorecard" },
+            { label: "Devam Raporu", href: "/dashboard/course-attendance", icon: CalendarCheck, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "attendance" },
+            { label: "Muhasebe", href: "/dashboard/accounting", icon: Wallet, roles: ["Admin", "SuperAdmin", "Assistant", "Accountant"], featureKey: "accounting" },
             { label: "Güvenlik", href: "/dashboard/audit-trail", icon: Shield, roles: ["Admin", "SuperAdmin"] },
         ]
     }
