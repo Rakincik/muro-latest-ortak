@@ -77,6 +77,22 @@ public static class RateLimitingConfig
                         QueueLimit = 0
                     });
             });
+
+            // Geriye dönük uyumluluk: [EnableRateLimiting("ApiPolicy")] şeklinde yazılmış 
+            // controller'ların 400 Bad Request vermesini engellemek için aynı kuralı "ApiPolicy" adıyla da ekliyoruz.
+            options.AddPolicy("ApiPolicy", context =>
+            {
+                var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: userId ?? GetClientIp(context),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 200,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
+            });
         });
 
         return services;

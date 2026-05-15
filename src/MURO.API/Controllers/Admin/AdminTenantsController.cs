@@ -4,9 +4,11 @@ using Microsoft.AspNetCore.RateLimiting;
 using MURO.Application.DTOs.Admin;
 using MURO.Application.Interfaces;
 
+using MURO.API.Middleware;
+
 namespace MURO.API.Controllers.Admin;
 
-[EnableRateLimiting("ApiPolicy")]
+[EnableRateLimiting(RateLimitingConfig.ApiPolicy)]
 [Authorize(Roles = "SuperAdmin")]
 [ApiController]
 [Route("api/v1/admin")]
