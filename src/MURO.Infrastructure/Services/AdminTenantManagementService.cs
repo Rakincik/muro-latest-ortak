@@ -60,6 +60,7 @@ public class AdminTenantManagementService : IAdminTenantManagementService
                 t.LogoUrl,
                 t.Domain,
                 t.ServerGroup,
+                t.Features,
                 t.CreatedAt,
                 UserCount = t.Memberships.Count(m => m.Status == "active"),
                 CourseCount = t.Courses.Count(),
