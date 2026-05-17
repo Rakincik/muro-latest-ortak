@@ -136,6 +136,9 @@ Directory.CreateDirectory(Path.Combine(wwwrootPath, "podcasts"));
 
 // --- Arka Plan Servisleri ---
 builder.Services.AddHostedService<PackageExpiryService>();
+builder.Services.AddHostedService<MURO.Worker.Jobs.UploadProcessingJob>();
+builder.Services.AddHostedService<MURO.Worker.Jobs.ExamScoringJob>();
+builder.Services.AddHostedService<MURO.Worker.Jobs.SoftDeleteCleanupJob>();
 
 // --- BBB Kayıt İşleme ---
 builder.Services.AddScoped<IHlsProcessingService, HlsProcessingService>();
