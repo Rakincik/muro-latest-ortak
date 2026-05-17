@@ -8,6 +8,7 @@ import {
     MessageSquare, Search, Send, Plus, X, Mic, MicOff, Trash2,
     Image as ImageIcon, StickyNote, Upload, CheckCircle2, Clock, AlertCircle
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const getFileUrl = (path: string | null) => {
@@ -160,6 +161,7 @@ export default function QuestionsPage() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+    const [confirmConfig, setConfirmConfig] = useState<{open: boolean, title: string, message: string, onConfirm: () => void}>({ open: false, title: "", message: "", onConfirm: () => {} });
 
     // Form Modal State
     const [showForm, setShowForm] = useState(false);
@@ -281,7 +283,24 @@ export default function QuestionsPage() {
         setQuestions(prev => prev.map(q => q.id === id ? { ...q, note } : q));
     };
 
+    const handleDelete = async () => {
+        if (!selected || !token || !tenantId) return;
+        if (!confirm("Bu soruyu silmek istedi�inize emin misiniz?")) return;
+
+    };
+
     return (
+        <>
+        <ConfirmDialog
+            open={confirmConfig.open}
+            onClose={() => setConfirmConfig(prev => ({ ...prev, open: false }))}
+            onConfirm={confirmConfig.onConfirm}
+            title={confirmConfig.title}
+            message={confirmConfig.message}
+            confirmText="Evet, Sil"
+            cancelText="İptal"
+            variant="danger"
+        />
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -367,14 +386,22 @@ export default function QuestionsPage() {
                 <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
                     {selected ? (
                         <>
-                            <div className="px-6 py-4 border-b border-[#E2E8F0]/60">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h2 className="text-base font-bold text-[#0A1931]">{selected.subject}</h2>
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg ${(statusStyles[mapQuestionStatus(selected.status)] || statusStyles.Bekliyor).bg} ${(statusStyles[mapQuestionStatus(selected.status)] || statusStyles.Bekliyor).text}`}>
-                                        {mapQuestionStatus(selected.status)}
-                                    </span>
+                                                        <div className="px-6 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h2 className="text-base font-bold text-[#0A1931]">{selected.subject}</h2>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg ${(statusStyles[mapQuestionStatus(selected.status)] || statusStyles.Bekliyor).bg} ${(statusStyles[mapQuestionStatus(selected.status)] || statusStyles.Bekliyor).text}`}>
+                                            {mapQuestionStatus(selected.status)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-[#A0AEC0]">{selected.courseTitle || "Ders"} • {new Date(selected.createdAt).toLocaleString("tr-TR")}</p>
                                 </div>
-                                <p className="text-xs text-[#A0AEC0]">{selected.courseTitle || "Ders"} · {new Date(selected.createdAt).toLocaleString("tr-TR")}</p>
+                                {mapQuestionStatus(selected.status) === "Bekliyor" && (
+                                    <button onClick={handleDelete} title="Soruyu Sil"
+                                        className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                             </div>
 
                             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
@@ -650,5 +677,7 @@ export default function QuestionsPage() {
                 </div>
             )}
         </div>
+        </>
     );
 }
+

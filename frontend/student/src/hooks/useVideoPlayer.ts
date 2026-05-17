@@ -26,10 +26,8 @@ export function useVideoPlayer(
     const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
     const watchStartRef = useRef<number>(0);
 
-    // Sorted recordings for playlist
-    const sortedRecordings = [...recordings].sort(
-        (a, b) => new Date(a.scheduledStart || a.createdAt).getTime() - new Date(b.scheduledStart || b.createdAt).getTime()
-    );
+    // Sorted recordings for playlist (now trusts the order passed from page.tsx which respects CourseMedia OrderIndex)
+    const sortedRecordings = [...recordings];
 
     // localStorage key helpers
     const watchedKey = `muro_watched_${courseId}`;
@@ -142,9 +140,9 @@ export function useVideoPlayer(
             if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
             if (activeTab !== "videos" || sortedRecordings.length === 0) return;
 
-            const activeRec = selectedRec || sortedRecordings[0];
-            if (!activeRec) return;
-            const idx = sortedRecordings.findIndex(r => r.id === activeRec.id);
+            const currentRec = selectedRec || sortedRecordings[0];
+            if (!currentRec) return;
+            const idx = sortedRecordings.findIndex(r => r.id === currentRec.id);
 
             switch (e.key.toLowerCase()) {
                 case "n":

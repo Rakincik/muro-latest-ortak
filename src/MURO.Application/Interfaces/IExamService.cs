@@ -8,6 +8,7 @@ public interface IExamService
     // CRUD
     Task<PagedResult<ExamListDto>> GetExamsAsync(Guid tenantId, int page, int pageSize, string? search, string? examType, string? status);
     Task<ExamDetailDto> GetExamByIdAsync(Guid tenantId, Guid examId);
+    Task<string?> GetExamDigitalQuestionsAsync(Guid tenantId, Guid examId);
     Task<ExamListDto> CreateExamAsync(Guid tenantId, CreateExamRequest request);
     Task<ExamListDto> UpdateExamAsync(Guid tenantId, Guid examId, UpdateExamRequest request);
     Task DeleteExamAsync(Guid tenantId, Guid examId);

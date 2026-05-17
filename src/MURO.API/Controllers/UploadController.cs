@@ -51,7 +51,7 @@ public class UploadController : ControllerBase
 
     [HttpPut("direct/{fileName}")]
     [AllowAnonymous] // Pre-signed URLs are typically open (auth via signature, but here it's mock)
-    [RequestFormLimits(MultipartBodyLengthLimit = 256 * 1024 * 1024)]
+    [DisableRequestSizeLimit] // Sınırsız yükleme
     public async Task<IActionResult> DirectUpload(string fileName)
     {
         var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");

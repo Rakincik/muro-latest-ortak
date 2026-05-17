@@ -21,52 +21,66 @@ public class ExamResultService : IExamResultService
 
     public async Task<ExamResultSummaryDto> GetExamResultsAsync(Guid tenantId, Guid examId)
     {
-        var exam = await _context.Exams
-            .AsNoTracking()
-            .Where(e => e.Id == examId && e.TenantId == tenantId)
-            .Include(e => e.Results).ThenInclude(r => r.User)
-            .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException("Sınav bulunamadı.");
-
-        var results = exam.Results.Select(r => new ExamResultDto(
-            r.Id, r.UserId,
-            r.User.FirstName + " " + r.User.LastName,
-            r.CorrectCount, r.WrongCount, r.EmptyCount,
-            Math.Round(r.CorrectCount - (r.WrongCount * exam.WrongPenaltyWeight), 2),
-            r.Score,
-            r.SubmittedAt,
-            r.StartedAt,
-            r.StartedAt.HasValue ? (int)(r.SubmittedAt - r.StartedAt.Value).TotalSeconds : null,
-            CalculateSectionResults(r.Answers, exam.AnswerKeyJson, exam.SectionsJson, exam.WrongPenaltyWeight, exam.QuestionWeightsJson)
-        )).OrderByDescending(r => r.Score).ToList();
-
-        if (!results.Any())
+        var cacheKey = $"{tenantId}:exams:{examId}:results";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            return new ExamResultSummaryDto(0, 0, 0, 0, 0, results, new List<ScoreRangeDto>());
-        }
+            var exam = await _context.Exams
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+                ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
-        var scores = results.Select(r => r.Score).ToList();
-        var nets = results.Select(r => r.Net).ToList();
+            var query = _context.ExamResults.AsNoTracking().Where(r => r.ExamId == examId);
 
-        // Score distribution histogram
-        var ranges = new[] { "0-20", "20-40", "40-60", "60-80", "80-100" };
-        var scoreDistribution = ranges.Select((range, i) =>
-        {
-            var lo = i * 20;
-            var hi = (i + 1) * 20;
-            var count = scores.Count(s => s >= lo && (i == 4 ? s <= hi : s < hi));
-            return new ScoreRangeDto(range, count);
-        }).ToList();
+            var totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ExamResultSummaryDto(0, 0, 0, 0, 0, new List<ExamResultDto>(), new List<ScoreRangeDto>());
+            }
 
-        return new ExamResultSummaryDto(
-            results.Count,
-            Math.Round(scores.Average(), 1),
-            Math.Round(nets.Average(), 2),
-            scores.Max(),
-            scores.Min(),
-            results,
-            scoreDistribution
-        );
+            var avgScore = Math.Round(await query.AverageAsync(r => r.Score), 1);
+            var maxScore = Math.Round(await query.MaxAsync(r => r.Score), 1);
+            var minScore = Math.Round(await query.MinAsync(r => r.Score), 1);
+            
+            // Net is calculated dynamically in SQL
+            var penalty = exam.WrongPenaltyWeight;
+            var avgNet = Math.Round(await query.AverageAsync(r => r.CorrectCount - (r.WrongCount * penalty)), 2);
+
+            var rawResults = await query
+                .Include(r => r.User)
+                .OrderByDescending(r => r.Score)
+                .ToListAsync();
+
+            var results = rawResults.Select(r => new ExamResultDto(
+                r.Id, r.UserId,
+                r.User?.FirstName + " " + r.User?.LastName,
+                r.CorrectCount, r.WrongCount, r.EmptyCount,
+                Math.Round(r.CorrectCount - (r.WrongCount * penalty), 2),
+                r.Score,
+                r.SubmittedAt,
+                r.StartedAt,
+                r.StartedAt.HasValue ? (int)(r.SubmittedAt - r.StartedAt.Value).TotalSeconds : null,
+                CalculateSectionResults(r.Answers, exam.AnswerKeyJson, exam.SectionsJson, penalty, exam.QuestionWeightsJson)
+            )).ToList();
+
+            var ranges = new[] { "0-20", "20-40", "40-60", "60-80", "80-100" };
+            var scoreDistribution = ranges.Select((range, i) =>
+            {
+                var lo = i * 20;
+                var hi = (i + 1) * 20;
+                var count = rawResults.Count(s => s.Score >= lo && (i == 4 ? s.Score <= hi : s.Score < hi));
+                return new ScoreRangeDto(range, count);
+            }).ToList();
+
+            return new ExamResultSummaryDto(
+                totalCount,
+                avgScore,
+                avgNet,
+                maxScore,
+                minScore,
+                results,
+                scoreDistribution
+            );
+        }, TimeSpan.FromMinutes(10));
     }
 
     public async Task<ExamOverallSummaryDto> GetOverallSummaryAsync(Guid tenantId)
@@ -100,82 +114,87 @@ public class ExamResultService : IExamResultService
             .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
-        if (string.IsNullOrEmpty(exam.AnswerKeyJson))
-            throw new InvalidOperationException("Cevap anahtarı henüz girilmemiş.");
+        if (exam.Status != "Published")
+            throw new InvalidOperationException("Bu sınav aktif değil.");
 
         if (await _context.ExamResults.AnyAsync(r => r.ExamId == examId && r.UserId == userId))
             throw new InvalidOperationException("Bu sınava daha önce katıldınız.");
 
-        var answerKey = JsonSerializer.Deserialize<Dictionary<int, string>>(exam.AnswerKeyJson)!;
-
-        // Parse question weights (katsayı) — default 1.0 per question
-        Dictionary<int, double>? weights = null;
-        if (!string.IsNullOrEmpty(exam.QuestionWeightsJson))
-        {
-            try { weights = JsonSerializer.Deserialize<Dictionary<int, double>>(exam.QuestionWeightsJson); }
-            catch { /* ignore parse errors, use default 1.0 */ }
-        }
-
-        int correct = 0, wrong = 0, empty = 0;
-        double weightedCorrect = 0, weightedWrong = 0, totalWeight = 0;
-
-        for (int i = 1; i <= exam.QuestionCount; i++)
-        {
-            var w = weights != null && weights.TryGetValue(i, out var qw) ? qw : 1.0;
-            totalWeight += w;
-
-            if (!request.Answers.TryGetValue(i, out var studentAnswer) || string.IsNullOrEmpty(studentAnswer))
-            {
-                empty++;
-            }
-            else if (answerKey.TryGetValue(i, out var correctAnswer) && studentAnswer == correctAnswer)
-            {
-                correct++;
-                weightedCorrect += w;
-            }
-            else
-            {
-                wrong++;
-                weightedWrong += w;
-            }
-        }
-
-        // Net hesaplama: Ağırlıklı Doğru - (Ağırlıklı Yanlış × WrongPenaltyWeight)
-        var net = Math.Round(weightedCorrect - (weightedWrong * exam.WrongPenaltyWeight), 2);
-        // Puan hesaplama: (Net / Toplam Ağırlık) × 100
-        var rawScore = totalWeight > 0 ? (net / totalWeight) * 100 : 0;
-        var score = Math.Round(rawScore + exam.MaxScore, 1);
-        if (score < exam.MaxScore && net <= 0) score = exam.MaxScore; // "Net negatife düştüğünde verilecek minimum puan"
-
-        var result = new ExamResult
+        // --- QUEUE BASED SUBMISSION ---
+        var queueItem = new ExamSubmissionQueue
         {
             Id = Guid.NewGuid(),
+            TenantId = tenantId,
             ExamId = examId,
             UserId = userId,
-            Answers = JsonSerializer.Serialize(request.Answers),
-            CorrectCount = correct,
-            WrongCount = wrong,
-            EmptyCount = empty,
-            Score = score,
-            StartedAt = request.StartedAt
+            AnswersJson = JsonSerializer.Serialize(request.Answers),
+            Status = "Pending",
+            SubmittedAt = DateTime.UtcNow
         };
+        _context.ExamSubmissionQueues.Add(queueItem);
 
-        _context.ExamResults.Add(result);
+        // Taslak varsa sil (Gönderildiği için taslağa gerek kalmadı)
+        var draft = await _context.StudentExamDrafts.FirstOrDefaultAsync(d => d.ExamId == examId && d.UserId == userId);
+        if (draft != null)
+        {
+            _context.StudentExamDrafts.Remove(draft);
+        }
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
 
         var user = await _context.Users.FindAsync(userId);
         var fullName = user != null ? $"{user.FirstName} {user.LastName}" : "—";
-        int? durationSeconds = null;
-        if (result.StartedAt.HasValue)
+
+        // Geriye 'Hesaplanıyor' durumunda bir DTO dönüyoruz
+        return new ExamResultDto(Guid.Empty, userId, fullName,
+            0, 0, 0, 0, 0, queueItem.SubmittedAt, request.StartedAt, null, null, true);
+    }
+
+    public async Task SaveDraftAsync(Guid tenantId, Guid examId, Guid userId, Dictionary<int, string> answers)
+    {
+        var draft = await _context.StudentExamDrafts
+            .FirstOrDefaultAsync(d => d.ExamId == examId && d.UserId == userId);
+
+        if (draft == null)
         {
-            durationSeconds = (int)(result.SubmittedAt - result.StartedAt.Value).TotalSeconds;
+            draft = new StudentExamDraft
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                ExamId = examId,
+                UserId = userId,
+                AnswersJson = JsonSerializer.Serialize(answers),
+                LastUpdatedAt = DateTime.UtcNow
+            };
+            _context.StudentExamDrafts.Add(draft);
+        }
+        else
+        {
+            draft.AnswersJson = JsonSerializer.Serialize(answers);
+            draft.LastUpdatedAt = DateTime.UtcNow;
         }
 
-        var sectionResults = CalculateSectionResults(result.Answers, exam.AnswerKeyJson, exam.SectionsJson, exam.WrongPenaltyWeight, exam.QuestionWeightsJson);
+        await _context.SaveChangesAsync();
+    }
 
-        return new ExamResultDto(result.Id, result.UserId, fullName,
-            correct, wrong, empty, net, score, result.SubmittedAt, result.StartedAt, durationSeconds, sectionResults);
+    public async Task<Dictionary<int, string>?> GetDraftAsync(Guid tenantId, Guid examId, Guid userId)
+    {
+        var draft = await _context.StudentExamDrafts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.ExamId == examId && d.UserId == userId);
+
+        if (draft == null || string.IsNullOrEmpty(draft.AnswersJson))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<int, string>>(draft.AnswersJson);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public async Task<List<MyExamResultDto>> GetMyExamResultsAsync(Guid tenantId, Guid userId)
@@ -250,7 +269,7 @@ public class ExamResultService : IExamResultService
                     {
                         empty++;
                     }
-                    else if (key.TryGetValue(i, out var correctAns) && studentAns == correctAns)
+                    else if (key.TryGetValue(i, out var correctAns) && studentAns.Trim().Equals(correctAns.Trim(), StringComparison.OrdinalIgnoreCase))
                     {
                         correct++;
                     }

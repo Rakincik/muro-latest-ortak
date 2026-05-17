@@ -20,6 +20,7 @@ public record HlsProcessResult(
     string MasterPlaylistPath,   // /hls/{assetId}/master.m3u8
     string ThumbnailPath,        // /hls/{assetId}/thumbnail.jpg
     bool Success,
+    int? DurationSeconds = null,
     string? ErrorMessage = null
 );
 
@@ -62,6 +63,24 @@ public class HlsProcessingService : IHlsProcessingService
                 ct);
         }
 
+        // ── 1.5. Thumbnail Sprites (VTT) ──────────────────────────────────────
+        var duration = await GetVideoDurationAsync(sourceMp4Path, ct);
+        if (duration > 0)
+        {
+            _logger.LogInformation("Thumbnail VTT/Sprite üretiliyor → {AssetId}", assetId);
+            var spritePattern = Path.Combine(assetDir, "sprite-%03d.jpg");
+            var spriteVtt = Path.Combine(assetDir, "thumbnails.vtt");
+
+            var spriteResult = await RunFfmpegAsync(
+                $"-y -i \"{sourceMp4Path}\" -vf \"fps=1/10,scale=160:90,tile=10x10\" \"{spritePattern}\"",
+                ct);
+
+            if (spriteResult)
+            {
+                await GenerateThumbnailsVttAsync(spriteVtt, duration);
+            }
+        }
+
         // ── 2. 480p HLS ───────────────────────────────────────────────────────
         _logger.LogInformation("480p HLS işleniyor → {AssetId}", assetId);
         var ok480 = await RunFfmpegAsync(
@@ -81,7 +100,7 @@ public class HlsProcessingService : IHlsProcessingService
             ct);
 
         if (!ok480 && !ok720)
-            return new HlsProcessResult("", "", false, "FFmpeg işlemi başarısız oldu.");
+            return new HlsProcessResult("", "", false, null, "FFmpeg işlemi başarısız oldu.");
 
         // ── 4. Master Playlist (ABR) ──────────────────────────────────────────
         var master = new System.Text.StringBuilder();
@@ -105,7 +124,7 @@ public class HlsProcessingService : IHlsProcessingService
 
         _logger.LogInformation("HLS dönüşümü tamamlandı ✓ AssetId: {AssetId}", assetId);
 
-        return new HlsProcessResult(webMaster, webThumb ?? "", true);
+        return new HlsProcessResult(webMaster, webThumb ?? "", true, duration > 0 ? (int)duration : null);
     }
 
     private async Task<bool> RunFfmpegAsync(string arguments, CancellationToken ct)
@@ -137,5 +156,79 @@ public class HlsProcessingService : IHlsProcessingService
             _logger.LogError(ex, "FFmpeg çalıştırılırken hata: {Arguments}", arguments[..Math.Min(100, arguments.Length)]);
             return false;
         }
+    }
+
+    private async Task<double> GetVideoDurationAsync(string sourceMp4Path, CancellationToken ct)
+    {
+        try
+        {
+            // FFmpeg path üzerinden ffprobe path'ini güvenli şekilde bul
+            var dir = Path.GetDirectoryName(_ffmpegPath);
+            var ext = Path.GetExtension(_ffmpegPath);
+            var ffprobeName = string.IsNullOrEmpty(ext) ? "ffprobe" : "ffprobe" + ext;
+            var ffprobePath = string.IsNullOrEmpty(dir) ? ffprobeName : Path.Combine(dir, ffprobeName);
+
+            var arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{sourceMp4Path}\"";
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = ffprobePath,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+
+            var output = await process.StandardOutput.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct);
+
+            if (double.TryParse(output.Trim(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double duration))
+            {
+                return duration;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "FFprobe ile süre alınamadı.");
+        }
+        return 0;
+    }
+
+    private async Task GenerateThumbnailsVttAsync(string vttFilePath, double durationSec)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("WEBVTT");
+        sb.AppendLine();
+
+        int frameCount = (int)Math.Ceiling(durationSec / 10.0);
+        int cols = 10;
+        int rows = 10;
+        int framesPerSprite = cols * rows;
+
+        for (int i = 0; i < frameCount; i++)
+        {
+            double start = i * 10.0;
+            double end = Math.Min((i + 1) * 10.0, durationSec);
+
+            TimeSpan startTime = TimeSpan.FromSeconds(start);
+            TimeSpan endTime = TimeSpan.FromSeconds(end);
+
+            int spriteIndex = (i / framesPerSprite) + 1;
+            int indexInSprite = i % framesPerSprite;
+            int col = indexInSprite % cols;
+            int row = indexInSprite / cols;
+
+            int x = col * 160;
+            int y = row * 90;
+
+            sb.AppendLine($"{startTime:hh\\:mm\\:ss\\.fff} --> {endTime:hh\\:mm\\:ss\\.fff}");
+            sb.AppendLine($"sprite-{spriteIndex:D3}.jpg#xywh={x},{y},160,90");
+            sb.AppendLine();
+        }
+
+        await File.WriteAllTextAsync(vttFilePath, sb.ToString());
     }
 }

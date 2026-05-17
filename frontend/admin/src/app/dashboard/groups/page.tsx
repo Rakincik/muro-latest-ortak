@@ -11,6 +11,8 @@ import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { groupsApi, courseApi, notificationApi, userApi, type GroupListDto, type GroupDetailDto, type CourseListDto } from "@/lib/api";
+import { PremiumTabs } from "@/components/ui/PremiumTabs";
+import { KpiGrid } from "@/components/ui/KpiGrid";
 
 type DetailTab = "members" | "courses" | "settings";
 
@@ -21,7 +23,6 @@ const EDUCATION_MODE_EMOJIS: Record<string, string> = {
     "Offline": "📖",
     "Kamp": "🏕️",
     "Sınav": "📝",
-    "Hibrit": "🔄",
     "Demo": "🎯"
 };
 
@@ -35,30 +36,34 @@ function GroupTreeItem({
     const isEmpty = group.memberCount === 0;
     return (
         <div
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer group transition-all ${selected ? "bg-[#E2E8F0]/30 border border-[#E2E8F0]" : "hover:bg-[#E2E8F0]/20 border border-transparent"}`}
+            className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl cursor-pointer group transition-all ${selected ? "bg-[#0A1931] shadow-lg shadow-black/10" : "hover:bg-[#F0F4F8] border border-transparent"}`}
             onClick={onSelect}
         >
             <button onClick={e => { e.stopPropagation(); onToggle(); }} 
-                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? "w-6 h-6 rounded-lg bg-[#1B3B6F] hover:bg-[#0A1931] text-white shadow-md hover:scale-110" : "w-6 text-transparent"}`}>
-                {hasChildren ? (expanded ? <ChevronDown size={16} strokeWidth={3.5} /> : <ChevronRight size={16} strokeWidth={3.5} />) : <span className="w-4" />}
+                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? `w-6 h-6 rounded-lg ${selected ? "bg-white/10 text-white hover:bg-white/20" : "bg-white text-[#1B3B6F] border border-[#E2E8F0] shadow-sm hover:border-[#A0AEC0]"}` : "w-6 text-transparent"}`}>
+                {hasChildren ? (expanded ? <ChevronDown size={14} strokeWidth={3.5} /> : <ChevronRight size={14} strokeWidth={3.5} />) : <span className="w-4" />}
             </button>
-            <div className="w-3 h-3 rounded-full shrink-0" style={{ background: group.color ?? "#94a3b8" }} />
-            <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium truncate ${selected ? "text-[#0A1931]" : "text-[#1B3B6F]"}`}>{group.name}</p>
-                <p className="text-[10px] text-[#A0AEC0]">{group.memberCount} üye · {group.courseCount} ders{group.educationType ? ` · ${EDUCATION_MODE_EMOJIS[group.educationType] || ""} ${group.educationType}` : ""}</p>
+            <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: group.color ?? "#94a3b8" }} />
+            <div className="flex-1 min-w-0 py-0.5">
+                <p className={`text-sm font-bold tracking-tight truncate ${selected ? "text-white" : "text-[#0A1931]"}`}>{group.name}</p>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-white/10 text-white/90 ring-1 ring-white/20" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.memberCount} üye</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-white/10 text-white/90 ring-1 ring-white/20" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.courseCount} ders</span>
+                    {group.educationType && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-indigo-500/30 text-white ring-1 ring-indigo-400/50" : "bg-indigo-50 text-indigo-700 border border-indigo-200"}`}>{EDUCATION_MODE_EMOJIS[group.educationType] || ""} {group.educationType}</span>}
+                </div>
             </div>
-            {isEmpty && <span className="text-amber-400" title="Boş grup"><AlertTriangle size={12} /></span>}
+            {isEmpty && <span className={`text-amber-400 ${selected ? "opacity-100" : "opacity-80"}`} title="Boş grup"><AlertTriangle size={12} /></span>}
             <div className="hidden group-hover:flex items-center gap-1">
                 <button onClick={e => { e.stopPropagation(); onAddSubgroup(); }}
-                    className="p-1.5 text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Alt Grup Ekle">
+                    className={`p-1.5 rounded-lg transition-colors ${selected ? "text-white/70 hover:text-white hover:bg-white/20" : "text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50"}`} title="Alt Grup Ekle">
                     <Plus size={12} />
                 </button>
                 <button onClick={e => { e.stopPropagation(); onEdit(); }}
-                    className="p-1.5 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/30 rounded-lg transition-colors" title="Düzenle">
+                    className={`p-1.5 rounded-lg transition-colors ${selected ? "text-white/70 hover:text-white hover:bg-white/20" : "text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50"}`} title="Düzenle">
                     <Edit3 size={12} />
                 </button>
                 <button onClick={e => { e.stopPropagation(); onDelete(); }}
-                    className="p-1.5 text-[#A0AEC0] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Sil">
+                    className={`p-1.5 rounded-lg transition-colors ${selected ? "text-white/70 hover:text-rose-400 hover:bg-white/20" : "text-[#A0AEC0] hover:text-red-600 hover:bg-red-50"}`} title="Sil">
                     <Trash2 size={12} />
                 </button>
             </div>
@@ -88,6 +93,11 @@ export default function GroupsPage() {
     const [formParent, setFormParent] = useState("");
     const [formType, setFormType] = useState("");
     const [formSaving, setFormSaving] = useState(false);
+
+    // Detail Members Pagination & Search
+    const [memberPage, setMemberPage] = useState(1);
+    const [memberPageSize, setMemberPageSize] = useState(10);
+    const [memberSearch, setMemberSearch] = useState("");
 
     // Member management
     const [addMemberOpen, setAddMemberOpen] = useState(false);
@@ -136,6 +146,8 @@ export default function GroupsPage() {
         if (!selectedId || !token || !tenantId) return;
         setDetailLoading(true);
         setSelectedMembers(new Set());
+        setMemberPage(1);
+        setMemberSearch("");
         groupsApi.get(token, tenantId, selectedId)
             .then(setDetail).catch(() => setDetail(null)).finally(() => setDetailLoading(false));
     }, [selectedId, token, tenantId]);
@@ -359,6 +371,23 @@ export default function GroupsPage() {
         );
     }, [allUsers, detail, addMemberSearch]);
 
+    const filteredDetailMembers = useMemo(() => {
+        if (!detail) return [];
+        let list = detail.members;
+        if (memberSearch) {
+            const q = memberSearch.toLowerCase();
+            list = list.filter(m => m.userFullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q));
+        }
+        return list;
+    }, [detail, memberSearch]);
+
+    const paginatedDetailMembers = useMemo(() => {
+        const start = (memberPage - 1) * memberPageSize;
+        return filteredDetailMembers.slice(start, start + memberPageSize);
+    }, [filteredDetailMembers, memberPage, memberPageSize]);
+
+    const detailMemberTotalPages = Math.max(1, Math.ceil(filteredDetailMembers.length / memberPageSize));
+
     const treeItems = filteredTree ?? rootGroups;
 
     // Stats
@@ -382,9 +411,9 @@ export default function GroupsPage() {
         });
 
     return (
-        <div className="space-y-5">
+        <div className="flex flex-col space-y-5 lg:h-[calc(100vh-64px)] pb-24 lg:pb-0">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[#0A1931] flex items-center gap-2">
                         <FolderTree size={22} className="text-[#1B3B6F]" /> Gruplar
@@ -392,36 +421,26 @@ export default function GroupsPage() {
                     <p className="text-sm text-[#A9A9A9] mt-0.5">Öğrenci gruplarını yönetin</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button onClick={loadGroups} className="p-2 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#E2E8F0]/20 text-[#A9A9A9]"><RefreshCw size={14} /></button>
-                    <button onClick={openCreate} className="px-4 py-2 bg-[#0A1931] text-white text-sm font-bold rounded-xl hover:bg-[#1B3B6F] transition-colors flex items-center gap-2 shadow-lg shadow-black/10">
-                        <Plus size={15} /> Yeni Grup
+                    <button onClick={loadGroups} className="p-2.5 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#E2E8F0]/20 text-[#A9A9A9]"><RefreshCw size={18} /></button>
+                    <button onClick={openCreate} className="px-5 py-2.5 bg-[#0A1931] text-white text-sm sm:text-base font-bold rounded-xl hover:bg-[#1B3B6F] transition-colors flex items-center gap-2 shadow-lg shadow-black/10">
+                        <Plus size={18} /> Yeni Grup
                     </button>
                 </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
-                {[
-                    { label: "Toplam Grup", value: groups.length, icon: FolderTree, color: "text-[#1B3B6F]", bg: "bg-[#E2E8F0]/15" },
-                    { label: "Toplam Üye", value: totalMembers, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-                    { label: "Ders Ataması", value: totalCourses, icon: BookOpen, color: "text-emerald-600", bg: "bg-emerald-50" },
-                    { label: "Boş Grup", value: emptyGroups, icon: AlertTriangle, color: emptyGroups > 0 ? "text-amber-600" : "text-emerald-600", bg: emptyGroups > 0 ? "bg-amber-50" : "bg-emerald-50" },
-                ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl ${s.bg} flex items-center justify-center`}>
-                            <s.icon size={18} className={s.color} />
-                        </div>
-                        <div>
-                            <p className="text-xl font-bold text-[#0A1931]">{s.value}</p>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0]">{s.label}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <KpiGrid 
+                items={[
+                    { label: "Toplam Grup", value: groups.length, icon: FolderTree, colorClass: "text-indigo-600", bgClass: "bg-indigo-50" },
+                    { label: "Toplam Üye", value: totalMembers, icon: Users, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
+                    { label: "Ders Ataması", value: totalCourses, icon: BookOpen, colorClass: "text-emerald-600", bgClass: "bg-emerald-50" },
+                    { label: "Boş Grup", value: emptyGroups, icon: AlertTriangle, colorClass: emptyGroups > 0 ? "text-amber-600" : "text-teal-600", bgClass: emptyGroups > 0 ? "bg-amber-50" : "bg-teal-50" },
+                ]}
+            />
 
             {/* Empty Groups Alert */}
             {emptyGroups > 0 && (
-                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl shrink-0">
                     <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
                     <p className="text-xs text-amber-700 font-medium">
                         <strong>{emptyGroups} grup</strong> henüz üyesi olmayan boş grup. Ağaçta ⚠️ ile işaretlendi.
@@ -429,14 +448,14 @@ export default function GroupsPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-12 gap-5" style={{ height: "calc(100vh - 240px)", minHeight: "500px" }}>
+            <div className="flex flex-col lg:grid lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">
                 {/* Tree */}
-                <div className="col-span-4 bg-white rounded-2xl border border-[#E2E8F0] flex flex-col overflow-hidden">
-                    <div className="p-3 border-b border-[#E2E8F0]">
+                <div className="lg:col-span-4 xl:col-span-3 bg-white rounded-2xl border border-[#E2E8F0] flex flex-col overflow-hidden max-h-[400px] lg:max-h-none">
+                    <div className="p-3 border-b border-[#E2E8F0] shrink-0">
                         <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                             <input value={treeSearch} onChange={e => setTreeSearch(e.target.value)} placeholder="Grup ara..."
-                                className="w-full pl-8 pr-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl text-[#1B3B6F] placeholder-[#A9A9A9] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20" />
+                                className="w-full pl-10 pr-4 py-3 text-sm font-medium bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#0A1931] placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:bg-white transition-all shadow-inner" />
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2">
@@ -449,15 +468,15 @@ export default function GroupsPage() {
                             </div>
                         ) : renderTree(treeItems)}
                     </div>
-                    <div className="p-3 border-t border-[#E2E8F0] text-xs text-[#A0AEC0] text-center">
+                    <div className="p-3 border-t border-[#E2E8F0] text-xs text-[#A0AEC0] text-center shrink-0">
                         {groups.length} grup • {groups.filter(g => g.parentGroupId !== null).length} alt grup
                     </div>
                 </div>
 
                 {/* Detail */}
-                <div className="col-span-8 bg-white rounded-2xl border border-[#E2E8F0] flex flex-col overflow-hidden">
+                <div className="lg:col-span-8 xl:col-span-9 bg-white rounded-2xl border border-[#E2E8F0] flex flex-col overflow-hidden min-h-[500px]">
                     {!selectedId ? (
-                        <div className="flex-1 flex items-center justify-center text-[#A0AEC0]">
+                        <div className="flex-1 flex items-center justify-center text-[#A0AEC0] p-8">
                             <div className="text-center">
                                 <FolderTree size={48} className="opacity-20 mx-auto mb-3" />
                                 <p className="text-lg font-medium">Bir grup seçin</p>
@@ -467,38 +486,43 @@ export default function GroupsPage() {
                         <div className="flex-1 flex items-center justify-center"><Loader2 size={32} className="text-[#A0AEC0] animate-spin" /></div>
                     ) : detail ? (
                         <>
-                            {/* Detail Header */}
-                            <div className="p-5 border-b border-[#E2E8F0]">
-                                <div className="flex items-center justify-between">
+                            {/* Detail Header - Ultra Compact */}
+                            <div className="p-3 px-5 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                                <div className="flex items-center justify-between flex-wrap gap-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                            style={{ background: `${detail.color ?? "#6366f1"}20` }}>
-                                            <FolderTree size={18} style={{ color: detail.color ?? "#6366f1" }} />
+                                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm border border-[#E2E8F0] bg-white relative overflow-hidden shrink-0">
+                                            <div className="absolute inset-0 opacity-10" style={{ background: detail.color ?? "#6366f1" }} />
+                                            <FolderTree size={14} style={{ color: detail.color ?? "#6366f1" }} />
                                         </div>
-                                        <div>
-                                            <h2 className="font-bold text-[#0A1931]">{detail.name}</h2>
-                                            <p className="text-xs text-[#A0AEC0]">{detail.description ?? "Açıklama yok"}</p>
+                                        <h2 className="text-lg font-black text-[#0A1931] tracking-tight">{detail.name}</h2>
+                                        <div className="w-px h-4 bg-[#E2E8F0] mx-1" />
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2.5 py-1 bg-white border border-[#E2E8F0] text-[#475569] text-[11px] rounded-lg font-bold shadow-sm flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{ background: detail.color ?? "#6366f1" }} />{detail.memberCount} üye</span>
+                                            <span className="px-2.5 py-1 bg-white border border-[#E2E8F0] text-[#475569] text-[11px] rounded-lg font-bold shadow-sm">{detail.courseCount} ders</span>
+                                            {detail.educationType && <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[11px] rounded-lg font-bold border border-indigo-200">{EDUCATION_MODE_EMOJIS[detail.educationType] || ""} {detail.educationType}</span>}
+                                            {detail.parentGroupName && <span className="px-2.5 py-1 bg-[#F8FAFC] text-[#64748B] text-[11px] rounded-lg border border-[#E2E8F0] font-bold shadow-sm">↑ {detail.parentGroupName}</span>}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="px-2 py-1 bg-[#E2E8F0]/30 text-[#1B3B6F] text-xs rounded-lg font-bold">{detail.memberCount} üye</span>
-                                        <span className="px-2 py-1 bg-[#E2E8F0]/30 text-[#1B3B6F] text-xs rounded-lg font-bold">{detail.courseCount} ders</span>
-                                        {detail.educationType && <span className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs rounded-lg font-bold border border-indigo-200">{EDUCATION_MODE_EMOJIS[detail.educationType] || ""} {detail.educationType}</span>}
-                                        {detail.parentGroupName && <span className="px-2 py-1 bg-[#E2E8F0]/30 text-[#A0AEC0] text-xs rounded-lg">↑ {detail.parentGroupName}</span>}
-                                        <button onClick={() => { setCloneGroupName(`${detail.name} (Kopya)`); setCloneGroupMembers(true); setCloneGroupCourses(true); setCloneGroupOpen(true); }}
-                                            className="p-2 hover:bg-[#E2E8F0]/30 rounded-lg text-[#A0AEC0] hover:text-[#1B3B6F]" title="Grubu Kopyala"><Copy size={14} /></button>
-                                        <button onClick={() => openEdit(detail as unknown as GroupListDto)}
-                                            className="p-2 hover:bg-[#E2E8F0]/30 rounded-lg text-[#A0AEC0] hover:text-[#1B3B6F]"><Edit3 size={14} /></button>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-full sm:w-auto">
+                                            <PremiumTabs 
+                                                tabs={[
+                                                    { id: "members", label: "Üyeler", icon: <Users size={12} /> },
+                                                    { id: "courses", label: "Dersler", icon: <BookOpen size={12} /> },
+                                                    { id: "settings", label: "Ayarlar", icon: <Settings size={12} /> }
+                                                ]} 
+                                                activeTab={activeTab} 
+                                                onChange={(id) => setActiveTab(id as DetailTab)} 
+                                            />
+                                        </div>
+                                        <div className="w-px h-5 bg-[#E2E8F0]" />
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => { setCloneGroupName(`${detail.name} (Kopya)`); setCloneGroupMembers(true); setCloneGroupCourses(true); setCloneGroupOpen(true); }}
+                                                className="px-2.5 py-1.5 bg-white border border-[#E2E8F0] hover:bg-[#F0F4F8] rounded-lg text-[#64748B] hover:text-[#0A1931] font-bold text-[11px] transition-colors shadow-sm flex items-center gap-1.5" title="Grubu Kopyala"><Copy size={12} /> Kopyala</button>
+                                            <button onClick={() => openEdit(detail as unknown as GroupListDto)}
+                                                className="px-2.5 py-1.5 bg-white border border-[#E2E8F0] hover:bg-[#F0F4F8] rounded-lg text-[#64748B] hover:text-[#0A1931] font-bold text-[11px] transition-colors shadow-sm flex items-center gap-1.5"><Edit3 size={12} /> Düzenle</button>
+                                        </div>
                                     </div>
-                                </div>
-                                {/* Tabs */}
-                                <div className="flex gap-1 mt-4">
-                                    {([["members", "Üyeler", Users], ["courses", "Dersler", BookOpen], ["settings", "Ayarlar", Settings]] as const).map(([key, label, Icon]) => (
-                                        <button key={key} onClick={() => setActiveTab(key)}
-                                            className={`px-3 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors ${activeTab === key ? "bg-[#0A1931] text-white" : "text-[#A9A9A9] hover:bg-[#E2E8F0]/30"}`}>
-                                            <Icon size={12} />{label}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
@@ -507,18 +531,27 @@ export default function GroupsPage() {
                                 {/* ── Members Tab ── */}
                                 {activeTab === "members" && (
                                     <>
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
+                                        {/* Filters & Actions */}
+                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                            <div className="flex items-center gap-3 flex-1 min-w-[300px]">
                                                 <input type="checkbox" 
-                                                    checked={detail.members.length > 0 && selectedMembers.size === detail.members.length}
+                                                    checked={filteredDetailMembers.length > 0 && selectedMembers.size === filteredDetailMembers.length}
                                                     onChange={e => {
-                                                        if (e.target.checked) setSelectedMembers(new Set(detail.members.map(m => m.userId)));
+                                                        if (e.target.checked) setSelectedMembers(new Set(filteredDetailMembers.map(m => m.userId)));
                                                         else setSelectedMembers(new Set());
                                                     }}
                                                     className="w-4 h-4 rounded border-[#E2E8F0] text-[#1B3B6F] focus:ring-[#1B3B6F]/20 cursor-pointer"
                                                     title="Tümünü Seç"
                                                 />
-                                                <p className="text-sm font-bold text-[#1B3B6F]">{detail.members.length} Üye</p>
+                                                <div className="relative flex-1 max-w-sm">
+                                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                                    <input 
+                                                        value={memberSearch} 
+                                                        onChange={e => { setMemberSearch(e.target.value); setMemberPage(1); }} 
+                                                        placeholder="Üyelerde ara..."
+                                                        className="w-full pl-8 pr-3 py-1.5 text-xs font-medium bg-white border border-[#E2E8F0] rounded-lg text-[#0A1931] placeholder-[#A0AEC0] focus:outline-none focus:border-[#A0AEC0] shadow-sm"
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {selectedMembers.size > 0 && (
@@ -544,40 +577,88 @@ export default function GroupsPage() {
                                             </div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            {detail.members.map(m => (
-                                                <div key={m.userId} className={`flex items-center gap-3 p-3 rounded-xl group transition-colors ${selectedMembers.has(m.userId) ? "bg-blue-50 border border-blue-200" : "bg-[#E2E8F0]/15 hover:bg-[#E2E8F0]/30 border border-transparent"}`}>
+                                            {paginatedDetailMembers.map(m => (
+                                                <div key={m.userId} className={`flex items-center gap-3.5 p-2.5 rounded-xl group transition-all ${selectedMembers.has(m.userId) ? "bg-blue-50/50 border border-blue-200" : "bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0]/60 shadow-sm"}`}>
                                                     <input type="checkbox" checked={selectedMembers.has(m.userId)}
                                                         onChange={() => toggleMember(m.userId)}
-                                                        className="w-4 h-4 rounded border-[#E2E8F0] text-[#1B3B6F] focus:ring-[#1B3B6F]/20" />
-                                                    <div className="w-8 h-8 rounded-full bg-[#0A1931] text-white flex items-center justify-center text-xs font-bold">
+                                                        className="w-4 h-4 ml-1 rounded border-[#A0AEC0] text-[#1B3B6F] focus:ring-[#1B3B6F]/20" />
+                                                    <div className="w-9 h-9 rounded-full bg-[#F0F4F8] text-[#1B3B6F] border border-[#E2E8F0] flex items-center justify-center text-xs font-extrabold shadow-sm">
                                                         {m.userFullName.split(" ").map(n => n[0]).join("").slice(0, 2)}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-[#0A1931]">{m.userFullName}</p>
-                                                        <p className="text-xs text-[#A0AEC0]">{m.email}</p>
+                                                        <p className="text-sm font-bold text-[#0A1931] tracking-tight">{m.userFullName}</p>
+                                                        <p className="text-[11px] font-medium text-[#64748B] truncate">{m.email}</p>
                                                     </div>
-                                                    <span className="text-[10px] text-[#A0AEC0] hidden sm:block">
-                                                        <Calendar size={10} className="inline mr-1" />
-                                                        {new Date(m.addedAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}
-                                                    </span>
-                                                    <span className="px-2 py-0.5 bg-white border border-[#E2E8F0] text-[#A9A9A9] text-[10px] rounded-lg font-bold">
-                                                        {m.role === "Student" ? "Öğrenci" : m.role === "Teacher" ? "Eğitmen" : m.role}
-                                                    </span>
-                                                    <button onClick={() => handleRemoveMember(m.userId)}
-                                                        className="p-1.5 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                                                        <UserMinus size={13} />
-                                                    </button>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[10px] font-bold text-[#A0AEC0] hidden sm:flex items-center gap-1 bg-[#F8FAFC] px-2 py-1 rounded-lg border border-[#E2E8F0]/50">
+                                                            <Calendar size={10} />
+                                                            {new Date(m.addedAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}
+                                                        </span>
+                                                        <span className="w-16 text-center px-2 py-1 bg-[#E2E8F0]/30 text-[#475569] text-[10px] rounded-lg font-bold">
+                                                            {m.role === "Student" ? "Öğrenci" : m.role === "Teacher" ? "Eğitmen" : m.role}
+                                                        </span>
+                                                        <button onClick={() => handleRemoveMember(m.userId)}
+                                                            className="p-1.5 text-[#A0AEC0] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                                                            <UserMinus size={14} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ))}
-                                            {detail.members.length === 0 && (
-                                                <div className="text-center py-10 text-[#A0AEC0]">
+                                            {filteredDetailMembers.length === 0 && (
+                                                <div className="text-center py-10 text-[#A0AEC0] bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] border-dashed">
                                                     <Users size={32} className="mx-auto opacity-20 mb-2" />
-                                                    <p className="text-sm">Henüz üye yok</p>
-                                                    <button onClick={() => { setBulkAddSelection(new Set()); setAddMemberOpen(true); }}
-                                                        className="mt-3 px-4 py-2 text-xs font-bold text-[#1B3B6F] bg-[#E2E8F0]/30 rounded-lg hover:bg-[#E2E8F0]/50">+ Üye Ekle</button>
+                                                    <p className="text-sm font-medium">{memberSearch ? "Aramanıza uygun üye bulunamadı" : "Bu grupta henüz üye yok"}</p>
+                                                    {!memberSearch && (
+                                                        <button onClick={() => { setBulkAddSelection(new Set()); setAddMemberOpen(true); }}
+                                                            className="mt-3 px-4 py-2 text-xs font-bold text-white bg-[#0A1931] rounded-lg hover:bg-[#1B3B6F] shadow-md transition-colors">+ İlk Üyeyi Ekle</button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Pagination Footer */}
+                                        {filteredDetailMembers.length > 0 && (
+                                            <div className="flex items-center justify-between mt-4 p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl">
+                                                <div className="flex items-center gap-3 text-xs text-[#64748B] font-medium">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span>Göster:</span>
+                                                        <select 
+                                                            value={memberPageSize} 
+                                                            onChange={e => { setMemberPageSize(Number(e.target.value)); setMemberPage(1); }}
+                                                            className="bg-white border border-[#E2E8F0] rounded p-1 outline-none text-[#0A1931] font-bold"
+                                                        >
+                                                            <option value={10}>10</option>
+                                                            <option value={20}>20</option>
+                                                            <option value={50}>50</option>
+                                                            <option value={100}>100</option>
+                                                        </select>
+                                                    </div>
+                                                    <span>Toplam {filteredDetailMembers.length} kayıt</span>
+                                                </div>
+                                                
+                                                {detailMemberTotalPages > 1 && (
+                                                    <div className="flex items-center gap-1">
+                                                        <button 
+                                                            onClick={() => setMemberPage(p => Math.max(1, p - 1))} 
+                                                            disabled={memberPage === 1} 
+                                                            className="px-2 py-1.5 text-xs font-bold rounded-lg hover:bg-[#E2E8F0]/50 disabled:opacity-30 text-[#1B3B6F] transition-colors"
+                                                        >
+                                                            Önceki
+                                                        </button>
+                                                        <span className="text-xs font-bold text-[#0A1931] px-2">
+                                                            {memberPage} / {detailMemberTotalPages}
+                                                        </span>
+                                                        <button 
+                                                            onClick={() => setMemberPage(p => Math.min(detailMemberTotalPages, p + 1))} 
+                                                            disabled={memberPage === detailMemberTotalPages} 
+                                                            className="px-2 py-1.5 text-xs font-bold rounded-lg hover:bg-[#E2E8F0]/50 disabled:opacity-30 text-[#1B3B6F] transition-colors"
+                                                        >
+                                                            Sonraki
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </>
                                 )}
 
@@ -670,20 +751,21 @@ export default function GroupsPage() {
             {formOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setFormOpen(false)}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-                        {/* Gradient Header */}
-                        <div className="relative overflow-hidden px-6 py-5" style={{ background: `linear-gradient(135deg, ${formColor}15, ${formColor}05)` }}>
-                            <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full opacity-[0.08]" style={{ background: formColor }} />
+                        {/* Clean Premium Header */}
+                        <div className="relative overflow-hidden px-7 py-6 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                            <div className="absolute top-0 left-0 w-full h-1" style={{ background: formColor }} />
                             <div className="flex items-center justify-between relative z-10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-sm" style={{ background: `${formColor}20` }}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm border border-[#E2E8F0] bg-white relative overflow-hidden">
+                                        <div className="absolute inset-0 opacity-10" style={{ background: formColor }} />
                                         <FolderTree size={20} style={{ color: formColor }} />
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-[#0A1931]">{editGroup ? "Grubu Düzenle" : "Yeni Grup Oluştur"}</h3>
-                                        <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Öğrenci Grubu Yönetimi</p>
+                                        <h3 className="text-xl font-black text-[#0A1931] tracking-tight">{editGroup ? "Grubu Düzenle" : "Yeni Grup Oluştur"}</h3>
+                                        <p className="text-[10px] font-extrabold text-[#64748B] uppercase tracking-widest mt-0.5">Öğrenci Grubu Yönetimi</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setFormOpen(false)} className="p-2 rounded-xl bg-white/80 text-[#A0AEC0] hover:text-[#0A1931] shadow-sm"><X size={16} /></button>
+                                <button onClick={() => setFormOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white border border-[#E2E8F0] text-[#64748B] hover:text-[#0A1931] shadow-sm transition-colors"><X size={14} strokeWidth={3} /></button>
                             </div>
                         </div>
 
@@ -692,13 +774,13 @@ export default function GroupsPage() {
                             <div className="col-span-3 p-6 space-y-4 border-r border-[#E2E8F0]">
                                 {/* Group Type Selector */}
                                 <div>
-                                    <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Eğitim Modeli <span className="text-red-500">*</span></label>
-                                    <div className="grid grid-cols-6 gap-1.5">
+                                    <label className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-2">Eğitim Modeli <span className="text-red-500">*</span></label>
+                                    <div className="grid grid-cols-5 gap-2">
                                         {Object.entries(EDUCATION_MODE_EMOJIS).map(([label, emoji]) => (
                                             <button key={label} type="button" onClick={() => setFormType(label)}
-                                                className={`flex flex-col items-center gap-1 py-2 rounded-xl border transition-all text-center ${formType === label ? "border-[#1B3B6F] bg-[#0A1931]/5 ring-2 ring-[#1B3B6F]/20" : "border-[#E2E8F0] hover:border-[#A0AEC0] hover:bg-[#E2E8F0]/15"}`}>
-                                                <span className="text-lg">{emoji}</span>
-                                                <span className={`text-[11px] font-bold ${formType === label ? "text-[#0A1931]" : "text-[#1B3B6F]"}`}>{label}</span>
+                                                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all text-center bg-white ${formType === label ? "border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-600/20 shadow-sm" : "border-[#E2E8F0] hover:border-[#A0AEC0] hover:bg-[#F8FAFC]"}`}>
+                                                <span className="text-xl">{emoji}</span>
+                                                <span className={`text-[11px] font-bold ${formType === label ? "text-indigo-900" : "text-[#475569]"}`}>{label}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -706,23 +788,23 @@ export default function GroupsPage() {
 
                                 {/* Group Name */}
                                 <div>
-                                    <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-1.5">Grup Adı <span className="text-red-500">*</span></label>
+                                    <label className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-1.5">Grup Adı <span className="text-red-500">*</span></label>
                                     <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="Örn: TYT-A Sınıfı, Matematik Çalışma Grubu"
-                                        className="w-full px-4 py-2.5 text-sm font-medium border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#E2E8F0]/10 focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:bg-white placeholder:text-[#A0AEC0]" />
+                                        className="w-full px-4 py-3 text-sm font-bold border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white placeholder:text-[#A0AEC0] placeholder:font-medium transition-all" />
                                 </div>
 
                                 {/* Description */}
                                 <div>
-                                    <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-1.5">Açıklama</label>
+                                    <label className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-1.5">Açıklama</label>
                                     <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2} placeholder="Grup hakkında kısa bir açıklama..."
-                                        className="w-full px-4 py-2.5 text-sm border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#E2E8F0]/10 focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:bg-white resize-none placeholder:text-[#A0AEC0]" />
+                                        className="w-full px-4 py-3 text-sm border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white resize-none placeholder:text-[#A0AEC0] transition-all" />
                                 </div>
 
                                 {/* Parent Group */}
                                 <div>
-                                    <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-1.5">Üst Grup</label>
+                                    <label className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-1.5">Üst Grup</label>
                                     <select value={formParent} onChange={e => setFormParent(e.target.value)}
-                                        className="w-full px-4 py-2.5 text-sm border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#E2E8F0]/10 focus:outline-none">
+                                        className="w-full px-4 py-3 text-sm font-medium border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all cursor-pointer">
                                         <option value="">— Kök Grup (Bağımsız) —</option>
                                         {groups.filter(g => !editGroup || g.id !== editGroup.id).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                                     </select>
@@ -730,73 +812,64 @@ export default function GroupsPage() {
 
                                 {/* Color Picker */}
                                 <div>
-                                    <label className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Grup Rengi</label>
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex gap-1.5">
-                                            {COLOR_PRESETS.map(c => (
-                                                <div key={c} onClick={() => setFormColor(c)}
-                                                    className={`w-7 h-7 rounded-full cursor-pointer hover:scale-110 transition-all ${formColor === c ? "ring-2 ring-offset-2 ring-[#0A1931] scale-110" : "opacity-70 hover:opacity-100"}`}
-                                                    style={{ background: c }} />
-                                            ))}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 ml-2">
-                                            <div className="w-7 h-7 rounded-full border-2 border-dashed border-[#E2E8F0]" style={{ background: formColor }} />
-                                            <input value={formColor} onChange={e => setFormColor(e.target.value)} maxLength={7}
-                                                className="w-20 px-2 py-1 text-xs font-mono border border-[#E2E8F0] rounded-lg text-[#1B3B6F] bg-[#E2E8F0]/10 focus:outline-none" />
-                                        </div>
+                                    <label className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-2">Grup Rengi</label>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {COLOR_PRESETS.map(c => (
+                                            <div key={c} onClick={() => setFormColor(c)}
+                                                className={`w-8 h-8 rounded-full cursor-pointer hover:scale-110 transition-all shadow-sm ${formColor === c ? "ring-2 ring-offset-2 ring-indigo-600 scale-110" : "opacity-80 hover:opacity-100"}`}
+                                                style={{ background: c }} />
+                                        ))}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Right: Live Preview */}
                             <div className="col-span-2 p-6 bg-[#F8FAFC] flex flex-col">
-                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-3">Canlı Önizleme</p>
-                                <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 shadow-sm flex-1">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                                            style={{ background: `${formColor}20` }}>
-                                            <FolderTree size={18} style={{ color: formColor }} />
+                                <p className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest mb-3">Canlı Önizleme</p>
+                                <div className="bg-white rounded-[1.25rem] border border-[#E2E8F0] p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] flex-1">
+                                    <div className="flex items-center gap-3.5 mb-4">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm border border-[#E2E8F0] bg-white relative overflow-hidden shrink-0">
+                                            <div className="absolute inset-0 opacity-10" style={{ background: formColor }} />
+                                            <FolderTree size={20} style={{ color: formColor }} />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-bold text-[#0A1931] text-sm truncate">{formName || "Grup Adı"}</p>
-                                            <p className="text-[10px] text-[#A0AEC0] mt-0.5 line-clamp-2">{formDesc || "Açıklama..."}</p>
+                                            <p className="font-black text-[#0A1931] text-xl tracking-tight truncate">{formName || "Grup Adı"}</p>
+                                            <p className="text-xs font-medium text-[#64748B] mt-0.5 line-clamp-1">{formDesc || "Açıklama..."}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E2E8F0]">
-                                        <div className="w-3 h-3 rounded-full" style={{ background: formColor }} />
-                                        <span className="text-[10px] text-[#A0AEC0]">0 üye</span>
-                                        <span className="text-[10px] text-[#A0AEC0]">·</span>
-                                        <span className="text-[10px] text-[#A0AEC0]">0 ders</span>
+                                    <div className="flex items-center gap-2.5 flex-wrap">
+                                        <span className="px-3.5 py-1.5 bg-white border border-[#E2E8F0] text-[#475569] text-[13px] rounded-xl font-bold shadow-sm flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ background: formColor }} />0 üye</span>
+                                        <span className="px-3.5 py-1.5 bg-white border border-[#E2E8F0] text-[#475569] text-[13px] rounded-xl font-bold shadow-sm">0 ders</span>
+                                        {formType && <span className="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 text-[13px] rounded-xl font-bold border border-indigo-200">{EDUCATION_MODE_EMOJIS[formType]} {formType}</span>}
                                     </div>
                                     {formParent && (
-                                        <div className="mt-2 text-[9px] text-[#A0AEC0]">
+                                        <div className="mt-4 pt-3 border-t border-[#E2E8F0] text-[13px] font-bold text-[#64748B]">
                                             ↑ {groups.find(g => g.id === formParent)?.name ?? "Üst Grup"}
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Quick Tips */}
-                                <div className="mt-4 space-y-2">
-                                    <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">İpuçları</p>
-                                    <div className="text-xs text-[#718096] space-y-2 leading-relaxed">
-                                        <p className="flex items-start gap-1.5">💡 Grup oluşturduktan sonra üye ve ders ekleyebilirsiniz</p>
-                                        <p className="flex items-start gap-1.5">🎨 Renk, ağaç görünümünde grubu hızlı tanımanızı sağlar</p>
-                                        <p className="flex items-start gap-1.5">📂 Alt gruplarla hiyerarşik yapı oluşturabilirsiniz</p>
-                                        <p className="flex items-start gap-1.5">👥 Üst gruba eklenen öğrenciler alt gruplara da otomatik eklenir</p>
+                                <div className="mt-5 space-y-2">
+                                    <p className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest mb-3">İpuçları</p>
+                                    <div className="text-[11px] text-[#475569] space-y-2.5 font-medium leading-relaxed">
+                                        <p className="flex items-start gap-2"><span className="opacity-70">💡</span> Grup oluşturduktan sonra üye ve ders ekleyebilirsiniz</p>
+                                        <p className="flex items-start gap-2"><span className="opacity-70">🎨</span> Renk, ağaç görünümünde grubu hızlı tanımanızı sağlar</p>
+                                        <p className="flex items-start gap-2"><span className="opacity-70">📂</span> Alt gruplarla hiyerarşik yapı oluşturabilirsiniz</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="flex items-center justify-between px-6 py-4 border-t border-[#E2E8F0] bg-[#E2E8F0]/10">
-                            <p className="text-[10px] text-[#A0AEC0]">{!formType ? <span className="text-red-400">Eğitim modeli seçin</span> : !formName.trim() ? "Grup adı gerekli" : "✓ Hazır"}</p>
-                            <div className="flex gap-2">
-                                <button onClick={() => setFormOpen(false)} className="px-5 py-2.5 text-sm font-bold text-[#A9A9A9] hover:text-[#0A1931]">İptal</button>
+                        <div className="flex items-center justify-between px-7 py-5 border-t border-[#E2E8F0] bg-white">
+                            <p className="text-[11px] font-bold text-[#64748B]">{!formType ? <span className="text-red-500 bg-red-50 px-2 py-1 rounded-md">Eğitim modeli seçin</span> : !formName.trim() ? <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded-md">Grup adı gerekli</span> : <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">✓ Form Hazır</span>}</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => setFormOpen(false)} className="px-5 py-2.5 text-sm font-bold text-[#64748B] hover:text-[#0A1931] hover:bg-[#F8FAFC] rounded-xl transition-colors">İptal</button>
                                 <button onClick={handleSave} disabled={!formName.trim() || !formType || formSaving}
-                                    className="px-6 py-2.5 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] disabled:opacity-40 shadow-lg shadow-black/10 flex items-center justify-center gap-2">
+                                    className="px-7 py-2.5 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-indigo-600 disabled:bg-[#E2E8F0] disabled:text-[#A0AEC0] disabled:shadow-none shadow-[0_4px_14px_0_rgba(10,25,49,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] transition-all flex items-center justify-center gap-2">
                                     {formSaving && <Loader2 size={14} className="animate-spin" />}
-                                    {editGroup ? "💾 Kaydet" : "✨ Oluştur"}
+                                    {editGroup ? "Kaydet" : "Oluştur"}
                                 </button>
                             </div>
                         </div>
@@ -991,3 +1064,4 @@ export default function GroupsPage() {
         </div>
     );
 }
+

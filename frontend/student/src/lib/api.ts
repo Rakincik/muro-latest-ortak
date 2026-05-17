@@ -14,7 +14,13 @@ export async function api<T = unknown>(endpoint: string, options: FetchOptions =
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (tenantId) headers["X-Tenant-Id"] = tenantId;
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...rest, headers });
+    const fetchOptions: RequestInit = {
+        ...rest,
+        headers,
+        cache: "no-store", // Ensure we always get fresh data
+    };
+    
+    const response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
     if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         // SESSION_KICKED: başka cihazdan giriş yapıldı — global event at
@@ -188,6 +194,9 @@ export interface ExamDetailDto {
     endDate: string | null;
     wrongPenaltyWeight: number;
     sectionsJson?: string;
+    maxScore?: number;
+    baseScore?: number;
+    digitalQuestionsJson?: string;
 }
 
 export interface ExamListDto {
@@ -205,6 +214,8 @@ export interface ExamListDto {
     resultCount: number;
     averageScore: number | null;
     wrongPenaltyWeight: number;
+    maxScore?: number;
+    baseScore?: number;
 }
 
 // ── API functions ─────────────────────────────────────────────────────────────
@@ -249,9 +260,41 @@ export interface RecordingDto {
     status: string;
     scheduledStart: string | null;
     createdAt: string;
+    type?: string;
+    examId?: string;
+}
+
+export interface MediaAssetDto {
+    id: string;
+    title: string;
+    hlsPath?: string | null;
+    thumbnailPath?: string | null;
+    durationSeconds?: number | null;
+    status: string;
+    createdAt: string;
+}
+
+export interface CourseMediaDto {
+    id: string;
+    courseId: string;
+    type: string;
+    orderIndex: number;
+    mediaAssetId?: string | null;
+    mediaAsset?: MediaAssetDto | null;
+    examId?: string | null;
+    examTitle?: string | null;
+    examType?: string | null;
+    sessionId?: string | null;
+    sessionTitle?: string | null;
+    sessionStatus?: string | null;
+    sessionScheduledStart?: string | null;
+    createdAt: string;
 }
 
 export const courseApi = {
+    getCourseMedias: async (token: string, tenantId: string, courseId: string): Promise<CourseMediaDto[]> => {
+        return api<CourseMediaDto[]>(`/courses/${courseId}/media`, { token, tenantId });
+    },
     // Fix #9: PagedResult<CourseDto> döndürüyor, Array değil
     list: (token: string, tenantId: string): Promise<CourseDto[]> =>
         cachedApi(`courses:${tenantId}`, async () => {
@@ -352,6 +395,19 @@ export const examApi = {
     },
     getById: (token: string, tenantId: string, examId: string) =>
         api<ExamDetailDto>(`/exams/${examId}`, { token, tenantId }),
+    getDigitalQuestions: async (token: string, tenantId: string, examId: string): Promise<string> => {
+        const data = await api<string | unknown>(`/exams/${examId}/digital-questions`, { token, tenantId });
+        return typeof data === "string" ? data : JSON.stringify(data);
+    },
+    saveDraft: (token: string, tenantId: string, examId: string, answers: Record<number, string>) =>
+        api(`/exams/${examId}/draft`, {
+            method: "POST", token, tenantId,
+            body: JSON.stringify(answers),
+        }),
+    getDraft: async (token: string, tenantId: string, examId: string): Promise<Record<number, string>> => {
+        const data = await api<Record<number, string> | unknown>(`/exams/${examId}/draft`, { token, tenantId });
+        return data && typeof data === "object" && !Array.isArray(data) ? (data as Record<number, string>) : {};
+    },
     submitAnswers: (token: string, tenantId: string, examId: string, answers: Record<number, string>, startedAt?: string) =>
         api<MyExamResultDto>(`/exams/${examId}/submit`, {
             method: "POST", token, tenantId,
@@ -386,6 +442,8 @@ export const questionApi = {
             method: "PATCH", token, tenantId,
             body: JSON.stringify({ note }),
         }),
+    deleteQuestion: (token: string, tenantId: string, id: string) =>
+        api<void>(`/questions/${id}`, { method: 'DELETE', token, tenantId }),
 };
 
 export const userApi = {

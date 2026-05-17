@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { examApi, getFileUrl, type ExamDetailDto, type MyExamResultDto } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
-import SecurePdfViewer from "@/components/SecurePdfViewer";
+import dynamic from "next/dynamic";
+const SecurePdfViewer = dynamic(() => import("@/components/SecurePdfViewer"), { ssr: false });
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F"];
 
@@ -14,6 +15,29 @@ function formatTime(secs: number) {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+function CountdownTimer({ initialSeconds, onComplete }: { initialSeconds: number, onComplete: () => void }) {
+    const [timeLeft, setTimeLeft] = useState(initialSeconds);
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setTimeLeft(t => {
+                if (t <= 1) {
+                    clearInterval(timer);
+                    onComplete();
+                    return 0;
+                }
+                return t - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [onComplete]);
+
+    return (
+        <div className={`px-4 py-2 rounded-xl font-mono text-lg font-bold ${timeLeft < 300 ? "bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse" : "bg-white/5 text-[#0A1931] border border-white/10"}`}>
+            ⏳ {formatTime(timeLeft)}
+        </div>
+    );
 }
 
 type Phase = "loading" | "ready" | "solving" | "confirm" | "done" | "error" | "already_submitted" | "missing_key";
@@ -30,9 +54,9 @@ export default function ExamSolvePage() {
     const [result, setResult] = useState<MyExamResultDto | null>(null);
     const [myResults, setMyResults] = useState<MyExamResultDto[]>([]);
     const [submitting, setSubmitting] = useState(false);
-    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [submitting, setSubmitting] = useState(false);
     const startedAt = useRef<string>(new Date().toISOString());
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const answersRef = useRef<Record<number, string>>({});
     const { showToast } = useToast();
 
     // Hangi soruya scroll edildi
@@ -51,6 +75,19 @@ export default function ExamSolvePage() {
         } catch { return null; }
     }, [exam?.sectionsJson]);
 
+    // iframe icinde sidebar'i gizle
+    useEffect(() => {
+        if (typeof window !== "undefined" && window.location.search.includes("hideSidebar=true")) {
+            const style = document.createElement("style");
+            style.innerHTML = `
+                .sidebar, header, nav, .mobile-tab-bar { display: none !important; } 
+                .main-content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; min-height: 100vh !important; }
+            `;
+            document.head.appendChild(style);
+            return () => { document.head.removeChild(style); };
+        }
+    }, []);
+
     const currentQuestions = useMemo(() => {
         const total = exam?.questionCount ?? 0;
         if (sections && sections[activeSectionIdx]) {
@@ -66,7 +103,7 @@ export default function ExamSolvePage() {
             examApi.getById(token, tenantId, examId),
             examApi.myResults(token, tenantId).catch(() => []) // gracefully handle error
         ])
-        .then(([e, results]) => {
+        .then(async ([e, results]) => {
             setExam(e);
             setMyResults(results);
             
@@ -77,11 +114,47 @@ export default function ExamSolvePage() {
             } else if (!e.answerKey || Object.keys(e.answerKey).length === 0) {
                 setPhase("missing_key");
             } else {
+                try {
+                    const draft = await examApi.getDraft(token, tenantId, examId);
+                    if (draft && Object.keys(draft).length > 0) {
+                        setAnswers(draft);
+                    } else {
+                        const localDraft = localStorage.getItem(`exam_draft_${examId}`);
+                        if (localDraft) setAnswers(JSON.parse(localDraft));
+                    }
+                } catch { /* ignore */ }
                 setPhase("ready");
             }
         })
         .catch(() => setPhase("error"));
     }, [token, tenantId, examId]);
+
+    // Senkronize answersRef
+    useEffect(() => {
+        answersRef.current = answers;
+    }, [answers]);
+
+    // Auto-Save
+    useEffect(() => {
+        if (phase !== "solving" || !examId) return;
+
+        const localInterval = setInterval(() => {
+            if (Object.keys(answersRef.current).length > 0) {
+                localStorage.setItem(`exam_draft_${examId}`, JSON.stringify(answersRef.current));
+            }
+        }, 10000);
+
+        const serverInterval = setInterval(() => {
+            if (token && tenantId && Object.keys(answersRef.current).length > 0) {
+                examApi.saveDraft(token, tenantId, examId, answersRef.current).catch(console.error);
+            }
+        }, 60000);
+
+        return () => {
+            clearInterval(localInterval);
+            clearInterval(serverInterval);
+        };
+    }, [phase, examId, token, tenantId]);
 
     const requestFullscreen = async () => {
         try {
@@ -95,29 +168,9 @@ export default function ExamSolvePage() {
 
     const startExam = async () => {
         startedAt.current = new Date().toISOString();
-        if (exam?.durationMinutes) {
-            setTimeLeft(exam.durationMinutes * 60);
-        }
         await requestFullscreen();
         setPhase("solving");
     };
-
-    // Geri sayım
-    useEffect(() => {
-        if (phase !== "solving" || timeLeft === null) return;
-        timerRef.current = setInterval(() => {
-            setTimeLeft(t => {
-                if (t === null || t <= 1) {
-                    clearInterval(timerRef.current!);
-                    handleSubmit(true);
-                    return 0;
-                }
-                return t - 1;
-            });
-        }, 1000);
-        return () => { if (timerRef.current) clearInterval(timerRef.current); };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [phase]);
 
     // Güvenlik Dinleyicileri (Security Hooks)
     useEffect(() => {
@@ -199,7 +252,7 @@ export default function ExamSolvePage() {
             const res = await examApi.submitAnswers(token, tenantId, examId, answers, startedAt.current);
             setResult(res);
             setPhase("done");
-            if (timerRef.current) clearInterval(timerRef.current);
+            localStorage.removeItem(`exam_draft_${examId}`);
         } catch (e: unknown) {
             showToast(e instanceof Error ? e.message : "Gönderim başarısız.", "error");
             setPhase("solving");
@@ -225,9 +278,9 @@ export default function ExamSolvePage() {
     if (phase === "error" || !exam) {
         return (
             <div className="text-center py-20">
-                <p className="text-5xl mb-4">⚠️</p>
+                <p className="text-5xl mb-4">âš ï¸</p>
                 <p className="text-[#0A1931] font-semibold mb-4">Sınav yüklenemedi.</p>
-                <Link href="/dashboard/exams" className="text-violet-400 text-sm hover:underline">← Sınavlara Dön</Link>
+                <Link href="/dashboard/exams" className="text-violet-400 text-sm hover:underline">â† Sınavlara Dön</Link>
             </div>
         );
     }
@@ -235,10 +288,10 @@ export default function ExamSolvePage() {
     if (phase === "missing_key") {
         return (
             <div className="text-center py-20">
-                <p className="text-5xl mb-4">🔒</p>
+                <p className="text-5xl mb-4">ğŸ”’</p>
                 <p className="text-[#0A1931] font-semibold mb-2">Bu sınav henüz başlatılamaz.</p>
                 <p className="text-[#A9A9A9] text-sm mb-6">Cevap anahtarı girilmediği için değerlendirme yapılamamaktadır.</p>
-                <Link href="/dashboard/exams" className="text-violet-400 text-sm hover:underline">← Sınavlara Dön</Link>
+                <Link href="/dashboard/exams" className="text-violet-400 text-sm hover:underline">â† Sınavlara Dön</Link>
             </div>
         );
     }
@@ -248,7 +301,7 @@ export default function ExamSolvePage() {
         return (
             <div className="max-w-xl mx-auto text-center py-12">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl shadow-violet-500/25">
-                    📋
+                    ğŸ“‹
                 </div>
                 <h1 className="text-2xl font-bold text-[#0A1931] mb-2">{exam.title}</h1>
                 {exam.description && <p className="text-[#A0AEC0] text-sm mb-6">{exam.description}</p>}
@@ -259,7 +312,7 @@ export default function ExamSolvePage() {
                         <p className="text-[#A9A9A9] text-xs mt-1">Soru</p>
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-blue-400">{exam.durationMinutes ? `${exam.durationMinutes} dk` : "∞"}</p>
+                        <p className="text-2xl font-bold text-blue-400">{exam.durationMinutes ? `${exam.durationMinutes} dk` : "âˆ"}</p>
                         <p className="text-[#A9A9A9] text-xs mt-1">Süre</p>
                     </div>
                     <div>
@@ -283,11 +336,11 @@ export default function ExamSolvePage() {
                     onClick={startExam}
                     className="inline-flex items-center gap-2 px-8 py-3 bg-violet-600 hover:bg-violet-500 text-[#0A1931] font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/25"
                 >
-                    ▶ Sınava Başla
+                    â–¶ Sınava Başla
                 </button>
 
                 <div className="mt-6">
-                    <Link href="/dashboard/exams" className="text-[#1B3B6F] text-sm hover:text-[#A0AEC0]">← Geri Dön</Link>
+                    <Link href="/dashboard/exams" className="text-[#1B3B6F] text-sm hover:text-[#A0AEC0]">â† Geri Dön</Link>
                 </div>
             </div>
         );
@@ -301,7 +354,7 @@ export default function ExamSolvePage() {
                 {!isFullscreen && phase === "solving" && (
                     <div className="fixed inset-0 bg-[#0A1931] z-[100] flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-24 h-24 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center text-4xl mb-6">
-                            🖥️
+                            ğŸ–¥ï¸
                         </div>
                         <h2 className="text-3xl font-bold text-white mb-4">Sınava Tam Ekranda Devam Etmelisiniz</h2>
                         <p className="text-[#A0AEC0] mb-8 max-w-lg">
@@ -323,7 +376,7 @@ export default function ExamSolvePage() {
                 {isSecurityWarningOpen && isFullscreen && phase === "solving" && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 text-center">
                         <div className="glass-card p-10 max-w-md w-full bg-rose-950/30 border-rose-500/30 shadow-2xl shadow-rose-900/50">
-                            <div className="text-6xl mb-6 animate-pulse">⚠️</div>
+                            <div className="text-6xl mb-6 animate-pulse">âš ï¸</div>
                             <h2 className="text-2xl font-bold text-white mb-2">Güvenlik Uyarısı</h2>
                             <p className="text-rose-200 mb-6 text-sm">
                                 Sınav ekranından ayrıldığınız veya kural dışı bir eylem (sağ tık, yazdırma, ekran görüntüsü alma) gerçekleştirdiğiniz tespit edildi. Lütfen sadece sınav ekranında kalın!
@@ -344,16 +397,17 @@ export default function ExamSolvePage() {
                         <p className="text-[#A9A9A9] text-xs">{exam.examType} • {answered}/{total} cevaplandı</p>
                     </div>
                     <div className="flex items-center gap-4">
-                        {timeLeft !== null && (
-                            <div className={`px-4 py-2 rounded-xl font-mono text-lg font-bold ${timeLeft < 300 ? "bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse" : "bg-white/5 text-[#0A1931] border border-white/10"}`}>
-                                ⏱ {formatTime(timeLeft)}
-                            </div>
+                        {exam.durationMinutes && (
+                            <CountdownTimer 
+                                initialSeconds={exam.durationMinutes * 60} 
+                                onComplete={() => handleSubmit(true)} 
+                            />
                         )}
                         <button
                             onClick={() => setPhase("confirm")}
                             className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-[#0A1931] text-sm font-medium rounded-xl transition-all shadow-lg shadow-violet-500/20"
                         >
-                            Sınavı Bitir →
+                            Sınavı Bitir â†’
                         </button>
                     </div>
                 </div>
@@ -414,7 +468,9 @@ export default function ExamSolvePage() {
                                         className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${activeQ === qNum ? "bg-violet-500/10 border border-violet-500/30" : "hover:bg-white/3"}`}
                                         onClick={() => setActiveQ(qNum)}
                                     >
-                                        <span className="text-[#A9A9A9] text-xs font-mono w-7 flex-shrink-0">{qNum}.</span>
+                                        <span className="text-[#A9A9A9] text-xs font-mono w-7 flex-shrink-0">
+                                            {sections && sections[activeSectionIdx] ? qNum - sections[activeSectionIdx].start + 1 : qNum}.
+                                        </span>
                                         <div className="flex gap-2">
                                             {options.map(opt => {
                                                 const selected = answers[qNum] === opt;
@@ -451,10 +507,10 @@ export default function ExamSolvePage() {
                 {phase === "confirm" && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                         <div className="glass-card p-8 max-w-sm w-full text-center">
-                            <p className="text-4xl mb-4">⚠️</p>
+                            <p className="text-4xl mb-4">âš ï¸</p>
                             <h2 className="text-[#0A1931] font-bold text-lg mb-2">Sınavı Bitir?</h2>
                             <div className="flex gap-4 justify-center text-sm mb-6">
-                                <span className="text-green-400">✓ {answered} cevaplandı</span>
+                                <span className="text-green-400">âœ“ {answered} cevaplandı</span>
                                 <span className="text-[#A9A9A9]">— {total - answered} boş</span>
                             </div>
                             <p className="text-[#A9A9A9] text-sm mb-6">Gönderildikten sonra değişiklik yapılamaz.</p>
@@ -470,7 +526,7 @@ export default function ExamSolvePage() {
                                     disabled={submitting}
                                     className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-[#0A1931] rounded-xl text-sm font-semibold transition-all"
                                 >
-                                    {submitting ? "Gönderiliyor..." : "Gönder ✓"}
+                                    {submitting ? "Gönderiliyor..." : "Gönder âœ“"}
                                 </button>
                             </div>
                         </div>
@@ -486,7 +542,7 @@ export default function ExamSolvePage() {
             return (
                 <div className="max-w-2xl mx-auto text-center py-24 animate-fade-in-up px-4">
                     <div className="w-24 h-24 bg-[#E2E8F0] text-[#0A1931] rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner border-4 border-white">
-                        ⏳
+                        â³
                     </div>
                     <h2 className="text-3xl font-black text-[#0A1931] mb-3 tracking-tight">Cevaplarınız İletildi!</h2>
                     <p className="text-[#A0AEC0] mb-8 leading-relaxed max-w-lg mx-auto">
@@ -541,7 +597,7 @@ export default function ExamSolvePage() {
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
                                 <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3">
                                     <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-lg">
-                                        🎯
+                                        ğŸ¯
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Toplam Net</p>
@@ -551,7 +607,7 @@ export default function ExamSolvePage() {
                                 {result.rank !== null && (
                                     <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3">
                                         <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-lg">
-                                            🏆
+                                            ğŸ†
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Sıralama</p>
@@ -567,14 +623,14 @@ export default function ExamSolvePage() {
                 {/* Genel İstatistik Kartları */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xl">✓</div>
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xl">âœ“</div>
                         <div>
                             <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Doğru</p>
                             <p className="text-2xl font-black text-[#0A1931]">{result.correctCount}</p>
                         </div>
                     </div>
                     <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 font-bold text-xl">✕</div>
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 font-bold text-xl">âœ•</div>
                         <div>
                             <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Yanlış</p>
                             <p className="text-2xl font-black text-[#0A1931]">{result.wrongCount}</p>
@@ -590,7 +646,7 @@ export default function ExamSolvePage() {
                     {result.averageScore != null && (
                         <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl ${isAboveAvg ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
-                                {isAboveAvg ? "↑" : "↓"}
+                                {isAboveAvg ? "â†‘" : "â†“"}
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Sınıf Ort.</p>
@@ -604,7 +660,7 @@ export default function ExamSolvePage() {
                 {result.sectionResults && Object.keys(result.sectionResults).length > 0 && (
                     <div className="mb-10">
                         <h3 className="text-[#0A1931] font-bold text-xl mb-5 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-[#1B3B6F]/5 flex items-center justify-center text-[#1B3B6F]">📊</span>
+                            <span className="w-8 h-8 rounded-lg bg-[#1B3B6F]/5 flex items-center justify-center text-[#1B3B6F]">ğŸ“Š</span>
                             Bölüm Analizi
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -658,7 +714,7 @@ export default function ExamSolvePage() {
                         href="/dashboard/exams"
                         className="px-6 py-3 bg-white border border-[#E2E8F0] text-[#0A1931] font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm"
                     >
-                        ← Sınavlara Dön
+                        â† Sınavlara Dön
                     </Link>
                     {exam?.solutionPdfUrl && (
                         <a
@@ -677,3 +733,5 @@ export default function ExamSolvePage() {
 
     return null;
 }
+
+

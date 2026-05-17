@@ -18,4 +18,7 @@ public class SignalRNotificationPush : INotificationPush
 
     public Task PushToUserAsync(string userId, NotificationDto dto)
         => _hub.Clients.Group(userId).SendAsync("ReceiveNotification", dto);
+
+    public Task PushToUsersAsync(IReadOnlyList<string> userIds, NotificationDto dto)
+        => _hub.Clients.Groups(userIds).SendAsync("ReceiveNotification", dto);
 }

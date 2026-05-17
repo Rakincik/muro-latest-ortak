@@ -1,16 +1,21 @@
+using MURO.Domain.Common;
+
 namespace MURO.Domain.Entities;
 
-public class Exam
+public class Exam : ISoftDeletable
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public string ExamType { get; set; } = "TYT"; // TYT, AYT, LGS, KPSS_GY, KPSS_GK, KPSS_EB, OABT, ALES, YDS, DGS, Deneme, Quiz, Genel
     public int QuestionCount { get; set; }
     public int OptionCount { get; set; } = 5; // A-E (4 veya 5)
     public int? DurationMinutes { get; set; }
     public double WrongPenaltyWeight { get; set; } = 0.25; // 4 yanlış 1 doğru (0.25) veya 3 yanlış 1 doğru (0.33)
-    public double MaxScore { get; set; } = 0; // Taban Puan (e.g. 100)
+    public double MaxScore { get; set; } = 100; // Tavan Puan (e.g. 500)
+    public double BaseScore { get; set; } = 0; // Taban Puan (e.g. 100)
     public int VirtualParticipantCount { get; set; } = 0; // 0 = devre dışı
 
     // Soru Puan Katsayıları — JSON: {"1": 1.000, "2": 1.500, ...}
@@ -25,6 +30,9 @@ public class Exam
 
     // Cevap Anahtarı — JSON: {"1":"A","2":"C","3":"B",...}
     public string? AnswerKeyJson { get; set; }
+
+    // Dijital Soru İçerikleri — JSON: [{"text":"Soru","options":["A","B","C"],"correct":0}]
+    public string? DigitalQuestionsJson { get; set; }
 
     // Durum & Zamanlama
     public string Status { get; set; } = "Taslak"; // Taslak, Yayında, Tamamlandı

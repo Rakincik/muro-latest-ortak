@@ -58,6 +58,18 @@ public class CourseSessionService : ICourseSessionService
         };
 
         _context.Sessions.Add(session);
+
+        var courseMediaMaxOrder = await _context.CourseMedias
+            .Where(cm => cm.CourseId == courseId)
+            .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
+
+        _context.CourseMedias.Add(new CourseMedia
+        {
+            CourseId = courseId,
+            SessionId = session.Id,
+            OrderIndex = courseMediaMaxOrder + 1
+        });
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
 
@@ -125,6 +137,13 @@ public class CourseSessionService : ICourseSessionService
             ?? throw new KeyNotFoundException("Oturum bulunamadı.");
 
         _context.Sessions.Remove(session);
+
+        var courseMedia = await _context.CourseMedias.FirstOrDefaultAsync(cm => cm.SessionId == sessionId);
+        if (courseMedia != null)
+        {
+            _context.CourseMedias.Remove(courseMedia);
+        }
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
     }
@@ -149,7 +168,7 @@ public class CourseSessionService : ICourseSessionService
     {
         return await _context.Sessions
             .AsNoTracking()
-            .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished)
+            .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished && s.ScheduledStart > DateTime.UtcNow)
             .Include(s => s.Course)
             .OrderBy(s => s.ScheduledStart)
             .Select(s => new UpcomingSessionDto(
@@ -169,7 +188,8 @@ public class CourseSessionService : ICourseSessionService
         return await _context.Sessions
             .AsNoTracking()
             .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished
-                        && accessibleIds.Contains(s.CourseId))
+                        && accessibleIds.Contains(s.CourseId)
+                        && s.ScheduledStart > DateTime.UtcNow)
             .Include(s => s.Course)
             .OrderBy(s => s.ScheduledStart)
             .Select(s => new UpcomingSessionDto(
@@ -230,6 +250,17 @@ public class CourseSessionService : ICourseSessionService
         _context.MediaAssets.Add(mediaAsset);
         _context.SessionRecordings.Add(recording);
         
+        var courseMediaMaxOrder = await _context.CourseMedias
+            .Where(cm => cm.CourseId == courseId)
+            .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
+
+        _context.CourseMedias.Add(new CourseMedia
+        {
+            CourseId = courseId,
+            SessionId = session.Id,
+            OrderIndex = courseMediaMaxOrder + 1
+        });
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
 

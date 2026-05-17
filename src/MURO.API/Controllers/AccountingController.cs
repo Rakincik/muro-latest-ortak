@@ -54,7 +54,7 @@ public class AccountingController : ControllerBase
     {
         var tid = GetTenantId();
         var result = await _accountingService.GetTransactionsAsync(tid, type, status, planId, from, to, page, pageSize);
-        return Ok(new { data = result });
+        return Ok(result);
     }
 
     [HttpPost("transactions")]
@@ -81,7 +81,7 @@ public class AccountingController : ControllerBase
     {
         var tid = GetTenantId();
         var result = await _accountingService.GetPlansAsync(tid);
-        return Ok(new { data = result });
+        return Ok(result);
     }
 
     [HttpPost("plans")]

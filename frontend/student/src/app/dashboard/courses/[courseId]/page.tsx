@@ -12,40 +12,13 @@ import {
     PanelRightClose, PanelRightOpen, Check, Keyboard, RotateCcw
 } from "lucide-react";
 import { useVideoPlayer, usePlayerNotes } from "@/hooks/useVideoPlayer";
+import { PremiumPlayer } from "@/components/video/PremiumPlayer";
+import InlineQuizModal from "@/components/InlineQuizModal";
 import { openUrl } from "@/lib/openUrl";
 import { useToast } from "@/components/ToastProvider";
 
 // ─── HLS Player Component ──────────────────────────────────────────────────
-function HlsVideoPlayer({ src, onLoaded }: { src: string, onLoaded: () => void }) {
-    const videoRef = useRef<HTMLVideoElement>(null);
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video || !src) return;
-        const fullSrc = src.startsWith("/") 
-            ? `${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292"}${src}`
-            : src;
-            
-        const load = async () => {
-            if (video.canPlayType("application/vnd.apple.mpegurl")) {
-                video.src = fullSrc;
-            } else {
-                const Hls = (await import("hls.js")).default;
-                if (Hls.isSupported()) {
-                    const hls = new Hls();
-                    hls.loadSource(fullSrc);
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        onLoaded();
-                    });
-                    return () => hls.destroy();
-                }
-            }
-        };
-        load();
-    }, [src, onLoaded]);
-    
-    return <video ref={videoRef} controls autoPlay onCanPlay={onLoaded} className="w-full h-full outline-none" />;
-}
+// Removed HlsVideoPlayer, using PremiumPlayer
 
 function fmtDuration(sec: number | null): string {
     if (!sec) return "";
@@ -82,6 +55,7 @@ export default function CourseDetailPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<Tab>("sessions");
     const [joiningId, setJoiningId] = useState<string | null>(null);
+    const [isExamOpen, setIsExamOpen] = useState(false);
     const { showToast } = useToast();
 
     // ── Custom hooks — extracted player & notes state ──
@@ -92,6 +66,16 @@ export default function CourseDetailPage() {
     const { selectedRec, setSelectedRec, isFullscreen, toggleFullscreen, sidebarOpen, setSidebarOpen,
         iframeLoaded, setIframeLoaded, watchedMap, playerContainerRef, sortedRecordings,
         watchedCount, progressPercent, lastWatchedRec } = player;
+
+    const activeRecId = selectedRec?.id || sortedRecordings[0]?.id;
+    useEffect(() => {
+        const activeRec = selectedRec || sortedRecordings[0];
+        if (activeRec?.type === 'Exam') {
+            setIsExamOpen(true);
+        } else {
+            setIsExamOpen(false);
+        }
+    }, [activeRecId]);
 
     // Optimistic note add with backend persist
     const addPlayerNote = async () => {
@@ -145,9 +129,9 @@ export default function CourseDetailPage() {
             catch { return []; }
         };
 
-        // Fetch media assets
-        const fetchMedia = async () => {
-            try { return await mediaApi.list(token, tenantId, { courseId, pageSize: 100 }); }
+        // Fetch course medias as single source of truth
+        const fetchCourseMedias = async () => {
+            try { return await courseApi.getCourseMedias(token, tenantId, courseId); }
             catch { return []; }
         };
 
@@ -157,18 +141,39 @@ export default function CourseDetailPage() {
             catch { return []; }
         };
 
-        Promise.all([fetchCourse(), fetchMedia(), fetchRecordings(), fetchMaterials()])
-            .then(([courseData, vids, recs, mats]) => {
+        Promise.all([fetchCourse(), fetchCourseMedias(), fetchRecordings(), fetchMaterials()])
+            .then(([courseData, courseMedias, recs, mats]) => {
                 setCourse(courseData);
                 // Sessions come from course detail response
                 const sess = courseData?.sessions ?? [];
                 setSessions(sess);
-                setVideos(vids);
-                // Filter recordings to only this course's sessions
-                const courseRecs = (recs as RecordingDto[]).filter(r =>
-                    sess.some((s: SessionDto) => s.id === r.sessionId)
-                );
-                setRecordings(courseRecs.filter((r: RecordingDto) => r.status === "Ready"));
+                
+                const typedRecs = recs as RecordingDto[];
+
+                // Map CourseMediaDto to RecordingDto for the player and sidebar
+                const mappedRecordings: RecordingDto[] = courseMedias.map((cm: CourseMediaDto) => {
+                    const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);
+                    return {
+                        id: cm.id, // Using CourseMedia ID as the unique key
+                        sessionId: cm.sessionId || cm.id,
+                        sessionTitle: cm.mediaAsset?.title || cm.sessionTitle || cm.examTitle || 'İçerik',
+                        courseId: cm.courseId,
+                        courseTitle: courseData?.title || '',
+                        playbackUrl: matchRec?.playbackUrl || '', // Get from recordings!
+                        hlsPath: cm.mediaAsset?.hlsPath,
+                        thumbnailPath: cm.mediaAsset?.thumbnailPath,
+                        durationSeconds: cm.mediaAsset?.durationSeconds || matchRec?.durationSeconds || 0,
+                        participantsCount: 0,
+                        status: "Ready", // Assume ready if it's in course medias
+                        createdAt: cm.createdAt,
+                        scheduledStart: cm.sessionScheduledStart || undefined,
+                        type: cm.examId ? 'Exam' : (cm.type === 'Video' || cm.mediaAsset?.hlsPath ? 'Video' : 'Recording'),
+                        examId: cm.examId || undefined
+                    };
+                });
+                
+                setRecordings(mappedRecordings);
+                setVideos([]); // Deprecated in unified architecture, keep empty to prevent crashes
                 setMaterials(mats || []);
             })
             .catch(console.error)
@@ -208,7 +213,7 @@ export default function CourseDetailPage() {
 
     if (loading) {
         return (
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-[1400px] mx-auto">
                 <div className="h-4 shimmer rounded w-32 mb-6" />
                 <div className="h-48 shimmer rounded-2xl mb-6" />
                 <div className="flex gap-3 mb-6">{[1, 2, 3].map(i => <div key={i} className="h-10 shimmer rounded-xl w-32" />)}</div>
@@ -218,7 +223,7 @@ export default function CourseDetailPage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto animate-fade-in">
+        <div className="max-w-[1400px] mx-auto animate-fade-in">
             {/* Breadcrumb */}
             <div className="mb-5">
                 <Link href="/dashboard/courses" className="text-[#A9A9A9] text-xs hover:text-[#1B3B6F] transition-colors flex items-center gap-1 w-fit">
@@ -359,10 +364,24 @@ export default function CourseDetailPage() {
                                             </div>
                                         </div>
                                     )}
-                                    {activeRec.hlsPath ? (
-                                        <HlsVideoPlayer 
+                                    {activeRec.type === 'Exam' ? (
+                                        <div className="absolute inset-0 z-[5] bg-[#F8F9FA] flex items-center justify-center">
+                                            <div className="text-center">
+                                                <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-sm border border-indigo-100">
+                                                    <FileText size={28} />
+                                                </div>
+                                                <h3 className="text-xl font-bold text-[#0A1931] mb-2">{activeRec.sessionTitle}</h3>
+                                                <p className="text-sm text-[#A0AEC0] mb-6">Bu adımda bir sınav/quiz yer almaktadır.</p>
+                                                <button onClick={() => setIsExamOpen(true)} className="px-6 py-3 bg-[#1B3B6F] hover:bg-[#0A1931] text-white font-bold rounded-xl shadow-lg shadow-[#1B3B6F]/20 transition-all flex items-center justify-center gap-2 mx-auto">
+                                                    <Play size={16} className="fill-current" /> Sınavı Başlat
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : activeRec.hlsPath ? (
+                                        <PremiumPlayer 
                                             key={activeRec.id} 
                                             src={activeRec.hlsPath} 
+                                            poster={activeRec.thumbnailPath ? getFileUrl(activeRec.thumbnailPath) : null}
                                             onLoaded={() => setIframeLoaded(true)} 
                                         />
                                     ) : (
@@ -456,7 +475,8 @@ export default function CourseDetailPage() {
                             </div>
 
                             {/* ── Right: Kurs İçeriği Sidebar (collapsible) ── */}
-                            <div className={`bg-white border-l border-[#E2E8F0] flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-full md:w-80' : 'w-0 overflow-hidden border-l-0'}`}>
+                            <div className={`bg-white border-l border-[#E2E8F0] shrink-0 transition-all duration-300 md:relative ${sidebarOpen ? 'w-full md:w-80 flex flex-col md:block' : 'w-0 overflow-hidden border-l-0 hidden md:block'}`}>
+                                <div className="md:absolute md:inset-0 flex flex-col w-full h-full">
                                 {/* Header */}
                                 <div className="h-12 flex items-center justify-between px-4 border-b border-[#E2E8F0] shrink-0">
                                     <span className="text-sm font-bold text-[#0A1931] whitespace-nowrap">Kurs İçeriği</span>
@@ -495,8 +515,11 @@ export default function CourseDetailPage() {
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         <span className="text-[10px] text-[#A0AEC0] flex items-center gap-0.5">
-                                                            <Video size={8} />
-                                                            {rec.durationSeconds && rec.durationSeconds > 0 ? fmtDuration(rec.durationSeconds) : "Kayıt"}
+                                                            {rec.type === 'Exam' ? (
+                                                                <><FileText size={8} /> Sınav / Quiz</>
+                                                            ) : (
+                                                                <><Video size={8} /> {rec.durationSeconds && rec.durationSeconds > 0 ? fmtDuration(rec.durationSeconds) : "Kayıt"}</>
+                                                            )}
                                                         </span>
                                                         {rec.scheduledStart && (
                                                             <span className="text-[10px] text-[#A0AEC0]">
@@ -508,12 +531,26 @@ export default function CourseDetailPage() {
                                             </button>
                                         );
                                     })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 );
             })()}
+            {/* Exam Modal Integration */}
+            {activeTab === "videos" && (() => {
+                const activeRec = selectedRec || sortedRecordings[0];
+                return activeRec?.type === 'Exam' && activeRec.examId ? (
+                    <InlineQuizModal
+                        isOpen={isExamOpen}
+                        onClose={() => setIsExamOpen(false)}
+                        examId={activeRec.examId}
+                        examTitle={activeRec.sessionTitle}
+                    />
+                ) : null;
+            })()}
+
             {/* ── Materials Tab ── */}
             {activeTab === "materials" && (
                 <div className="space-y-3">

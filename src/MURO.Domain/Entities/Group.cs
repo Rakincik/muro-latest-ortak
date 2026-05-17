@@ -1,11 +1,15 @@
+using MURO.Domain.Common;
 using MURO.Domain.Enums;
 
 namespace MURO.Domain.Entities;
 
-public class Group
+public class Group : ISoftDeletable
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public string? Description { get; set; }
     public string? Color { get; set; }          // hex: #6366f1
     public string? EducationType { get; set; }   // Canlı, Offline, Kamp, Sınav, Hibrit, Demo

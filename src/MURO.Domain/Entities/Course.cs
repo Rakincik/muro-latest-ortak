@@ -1,11 +1,15 @@
+using MURO.Domain.Common;
 using MURO.Domain.Enums;
 
 namespace MURO.Domain.Entities;
 
-public class Course
+public class Course : ISoftDeletable
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public string? Description { get; set; }
     public string? ThumbnailUrl { get; set; }
     public CourseType CourseType { get; set; } = CourseType.Online;

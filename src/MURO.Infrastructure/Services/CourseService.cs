@@ -71,7 +71,7 @@ public class CourseService : ICourseService
                 .Select(c => new CourseListDto(
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
-                    c.Sessions.Count, c.CourseGroups.Count,
+                    c.CourseMedias.Count, c.CourseGroups.Count,
                     c.Order, c.StartDate, c.CreatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null))
@@ -112,7 +112,7 @@ public class CourseService : ICourseService
             .Select(c => new CourseListDto(
                 c.Id, c.Title, c.Description, c.ThumbnailUrl,
                 c.CourseType.ToString(), c.IsPublished,
-                c.Sessions.Count, c.CourseGroups.Count,
+                c.CourseMedias.Count, c.CourseGroups.Count,
                 c.Order, c.StartDate, c.CreatedAt,
                 c.InstructorId,
                 c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null))
@@ -205,6 +205,7 @@ public class CourseService : ICourseService
         var course = await _context.Courses
             .Include(c => c.Instructor)
             .Include(c => c.Sessions)
+            .Include(c => c.CourseMedias)
             .Include(c => c.CourseGroups)
             .FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
             ?? throw new KeyNotFoundException("Ders bulunamadı.");
@@ -224,7 +225,7 @@ public class CourseService : ICourseService
         await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
-            course.CourseType.ToString(), course.IsPublished, course.Sessions.Count,
+            course.CourseType.ToString(), course.IsPublished, course.CourseMedias.Count,
             course.CourseGroups.Count, course.Order, course.StartDate, course.CreatedAt,
             course.InstructorId,
             course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null);

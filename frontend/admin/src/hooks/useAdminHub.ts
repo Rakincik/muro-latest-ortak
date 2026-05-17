@@ -32,7 +32,7 @@ export function useAdminHub(callbacks: AdminHubCallbacks) {
                 accessTokenFactory: () => token,
             })
             .withAutomaticReconnect()
-            .configureLogging(LogLevel.Error)
+            .configureLogging(LogLevel.None)
             .build();
 
         connection.on("DashboardUpdate", (stats) => {

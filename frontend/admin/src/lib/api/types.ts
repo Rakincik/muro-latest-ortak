@@ -109,6 +109,8 @@ export interface ExamDetailDto extends ExamListDto {
     answerKey: Record<number, string> | null;
     assignments: ExamAssignmentDto[];
     resultSummary: ExamResultSummaryDto | null;
+    digitalQuestionsJson?: string | null;
+    sectionsJson?: string | null;
 }
 
 export interface ExamAssignmentDto {
@@ -534,6 +536,21 @@ export interface AuditSummaryDto {
     topEntities: Record<string, number>;
 }
 
+export interface UserAuditSummaryDto {
+    userId: string | null;
+    userName: string | null;
+    actionCount: number;
+    lastActionAt: string;
+}
+
+export interface SuspiciousUserDto {
+    userId: string | null;
+    userName: string | null;
+    alertType: string;
+    eventCount: number;
+    lastEventAt: string;
+}
+
 export interface TenantBrandingDto {
     name: string;
     logoUrl: string | null;
@@ -585,7 +602,12 @@ export interface MediaFolderDto {
 export interface CourseMediaDto {
     id: string;
     courseId: string;
-    mediaAssetId: string;
+    mediaAssetId?: string;
     orderIndex: number;
-    mediaAsset: MediaAssetDto;
+    mediaAsset?: MediaAssetDto;
+    examId?: string;
+    examTitle?: string;
+    sessionId?: string;
+    sessionTitle?: string;
+    type: string;
 }

@@ -55,7 +55,7 @@ public class ExamService : IExamService
                     e.ExamAssignments.Count,
                     e.Results.Count,
                     e.Results.Any() ? (double?)Math.Round(e.Results.Average(r => r.Score), 1) : null,
-                    e.CreatedAt, e.WrongPenaltyWeight, e.ResultMode, e.ResultPublishDate, e.MaxScore, e.VirtualParticipantCount))
+                    e.CreatedAt, e.WrongPenaltyWeight, e.ResultMode, e.ResultPublishDate, e.MaxScore, e.BaseScore, e.VirtualParticipantCount))
                 .ToListAsync();
 
             return new PagedResult<ExamListDto>(items, totalCount, page, pageSize, totalPages);
@@ -130,7 +130,19 @@ public class ExamService : IExamService
             answerKey, exam.StartDate, exam.EndDate, exam.CreatedAt,
             assignments, resultSummary, exam.WrongPenaltyWeight,
             exam.ResultMode, exam.ResultPublishDate, questionWeights, exam.SectionsJson, 
-            exam.MaxScore, exam.VirtualParticipantCount);
+            exam.MaxScore, exam.BaseScore, exam.VirtualParticipantCount, exam.DigitalQuestionsJson);
+    }
+
+    // ── GET DIGITAL QUESTIONS ──
+    public async Task<string?> GetExamDigitalQuestionsAsync(Guid tenantId, Guid examId)
+    {
+        var exam = await _context.Exams
+            .AsNoTracking()
+            .Where(e => e.Id == examId && e.TenantId == tenantId)
+            .Select(e => e.DigitalQuestionsJson)
+            .FirstOrDefaultAsync();
+        
+        return exam;
     }
 
     // ── CREATE ──
@@ -156,7 +168,9 @@ public class ExamService : IExamService
             SectionsJson = request.SectionsJson,
             Status = "Taslak",
             MaxScore = request.MaxScore,
-            VirtualParticipantCount = request.VirtualParticipantCount
+            BaseScore = request.BaseScore,
+            VirtualParticipantCount = request.VirtualParticipantCount,
+            DigitalQuestionsJson = request.DigitalQuestionsJson
         };
 
         _context.Exams.Add(exam);
@@ -166,7 +180,7 @@ public class ExamService : IExamService
         return new ExamListDto(exam.Id, exam.Title, exam.Description, exam.ExamType,
             exam.QuestionCount, exam.OptionCount, exam.DurationMinutes,
             exam.Status, exam.StartDate, exam.EndDate, 0, 0, null, exam.CreatedAt,
-            exam.WrongPenaltyWeight, exam.ResultMode, exam.ResultPublishDate, exam.MaxScore, exam.VirtualParticipantCount);
+            exam.WrongPenaltyWeight, exam.ResultMode, exam.ResultPublishDate, exam.MaxScore, exam.BaseScore, exam.VirtualParticipantCount);
     }
 
     // ── UPDATE ──
@@ -193,7 +207,9 @@ public class ExamService : IExamService
         if (request.QuestionWeights != null) exam.QuestionWeightsJson = JsonSerializer.Serialize(request.QuestionWeights);
         if (request.SectionsJson != null) exam.SectionsJson = request.SectionsJson;
         if (request.MaxScore.HasValue) exam.MaxScore = request.MaxScore.Value;
+        if (request.BaseScore.HasValue) exam.BaseScore = request.BaseScore.Value;
         if (request.VirtualParticipantCount.HasValue) exam.VirtualParticipantCount = request.VirtualParticipantCount.Value;
+        if (request.DigitalQuestionsJson != null) exam.DigitalQuestionsJson = request.DigitalQuestionsJson;
 
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
@@ -204,7 +220,7 @@ public class ExamService : IExamService
             exam.QuestionCount, exam.OptionCount, exam.DurationMinutes,
             exam.Status, exam.StartDate, exam.EndDate,
             exam.ExamAssignments.Count, exam.Results.Count, avgScore, exam.CreatedAt,
-            exam.WrongPenaltyWeight, exam.ResultMode, exam.ResultPublishDate, exam.MaxScore, exam.VirtualParticipantCount);
+            exam.WrongPenaltyWeight, exam.ResultMode, exam.ResultPublishDate, exam.MaxScore, exam.BaseScore, exam.VirtualParticipantCount);
     }
 
     // ── DELETE ──
@@ -256,7 +272,7 @@ public class ExamService : IExamService
             exam.QuestionCount, exam.OptionCount, exam.DurationMinutes,
             exam.Status, exam.StartDate, exam.EndDate,
             exam.ExamAssignments.Count, exam.Results.Count, avgScore, exam.CreatedAt,
-            exam.WrongPenaltyWeight, exam.ResultMode, exam.ResultPublishDate, exam.MaxScore, exam.VirtualParticipantCount);
+            exam.WrongPenaltyWeight, exam.ResultMode, exam.ResultPublishDate, exam.MaxScore, exam.BaseScore, exam.VirtualParticipantCount);
     }
 
     // ── PDF ──

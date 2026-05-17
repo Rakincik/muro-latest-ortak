@@ -62,6 +62,13 @@ public class ExamsController : ControllerBase
         return Ok(await _examService.GetExamByIdAsync(GetTenantId(), id));
     }
 
+    [HttpGet("{id:guid}/digital-questions")]
+    public async Task<ActionResult<string>> GetDigitalQuestions(Guid id)
+    {
+        var questions = await _examService.GetExamDigitalQuestionsAsync(GetTenantId(), id);
+        return Ok(questions ?? "[]");
+    }
+
     [HttpPost]
     public async Task<ActionResult<ExamListDto>> CreateExam([FromBody] CreateExamRequest request)
     {
@@ -151,6 +158,20 @@ public class ExamsController : ControllerBase
     }
 
     // ── Öğrenci endpoint'leri ──────────────────────────────────────────────────
+
+    [HttpPost("{examId:guid}/draft")]
+    public async Task<IActionResult> SaveDraft(Guid examId, [FromBody] Dictionary<int, string> answers)
+    {
+        await _resultService.SaveDraftAsync(GetTenantId(), examId, GetUserId(), answers);
+        return Ok();
+    }
+
+    [HttpGet("{examId:guid}/draft")]
+    public async Task<ActionResult<Dictionary<int, string>>> GetDraft(Guid examId)
+    {
+        var draft = await _resultService.GetDraftAsync(GetTenantId(), examId, GetUserId());
+        return Ok(draft ?? new Dictionary<int, string>());
+    }
 
     /// GET /api/v1/exams/my-results — Öğrencinin kendi sınav sonuçları
     [HttpGet("my-results")]

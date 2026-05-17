@@ -34,7 +34,7 @@ public class MediaService : IMediaService
                                   || m.CourseMedias.Any(cm => accessibleIds.Contains(cm.CourseId)));
         }
 
-        if (courseId.HasValue) query = query.Where(m => m.CourseId == courseId || m.CourseMedias.Any(cm => cm.CourseId == courseId));
+        if (courseId.HasValue) query = query.Where(m => m.CourseMedias.Any(cm => cm.CourseId == courseId));
         if (folderId.HasValue) query = query.Where(m => m.FolderId == folderId);
         if (excludeRecordings) query = query.Where(m => !_context.SessionRecordings.Any(sr => sr.MediaAssetId == m.Id));
         

@@ -39,7 +39,7 @@ export function useNotifications({ onReceive }: UseNotificationsOptions) {
                 accessTokenFactory: () => token,
             })
             .withAutomaticReconnect()
-            .configureLogging(LogLevel.Error)
+            .configureLogging(LogLevel.None)
             .build();
 
         connection.on("ReceiveNotification", (notif: NotificationDto) => {

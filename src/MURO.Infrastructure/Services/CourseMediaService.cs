@@ -9,63 +9,25 @@ namespace MURO.Infrastructure.Services;
 public class CourseMediaService : ICourseMediaService
 {
     private readonly MuroDbContext _context;
+    private readonly ICacheService _cache;
 
-    public CourseMediaService(MuroDbContext context)
+    public CourseMediaService(MuroDbContext context, ICacheService cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     public async Task<List<CourseMediaDto>> GetCourseMediasAsync(Guid tenantId, Guid courseId)
     {
-        // 1. Sync live session recordings to CourseMedias automatically
-        // We find all SessionRecordings that are NOT in CourseMedias. 
-        // If they don't have a MediaAssetId, we create a dummy MediaAsset for them first!
-        var unsyncedRecordings = await _context.SessionRecordings
-            .Include(r => r.Session)
-            .Where(r => r.Session.CourseId == courseId 
-                     && r.Session.Course.TenantId == tenantId 
-                     && !_context.CourseMedias.Any(cm => cm.CourseId == courseId && cm.MediaAssetId == r.MediaAssetId))
-            .ToListAsync();
+        // CourseMedias only fetch actual assigned videos from the media library.
+        // Live session recordings (SessionRecordings) remain purely within the Session hierarchy
+        // and are NOT auto-synced into CourseMedia.
 
-        if (unsyncedRecordings.Any())
-        {
-            var maxOrder = await _context.CourseMedias
-                .Where(cm => cm.CourseId == courseId)
-                .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
-
-            foreach (var recording in unsyncedRecordings)
-            {
-                if (recording.MediaAssetId == null)
-                {
-                    // Create a dummy MediaAsset for old recordings
-                    var asset = new MediaAsset
-                    {
-                        Id = Guid.NewGuid(),
-                        TenantId = tenantId,
-                        CourseId = courseId,
-                        Title = recording.Session.Title + " - Kayıt",
-                        Status = MURO.Domain.Enums.MediaStatus.Ready,
-                        CreatedAt = recording.CreatedAt
-                    };
-                    _context.MediaAssets.Add(asset);
-                    recording.MediaAssetId = asset.Id;
-                    recording.Status = MURO.Domain.Enums.MediaStatus.Ready;
-                }
-
-                maxOrder++;
-                _context.CourseMedias.Add(new CourseMedia
-                {
-                    CourseId = courseId,
-                    MediaAssetId = recording.MediaAssetId.Value,
-                    OrderIndex = maxOrder
-                });
-            }
-            await _context.SaveChangesAsync();
-        }
-
-        // 2. Fetch all CourseMedias (which now includes both educational videos and synced live recordings)
+        // 2. Fetch all CourseMedias (which now includes both educational videos, and exams)
         var courseMedias = await _context.CourseMedias
             .Include(cm => cm.MediaAsset)
+            .Include(cm => cm.Exam)
+            .Include(cm => cm.Session)
             .Where(cm => cm.CourseId == courseId && cm.Course.TenantId == tenantId)
             .OrderBy(cm => cm.OrderIndex)
             .Select(cm => new CourseMediaDto(
@@ -73,7 +35,7 @@ public class CourseMediaService : ICourseMediaService
                 cm.CourseId,
                 cm.MediaAssetId,
                 cm.OrderIndex,
-                new MediaAssetDto(
+                cm.MediaAsset != null ? new MediaAssetDto(
                     cm.MediaAsset.Id,
                     cm.MediaAsset.Title,
                     cm.MediaAsset.FilePath,
@@ -81,11 +43,16 @@ public class CourseMediaService : ICourseMediaService
                     cm.MediaAsset.ThumbnailPath,
                     cm.MediaAsset.DurationSeconds,
                     cm.MediaAsset.Status.ToString(),
-                    cm.CourseId, // Legacy mapping for DTO compatibility
+                    cm.CourseId,
                     cm.Course.Title,
                     cm.MediaAsset.FolderId,
                     cm.MediaAsset.CreatedAt
-                )
+                ) : null,
+                cm.ExamId,
+                cm.Exam != null ? cm.Exam.Title : null,
+                cm.SessionId,
+                cm.Session != null ? cm.Session.Title : null,
+                cm.SessionId != null ? "Session" : (cm.ExamId != null ? "Exam" : "Media")
             ))
             .ToListAsync();
 
@@ -120,6 +87,7 @@ public class CourseMediaService : ICourseMediaService
 
         _context.CourseMedias.Add(courseMedia);
         await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
 
         return new CourseMediaDto(
             courseMedia.Id,
@@ -129,7 +97,48 @@ public class CourseMediaService : ICourseMediaService
             new MediaAssetDto(
                 media.Id, media.Title, media.FilePath, media.HlsPath, media.ThumbnailPath, 
                 media.DurationSeconds, media.Status.ToString(), courseId, course.Title, media.FolderId, media.CreatedAt
-            )
+            ),
+            null, null, null, null, "Media"
+        );
+    }
+
+    public async Task<CourseMediaDto> AssignExamAsync(Guid tenantId, Guid courseId, AssignExamToCourseRequest request)
+    {
+        var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == request.ExamId && e.TenantId == tenantId);
+        if (exam == null) throw new Exception("Exam not found");
+
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId);
+        if (course == null) throw new Exception("Course not found");
+
+        var exists = await _context.CourseMedias.AnyAsync(cm => cm.CourseId == courseId && cm.ExamId == request.ExamId);
+        if (exists) throw new Exception("Exam already assigned to this course");
+
+        var maxOrder = await _context.CourseMedias
+            .Where(cm => cm.CourseId == courseId)
+            .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
+
+        var courseMedia = new CourseMedia
+        {
+            CourseId = courseId,
+            ExamId = request.ExamId,
+            OrderIndex = maxOrder + 1
+        };
+
+        _context.CourseMedias.Add(courseMedia);
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+
+        return new CourseMediaDto(
+            courseMedia.Id,
+            courseMedia.CourseId,
+            null,
+            courseMedia.OrderIndex,
+            null,
+            exam.Id,
+            exam.Title,
+            null,
+            null,
+            "Exam"
         );
     }
 
@@ -167,6 +176,7 @@ public class CourseMediaService : ICourseMediaService
         }
 
         await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
     }
 
     public async Task RemoveMediaAsync(Guid tenantId, Guid courseId, Guid mediaAssetId)
@@ -178,6 +188,20 @@ public class CourseMediaService : ICourseMediaService
         {
             _context.CourseMedias.Remove(courseMedia);
             await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        }
+    }
+
+    public async Task RemoveItemAsync(Guid tenantId, Guid courseId, Guid courseMediaId)
+    {
+        var courseMedia = await _context.CourseMedias
+            .FirstOrDefaultAsync(cm => cm.CourseId == courseId && cm.Id == courseMediaId && cm.Course.TenantId == tenantId);
+
+        if (courseMedia != null)
+        {
+            _context.CourseMedias.Remove(courseMedia);
+            await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
         }
     }
 
@@ -197,5 +221,6 @@ public class CourseMediaService : ICourseMediaService
         }
 
         await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
     }
 }

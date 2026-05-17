@@ -15,5 +15,8 @@ public record ProvisionTenantRequest(
     string AdminFirstName,
     string AdminLastName,
     string AdminEmail,
-    string AdminPassword
+    string AdminPassword,
+    string? BbbServerUrl,
+    string? BbbSecret,
+    string? ServerGroup
 );

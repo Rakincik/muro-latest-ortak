@@ -33,7 +33,13 @@ public record CourseAttendanceReportDto(
     int TotalEnrolled,
     double AvgAttendanceRate,
     int RiskStudentCount,
-    List<SessionAttendanceSummaryDto> Sessions
+    List<SessionAttendanceSummaryDto> Sessions,
+    List<EnrolledStudentDto> EnrolledStudents
+);
+
+public record EnrolledStudentDto(
+    Guid UserId,
+    string FullName
 );
 
 public record SessionAttendanceSummaryDto(

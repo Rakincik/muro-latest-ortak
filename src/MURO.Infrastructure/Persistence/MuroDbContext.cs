@@ -41,6 +41,8 @@ public class MuroDbContext : DbContext
     public DbSet<Exam> Exams => Set<Exam>();
     public DbSet<ExamAssignment> ExamAssignments => Set<ExamAssignment>();
     public DbSet<ExamResult> ExamResults => Set<ExamResult>();
+    public DbSet<ExamSubmissionQueue> ExamSubmissionQueues => Set<ExamSubmissionQueue>();
+    public DbSet<StudentExamDraft> StudentExamDrafts => Set<StudentExamDraft>();
 
     // Calendar
     public DbSet<CalendarEvent> CalendarEvents => Set<CalendarEvent>();
@@ -303,6 +305,18 @@ public class MuroDbContext : DbContext
             entity.HasIndex(er => er.UserId);
         });
 
+        // ExamSubmissionQueue
+        modelBuilder.Entity<ExamSubmissionQueue>(entity =>
+        {
+            entity.HasIndex(q => new { q.TenantId, q.Status });
+        });
+
+        // StudentExamDraft
+        modelBuilder.Entity<StudentExamDraft>(entity =>
+        {
+            entity.HasIndex(d => new { d.ExamId, d.UserId }).IsUnique();
+        });
+
         // Course — 🔧 tenant bazlı listeleme
         modelBuilder.Entity<Course>(entity =>
         {
@@ -444,5 +458,31 @@ public class MuroDbContext : DbContext
         {
             entity.HasIndex(pg => pg.PackageId);
         });
+
+        // ─── Soft Delete Global Query Filters ───────────────────────────────
+        modelBuilder.Entity<Exam>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Course>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Group>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Session>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Assignment>().HasQueryFilter(e => !e.IsDeleted);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var entries = ChangeTracker.Entries<MURO.Domain.Common.ISoftDeletable>();
+
+        foreach (var entry in entries)
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                entry.Entity.IsDeleted = true;
+                entry.Entity.DeletedAt = DateTime.UtcNow;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
     }
 }

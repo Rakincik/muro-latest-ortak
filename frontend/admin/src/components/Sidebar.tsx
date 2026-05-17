@@ -12,14 +12,14 @@ import {
     CalendarDays, ClipboardList, Bell, MessageCircleQuestion,
     HeadphonesIcon, Mic2, BarChart3, Wallet,
     LogOut, ChevronRight, Trophy, User, CalendarCheck, Package, Shield,
-    PlaySquare
+    PlaySquare, ChevronDown
 } from "lucide-react";
 
 const sections = [
     {
         title: "ANA MENÜ",
         items: [
-            { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
+            { label: "Ana Sayfa", href: "/dashboard", icon: LayoutDashboard, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"] },
         ]
     },
     {
@@ -67,9 +67,18 @@ const sections = [
     }
 ];
 
-export default function Sidebar() {
+import { Menu, X } from "lucide-react"; // Make sure to import X
+
+// ...
+
+export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }) {
     const pathname = usePathname();
     const { user, logout, currentTenantId } = useAuth();
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+    const toggleSection = (title: string) => {
+        setExpandedSections(prev => ({ ...prev, [title]: prev[title] === undefined ? false : !prev[title] }));
+    };
 
     const [branding, setBranding] = useState<TenantBrandingDto | null>(null);
 
@@ -92,23 +101,39 @@ export default function Sidebar() {
     }
 
     return (
-        <aside className="w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931]">
-            {/* Logo + Bell */}
-            <div className="px-6 py-7 flex items-center gap-3">
-                {branding?.logoUrl ? (
-                    <Image src={branding.logoUrl} alt={brandName} width={40} height={40} className="w-10 h-10 rounded-2xl object-cover border border-[#A0AEC0]/20 shadow-xl" priority />
-                ) : (
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-lg border border-[#A0AEC0]/20 shadow-xl"
-                        style={{ backgroundColor: primaryColor }}>
-                        {brandInitial}
+        <>
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={onClose}
+                />
+            )}
+            <aside className={`w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 ease-in-out lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                {/* Logo + Bell */}
+                <div className="px-6 py-7 flex items-center gap-3 relative">
+                    {branding?.logoUrl ? (
+                        <Image src={branding.logoUrl} alt={brandName} width={40} height={40} className="w-10 h-10 rounded-2xl object-cover border border-[#A0AEC0]/20 shadow-xl" priority />
+                    ) : (
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold text-lg border border-[#A0AEC0]/20 shadow-xl"
+                            style={{ backgroundColor: primaryColor }}>
+                            {brandInitial}
+                        </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-[15px] font-bold text-white tracking-tight truncate">{brandName}</h1>
+                        <p className="text-[11px] text-[#A9A9A9] font-medium truncate">Admin Panel</p>
                     </div>
-                )}
-                <div className="flex-1">
-                    <h1 className="text-[15px] font-bold text-white tracking-tight">{brandName}</h1>
-                    <p className="text-[11px] text-[#A9A9A9] font-medium">Admin Panel</p>
+                    <div className="hidden lg:block">
+                        <NotificationBell />
+                    </div>
+                    <button 
+                        onClick={onClose}
+                        className="lg:hidden p-1.5 absolute right-4 top-1/2 -translate-y-1/2 text-[#A9A9A9] hover:text-white rounded-lg hover:bg-white/10"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
-                <NotificationBell />
-            </div>
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5">
@@ -118,7 +143,7 @@ export default function Sidebar() {
                         const hasFeature = !("featureKey" in item) || featuresDict[(item as any).featureKey] === true;
                         
                         // Eğer kuruma özel özellik tanımı yoksa (features boşsa), varsayılan olarak açık kabul et 
-                        // veya kapalı kabul et. Şimdilik kapalı kabul ediyoruz (sadece olanlar girsin)
+                        // veya kapalı kabul et. Åimdilik kapalı kabul ediyoruz (sadece olanlar girsin)
                         // Ancak features objesi hiç yoksa (eski tenant), hepsine izin ver:
                         const finalHasFeature = currentTenant?.features ? hasFeature : true;
 
@@ -129,10 +154,18 @@ export default function Sidebar() {
 
                     return (
                         <div key={section.title}>
-                            <p className="px-3 mb-2 text-[10px] font-semibold tracking-[0.1em] text-[#A9A9A9] uppercase">
-                                {section.title}
-                            </p>
-                            <div className="space-y-0.5">
+                            <button 
+                                onClick={() => toggleSection(section.title)}
+                                className="w-full flex items-center justify-between px-3 mb-2 group"
+                            >
+                                <p className="text-xs font-bold tracking-wider text-[#A9A9A9] uppercase group-hover:text-white transition-colors">
+                                    {section.title}
+                                </p>
+                                {section.title !== "ANA MENÜ" && (
+                                    <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections[section.title] === false ? 'rotate-180' : ''}`} />
+                                )}
+                            </button>
+                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${expandedSections[section.title] === false ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
                                 {filteredItems.map((item) => {
                                     const isActive = pathname === item.href ||
                                         (item.href !== "/dashboard" && pathname?.startsWith(item.href));
@@ -183,5 +216,6 @@ export default function Sidebar() {
                 </div>
             </div>
         </aside>
+        </>
     );
 }

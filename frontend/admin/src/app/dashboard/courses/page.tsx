@@ -16,6 +16,8 @@ import { sessionApi, courseApi, recordingApi, userApi, type CourseListDto, type 
 import { API_URL } from "@/lib/api/core";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
 import { CourseMediaTab } from "./CourseMediaTab";
+import { PremiumTabs } from "@/components/ui/PremiumTabs";
+import { ResponsiveList } from "@/components/ui/ResponsiveList";
 
 // ─── HLS Player Component ──────────────────────────────────────────────────
 function HlsVideoPlayer({ src }: { src: string }) {
@@ -156,7 +158,7 @@ export default function CoursesPage() {
             try {
                 const d = await courseApi.get(token, tenantId, detail.id);
                 const mapped = mapCourse(
-                    { ...d, sessionCount: d.sessions.length, groupCount: d.groups.length, order: d.order, createdAt: d.createdAt },
+                    { ...d, sessionCount: detail.sessionCount, groupCount: d.groups.length, order: d.order, createdAt: d.createdAt },
                     d.sessions.map(mapSession), d
                 );
                 setDetail(mapped);
@@ -177,7 +179,7 @@ export default function CoursesPage() {
                 recordingApi.list(token, tenantId),
             ]);
             const mapped = mapCourse(
-                { ...d, sessionCount: d.sessions.length, groupCount: d.groups.length, order: d.order, createdAt: d.createdAt },
+                { ...d, sessionCount: course.sessionCount, groupCount: d.groups.length, order: d.order, createdAt: d.createdAt },
                 d.sessions.map(mapSession), d
             );
             setDetail(mapped);
@@ -298,10 +300,10 @@ export default function CoursesPage() {
         try {
             await courseApi.deleteSession(token, tenantId, courseId, sessionId);
             setCourses(prev => prev.map(c => c.id === courseId ? {
-                ...c, sessions: c.sessions.filter(s => s.id !== sessionId)
+                ...c, sessionCount: Math.max(0, c.sessionCount - 1), sessions: c.sessions.filter(s => s.id !== sessionId)
             } : c));
             if (detail?.id === courseId) setDetail(prev => prev ? {
-                ...prev, sessions: prev.sessions.filter(s => s.id !== sessionId)
+                ...prev, sessionCount: Math.max(0, prev.sessionCount - 1), sessions: prev.sessions.filter(s => s.id !== sessionId)
             } : null);
             success("Oturum silindi.");
         } catch { toastError("Hata", "Oturum silinemedi."); }
@@ -316,8 +318,8 @@ export default function CoursesPage() {
                 durationMinutes: 60, recordingEnabled: true,
             });
             const ns = mapSession(s);
-            setCourses(prev => prev.map(c => c.id === courseId ? { ...c, sessions: [...c.sessions, ns] } : c));
-            if (detail?.id === courseId) setDetail(prev => prev ? { ...prev, sessions: [...prev.sessions, ns] } : null);
+            setCourses(prev => prev.map(c => c.id === courseId ? { ...c, sessionCount: c.sessionCount + 1, sessions: [...c.sessions, ns] } : c));
+            if (detail?.id === courseId) setDetail(prev => prev ? { ...prev, sessionCount: prev.sessionCount + 1, sessions: [...prev.sessions, ns] } : null);
             success("Oturum oluşturuldu!");
         } catch { toastError("Hata", "Oturum oluşturulamadı."); }
     }, [token, tenantId, detail]);
@@ -342,8 +344,8 @@ export default function CoursesPage() {
             window.open(result.moderatorJoinUrl, "_blank", "noopener");
             // 3. Update local state
             const ns = mapSession({ ...s, status: "Live" });
-            setCourses(prev => prev.map(c => c.id === courseId ? { ...c, sessions: [...c.sessions, ns] } : c));
-            if (detail?.id === courseId) setDetail(prev => prev ? { ...prev, sessions: [...prev.sessions, ns] } : null);
+            setCourses(prev => prev.map(c => c.id === courseId ? { ...c, sessionCount: c.sessionCount + 1, sessions: [...c.sessions, ns] } : c));
+            if (detail?.id === courseId) setDetail(prev => prev ? { ...prev, sessionCount: prev.sessionCount + 1, sessions: [...prev.sessions, ns] } : null);
             success("Canlı ders başlatıldı! 🔴");
             setLiveStartModal(null);
             setLiveStartTopic("");
@@ -437,8 +439,8 @@ export default function CoursesPage() {
                                 </div>
                             </div>
                             <button onClick={() => setLiveStartModal({ courseId: c.id, courseName: c.title })} 
-                                className="w-full px-4 py-3 text-xs font-black bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-500/30 flex items-center justify-center gap-2 active:scale-95 animate-pulse-slow">
-                                <Radio size={14} /> Canlı Ders Başlat
+                                className="w-full px-6 py-4 text-sm font-black bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-[1.25rem] hover:from-red-600 hover:to-rose-700 transition-all shadow-[0_8px_25px_rgba(239,68,68,0.35)] flex items-center justify-center gap-2.5 active:scale-95 animate-pulse-slow border border-red-400/30">
+                                <Radio size={18} className="animate-pulse" /> CANLI DERS BAŞLAT
                             </button>
                         </div>
                     </div>
@@ -446,19 +448,22 @@ export default function CoursesPage() {
 
                 {/* Tabs */}
                 <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] border border-[#E2E8F0]/60 overflow-hidden shadow-2xl shadow-indigo-900/5">
-                    <div className="flex border-b border-[#E2E8F0]/60 px-6 bg-[#E2E8F0]/20/50">
-                        {tabDef.filter(t => t.key !== "media").map(t => (
-                            <button key={t.key} onClick={() => setTab(t.key)}
-                                className={`flex items-center gap-2 px-8 py-5 text-[10px] font-bold uppercase tracking-[0.2em] border-b-2 transition-all relative
-                                    ${tab === t.key ? "text-[#1B3B6F] border-[#1B3B6F]" : "text-[#A0AEC0] border-transparent hover:text-[#1B3B6F]"}`}>
-                                <t.icon size={14} /> {t.label}
-                                {tab === t.key && <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-[#1B3B6F] to-[#1B3B6F] rounded-t-full" />}
-                            </button>
-                        ))}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E8F0]/60 p-4 sm:p-6 bg-[#E2E8F0]/20/50 gap-4">
+                        <PremiumTabs 
+                            tabs={[
+                                { id: "overview", label: "Genel Bakış", icon: <BarChart3 size={14} /> },
+                                { id: "recordings", label: "Kayıtlar", icon: <PlayCircle size={14} /> },
+                                { id: "docs", label: "Dokümanlar", icon: <FileText size={14} /> },
+                                { id: "settings", label: "Ayarlar", icon: <Settings size={14} /> }
+                            ]} 
+                            activeTab={tab} 
+                            onChange={(id) => setTab(id as typeof tab)} 
+                            className="flex-1 max-w-2xl"
+                        />
                         {/* Publish toggle in tab bar */}
-                        <div className="ml-auto flex items-center gap-2 pr-4">
+                        <div className="flex items-center">
                             <button onClick={() => handleTogglePublish(c.id, c.isPublished)}
-                                className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${c.isPublished ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100" : "bg-amber-50 text-amber-600 hover:bg-amber-100"}`}>
+                                className={`w-full sm:w-auto px-4 py-2.5 sm:py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${c.isPublished ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 ring-1 ring-emerald-200" : "bg-amber-50 text-amber-600 hover:bg-amber-100 ring-1 ring-amber-200"}`}>
                                 {c.isPublished ? "✓ Yayında" : "Yayına Al"}
                             </button>
                         </div>
@@ -728,34 +733,52 @@ export default function CoursesPage() {
                             const TI = typeIcons[co.type] ?? Monitor;
                             return (
                                 <div key={co.id} onClick={() => openDetail(co)}
-                                    className="bg-white rounded-2xl border border-[#E2E8F0]/60 overflow-hidden hover:shadow-xl hover:border-[#A0AEC0] transition-all duration-300 hover:-translate-y-0.5 cursor-pointer group flex flex-col">
-                                    <div className="h-24 relative overflow-hidden">
+                                    className="bg-white rounded-[1.25rem] border border-[#E2E8F0]/80 overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-[#A0AEC0]/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer group flex flex-col">
+                                    <div className="aspect-video relative overflow-hidden w-full shrink-0">
                                         {co.thumbnailUrl ? (
-                                            <img src={co.thumbnailUrl} alt={co.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                            <img src={co.thumbnailUrl} alt={co.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                         ) : (
-                                            <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F] via-violet-600 to-blue-700 transition-transform duration-500 group-hover:scale-110" />
+                                            <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F] via-violet-600 to-blue-700 transition-transform duration-700 group-hover:scale-105" />
                                         )}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/80 via-transparent to-transparent" />
-                                        <div className="absolute top-2 left-2 flex items-center gap-1">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/90 via-black/20 to-transparent" />
+                                        
+                                        <div className="absolute top-3 left-3 flex items-center gap-1">
                                             {co.isPublished
-                                                ? <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">Yayında</span>
-                                                : <span className="text-[7px] font-black uppercase px-1.5 py-0.5 rounded-md bg-amber-500/30 text-amber-200 border border-amber-400/30">Taslak</span>
+                                                ? <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-sm text-white shadow-sm">Yayında</span>
+                                                : <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-amber-500/90 backdrop-blur-sm text-white shadow-sm">Taslak</span>
                                             }
                                         </div>
-                                        <h3 className="absolute bottom-2 left-2 right-2 text-xs font-black text-white leading-tight truncate">{co.title}</h3>
-                                        <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }}
-                                            className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-white/10 backdrop-blur-sm text-white hover:bg-white hover:text-red-600 transition-all border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                            <Trash2 size={10} />
-                                        </button>
-                                    </div>
-                                    <div className="p-3 flex-1 flex flex-col">
-                                        <p className="text-[10px] text-[#A0AEC0] line-clamp-1 mb-2 leading-relaxed flex-1">{co.description || "Açıklama yok"}</p>
-                                        <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]/60">
-                                            <div className="flex items-center gap-3 text-[9px] font-bold text-[#A0AEC0]">
-                                                <span className="flex items-center gap-1"><Radio size={9} />{co.sessionCount}</span>
-                                                <span className="flex items-center gap-1"><Clock size={9} />{co.createdAt}</span>
+                                        
+                                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
+                                            <h3 className="text-base font-black leading-tight truncate flex-1 drop-shadow-md">{co.title}</h3>
+                                            <div className="flex items-center gap-2 text-[10px] font-bold drop-shadow-md shrink-0 ml-2 opacity-90">
+                                                <span className="flex items-center gap-1 bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md"><Radio size={12} /> {co.sessionCount}</span>
                                             </div>
-                                            <ChevronRight size={12} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="p-5 flex-1 flex flex-col">
+                                        <p className="text-xs text-[#64748B] line-clamp-2 mb-4 leading-relaxed flex-1 font-medium">{co.description || "Bu ders için henüz bir açıklama eklenmemiş."}</p>
+                                        
+                                        <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0] mt-auto">
+                                            <div className="flex items-center gap-1.5">
+                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }} title="Düzenle"
+                                                    className="p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-xl transition-all">
+                                                    <Settings size={16} />
+                                                </button>
+                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }} title="Dokümanlar"
+                                                    className="p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-xl transition-all">
+                                                    <FolderOpen size={16} />
+                                                </button>
+                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }} title="Kayıtlar"
+                                                    className="p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-xl transition-all">
+                                                    <Video size={16} />
+                                                </button>
+                                            </div>
+                                            <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }} title="Sil"
+                                                className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -765,63 +788,70 @@ export default function CoursesPage() {
                 </>
             ) : (
                 /* ── LIST VIEW ─────────────────────────────────── */
-                <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-[#E2E8F0]/20 border-b border-[#E2E8F0]">
-                            <tr>
-                                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0]">Ders Adı</th>
-                                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] text-center">Oturum</th>
-                                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] text-center">Durum</th>
-                                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0]">Tarih</th>
-                                <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] text-right">İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {pagedCourses.map(co => {
-                                const TI = typeIcons[co.type] ?? Monitor;
-                                return (
-                                    <tr key={co.id} onClick={() => openDetail(co)}
-                                        className="border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10 cursor-pointer transition-colors group">
-                                        <td className="px-5 py-3">
-                                            <p className="text-sm font-bold text-[#0A1931] truncate max-w-xs">{co.title}</p>
-                                            <p className="text-[10px] text-[#A0AEC0] truncate max-w-xs mt-0.5">{co.description || "—"}</p>
-                                        </td>
-                                        <td className="px-5 py-3 text-center">
-                                            <span className="text-sm font-bold text-[#0A1931]">{co.sessionCount}</span>
-                                        </td>
-                                        <td className="px-5 py-3 text-center">
-                                            {co.isPublished
-                                                ? <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg uppercase">Yayında</span>
-                                                : <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg uppercase">Taslak</span>
-                                            }
-                                        </td>
-                                        <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{co.createdAt}</td>
-                                        <td className="px-5 py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }}
-                                                    className="px-2 py-1.5 text-[10px] font-bold bg-[#1B3B6F]/10 text-[#1B3B6F] rounded-lg hover:bg-[#1B3B6F] hover:text-white transition-colors flex items-center gap-1.5">
-                                                    <Settings size={12} /> Düzenle
-                                                </button>
-                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }}
-                                                    className="px-2 py-1.5 text-[10px] font-bold bg-[#1B3B6F]/10 text-[#1B3B6F] rounded-lg hover:bg-[#1B3B6F] hover:text-white transition-colors flex items-center gap-1.5">
-                                                    <FolderOpen size={12} /> Dokümanlar
-                                                </button>
-                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }}
-                                                    className="px-2 py-1.5 text-[10px] font-bold bg-[#1B3B6F]/10 text-[#1B3B6F] rounded-lg hover:bg-[#1B3B6F] hover:text-white transition-colors flex items-center gap-1.5">
-                                                    <Video size={12} /> Kayıtlar
-                                                </button>
-                                                <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }}
-                                                    className="px-2 py-1.5 text-[10px] font-bold bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-colors flex items-center gap-1.5">
-                                                    <Trash2 size={12} /> Sil
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                /* ── LIST VIEW ─────────────────────────────────── */
+                <ResponsiveList 
+                    data={pagedCourses}
+                    keyExtractor={co => co.id}
+                    desktopColumns={["Ders Adı", "Oturum", "Durum", "Tarih", "İşlem"]}
+                    renderDesktopRow={co => (
+                        <tr key={co.id} onClick={() => openDetail(co)}
+                            className="border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10 cursor-pointer transition-colors group">
+                            <td className="px-5 py-3">
+                                <p className="text-sm font-bold text-[#0A1931] truncate max-w-xs">{co.title}</p>
+                                <p className="text-[10px] text-[#A0AEC0] truncate max-w-xs mt-0.5">{co.description || "—"}</p>
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                                <span className="text-sm font-bold text-[#0A1931]">{co.sessionCount}</span>
+                            </td>
+                            <td className="px-5 py-3 text-center">
+                                {co.isPublished
+                                    ? <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg uppercase">Yayında</span>
+                                    : <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg uppercase">Taslak</span>
+                                }
+                            </td>
+                            <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{co.createdAt}</td>
+                            <td className="px-5 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }}
+                                        className="px-2 py-1.5 text-[10px] font-bold bg-[#1B3B6F]/10 text-[#1B3B6F] rounded-lg hover:bg-[#1B3B6F] hover:text-white transition-colors flex items-center gap-1.5">
+                                        <Settings size={12} /> Düzenle
+                                    </button>
+                                    <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }}
+                                        className="px-2 py-1.5 text-[10px] font-bold bg-[#1B3B6F]/10 text-[#1B3B6F] rounded-lg hover:bg-[#1B3B6F] hover:text-white transition-colors flex items-center gap-1.5">
+                                        <FolderOpen size={12} /> Dokümanlar
+                                    </button>
+                                    <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }}
+                                        className="px-2 py-1.5 text-[10px] font-bold bg-[#1B3B6F]/10 text-[#1B3B6F] rounded-lg hover:bg-[#1B3B6F] hover:text-white transition-colors flex items-center gap-1.5">
+                                        <Video size={12} /> Kayıtlar
+                                    </button>
+                                    <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }}
+                                        className="px-2 py-1.5 text-[10px] font-bold bg-red-50 text-red-600 rounded-lg hover:bg-red-500 hover:text-white transition-colors flex items-center gap-1.5">
+                                        <Trash2 size={12} /> Sil
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                    renderMobileCard={co => (
+                        <div key={co.id} onClick={() => openDetail(co)} className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 shadow-sm flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-bold text-[#0A1931]">{co.title}</p>
+                                    <p className="text-[10px] text-[#A0AEC0]">{co.sessionCount} Oturum</p>
+                                </div>
+                                {co.isPublished
+                                    ? <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg uppercase">Yayında</span>
+                                    : <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg uppercase">Taslak</span>
+                                }
+                            </div>
+                            <div className="flex items-center gap-2 pt-3 border-t border-[#E2E8F0]/60">
+                                <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }} className="flex-1 py-2 bg-[#F0F4F8] text-[#1B3B6F] rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"><Settings size={12}/> Ayarlar</button>
+                                <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }} className="flex-1 py-2 bg-[#F0F4F8] text-[#1B3B6F] rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"><FolderOpen size={12}/> Doküman</button>
+                                <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }} className="flex-1 py-2 bg-[#F0F4F8] text-[#1B3B6F] rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"><Video size={12}/> Kayıtlar</button>
+                            </div>
+                        </div>
+                    )}
+                />
             )}
 
             {/* Pagination */}
@@ -916,8 +946,8 @@ function SettingsTab({ course, onSave, onDelete }: { course: MappedCourse; onSav
                     {/* Eğitim Modeli */}
                     <div>
                         <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Eğitim Modeli</label>
-                        <div className="grid grid-cols-3 gap-3">
-                            {["Online", "Offline", "Hibrit"].map(t => (
+                        <div className="grid grid-cols-2 gap-3">
+                            {["Online", "Offline"].map(t => (
                                 <button key={t} onClick={() => sF(p => ({ ...p, courseType: t }))}
                                     className={`py-2 text-xs font-bold rounded-xl border transition-all ${f.courseType === t ? "bg-[#0A1931] text-white border-[#0A1931]" : "bg-white text-[#A0AEC0] border-[#E2E8F0] hover:bg-[#E2E8F0]/30"}`}>
                                     {t}
@@ -1188,8 +1218,8 @@ function CourseWizard({ onClose, onSave }: {
                             {/* Eğitim Modeli */}
                             <div>
                                 <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Eğitim Modeli</label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {["Online", "Offline", "Hibrit"].map(t => (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {["Online", "Offline"].map(t => (
                                         <button key={t} onClick={() => u("courseType", t)}
                                             className={`py-2 text-xs font-bold rounded-xl border transition-all ${f.courseType === t ? "bg-[#0A1931] text-white border-[#0A1931]" : "bg-white text-[#A0AEC0] border-[#E2E8F0] hover:bg-[#E2E8F0]/30"}`}>
                                             {t}

@@ -1,13 +1,17 @@
+using MURO.Domain.Common;
 using MURO.Domain.Enums;
 
 namespace MURO.Domain.Entities;
 
-public class User
+public class User : ISoftDeletable
 {
     public Guid Id { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public string? Phone { get; set; }
     public string PasswordHash { get; set; } = string.Empty;
     public UserRole Role { get; set; } = UserRole.Student;

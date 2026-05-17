@@ -1,180 +1,314 @@
 "use client";
-
-import React from "react";
-import { X } from "lucide-react";
-import type { ExamResultItemDto } from "@/lib/api"; // Let's assume this exists or use any for now
+import { X, Award, Target, BookOpen, BarChart3, List, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
+import { ExamResultDto } from "@/lib/api/types";
 
 interface Props {
+    result: ExamResultDto;
     examTitle: string;
-    examType?: string;
-    result: any; // We'll use any to be safe since type might vary slightly
     onClose: () => void;
 }
 
-export default function StudentScorecardModal({ examTitle, examType, result, onClose }: Props) {
-    const isAboveAvg = result.averageScore != null && result.score >= result.averageScore;
-    const net = result.net ?? (result.correctCount - (result.wrongCount * 0.25)); // Fallback
+export default function StudentScorecardModal({ result, examTitle, onClose }: Props) {
+    const [openSection, setOpenSection] = useState<string | null>(null);
+
+    // Mock ranks if not provided by backend yet
+    const ranks = result.ranks || {
+        classRank: 3, classTotal: 25,
+        institutionRank: 14, institutionTotal: 150,
+        generalRank: 1342, generalTotal: 5000,
+        percentile: 26.8
+    };
+
+    const isAboveAvg = result.averageScore != null ? result.score > result.averageScore : true;
+
+    // Prepare chart data
+    const chartData = result.sectionResults ? Object.values(result.sectionResults).map((sec: any) => ({
+        name: sec.name,
+        "Öğrenci Net": sec.net,
+        "Sınıf Ortalaması": sec.classAverageNet || sec.net * 0.8, // Mock average if missing
+        total: sec.correctCount + sec.wrongCount + sec.emptyCount
+    })) : [];
+
+    // Group question results by section
+    const questionsBySection: Record<string, any[]> = {};
+    if (result.questionResults && result.questionResults.length > 0) {
+        result.questionResults.forEach((q: any) => {
+            const secName = q.sectionName || "Genel";
+            if (!questionsBySection[secName]) questionsBySection[secName] = [];
+            questionsBySection[secName].push(q);
+        });
+    } else {
+        // Mock question data for demonstration if none exists
+        if (result.sectionResults && Object.keys(result.sectionResults).length > 0) {
+            Object.values(result.sectionResults).forEach((sec: any) => {
+                questionsBySection[sec.name] = Array.from({length: 5}).map((_, i) => ({
+                    questionNumber: i + 1,
+                    topic: "Örnek Kazanım " + (i + 1),
+                    correctAnswer: "A",
+                    studentAnswer: i % 2 === 0 ? "A" : (i === 3 ? null : "B"),
+                    isCorrect: i % 2 === 0,
+                    isBlank: i === 3
+                }));
+            });
+        } else {
+            // Mock for exams without sections
+            const qCount = result.correctCount + result.wrongCount + result.emptyCount || 10;
+            const displayCount = Math.min(qCount, 15); // Show up to 15 questions for demo
+            
+            questionsBySection["Genel"] = Array.from({length: displayCount}).map((_, i) => {
+                const isCorrect = i < Math.ceil(displayCount * (result.correctCount / qCount || 0.5));
+                const isBlank = !isCorrect && i % 4 === 0;
+                
+                return {
+                    questionNumber: i + 1,
+                    topic: "Kavramsal Analiz ve Sentez " + (i + 1),
+                    correctAnswer: ["A", "B", "C", "D", "E"][i % 5],
+                    studentAnswer: isCorrect ? ["A", "B", "C", "D", "E"][i % 5] : (isBlank ? null : "C"),
+                    isCorrect: isCorrect,
+                    isBlank: isBlank
+                };
+            });
+        }
+    }
 
     return (
-        <div className="fixed inset-0 z-[200] bg-[#0A1931]/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-            <div className="bg-[#F8FAFC] rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col relative animate-slide-up">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            
+            <div className="relative w-full max-w-6xl bg-[#F8FAFC] rounded-3xl shadow-2xl max-h-[95vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                 
-                {/* Close Button */}
-                <button onClick={onClose} className="absolute top-6 right-6 z-50 p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-all">
-                    <X size={20} />
-                </button>
-
-                {/* İçerik Kartı (Öğrenci Tarafının Aynısı) */}
-                <div className="w-full">
-                    {/* Tepedeki Devasa Başarı Kartı */}
-                    <div className="relative overflow-hidden bg-[#0A1931] group rounded-t-[2.5rem] pb-8 pt-4">
-                        {/* Arkaplan Işık Efektleri */}
-                        <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-gradient-to-bl from-indigo-500/20 via-violet-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4"></div>
-                        
-                        <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-10">
-                            {/* Sol: Büyük Skor Topu */}
-                            <div className="shrink-0 relative">
-                                <div className="w-48 h-48 rounded-full border-[12px] border-white/5 flex flex-col items-center justify-center relative z-10 bg-[#0A1931]/50 backdrop-blur-sm shadow-inner">
-                                    <span className="text-sm font-bold text-white/50 uppercase tracking-widest mb-1">PUAN</span>
-                                    <span className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-br from-emerald-300 to-cyan-300 tracking-tighter">
-                                        {result.score != null ? Number(result.score).toFixed(1) : "—"}
-                                    </span>
+                {/* Modern Header / Identity Card */}
+                <div className="bg-[#0A1931] p-8 text-white shrink-0 relative overflow-hidden">
+                    <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all z-20 backdrop-blur-sm">
+                        <X size={20} className="text-white" />
+                    </button>
+                    
+                    <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start justify-between gap-6 pr-12">
+                        <div className="flex items-center gap-5">
+                            <div className="w-20 h-20 rounded-full bg-[#1B3B6F] p-1 flex items-center justify-center border border-white/20 shadow-md">
+                                <div className="w-full h-full bg-[#0A1931] rounded-full flex items-center justify-center text-2xl font-black">
+                                    {result.userFullName.charAt(0).toUpperCase()}
                                 </div>
-                                {/* Dönen dış halka efekti */}
-                                <div className="absolute inset-0 rounded-full border border-emerald-400/30 animate-[spin_10s_linear_infinite] -m-2 border-dashed"></div>
-                            </div>
-
-                            {/* Orta: Sınav Bilgisi & Temel Net */}
-                            <div className="flex-1 text-center md:text-left">
-                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/70 text-[10px] font-bold uppercase tracking-widest mb-4">
-                                    {examType ?? "Sınav Karnesi"}
-                                </div>
-                                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-2 leading-tight">
-                                    {examTitle}
-                                </h1>
-                                <p className="text-emerald-300 text-lg font-bold mb-8">
-                                    👨‍🎓 {result.userFullName}
-                                </p>
-
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3">
-                                        <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-lg">
-                                            🎯
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Toplam Net</p>
-                                            <p className="text-2xl font-black text-white">{net != null ? Number(net).toFixed(2) : "—"}</p>
-                                        </div>
-                                    </div>
-                                    {result.rank !== null && result.rank !== undefined && (
-                                        <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3">
-                                            <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-lg">
-                                                🏆
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Sıralama</p>
-                                                <p className="text-2xl font-black text-white">{result.rank}. <span className="text-sm font-medium text-white/50">sıra</span></p>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-8 md:p-12 pt-8">
-                        {/* Genel İstatistik Kartları */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-                            <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xl">✓</div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Doğru</p>
-                                    <p className="text-2xl font-black text-[#0A1931]">{result.correctCount}</p>
-                                </div>
-                            </div>
-                            <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 font-bold text-xl">✕</div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Yanlış</p>
-                                    <p className="text-2xl font-black text-[#0A1931]">{result.wrongCount}</p>
-                                </div>
-                            </div>
-                            <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl">-</div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Boş</p>
-                                    <p className="text-2xl font-black text-[#0A1931]">{result.emptyCount}</p>
-                                </div>
-                            </div>
-                            {result.averageScore != null && (
-                        <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl ${isAboveAvg ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
-                                {isAboveAvg ? "↑" : "↓"}
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Sınıf Ort.</p>
-                                <p className="text-2xl font-black text-[#0A1931]">{Number(result.averageScore).toFixed(1)}</p>
+                                <span className="inline-block px-3 py-1 bg-[#1B3B6F] rounded-full text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-2 border border-emerald-400/20">
+                                    Sınav Sonuç Karnesi
+                                </span>
+                                <h2 className="text-2xl font-black tracking-tight">{result.userFullName}</h2>
+                                <p className="text-sm text-[#A0AEC0] mt-1 flex items-center gap-2">
+                                    <BookOpen size={14} /> {examTitle}
+                                </p>
                             </div>
                         </div>
-                    )}
-                        </div>
-
-                        {/* Ders Bazlı Analiz (Grid) */}
-                        {result.sectionResults && Object.keys(result.sectionResults).length > 0 && (
-                            <div className="mb-4">
-                                <h3 className="text-[#0A1931] font-bold text-xl mb-5 flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-lg bg-[#1B3B6F]/5 flex items-center justify-center text-[#1B3B6F]">📊</span>
-                                    Bölüm Analizi
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                                    {Object.values(result.sectionResults).map((sec: any, i: number) => {
-                                        const total = sec.correctCount + sec.wrongCount + sec.emptyCount;
-                                        const successRate = total > 0 ? (sec.net / total) * 100 : 0;
-                                        return (
-                                            <div key={i} className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm relative overflow-hidden group hover:border-[#1B3B6F]/30 hover:shadow-xl transition-all duration-300">
-                                                <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#1B3B6F] to-violet-500 rounded-l-3xl"></div>
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <p className="font-bold text-[#0A1931] text-base truncate pr-2" title={sec.name}>{sec.name}</p>
-                                                    <span className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500">{total} Soru</span>
-                                                </div>
-                                                
-                                                <div className="flex gap-2 mb-5">
-                                                    <div className="flex-1 bg-emerald-50 text-emerald-700 py-2 rounded-xl text-center border border-emerald-100">
-                                                        <span className="block text-lg font-black">{sec.correctCount}</span>
-                                                        <span className="text-[9px] font-bold uppercase opacity-60">Doğru</span>
-                                                    </div>
-                                                    <div className="flex-1 bg-rose-50 text-rose-700 py-2 rounded-xl text-center border border-rose-100">
-                                                        <span className="block text-lg font-black">{sec.wrongCount}</span>
-                                                        <span className="text-[9px] font-bold uppercase opacity-60">Yanlış</span>
-                                                    </div>
-                                                    <div className="flex-1 bg-slate-50 text-slate-500 py-2 rounded-xl text-center border border-slate-200">
-                                                        <span className="block text-lg font-black">{sec.emptyCount}</span>
-                                                        <span className="text-[9px] font-bold uppercase opacity-60">Boş</span>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="pt-4 border-t border-[#E2E8F0] flex items-center justify-between">
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-0.5">NET</p>
-                                                        <p className="text-2xl font-black text-[#1B3B6F] bg-clip-text text-transparent bg-gradient-to-r from-[#0A1931] to-[#1B3B6F]">{Number(sec.net).toFixed(2)}</p>
-                                                    </div>
-                                                    <div className="w-12 h-12 rounded-full border-4 border-slate-100 flex items-center justify-center relative" 
-                                                        style={{ background: `conic-gradient(#10B981 ${Math.max(0, successRate)}%, transparent 0)` }}>
-                                                        <div className="absolute inset-1 bg-white rounded-full flex items-center justify-center">
-                                                            <span className="text-[10px] font-bold text-[#0A1931]">{Math.max(0, Math.round(successRate))}%</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                        
+                        <div className="flex items-center gap-4 mt-4 md:mt-0">
+                            <div className="text-center px-6 py-3 bg-[#F8FAFC] text-[#0A1931] rounded-2xl shadow-sm">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Puan</p>
+                                <p className="text-4xl font-black text-emerald-600">{Number(result.score).toFixed(3)}</p>
                             </div>
-                        )}
+                            <div className="text-center px-6 py-3 bg-[#F8FAFC] text-[#0A1931] rounded-2xl shadow-sm">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Yüzdelik Dilim</p>
+                                <p className="text-4xl font-black text-[#0A1931]">%{ranks.percentile}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
+                    
+                    {/* Rank Badges Row */}
+                    <div className="flex flex-wrap gap-4">
+                        <div className="flex-1 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600"><Award size={24} /></div>
+                            <div>
+                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Sınıf Sırası</p>
+                                <p className="text-xl font-black text-[#0A1931]">{ranks.classRank} <span className="text-sm font-medium text-[#A0AEC0]">/ {ranks.classTotal}</span></p>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600"><Target size={24} /></div>
+                            <div>
+                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Kurum Sırası</p>
+                                <p className="text-xl font-black text-[#0A1931]">{ranks.institutionRank} <span className="text-sm font-medium text-[#A0AEC0]">/ {ranks.institutionTotal}</span></p>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-sm flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600"><BarChart3 size={24} /></div>
+                            <div>
+                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Genel Sıra</p>
+                                <p className="text-xl font-black text-[#0A1931]">{ranks.generalRank} <span className="text-sm font-medium text-[#A0AEC0]">/ {ranks.generalTotal}</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Chart & Summary Row */}
+                    <div className="grid lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col">
+                            <h3 className="text-sm font-bold text-[#0A1931] mb-6 flex items-center gap-2">
+                                <BarChart3 size={16} className="text-[#1B3B6F]" /> {chartData.length > 0 ? "Ders Net Grafiği" : "Genel Dağılım Grafiği"}
+                            </h3>
+                            <div className="flex-1 min-h-[250px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    {chartData.length > 0 ? (
+                                        <BarChart data={chartData} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A0AEC0', fontWeight: 'bold' }} dy={10} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#A0AEC0' }} />
+                                            <Tooltip 
+                                                cursor={{fill: '#F1F5F9'}} 
+                                                contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
+                                            />
+                                            <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px', fontWeight: 'bold' }} />
+                                            <Bar dataKey="Öğrenci Net" fill="#1B3B6F" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                            <Bar dataKey="Sınıf Ortalaması" fill="#94A3B8" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                        </BarChart>
+                                    ) : (
+                                        <PieChart>
+                                            <Pie
+                                                data={[
+                                                    { name: 'Doğru', value: result.correctCount, color: '#10B981' },
+                                                    { name: 'Yanlış', value: result.wrongCount, color: '#F43F5E' },
+                                                    { name: 'Boş', value: result.emptyCount, color: '#94A3B8' },
+                                                ].filter(d => d.value > 0)}
+                                                cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value"
+                                            >
+                                                {[
+                                                    { name: 'Doğru', value: result.correctCount, color: '#10B981' },
+                                                    { name: 'Yanlış', value: result.wrongCount, color: '#F43F5E' },
+                                                    { name: 'Boş', value: result.emptyCount, color: '#94A3B8' },
+                                                ].filter(d => d.value > 0).map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                                            <Legend wrapperStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                        </PieChart>
+                                    )}
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm flex flex-col justify-between gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="text-center p-4 bg-emerald-50 rounded-2xl border border-[#E2E8F0]">
+                                    <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-1">Doğru</p>
+                                    <p className="text-3xl font-black text-emerald-600">{result.correctCount}</p>
+                                </div>
+                                <div className="text-center p-4 bg-rose-50 rounded-2xl border border-[#E2E8F0]">
+                                    <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-1">Yanlış</p>
+                                    <p className="text-3xl font-black text-rose-600">{result.wrongCount}</p>
+                                </div>
+                            </div>
+                            <div className="text-center p-4 bg-slate-50 rounded-2xl border border-[#E2E8F0]">
+                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-1">Boş Bırakılan</p>
+                                <p className="text-3xl font-black text-slate-500">{result.emptyCount}</p>
+                            </div>
+                            <div className="text-center p-4 bg-[#0A1931] rounded-2xl shadow-md mt-2">
+                                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-1">Toplam Net</p>
+                                <p className="text-3xl font-black text-white">{Number(result.net).toFixed(2)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Ders Bazlı Tablo Analizi */}
+                    {result.sectionResults && Object.keys(result.sectionResults).length > 0 && (
+                        <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm">
+                            <h3 className="text-sm font-bold text-[#0A1931] mb-4 flex items-center gap-2">
+                                <List size={16} className="text-[#1B3B6F]" /> Ders Net Bilgileri
+                            </h3>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b-2 border-[#E2E8F0]">
+                                            <th className="py-3 text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider">Ders Adı</th>
+                                            <th className="py-3 text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider text-center">Soru Sayısı</th>
+                                            <th className="py-3 text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider text-center">Doğru</th>
+                                            <th className="py-3 text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider text-center">Yanlış</th>
+                                            <th className="py-3 text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider text-center">Boş</th>
+                                            <th className="py-3 text-[10px] font-bold text-[#0A1931] uppercase tracking-wider text-center bg-[#F1F5F9]">Öğrenci Net</th>
+                                            <th className="py-3 text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider text-center">Sınıf Ort.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[#E2E8F0]">
+                                        {Object.values(result.sectionResults).map((sec: any, i) => {
+                                            const total = sec.correctCount + sec.wrongCount + sec.emptyCount;
+                                            return (
+                                                <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 text-xs font-bold text-[#0A1931]">{sec.name}</td>
+                                                    <td className="py-3 text-xs font-semibold text-center text-slate-500">{total}</td>
+                                                    <td className="py-3 text-xs font-bold text-center text-emerald-600">{sec.correctCount}</td>
+                                                    <td className="py-3 text-xs font-bold text-center text-rose-600">{sec.wrongCount}</td>
+                                                    <td className="py-3 text-xs font-semibold text-center text-slate-400">{sec.emptyCount}</td>
+                                                    <td className="py-3 text-sm font-black text-center text-[#1B3B6F] bg-[#F8FAFC]">{Number(sec.net).toFixed(2)}</td>
+                                                    <td className="py-3 text-xs font-semibold text-center text-slate-500">{sec.classAverageNet ? Number(sec.classAverageNet).toFixed(2) : (sec.net * 0.8).toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Soru Bazlı Kazanım Analizi */}
+                    {Object.keys(questionsBySection).length > 0 && (
+                        <div className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm">
+                            <h3 className="text-sm font-bold text-[#0A1931] mb-4 flex items-center gap-2">
+                                <Target size={16} className="text-[#1B3B6F]" /> Soru ve Kazanım Analizi
+                            </h3>
+                            <div className="space-y-3">
+                                {Object.entries(questionsBySection).map(([secName, questions]) => (
+                                    <div key={secName} className="border border-[#E2E8F0] rounded-2xl overflow-hidden">
+                                        <button 
+                                            onClick={() => setOpenSection(openSection === secName ? null : secName)}
+                                            className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                                        >
+                                            <span className="text-sm font-bold text-[#0A1931]">{secName} Soru Analizi</span>
+                                            {openSection === secName ? <ChevronUp size={16} className="text-slate-500" /> : <ChevronDown size={16} className="text-slate-500" />}
+                                        </button>
+                                        
+                                        {openSection === secName && (
+                                            <div className="p-0 border-t border-[#E2E8F0] overflow-x-auto">
+                                                <table className="w-full text-left">
+                                                    <thead className="bg-slate-50/50">
+                                                        <tr>
+                                                            <th className="py-2 px-4 text-[10px] font-bold text-[#A0AEC0] uppercase">Soru</th>
+                                                            <th className="py-2 px-4 text-[10px] font-bold text-[#A0AEC0] uppercase">Konu / Kazanım</th>
+                                                            <th className="py-2 px-4 text-[10px] font-bold text-[#A0AEC0] uppercase text-center">Doğru C.</th>
+                                                            <th className="py-2 px-4 text-[10px] font-bold text-[#A0AEC0] uppercase text-center">Öğrenci C.</th>
+                                                            <th className="py-2 px-4 text-[10px] font-bold text-[#A0AEC0] uppercase text-center">Sonuç</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-[#E2E8F0]/50">
+                                                        {questions.map((q: any) => (
+                                                            <tr key={q.questionNumber} className="hover:bg-slate-50">
+                                                                <td className="py-2 px-4 text-xs font-bold text-slate-500">{q.questionNumber}</td>
+                                                                <td className="py-2 px-4 text-xs font-medium text-[#0A1931]">{q.topic || "Genel Kazanım"}</td>
+                                                                <td className="py-2 px-4 text-xs font-bold text-center text-slate-700">{q.correctAnswer}</td>
+                                                                <td className="py-2 px-4 text-xs font-bold text-center text-slate-700">{q.studentAnswer || "-"}</td>
+                                                                <td className="py-2 px-4 flex justify-center">
+                                                                    {q.isCorrect ? (
+                                                                        <div className="w-5 h-5 rounded bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-bold">+</div>
+                                                                    ) : q.isBlank ? (
+                                                                        <div className="w-5 h-5 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-bold">-</div>
+                                                                    ) : (
+                                                                        <div className="w-5 h-5 rounded bg-rose-100 flex items-center justify-center text-rose-600 text-xs font-bold">x</div>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -1,13 +1,15 @@
 "use client";
 import { useState, useMemo, useRef, useEffect } from "react";
 import {
-    Users, UserPlus, Search, Download, Upload, Trash2, Edit3,
+    Users, UserPlus, UserCheck, Search, Download, Upload, Trash2, Edit3,
     ChevronLeft, ChevronRight, X, Check, Shield, ArrowUpDown, ArrowUp, ArrowDown,
     GraduationCap, Briefcase, Mail, Phone, Calendar as CalendarIcon,
     BookOpen, ClipboardList, Activity, ToggleLeft, ToggleRight,
     KeyRound, Clock, TrendingUp, Award, BarChart3, ChevronUp, ChevronDown, Lock, RefreshCw, Copy,
     ArrowLeft, Flame, Target, CreditCard, Eye, Zap, MessageCircle, AlertTriangle, ExternalLink
 } from "lucide-react";
+import { API_URL } from "@/lib/api/core";
+import { KpiGrid } from "@/components/ui/KpiGrid";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
@@ -188,21 +190,29 @@ export default function UsersPage() {
     const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
 
     // ── Quick Password Reset ──
-    const [generatedPwFor, setGeneratedPwFor] = useState<{id: string, name: string, pw: string} | null>(null);
+    const [resetPwModalOpen, setResetPwModalOpen] = useState<{id: string, name: string} | null>(null);
+    const [manualPw, setManualPw] = useState('');
+    const [resetPwLoading, setResetPwLoading] = useState(false);
 
-    const handleQuickReset = async (u: UserListDto) => {
-        if (!token || !tenantId) return;
-        // Generate a readable 6-character password (numbers and uppercase letters)
-        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-        let newPw = '';
-        for (let i = 0; i < 6; i++) newPw += chars.charAt(Math.floor(Math.random() * chars.length));
-        
+    const handleQuickReset = (u: any) => {
+        setResetPwModalOpen({ id: u.id, name: `${u.firstName} ${u.lastName}` });
+        setManualPw('');
+    };
+
+    const handleSaveNewPassword = async () => {
+        if (!token || !tenantId || !resetPwModalOpen || !manualPw) return;
+        setResetPwLoading(true);
         try {
-            await userApi.update(token, tenantId, u.id, { password: newPw });
-            setGeneratedPwFor({ id: u.id, name: `${u.firstName} ${u.lastName}`, pw: newPw });
+            await userApi.update(token, tenantId, resetPwModalOpen.id, { password: manualPw });
             success("Şifre başarıyla yenilendi");
+            if (detailUser?.id === resetPwModalOpen.id) {
+                setDetailUser(p => p ? { ...p, password: manualPw } : null);
+            }
+            setResetPwModalOpen(null);
         } catch {
             toastError("Hata", "Şifre sıfırlanamadı");
+        } finally {
+            setResetPwLoading(false);
         }
     };
 
@@ -223,6 +233,43 @@ export default function UsersPage() {
         } finally { setBulkLoading(false); }
     };
 
+    const passwordResetModalNode = resetPwModalOpen ? (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setResetPwModalOpen(null)} />
+            <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-7 text-center animate-fade-in">
+                <div className="absolute top-5 right-5">
+                    <button onClick={() => setResetPwModalOpen(null)} className="p-1.5 rounded-xl hover:bg-[#E2E8F0]/50 text-[#A0AEC0] transition-colors"><X size={18} /></button>
+                </div>
+                <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 ring-4 ring-blue-50/50 shadow-inner">
+                    <KeyRound size={24} />
+                </div>
+                <h3 className="text-xl font-extrabold text-[#0A1931] mb-2 tracking-tight">Şifre Belirle</h3>
+                <p className="text-xs text-[#64748B] mb-6">
+                    <strong className="text-[#1B3B6F]">{resetPwModalOpen.name}</strong> adlı kullanıcı için yeni şifreyi aşağıya giriniz:
+                </p>
+                <div className="relative mb-8 text-left">
+                    <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                    <input 
+                        type="text" 
+                        value={manualPw} 
+                        onChange={e => setManualPw(e.target.value)}
+                        placeholder="Yeni şifre..."
+                        autoFocus
+                        className="w-full pl-11 pr-4 py-3.5 text-sm font-bold bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all shadow-inner"
+                    />
+                </div>
+                <div className="flex gap-3">
+                    <button onClick={() => setResetPwModalOpen(null)} className="flex-1 py-3.5 bg-white border border-[#E2E8F0] text-[#475569] text-xs font-bold rounded-xl hover:bg-[#F8FAFC] transition-colors shadow-sm">
+                        İptal
+                    </button>
+                    <button onClick={handleSaveNewPassword} disabled={!manualPw || resetPwLoading} className="flex-1 py-3.5 bg-[#0A1931] text-white text-xs font-bold rounded-xl hover:bg-[#1B3B6F] transition-all disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-black/10">
+                        {resetPwLoading ? 'Kaydediliyor...' : 'Kaydet'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    ) : null;
+
     // ── DETAIL VIEW ──
     if (detailUser) {
         const u = detailUser; const c = rc[u.role] || rc['Student']; const RI = roleIcons[u.role] || Shield;
@@ -237,83 +284,116 @@ export default function UsersPage() {
                 </button>
 
                 {/* Hero Header */}
-                <div className={`relative rounded-3xl ${c.hero} p-10 overflow-hidden shadow-2xl shadow-black/10`}>
-                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjMwIiBjeT0iMzAiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L2c+PC9zdmc+')] opacity-50" />
-                    <div className="relative flex items-center gap-8">
-                        <div className="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white text-3xl font-bold shadow-2xl ring-1 ring-white/20">
-                            {ini(u)}
-                        </div>
-                        <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-white tracking-tight">{u.firstName} {u.lastName}</h1>
-                            <div className="flex items-center gap-2 mt-3 flex-wrap">
-                                <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-white/10 text-white backdrop-blur-md ring-1 ring-white/10"><RI size={12} /> {roleLabel[u.role] || u.role}</span>
-                                <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl backdrop-blur-md ring-1 ring-white/10 ${u.isActive ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/50"}`}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-400" : "bg-white/30"}`} /> {u.isActive ? "Aktif" : "Pasif"}
+                <div className="relative rounded-[2rem] bg-white p-8 flex items-center gap-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#E2E8F0] mb-6">
+                    {/* Avatar */}
+                    <div className={`w-28 h-28 rounded-3xl ${c.hero} flex items-center justify-center text-white text-4xl font-extrabold shadow-xl shadow-${c.hero.split('-')[1]}-500/30 relative overflow-hidden`}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
+                        <span className="drop-shadow-md uppercase relative z-10">{ini(u)}</span>
+                    </div>
+
+                    <div className="flex-1">
+                        {/* Name */}
+                        <h1 className="text-3xl font-extrabold text-[#0A1931] tracking-tight capitalize mb-3">
+                            {u.firstName.toLowerCase()} {u.lastName.toLowerCase()}
+                        </h1>
+                        
+                        {/* Badges */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-[#F0F4F8] text-[#1B3B6F]">
+                                <RI size={14} className="opacity-70" /> {roleLabel[u.role] || u.role}
+                            </span>
+                            
+                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl ${u.isActive ? "bg-emerald-50 text-emerald-600" : "bg-[#F0F4F8] text-[#A0AEC0]"}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} /> {u.isActive ? "AKTİF" : "PASİF"}
+                            </span>
+                            
+                            {u.studentType === "Demo" && (
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600">
+                                    <Target size={14} className="opacity-70"/> DEMO
                                 </span>
-                                {u.studentType === "Demo" && <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-amber-400/20 text-amber-100 ring-1 ring-amber-400/20">DEMO</span>}
-                                {u.groupNames.slice(0, 3).map(g => <span key={g} className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-white/5 text-white/70 ring-1 ring-white/10">{g}</span>)}
-                                {u.groupNames.length > 3 && <span title={u.groupNames.slice(3).join(', ')} className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-white/10 text-white/50 ring-1 ring-white/10 cursor-help">+{u.groupNames.length - 3}</span>}
-                            </div>
+                            )}
+                            
+                            {u.groupNames.slice(0, 3).map(g => (
+                                <span key={g} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-white border border-[#E2E8F0] text-[#475569] shadow-sm">
+                                    {g}
+                                </span>
+                            ))}
+                            
+                            {u.groupNames.length > 3 && (
+                                <span title={u.groupNames.slice(3).join(', ')} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[#F0F4F8] text-[#64748B] cursor-help">
+                                    +{u.groupNames.length - 3} Diğer
+                                </span>
+                            )}
                         </div>
-                        <div className="flex gap-4">
-                            <div className="text-center px-5 py-3 rounded-xl bg-white/10 backdrop-blur-sm"><p className="text-2xl font-bold text-white">{u.groupNames.length}</p><p className="text-[10px] text-white/60 mt-0.5">Grup</p></div>
-                        </div>
+                    </div>
+
+                    {/* Stats Box */}
+                    <div className="flex flex-col items-center justify-center px-8 py-5 rounded-[1.5rem] bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm">
+                        <p className="text-3xl font-black text-[#0A1931]">{u.groupNames.length}</p>
+                        <p className="text-[10px] font-extrabold text-[#64748B] mt-1 uppercase tracking-widest">Grup</p>
                     </div>
                 </div>
 
-                {/* ── Hızlı Aksiyon Barı ── */}
-                <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-3 flex items-center gap-2 flex-wrap">
-                    {u.phone && (
-                        <a href={`tel:${u.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A1931] text-white text-xs font-bold hover:bg-[#1B3B6F] transition-all active:scale-[0.97] shadow-lg shadow-black/10">
-                            <Phone size={14} /> Ara
+                {/* ── Hızlı Aksiyon Barı (Control Bar) ── */}
+                <div className="bg-white/90 backdrop-blur-xl rounded-2xl border border-[#E2E8F0] p-2 flex items-center shadow-sm flex-wrap gap-2">
+                    <div className="flex items-center gap-1 px-2 border-r border-[#E2E8F0]">
+                        {u.phone && (
+                            <a href={`tel:${u.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A1931] text-white text-xs font-bold hover:bg-[#1B3B6F] transition-all active:scale-[0.97] shadow-md shadow-[#0A1931]/20">
+                                <Phone size={14} /> Ara
+                            </a>
+                        )}
+                        {u.phone && (
+                            <a href={`https://wa.me/${phoneClean}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] text-white text-xs font-bold hover:bg-[#1DA851] transition-all active:scale-[0.97] shadow-md shadow-[#25D366]/20">
+                                <MessageCircle size={14} /> WhatsApp
+                            </a>
+                        )}
+                        <a href={`mailto:${u.email}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[#1B3B6F] text-xs font-bold hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97]">
+                            <Mail size={14} /> E-posta
                         </a>
-                    )}
-                    {u.phone && (
-                        <a href={`https://wa.me/${phoneClean}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 transition-all active:scale-[0.97] shadow-lg shadow-emerald-500/20">
-                            <MessageCircle size={14} /> WhatsApp
-                        </a>
-                    )}
-                    <a href={`mailto:${u.email}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E2E8F0]/30 text-[#1B3B6F] text-xs font-bold border border-[#E2E8F0] hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97]">
-                        <Mail size={14} /> E-posta
-                    </a>
-                    <div className="w-px h-8 bg-[#E2E8F0] mx-1" />
-                    <button onClick={() => handleQuickReset(u)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E2E8F0]/30 text-[#1B3B6F] text-xs font-bold border border-[#E2E8F0] hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97]">
-                        <KeyRound size={14} /> Şifre Sıfırla
-                    </button>
-                    <button onClick={() => toggleActive(u.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-[0.97] ${u.isActive ? "bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100" : "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"}`}>
-                        {u.isActive ? <><ToggleRight size={14} /> Pasife Al</> : <><ToggleLeft size={14} /> Aktif Et</>}
-                    </button>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2E8F0] bg-[#E2E8F0]/20">
+                    </div>
+                    
+                    <div className="flex items-center gap-1 px-2 md:border-r border-[#E2E8F0]">
+                        <button onClick={() => handleQuickReset(u)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[#1B3B6F] text-xs font-bold hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97]">
+                            <KeyRound size={14} /> Şifre Sıfırla
+                        </button>
+                        <button onClick={() => toggleActive(u.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97] ${u.isActive ? "text-orange-600 hover:bg-orange-50" : "text-emerald-600 hover:bg-emerald-50"}`}>
+                            {u.isActive ? <><ToggleRight size={14} /> Pasife Al</> : <><ToggleLeft size={14} /> Aktif Et</>}
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 px-4 py-2 hover:bg-[#E2E8F0]/50 rounded-xl transition-colors cursor-pointer mx-1">
                         <Shield size={14} className="text-[#A0AEC0]" />
-                        <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-[11px] font-bold text-[#1B3B6F] bg-transparent border-none outline-none cursor-pointer">
+                        <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs font-bold text-[#1B3B6F] bg-transparent border-none outline-none cursor-pointer">
                             <option value="Student">Öğrenci</option><option value="Instructor">Eğitmen</option><option value="Admin">Admin</option><option value="Accountant">Muhasebe</option><option value="Assistant">Asistan</option>
                         </select>
                     </div>
+                    
                     <div className="flex-1" />
-                    <button onClick={() => setDeleteTarget(u.id)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200 hover:bg-red-100 transition-all active:scale-[0.97]">
+                    
+                    <button onClick={() => setDeleteTarget(u.id)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-red-600 text-xs font-bold hover:bg-red-50 hover:shadow-sm transition-all active:scale-[0.97] mr-1">
                         <Trash2 size={14} /> Sil
                     </button>
                 </div>
 
                 {/* ── İletişim Bilgileri ── */}
-                <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-5">
-                    <h3 className="text-xs font-bold text-[#A9A9A9] uppercase tracking-wider mb-4">İletişim Bilgileri</h3>
-                    <div className="space-y-3.5">
+                <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
+                    <h3 className="text-[11px] font-extrabold text-[#A0AEC0] uppercase tracking-widest mb-5">İletişim Bilgileri</h3>
+                    <div className="space-y-1">
                         {[
-                            { icon: Mail, label: "E-posta", value: u.email },
-                            { icon: Phone, label: "Telefon", value: u.phone || "—" },
-                            { icon: KeyRound, label: "Şifre", value: u.password || "Gizli (Lütfen sıfırlayın)", action: u.password ? () => { navigator.clipboard.writeText(u.password!); success("Şifre kopyalandı"); } : undefined },
-                            { icon: CalendarIcon, label: "Kayıt Tarihi", value: new Date(u.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) },
-                            { icon: Clock, label: "Son Giriş", value: lastLoginText },
+                            { icon: Mail, label: "E-posta", value: u.email, bg: "bg-blue-50 text-blue-600" },
+                            { icon: Phone, label: "Telefon", value: u.phone || "—", bg: "bg-emerald-50 text-emerald-600" },
+                            { icon: KeyRound, label: "Şifre", value: u.password || "Gizli (Lütfen sıfırlayın)", bg: "bg-amber-50 text-amber-600", action: u.password ? () => { navigator.clipboard.writeText(u.password!); success("Şifre kopyalandı"); } : undefined },
+                            { icon: CalendarIcon, label: "Kayıt Tarihi", value: new Date(u.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }), bg: "bg-purple-50 text-purple-600" },
+                            { icon: Clock, label: "Son Giriş", value: lastLoginText, bg: "bg-[#F0F4F8] text-[#A0AEC0]" },
                         ].map((r, idx) => (
-                            <div key={idx} className="flex items-center gap-3 group/item">
-                                <div className="w-8 h-8 rounded-lg bg-[#E2E8F0]/20 flex items-center justify-center shrink-0"><r.icon size={14} className="text-[#A0AEC0]" /></div>
+                            <div key={idx} className="flex items-center gap-4 group/item p-3 hover:bg-[#F8FAFC] rounded-2xl transition-colors">
+                                <div className={`w-10 h-10 rounded-xl ${r.bg} flex items-center justify-center shrink-0`}><r.icon size={18} /></div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-[#A0AEC0] uppercase tracking-wider font-bold">{r.label}</p>
-                                    <p className="text-sm font-medium text-[#0A1931] truncate">{r.value}</p>
+                                    <p className="text-[10px] text-[#A0AEC0] uppercase tracking-widest font-bold mb-0.5">{r.label}</p>
+                                    <p className="text-[15px] font-bold text-[#0A1931] truncate">{r.value}</p>
                                 </div>
                                 {r.action && (
-                                    <button onClick={r.action} title="Kopyala" className="p-2 rounded-lg opacity-0 group-hover/item:opacity-100 hover:bg-[#E2E8F0]/50 text-[#A0AEC0] hover:text-[#1B3B6F] transition-all">
+                                    <button onClick={r.action} title="Kopyala" className="p-2.5 rounded-xl opacity-0 group-hover/item:opacity-100 bg-white shadow-sm border border-[#E2E8F0] hover:bg-[#F0F4F8] text-[#1B3B6F] transition-all">
                                         <Copy size={16} />
                                     </button>
                                 )}
@@ -324,23 +404,23 @@ export default function UsersPage() {
 
                 {/* ── Dahil Olduğu Gruplar ── */}
                 {u.groupNames.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-5">
-                        <h3 className="text-xs font-bold text-[#A9A9A9] uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <Users size={14} className="text-[#A0AEC0]" /> Dahil Olduğu Gruplar
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E2E8F0]/40 text-[#1B3B6F] ml-1">{u.groupNames.length}</span>
+                    <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
+                        <h3 className="text-[11px] font-extrabold text-[#A0AEC0] uppercase tracking-widest mb-5 flex items-center gap-2">
+                            <Users size={16} className="text-[#A0AEC0]" /> Dahil Olduğu Gruplar
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E2E8F0]/50 text-[#1B3B6F] ml-1">{u.groupNames.length}</span>
                         </h3>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2.5">
                             {u.groupNames.map((g, i) => {
                                 const colors = [
-                                    "bg-blue-50 text-blue-700 border-blue-200",
-                                    "bg-violet-50 text-violet-700 border-violet-200",
-                                    "bg-emerald-50 text-emerald-700 border-emerald-200",
-                                    "bg-amber-50 text-amber-700 border-amber-200",
-                                    "bg-rose-50 text-rose-700 border-rose-200",
+                                    "bg-blue-50 text-blue-700 ring-blue-200",
+                                    "bg-violet-50 text-violet-700 ring-violet-200",
+                                    "bg-emerald-50 text-emerald-700 ring-emerald-200",
+                                    "bg-amber-50 text-amber-700 ring-amber-200",
+                                    "bg-rose-50 text-rose-700 ring-rose-200",
                                 ];
                                 return (
-                                    <span key={g} className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-xl border ${colors[i % colors.length]}`}>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50" />
+                                    <span key={g} className={`inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl ring-1 ring-inset ${colors[i % colors.length]}`}>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
                                         {g}
                                     </span>
                                 );
@@ -360,6 +440,7 @@ export default function UsersPage() {
                     title="Kullanıcıyı Sil"
                     message={`"${u.firstName} ${u.lastName}" kullanıcısını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`}
                 />
+                {passwordResetModalNode}
             </div>
         );
     }
@@ -367,90 +448,167 @@ export default function UsersPage() {
 
     // ── LIST VIEW ──
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-6 pb-24 lg:pb-0">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-[#0A1931] tracking-tight flex items-center gap-3">Kullanıcılar</h1>
-                    <p className="text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Kullanıcı ve Rol Yönetimi</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1931] tracking-tight flex items-center gap-3">Kullanıcılar</h1>
+                    <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Kullanıcı ve Rol Yönetimi</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button className="px-5 py-2.5 text-xs font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center gap-2 shadow-sm" onClick={downloadTemplate}><Download size={16} /> Şablon</button>
-                    <button onClick={exportExcel} className="px-5 py-2.5 text-xs font-bold bg-white text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all flex items-center gap-2 shadow-sm" title="Excel olarak indir">
-                        <Download size={16} /> İndir (Excel)
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <button className="flex-1 sm:flex-none px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm" onClick={downloadTemplate}><Download size={16} className="shrink-0" /> <span className="hidden sm:inline">Şablon</span></button>
+                    <button onClick={exportExcel} className="flex-1 sm:flex-none px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm" title="Excel olarak indir">
+                        <Download size={16} className="shrink-0" /> <span className="hidden sm:inline">İndir</span>
                     </button>
-                    <button onClick={() => { setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }} className="px-5 py-2.5 text-xs font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center gap-2 shadow-sm"><Upload size={16} /> İçeri Aktar (Excel)</button>
-                    <button onClick={() => { setEditUser(null); setShowAddModal(true); }} className="px-6 py-3 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center gap-2 shadow-lg shadow-black/10"><UserPlus size={18} /> Yeni Kullanıcı</button>
+                    <button onClick={() => { setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }} className="flex-1 sm:flex-none px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm"><Upload size={16} className="shrink-0" /> <span className="hidden sm:inline">Toplu Ekle</span></button>
+                    <button onClick={() => { setEditUser(null); setShowAddModal(true); }} className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A1931]/20"><UserPlus size={20} className="shrink-0" /> Yeni Kullanıcı</button>
                 </div>
             </div>
-            <div className="grid grid-cols-4 gap-4">
-                {[{ label: "Toplam Kullanıcı", value: stats.total, icon: Users, color: "text-[#0A1931]" }, { label: "Aktif Öğrenci", value: stats.active, icon: Check, color: "text-emerald-600" }, { label: "Öğrenci", value: stats.students, icon: GraduationCap, color: "text-[#0A1931]" }, { label: "Demo", value: stats.demo, icon: CalendarIcon, color: "text-[#0A1931]" }].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-6 flex flex-col items-center text-center group hover:border-[#A0AEC0] transition-all">
-                        <s.icon size={20} className="text-[#A0AEC0] mb-3 group-hover:text-[#A0AEC0] transition-colors" />
-                        <div>
-                            <p className={`text-2xl font-bold tracking-tight ${s.color}`}>{s.value}</p>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mt-1">{s.label}</p>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 flex items-center gap-4">
-                <div className="flex-1 relative">
+            <KpiGrid 
+                items={[
+                    { label: "Toplam Kullanıcı", value: stats.total, icon: Users, colorClass: "text-indigo-600", bgClass: "bg-indigo-50" },
+                    { label: "Aktif Öğrenci", value: stats.active, icon: UserCheck, colorClass: "text-emerald-600", bgClass: "bg-emerald-50" },
+                    { label: "Öğrenci", value: stats.students, icon: GraduationCap, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
+                    { label: "Demo", value: stats.demo, icon: CalendarIcon, colorClass: "text-amber-600", bgClass: "bg-amber-50" }
+                ]}
+            />
+            <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
+                <div className="w-full lg:flex-1 relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                     <input type="text" placeholder="İsim, e-posta veya telefon ile ara..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-9 pr-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
                 </div>
-                <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }} className="px-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all">
-                    <option value="all">Tüm Roller</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Eğitmen">Eğitmen</option>
-                    <option value="Öğrenci">Öğrenci</option>
-                    <option value="Muhasebe">Muhasebe</option>
-                    <option value="Asistan">Asistan</option>
-                </select>
-                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="px-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all">
-                    <option value="all">Tüm Durum</option>
-                    <option value="active">Aktif</option>
-                    <option value="inactive">Pasif</option>
-                    <option value="demo">Demo</option>
-                </select>
-                {selected.size > 0 && <button onClick={() => setBulkDeleteOpen(true)} className="px-3 py-2 text-xs font-medium bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1.5"><Trash2 size={14} /> {selected.size} Sil</button>}
+                <div className="grid grid-cols-2 gap-3 w-full lg:w-auto lg:flex">
+                    <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }} className="w-full lg:w-auto px-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all">
+                        <option value="all">Tüm Roller</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Eğitmen">Eğitmen</option>
+                        <option value="Öğrenci">Öğrenci</option>
+                        <option value="Muhasebe">Muhasebe</option>
+                        <option value="Asistan">Asistan</option>
+                    </select>
+                    <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="w-full lg:w-auto px-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all">
+                        <option value="all">Tüm Durum</option>
+                        <option value="active">Aktif</option>
+                        <option value="inactive">Pasif</option>
+                        <option value="demo">Demo</option>
+                    </select>
+                </div>
+                {selected.size > 0 && <button onClick={() => setBulkDeleteOpen(true)} className="w-full lg:w-auto px-4 py-2.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center gap-2"><Trash2 size={16} /> {selected.size} Seçiliyi Sil</button>}
             </div>
             <div className="bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
-                <table className="w-full"><thead><tr className="border-b border-[#E2E8F0] bg-[#E2E8F0]/15">
-                    <th className="w-10 px-4 py-3"><input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={selAll} className="w-4 h-4 rounded border-[#A0AEC0] text-[#1B3B6F]" /></th>
-                    <th className="text-left px-4 py-3"><button onClick={() => toggleSort("name")} className="flex items-center text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider hover:text-[#1B3B6F]">Kullanıcı<SI f="name" /></button></th>
-                    <th className="text-left px-4 py-3"><button onClick={() => toggleSort("role")} className="flex items-center text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider hover:text-[#1B3B6F]">Rol<SI f="role" /></button></th>
-                    <th className="text-left px-4 py-3"><button onClick={() => toggleSort("group")} className="flex items-center text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider hover:text-[#1B3B6F]">Grup<SI f="group" /></button></th>
-                    <th className="text-left px-4 py-3"><button onClick={() => toggleSort("status")} className="flex items-center text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider hover:text-[#1B3B6F]">Durum<SI f="status" /></button></th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider">Telefon</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider">Kayıt Tarihi</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider">Son Giriş</th>
-                    <th className="w-36 text-center text-xs font-semibold text-[#A9A9A9] uppercase tracking-wider px-4 py-3">Hızlı İşlemler</th>
-                </tr></thead><tbody>
-                        {paginated.map((u, idx) => {
-                            const c = rc[u.role] || _default;
-                            const rowBg = selected.has(u.id) ? "bg-[#E2E8F0]/20" : idx % 2 === 0 ? "bg-white" : "bg-[#F0F4F8]";
-                            return (
-                                <tr key={u.id} onClick={() => setDetailUser(u)} className={`border-b border-[#E2E8F0]/40 hover:bg-[#DCE5EF] transition-colors cursor-pointer ${rowBg}`}>
-                                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931]" /></td>
-                                    <td className="px-4 py-3"><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl ${c.avatar} flex items-center justify-center text-white text-[10px] font-bold shadow-sm border border-white/10`}>{ini(u)}</div><div><p className="text-sm font-bold text-[#0A1931] tracking-tight">{u.firstName} {u.lastName}</p><p className="text-[11px] text-[#A0AEC0] font-medium">{u.email}</p></div></div></td>
-                                    <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{roleLabel[u.role] || u.role}</span></td>
-                                    <td className="px-4 py-3">{u.groupNames.length > 0 ? <div className="relative group/grp inline-flex"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg bg-[#1B3B6F]/10 text-[#1B3B6F] border border-[#1B3B6F]/20 cursor-default"><Users size={12} className="text-[#A0AEC0]" />{u.groupNames.length}</span><div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/grp:block"><div className="bg-[#0A1931] text-white rounded-xl shadow-2xl p-3 min-w-[160px] border border-[#1B3B6F]/30"><p className="text-[10px] font-bold uppercase tracking-wider text-[#A0AEC0] mb-2">Gruplar</p><div className="space-y-1">{u.groupNames.map(g => <div key={g} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-white/10">{g}</div>)}</div></div></div></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
-                                    <td className="px-4 py-3"><span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}><span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} />{u.isActive ? "AKTİF" : "PASİF"}{u.studentType === "Demo" && <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-amber-50 text-amber-600 font-bold ml-2">DEMO</span>}</span></td>
-                                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.phone ? <div className="flex items-center gap-2"><a href={`tel:${u.phone.replace(/\s/g, '')}`} className="text-[11px] font-medium text-[#1B3B6F] hover:text-[#0A1931] flex items-center gap-1.5 transition-colors"><Phone size={12} className="text-[#A0AEC0]" />{u.phone}</a><a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="p-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-all hover:scale-110"><svg viewBox="0 0 24 24" width="14" height="14" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg></a></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
-                                    <td className="px-4 py-3"><span className="text-[11px] font-medium text-[#1B3B6F] flex items-center gap-1.5"><CalendarIcon size={12} className="text-[#A0AEC0]" />{new Date(u.createdAt).toLocaleDateString("tr-TR")}</span></td>
-                                    <td className="px-4 py-3"><span className="text-[11px] font-medium text-[#A0AEC0] flex items-center gap-1.5"><Clock size={12} />{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("tr-TR") : "—"}</span></td>
-                                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => setDetailUser(u)} title="Detay" className="p-2 rounded-lg hover:bg-[#E2E8F0]/30 text-[#A0AEC0] hover:text-[#1B3B6F]"><Eye size={18} /></button>
-                                            <button onClick={() => { setEditUser(u); setShowAddModal(true); }} title="Düzenle" className="p-2 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={18} /></button>
-                                            <button onClick={() => toggleActive(u.id)} title={u.isActive ? "Pasife Al" : "Aktif Et"} className={`p-2 rounded-lg ${u.isActive ? "hover:bg-orange-50 text-[#A0AEC0] hover:text-orange-500" : "hover:bg-emerald-50 text-[#A0AEC0] hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
-                                            <button onClick={() => setDeleteTarget(u.id)} title="Sil" className="p-2 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-600"><Trash2 size={18} /></button>
+                {/* ── DESKTOP TABLE ── */}
+                <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full min-w-[900px]"><thead><tr className="border-b border-[#A0AEC0]/40 bg-[#E2E8F0]/50">
+                        <th className="w-10 px-4 py-4"><input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={selAll} className="w-4 h-4 rounded border-[#A0AEC0] text-[#1B3B6F]" /></th>
+                        <th className="text-left px-4 py-4"><button onClick={() => toggleSort("name")} className="flex items-center text-sm font-extrabold text-[#0A1931] uppercase tracking-widest hover:text-[#1B3B6F]">Kullanıcı<SI f="name" /></button></th>
+                        <th className="text-left px-4 py-4"><button onClick={() => toggleSort("role")} className="flex items-center text-sm font-extrabold text-[#0A1931] uppercase tracking-widest hover:text-[#1B3B6F]">Rol<SI f="role" /></button></th>
+                        <th className="text-left px-4 py-4"><button onClick={() => toggleSort("group")} className="flex items-center text-sm font-extrabold text-[#0A1931] uppercase tracking-widest hover:text-[#1B3B6F]">Grup<SI f="group" /></button></th>
+                        <th className="text-left px-4 py-4"><button onClick={() => toggleSort("status")} className="flex items-center text-sm font-extrabold text-[#0A1931] uppercase tracking-widest hover:text-[#1B3B6F]">Durum<SI f="status" /></button></th>
+                        <th className="text-left px-4 py-4 text-sm font-extrabold text-[#0A1931] uppercase tracking-widest">Telefon</th>
+                        <th className="text-left px-4 py-4 text-sm font-extrabold text-[#0A1931] uppercase tracking-widest">Kayıt Tarihi</th>
+                        <th className="text-left px-4 py-4 text-sm font-extrabold text-[#0A1931] uppercase tracking-widest">Son Giriş</th>
+                        <th className="w-36 text-center text-sm font-extrabold text-[#0A1931] uppercase tracking-widest px-4 py-4">Hızlı İşlemler</th>
+                    </tr></thead><tbody>
+                            {paginated.map((u, idx) => {
+                                const c = rc[u.role] || _default;
+                                const rowBg = selected.has(u.id) ? "bg-[#E2E8F0]/20" : idx % 2 === 0 ? "bg-white" : "bg-[#F0F4F8]";
+                                return (
+                                    <tr key={u.id} onClick={() => setDetailUser(u)} className={`border-b border-[#E2E8F0]/40 hover:bg-[#DCE5EF] transition-colors cursor-pointer ${rowBg}`}>
+                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931]" /></td>
+                                        <td className="px-4 py-3"><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl ${c.avatar} flex items-center justify-center text-white text-[10px] font-bold shadow-sm border border-white/10`}>{ini(u)}</div><div><p className="text-sm font-bold text-[#0A1931] tracking-tight">{u.firstName} {u.lastName}</p><p className="text-[11px] text-[#A0AEC0] font-medium">{u.email}</p></div></div></td>
+                                        <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{roleLabel[u.role] || u.role}</span></td>
+                                        <td className="px-4 py-3">{u.groupNames.length > 0 ? <div className="relative group/grp inline-flex"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg bg-[#1B3B6F]/10 text-[#1B3B6F] border border-[#1B3B6F]/20 cursor-default"><Users size={12} className="text-[#A0AEC0]" />{u.groupNames.length}</span><div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/grp:block"><div className="bg-[#0A1931] text-white rounded-xl shadow-2xl p-3 min-w-[160px] border border-[#1B3B6F]/30"><p className="text-[10px] font-bold uppercase tracking-wider text-[#A0AEC0] mb-2">Gruplar</p><div className="space-y-1">{u.groupNames.map(g => <div key={g} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-white/10">{g}</div>)}</div></div></div></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
+                                        <td className="px-4 py-3"><span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}><span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} />{u.isActive ? "AKTİF" : "PASİF"}{u.studentType === "Demo" && <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-amber-50 text-amber-600 font-bold ml-2">DEMO</span>}</span></td>
+                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.phone ? <div className="flex items-center gap-2"><a href={`tel:${u.phone.replace(/\s/g, '')}`} className="text-[11px] font-medium text-[#1B3B6F] hover:text-[#0A1931] flex items-center gap-1.5 transition-colors"><Phone size={12} className="text-[#A0AEC0]" />{u.phone}</a><a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="p-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-all hover:scale-110"><svg viewBox="0 0 24 24" width="14" height="14" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg></a></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
+                                        <td className="px-4 py-3"><span className="text-[11px] font-medium text-[#1B3B6F] flex items-center gap-1.5"><CalendarIcon size={12} className="text-[#A0AEC0]" />{new Date(u.createdAt).toLocaleDateString("tr-TR")}</span></td>
+                                        <td className="px-4 py-3"><span className="text-[11px] font-medium text-[#A0AEC0] flex items-center gap-1.5"><Clock size={12} />{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("tr-TR") : "—"}</span></td>
+                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button onClick={() => setDetailUser(u)} title="Detay" className="p-2 rounded-lg hover:bg-[#E2E8F0]/30 text-[#A0AEC0] hover:text-[#1B3B6F]"><Eye size={18} /></button>
+                                                <button onClick={() => { setEditUser(u); setShowAddModal(true); }} title="Düzenle" className="p-2 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={18} /></button>
+                                                <button onClick={() => toggleActive(u.id)} title={u.isActive ? "Pasife Al" : "Aktif Et"} className={`p-2 rounded-lg ${u.isActive ? "hover:bg-orange-50 text-[#A0AEC0] hover:text-orange-500" : "hover:bg-emerald-50 text-[#A0AEC0] hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
+                                                <button onClick={() => setDeleteTarget(u.id)} title="Sil" className="p-2 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-600"><Trash2 size={18} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody></table>
+                </div>
+
+                {/* ── PREMIUM MOBILE CARDS VIEW ── */}
+                <div className="lg:hidden flex flex-col gap-4">
+                    <div className="px-5 py-4 bg-white rounded-2xl border border-[#E2E8F0]/60 shadow-sm flex items-center justify-between">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={selAll} className="w-5 h-5 rounded border-[#A0AEC0] text-[#1B3B6F] focus:ring-[#1B3B6F]" />
+                            <span className="text-sm font-extrabold text-[#0A1931] uppercase tracking-widest">Tümünü Seç ({paginated.length})</span>
+                        </label>
+                    </div>
+                    {paginated.map((u) => {
+                        const c = rc[u.role] || _default;
+                        const isSelected = selected.has(u.id);
+                        return (
+                            <div key={u.id} className={`relative p-5 rounded-2xl border transition-all duration-300 shadow-sm ${isSelected ? "bg-blue-50/50 border-blue-300 ring-2 ring-blue-500/20" : "bg-white border-[#E2E8F0]/60 hover:shadow-md"}`}>
+                                {/* Checkbox Absolute Top Right */}
+                                <div className="absolute top-5 right-5 z-10">
+                                    <input type="checkbox" checked={isSelected} onChange={() => toggleSel(u.id)} className="w-5 h-5 rounded border-[#A0AEC0] text-[#0A1931] focus:ring-[#0A1931]" />
+                                </div>
+
+                                <div className="flex flex-col gap-4" onClick={() => setDetailUser(u)}>
+                                    {/* Header: Avatar + Info */}
+                                    <div className="flex items-center gap-4 pr-8">
+                                        <div className={`w-14 h-14 rounded-2xl ${c.avatar} flex items-center justify-center text-white text-lg font-bold shadow-lg shrink-0 border-2 border-white`}>
+                                            {ini(u)}
                                         </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody></table>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-base font-extrabold text-[#0A1931] tracking-tight truncate">{u.firstName} {u.lastName}</p>
+                                            <p className="text-xs text-[#A0AEC0] font-medium truncate mt-0.5">{u.email}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Badges */}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl ${c.bg} ${c.text} shadow-sm border`}>
+                                            {roleLabel[u.role] || u.role}
+                                        </span>
+                                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-sm border ${u.isActive ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-[#F0F4F8] text-[#A0AEC0] border-[#E2E8F0]"}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} />
+                                            {u.isActive ? "AKTİF" : "PASİF"}
+                                        </span>
+                                        {u.studentType === "Demo" && (
+                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 shadow-sm">
+                                                DEMO
+                                            </span>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Contact */}
+                                    {u.phone && (
+                                        <div className="flex items-center gap-2 bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0]/50">
+                                            <a href={`tel:${u.phone.replace(/\s/g, '')}`} onClick={e => e.stopPropagation()} className="flex-1 flex items-center justify-center gap-2 text-xs font-bold text-[#1B3B6F] bg-white py-2 rounded-lg shadow-sm border border-[#E2E8F0]">
+                                                <Phone size={14} className="text-[#A0AEC0]" /> {u.phone}
+                                            </a>
+                                            <a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-10 h-10 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors">
+                                                <MessageCircle size={18} />
+                                            </a>
+                                        </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="flex items-center justify-between mt-2 pt-4 border-t border-[#E2E8F0]/60" onClick={e => e.stopPropagation()}>
+                                        <button onClick={() => setDetailUser(u)} className="flex items-center gap-2 text-xs font-bold text-[#1B3B6F] px-4 py-2.5 rounded-xl hover:bg-[#F0F4F8] transition-colors">
+                                            <Eye size={16} /> Profili İncele
+                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#E2E8F0] shadow-sm text-[#A0AEC0] hover:text-amber-600 hover:border-amber-200 transition-colors"><Edit3 size={16} /></button>
+                                            <button onClick={() => toggleActive(u.id)} className={`w-10 h-10 flex items-center justify-center rounded-xl border shadow-sm transition-colors ${u.isActive ? "bg-white border-[#E2E8F0] text-[#A0AEC0] hover:text-orange-500 hover:border-orange-200" : "bg-emerald-50 border-emerald-200 text-emerald-600"}`}>{u.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}</button>
+                                            <button onClick={() => setDeleteTarget(u.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#E2E8F0] shadow-sm text-[#A0AEC0] hover:text-red-600 hover:border-red-200 transition-colors"><Trash2 size={16} /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
                 <div className="flex items-center justify-between px-6 py-4 border-t border-[#E2E8F0]/60 bg-[#E2E8F0]/15">
                     <div className="flex items-center gap-4">
                         <p className="text-[11px] font-bold text-[#A0AEC0] uppercase tracking-widest">{filtered.length} Kayıt · {filtered.length > 0 ? `${(page - 1) * perPage + 1}–${Math.min(page * perPage, filtered.length)}` : '0'}</p>
@@ -470,32 +628,7 @@ export default function UsersPage() {
             <ConfirmDialog open={bulkDeleteOpen} onClose={() => setBulkDeleteOpen(false)} onConfirm={bulkDel} title={`${selected.size} Kullanıcı Sil`} message={`Seçili ${selected.size} kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`} />
             
             {/* Quick Password Reset Modal */}
-            {generatedPwFor && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setGeneratedPwFor(null)} />
-                    <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 text-center animate-fade-in">
-                        <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <KeyRound size={24} />
-                        </div>
-                        <h3 className="text-lg font-bold text-[#0A1931] mb-2">Şifre Sıfırlandı</h3>
-                        <p className="text-sm text-[#A0AEC0] mb-4">
-                            <strong className="text-[#1B3B6F]">{generatedPwFor.name}</strong> için yeni şifre oluşturuldu. Lütfen öğrenciye iletin:
-                        </p>
-                        <div className="flex items-center gap-2 bg-[#F0F4F8] p-3 rounded-xl mb-6">
-                            <code className="flex-1 text-3xl font-mono font-bold text-[#0A1931] tracking-widest">{generatedPwFor.pw}</code>
-                            <button onClick={() => {
-                                navigator.clipboard.writeText(generatedPwFor.pw);
-                                success("Şifre kopyalandı");
-                            }} className="p-3 bg-white rounded-lg hover:bg-[#E2E8F0] transition-colors text-[#1B3B6F] shadow-sm" title="Kopyala">
-                                <Copy size={20} />
-                            </button>
-                        </div>
-                        <button onClick={() => setGeneratedPwFor(null)} className="w-full py-3 bg-[#0A1931] text-white font-bold rounded-xl hover:bg-[#1B3B6F] transition-colors">
-                            Tamam
-                        </button>
-                    </div>
-                </div>
-            )}
+            {passwordResetModalNode}
 
             {bulkModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => setBulkModalOpen(false)}>

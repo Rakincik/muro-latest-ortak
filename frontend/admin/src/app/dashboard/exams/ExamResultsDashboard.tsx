@@ -127,17 +127,18 @@ export default function ExamResultsDashboard({ exam, onClose }: Props) {
                 {summary && (
                     <div className="grid grid-cols-5 gap-4">
                         {[
-                            { label: "Katılımcı", value: summary.totalParticipants, icon: Users, color: "text-[#1B3B6F]", bg: "bg-[#1B3B6F]/5" },
-                            { label: "Ortalama Puan", value: `${summary.averageScore}%`, icon: Award, color: "text-amber-600", bg: "bg-amber-50" },
-                            { label: "Ortalama Net", value: summary.averageNet, icon: Target, color: "text-blue-600", bg: "bg-blue-50" },
-                            { label: "En Yüksek", value: `${summary.highestScore}%`, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-                            { label: "En Düşük", value: `${summary.lowestScore}%`, icon: XCircle, color: "text-red-600", bg: "bg-red-50" },
+                            { label: "Katılımcı", value: summary.totalParticipants, icon: Users, color: "text-[#0A1931]" },
+                            { label: "Ort. Puan", value: `${summary.averageScore}%`, icon: Award, color: "text-[#0A1931]" },
+                            { label: "Ort. Net", value: summary.averageNet, icon: Target, color: "text-[#0A1931]" },
+                            { label: "En Yüksek", value: `${summary.highestScore}%`, icon: CheckCircle2, color: "text-emerald-600" },
+                            { label: "En Düşük", value: `${summary.lowestScore}%`, icon: XCircle, color: "text-rose-600" },
                         ].map((s, i) => (
-                            <div key={i} className={`p-5 rounded-2xl border border-white/50 shadow-sm relative overflow-hidden ${s.bg}`}>
-                                <s.icon size={24} className={`mb-3 opacity-80 ${s.color}`} />
-                                <p className={`text-3xl font-bold tracking-tight ${s.color}`}>{s.value}</p>
-                                <p className={`text-xs font-bold uppercase tracking-wider mt-1 opacity-70 ${s.color}`}>{s.label}</p>
-                                <s.icon size={80} className={`absolute -bottom-4 -right-4 opacity-10 ${s.color}`} />
+                            <div key={i} className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-sm relative overflow-hidden flex flex-col justify-between h-[110px]">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">{s.label}</p>
+                                    <s.icon size={16} className="text-[#A0AEC0]" />
+                                </div>
+                                <p className={`text-3xl font-black tracking-tight ${s.color}`}>{s.value}</p>
                             </div>
                         ))}
                     </div>
@@ -210,9 +211,15 @@ export default function ExamResultsDashboard({ exam, onClose }: Props) {
                                                 <td className="py-4 px-6">
                                                     <div className="font-bold text-[#0A1931]">{r.userFullName}</div>
                                                 </td>
-                                                <td className="py-4 px-6 text-sm font-bold text-emerald-600 bg-emerald-50/30">{r.correctCount}</td>
-                                                <td className="py-4 px-6 text-sm font-bold text-red-600 bg-red-50/30">{r.wrongCount}</td>
-                                                <td className="py-4 px-6 text-sm font-medium text-[#A0AEC0]">{r.emptyCount}</td>
+                                                <td className="py-4 px-6">
+                                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-xs font-bold">{r.correctCount}</span>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 text-xs font-bold">{r.wrongCount}</span>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-md bg-[#E2E8F0]/50 text-[#A0AEC0] text-xs font-bold">{r.emptyCount}</span>
+                                                </td>
                                                 
                                                 {/* Dynamic Section Nets */}
                                                 {sectionKeys.map(key => {
@@ -225,23 +232,14 @@ export default function ExamResultsDashboard({ exam, onClose }: Props) {
                                                 })}
 
                                                 <td className="py-4 px-6">
-                                                    <span className="inline-flex items-center justify-center min-w-[3rem] px-2.5 py-1 rounded-lg bg-[#0A1931] text-white font-bold shadow-md">
+                                                    <span className="text-sm font-black text-[#0A1931] bg-[#F8FAFC] px-3 py-1 rounded-lg border border-[#E2E8F0]">
                                                         {r.net}
                                                     </span>
                                                 </td>
                                                 <td className="py-4 px-6">
-                                                    <div className="relative inline-flex items-center justify-between w-24 h-8 px-2 rounded-xl border shadow-sm overflow-hidden bg-slate-50">
-                                                        <div 
-                                                            className="absolute left-0 top-0 h-full opacity-20"
-                                                            style={{ 
-                                                                width: `${Math.min(100, Math.max(0, (r.score / 100) * 100))}%`,
-                                                                background: r.score >= 80 ? 'green' : r.score >= 50 ? 'orange' : 'red'
-                                                            }}
-                                                        />
-                                                        <span className="relative z-10 font-bold text-[#0A1931] w-full text-center">
-                                                            {r.score.toFixed(1)}
-                                                        </span>
-                                                    </div>
+                                                    <span className={`text-sm font-black ${r.score >= 50 ? 'text-[#0A1931]' : 'text-rose-600'}`}>
+                                                        {r.score.toFixed(1)}
+                                                    </span>
                                                 </td>
                                             </tr>
                                         </React.Fragment>

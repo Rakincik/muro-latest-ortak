@@ -1,12 +1,16 @@
+using MURO.Domain.Common;
 using MURO.Domain.Enums;
 
 namespace MURO.Domain.Entities;
 
-public class Tenant
+public class Tenant : ISoftDeletable
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     // — Branding & Customization —
     public string? Subdomain { get; set; }           // "abckpss" → abckpss.muro.com.tr

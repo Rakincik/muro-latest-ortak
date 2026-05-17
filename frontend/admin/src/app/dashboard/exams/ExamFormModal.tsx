@@ -147,10 +147,12 @@ export interface ExamFormData {
     startDate: string; endDate: string; showResults: boolean;
     answerKey: Record<number, string>;
     questionWeights: Record<number, number>;
+    questionTopics: Record<number, string>;
     sections: ExamSection[];
     assignments: { targetType: string; targetId: string; targetName: string }[];
     resultMode: string; resultPublishDate: string; wrongPenaltyWeight: number;
     maxScore: number;
+    baseScore: number;
     virtualParticipantCount: number;
     status: string;
 }
@@ -193,12 +195,13 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                 endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().slice(0, 16) : "",
                 showResults: initialData.showResults ?? true, answerKey: initialData.answerKey || {},
                 questionWeights: initialData.questionWeights || defTemplate.defaultWeights || {},
+                questionTopics: initialData.questionTopics || {},
                 sections: initialData.sections || defTemplate.sections,
                 assignments: initialData.assignments || [],
                 resultMode: initialData.resultMode || "immediate",
                 resultPublishDate: initialData.resultPublishDate ? new Date(initialData.resultPublishDate).toISOString().slice(0, 16) : "",
                 wrongPenaltyWeight: initialData.wrongPenaltyWeight ?? defTemplate.penalty,
-                maxScore: initialData.maxScore || 100, virtualParticipantCount: initialData.virtualParticipantCount || 0,
+                maxScore: initialData.maxScore ?? 100, baseScore: initialData.baseScore ?? 0, virtualParticipantCount: initialData.virtualParticipantCount || 0,
                 status: initialData.status || "Taslak",
             };
         }
@@ -206,10 +209,10 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
             title: "", description: "", examType: "TYT", questionCount: defTemplate.questionCount,
             optionCount: defTemplate.options, durationMinutes: defTemplate.duration,
             pdfUrl: "", solutionPdfUrl: "", startDate: "", endDate: "",
-            showResults: true, answerKey: {}, questionWeights: defTemplate.defaultWeights ?? {},
+            showResults: true, answerKey: {}, questionWeights: defTemplate.defaultWeights ?? {}, questionTopics: {},
             sections: defTemplate.sections, assignments: [],
             resultMode: "immediate", resultPublishDate: "", wrongPenaltyWeight: defTemplate.penalty,
-            maxScore: 100, virtualParticipantCount: 0,
+            maxScore: 100, baseScore: 0, virtualParticipantCount: 0,
             status: "Taslak",
         };
     });
@@ -255,6 +258,7 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
             sections: t.sections,
             answerKey: {},
             questionWeights: t.defaultWeights ?? {},
+            questionTopics: {},
         }));
     }, []);
 
@@ -268,6 +272,10 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
 
     const setWeight = (q: number, w: number) => {
         setF(prev => ({ ...prev, questionWeights: { ...prev.questionWeights, [q]: Math.round(w * 1000) / 1000 } }));
+    };
+
+    const setTopic = (q: number, val: string) => {
+        setF(prev => ({ ...prev, questionTopics: { ...prev.questionTopics, [q]: val } }));
     };
 
     const toggleGroup = (g: GroupDto) => {
@@ -393,10 +401,17 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                                     </select>
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Taban Puan</label>
-                                <input type="number" value={f.maxScore} onChange={e => upd("maxScore", Math.max(0, +e.target.value))} min={0} className={inp} placeholder="100" />
-                                <p className="text-[9px] text-[#A0AEC0] mt-1">Net negatife düştüğünde verilecek minimum puan (ör. TYT: 100, AYT: 0)</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Taban Puan</label>
+                                    <input type="number" value={f.baseScore} onChange={e => upd("baseScore", Math.max(0, +e.target.value))} min={0} className={inp} placeholder="0" />
+                                    <p className="text-[9px] text-[#A0AEC0] mt-1">Sınava girişte verilen puan (ör. TYT: 100)</p>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Tavan Puan</label>
+                                    <input type="number" value={f.maxScore} onChange={e => upd("maxScore", Math.max(f.baseScore, +e.target.value))} min={f.baseScore} className={inp} placeholder="100" />
+                                    <p className="text-[9px] text-[#A0AEC0] mt-1">Sınavın toplam değeri (ör. TYT: 500, Quiz: 100)</p>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -587,6 +602,7 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                                                     <thead className="sticky top-8 bg-white z-[5]">
                                                         <tr className="border-b-2 border-[#E2E8F0]/60">
                                                             <th className="py-1 px-2 text-left text-[10px] font-bold text-[#A9A9A9] w-10">#</th>
+                                                            <th className="py-1 px-2 text-left text-[10px] font-bold text-[#A9A9A9] w-28">Konu (Kazanım)</th>
                                                             {options.map(o => <th key={o} className="py-1 px-1 text-center text-[10px] font-bold text-[#A9A9A9] w-8">{o}</th>)}
                                                             <th className="py-1 px-1 text-center text-[10px] font-bold text-[#A9A9A9] w-8">✓</th>
                                                             <th className="py-1 px-1 text-center text-[10px] font-bold text-[#A9A9A9] w-20">Katsayı</th>
@@ -595,7 +611,12 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                                                     <tbody>
                                                         {Array.from({ length: sec.end - sec.start + 1 }, (_, i) => sec.start + i).map(q => (
                                                             <tr key={q} className={`border-b border-[#E2E8F0] ${f.answerKey[q] ? "" : "bg-amber-50/30"}`}>
-                                                                <td className="py-0.5 px-2 text-[10px] font-bold text-[#A9A9A9]">{q}</td>
+                                                                <td className="py-0.5 px-2 text-[10px] font-bold text-[#A9A9A9]">{q - sec.start + 1}</td>
+                                                                <td className="py-0.5 px-1">
+                                                                    <input type="text" value={f.questionTopics[q] || ""} onChange={e => setTopic(q, e.target.value)}
+                                                                        placeholder="Opsiyonel"
+                                                                        className="w-full px-2 py-0.5 text-[9px] border border-[#E2E8F0] rounded-md focus:outline-none focus:ring-1 focus:ring-[#0A1931]/20" />
+                                                                </td>
                                                                 {options.map(o => (
                                                                     <td key={o} className="py-0.5 px-1 text-center">
                                                                         <button onClick={() => toggleAnswer(q, o)}
@@ -624,6 +645,7 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                                         <thead className="sticky top-0 bg-white z-10">
                                             <tr className="border-b-2 border-[#E2E8F0]/60">
                                                 <th className="py-2 px-3 text-left text-xs font-bold text-[#A9A9A9] w-14">#</th>
+                                                <th className="py-2 px-2 text-left text-xs font-bold text-[#A9A9A9] w-32">Konu (Kazanım)</th>
                                                 {options.map(o => <th key={o} className="py-2 px-1 text-center text-xs font-bold text-[#A9A9A9] w-12">{o}</th>)}
                                                 <th className="py-2 px-2 text-center text-xs font-bold text-[#A9A9A9] w-12">✓</th>
                                                 <th className="py-2 px-2 text-center text-xs font-bold text-[#A9A9A9] w-24">Katsayı</th>
@@ -633,6 +655,11 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                                             {Array.from({ length: f.questionCount }, (_, i) => i + 1).map(q => (
                                                 <tr key={q} className={`border-b border-[#E2E8F0] ${q % 2 === 0 ? "bg-[#E2E8F0]/10" : ""} ${f.answerKey[q] ? "" : "bg-amber-50/30"}`}>
                                                     <td className="py-1 px-3 text-xs font-bold text-[#A9A9A9]">{q}</td>
+                                                    <td className="py-1 px-1">
+                                                        <input type="text" value={f.questionTopics[q] || ""} onChange={e => setTopic(q, e.target.value)}
+                                                            placeholder="Konu (Opsiyonel)"
+                                                            className="w-full px-2 py-1 text-[10px] border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#0A1931]/20" />
+                                                    </td>
                                                     {options.map(o => (
                                                         <td key={o} className="py-1 px-1 text-center">
                                                             <button onClick={() => toggleAnswer(q, o)}
@@ -823,7 +850,7 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
                                     ["Soru / Seçenek", `${f.questionCount} soru, ${f.optionCount} seçenek`],
                                     ["Süre", `${f.durationMinutes} dk`],
                                     ["Yanlış D. Götürme", f.wrongPenaltyWeight === 0 ? "Yok" : `${f.wrongPenaltyWeight}`],
-                                    ["Taban Puan", `${f.maxScore}`],
+                                    ["Puanlama", `${f.baseScore} → ${f.maxScore} puan`],
                                     ["Sınav PDF", f.pdfUrl ? "✅ Yüklendi" : "⚠️ Yüklenmedi"],
                                     ["Çözüm PDF", f.solutionPdfUrl ? "✅ Yüklendi" : "— Opsiyonel"],
                                     ["Tarih", f.startDate && f.endDate ? `${new Date(f.startDate).toLocaleDateString("tr-TR")} → ${new Date(f.endDate).toLocaleDateString("tr-TR")}` : "⚠️ Belirlenmedi"],
@@ -866,3 +893,4 @@ export default function ExamFormModal({ onClose, onSave, initialData }: Props) {
         </div>
     );
 }
+

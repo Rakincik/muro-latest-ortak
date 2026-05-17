@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     Calendar as CalIcon, Plus, ChevronLeft, ChevronRight, X,
@@ -64,6 +64,10 @@ export default function CalendarPage() {
     const [viewMode, setViewMode] = useState<ViewMode>("month");
     const [defaultTime, setDefaultTime] = useState<string | null>(null);
 
+    const [resizingEvent, setResizingEvent] = useState<{ id: string, startY: number, initialHeight: number, mode: "day" | "week" } | null>(null);
+    const resizeHeightRef = useRef<number | null>(null);
+    const isResizingRef = useRef(false);
+
     // Courses for drag & drop
     const [courses, setCourses] = useState<CourseListDto[]>([]);
     const [courseSearch, setCourseSearch] = useState("");
@@ -86,6 +90,61 @@ export default function CalendarPage() {
     }, [token, tenantId, year, month]);
 
     useEffect(() => { load(); }, [token, tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Drag-to-Resize Logic ──────────────────────────────────────────────────
+    useEffect(() => {
+        if (!resizingEvent) return;
+
+        const handleMouseMove = (e: MouseEvent) => {
+            const deltaY = e.clientY - resizingEvent.startY;
+            const newHeight = Math.max(20, resizingEvent.initialHeight + deltaY);
+            resizeHeightRef.current = newHeight;
+            
+            // Bypass React rendering for 60fps smooth drag
+            const el = document.getElementById(`event-${resizingEvent.id}`);
+            if (el) el.style.height = `${newHeight}px`;
+        };
+
+        const handleMouseUp = async (e: MouseEvent) => {
+            if (!resizingEvent || resizeHeightRef.current === null || !token || !tenantId) return;
+            const pxPerHour = resizingEvent.mode === "day" ? 76 : 60;
+            const deltaY = resizeHeightRef.current - resizingEvent.initialHeight;
+            // Snapping to closest 30 min (0.5 hour) or 15 min. Let's do 15 min (0.25 hour)
+            let hoursAdded = Math.round((deltaY / pxPerHour) * 4) / 4; 
+            
+            if (hoursAdded !== 0) {
+                const ev = events.find(x => x.id === resizingEvent.id);
+                if (ev) {
+                    const oldStart = new Date(ev.startDate);
+                    const oldEnd = new Date(ev.endDate);
+                    const newEnd = new Date(oldEnd.getTime() + hoursAdded * 60 * 60 * 1000);
+                    
+                    if (newEnd > oldStart) {
+                        try {
+                            const updated = await calendarApi.update(token, tenantId, ev.id, {
+                                ...ev,
+                                endDate: newEnd.toISOString()
+                            });
+                            setEvents(prev => prev.map(x => x.id === ev.id ? updated : x));
+                            success("Süre güncellendi");
+                        } catch {
+                            toastError("Hata", "Süre güncellenemedi.");
+                        }
+                    }
+                }
+            }
+            setResizingEvent(null);
+            resizeHeightRef.current = null;
+            setTimeout(() => { isResizingRef.current = false; }, 100);
+        };
+
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+        return () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [resizingEvent, events, token, tenantId]);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -173,6 +232,7 @@ export default function CalendarPage() {
 
     // Navigate to course page when clicking an event with courseId
     const handleEventClick = (ev: CalendarEventDto) => {
+        if (isResizingRef.current) return;
         if (ev.courseId) {
             router.push(`/dashboard/courses?courseId=${ev.courseId}`);
         }
@@ -246,11 +306,11 @@ export default function CalendarPage() {
                     <button onClick={goToday} className="px-3 py-1.5 text-xs font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/40 rounded-xl transition-colors">Bugün</button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-[#E2E8F0]/20 rounded-xl overflow-hidden mr-2 p-0.5">
+                    <div className="flex items-center bg-[#E2E8F0]/20 rounded-xl overflow-hidden mr-2 p-1">
                         {([["day", "Gün", Sun], ["week", "Hafta", Layers], ["month", "Ay", LayoutGrid]] as const).map(([val, lbl, Icon]) => (
                             <button key={val} onClick={() => setViewMode(val)}
-                                className={`px-4 py-2 text-xs font-bold flex items-center gap-1.5 transition-all ${viewMode === val ? "bg-[#0A1931] text-white rounded-lg shadow-sm" : "text-[#A9A9A9] hover:text-[#1B3B6F]"}`}>
-                                <Icon size={14} /> {lbl}
+                                className={`px-5 py-2.5 text-sm font-bold flex items-center gap-2 transition-all ${viewMode === val ? "bg-[#0A1931] text-white rounded-lg shadow-sm" : "text-[#A9A9A9] hover:text-[#1B3B6F]"}`}>
+                                <Icon size={16} /> {lbl}
                             </button>
                         ))}
                     </div>
@@ -324,28 +384,53 @@ export default function CalendarPage() {
                                                         const widthPercent = 100 / evs.length;
                                                         const leftPercent = idx * widthPercent;
                                                         
+                                                        const isResizing = resizingEvent?.id === ev.id;
+                                                        const finalHeight = isResizing && resizeHeightRef.current !== null ? `${resizeHeightRef.current}px` : `${dur * 76 - 6}px`;
+
                                                         return (
-                                                            <div key={ev.id} onClick={() => handleEventClick(ev)}
-                                                                draggable
-                                                                onDragStart={(e) => { e.stopPropagation(); setDragEvent(ev); }}
+                                                            <div key={ev.id} id={`event-${ev.id}`} onClick={() => handleEventClick(ev)}
+                                                                draggable={!isResizing}
+                                                                onDragStart={(e) => { if(isResizing) return e.preventDefault(); e.stopPropagation(); setDragEvent(ev); }}
                                                                 onDragEnd={() => { setDragEvent(null); setDropTarget(null); }}
-                                                                className={`absolute rounded-2xl p-4 border ${col.border} ${col.bg} group cursor-grab active:cursor-grabbing hover:shadow-lg hover:z-20 transition-all z-10 overflow-hidden`}
+                                                                className={`absolute rounded-2xl p-4 border ${col.border} ${col.bg} group ${!isResizing ? 'cursor-grab active:cursor-grabbing' : ''} hover:shadow-lg hover:z-20 transition-all z-10 overflow-hidden flex flex-col`}
                                                                 style={{ 
-                                                                    height: `${dur * 76 - 6}px`,
+                                                                    height: finalHeight,
                                                                     left: `calc(${leftPercent}% + 8px)`,
                                                                     width: `calc(${widthPercent}% - 16px)`
                                                                 }}>
-                                                                <div className="flex items-start justify-between">
-                                                                    <div className="min-w-0">
-                                                                        <p className={`text-sm font-bold ${col.text} flex items-center gap-2 truncate`}>{ev.title} {isLive && <ExternalLink size={14} className="shrink-0" />}</p>
-                                                                        <p className="text-xs font-medium text-[#64748B] mt-1.5">{evStartTime(ev)} — {evEndTime(ev)}</p>
-                                                                    </div>
-                                                                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 shrink-0 bg-white/50 backdrop-blur-sm rounded-lg p-0.5 ml-1" onClick={e => e.stopPropagation()}>
-                                                                        <button onClick={() => { setEditEvent(ev); setShowForm(true); }} className="p-1.5 rounded-md hover:bg-white text-[#64748B] hover:text-[#0A1931] shadow-sm"><Edit3 size={14} /></button>
-                                                                        <button onClick={() => setDeleteTarget(ev.id)} className="p-1.5 rounded-md hover:bg-red-50 text-[#64748B] hover:text-red-500 shadow-sm"><Trash2 size={14} /></button>
-                                                                    </div>
+                                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 shrink-0 bg-white/50 backdrop-blur-sm rounded-lg p-0.5 z-20" onClick={e => e.stopPropagation()}>
+                                                                    <button onClick={() => { setEditEvent(ev); setShowForm(true); }} className="p-1 rounded-md hover:bg-white text-[#64748B] hover:text-[#0A1931] shadow-sm"><Edit3 size={14} /></button>
+                                                                    <button onClick={() => setDeleteTarget(ev.id)} className="p-1 rounded-md hover:bg-red-50 text-[#64748B] hover:text-red-500 shadow-sm"><Trash2 size={14} /></button>
                                                                 </div>
-                                                                {isLive && evs.length === 1 && <p className="text-xs text-emerald-600 font-bold mt-2.5 truncate">🔗 Dersi başlatmak için tıkla</p>}
+
+                                                                <div className={`flex flex-col min-h-0 w-full h-full ${dur > 1 ? 'items-center justify-center text-center -mt-3' : 'justify-start'}`}>
+                                                                    <div className="min-w-0 px-1 w-full">
+                                                                        <p className={`font-bold ${col.text} flex items-center gap-2 truncate ${dur > 1 ? 'text-lg justify-center mb-1' : 'text-sm'}`}>
+                                                                            {ev.title} {isLive && <ExternalLink size={dur > 1 ? 16 : 14} className="shrink-0 opacity-70" />}
+                                                                        </p>
+                                                                        <p className={`font-medium text-[#64748B] ${dur > 1 ? 'text-sm' : 'text-xs mt-1.5'}`}>
+                                                                            {evStartTime(ev)} — {evEndTime(ev)}
+                                                                        </p>
+                                                                    </div>
+                                                                    {isLive && evs.length === 1 && (
+                                                                        <p className={`text-emerald-600 font-bold truncate pb-1 ${dur > 1 ? 'text-sm mt-3' : 'text-xs mt-2.5'}`}>
+                                                                            🔗 Dersi başlatmak için tıkla
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                
+                                                                {/* Resize Handle */}
+                                                                <div 
+                                                                    onMouseDown={(e) => {
+                                                                        e.stopPropagation();
+                                                                        isResizingRef.current = true;
+                                                                        setResizingEvent({ id: ev.id, startY: e.clientY, initialHeight: dur * 76 - 6, mode: "day" });
+                                                                        resizeHeightRef.current = dur * 76 - 6;
+                                                                    }}
+                                                                    className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize hover:bg-black/10 flex items-center justify-center rounded-b-2xl group/resize"
+                                                                >
+                                                                    <div className="w-8 h-1 rounded-full bg-black/20 group-hover/resize:bg-black/40" />
+                                                                </div>
                                                             </div>
                                                         );
                                                     });
@@ -417,20 +502,37 @@ export default function CalendarPage() {
                                                             const col = getColor(ev.eventType);
                                                             const widthPercent = 100 / evs.length;
                                                             const leftPercent = idx * widthPercent;
+                                                            const dur = Math.max(1, evEndHour(ev) - h);
+                                                            const isResizing = resizingEvent?.id === ev.id;
+                                                            const finalHeight = isResizing && resizeHeightRef.current !== null ? `${resizeHeightRef.current}px` : `${dur * 60 - 4}px`;
                                                             
                                                             return (
-                                                                <div key={ev.id} onClick={() => handleEventClick(ev)}
-                                                                    draggable
-                                                                    onDragStart={(e) => { e.stopPropagation(); setDragEvent(ev); }}
+                                                                <div key={ev.id} id={`event-${ev.id}`} onClick={() => handleEventClick(ev)}
+                                                                    draggable={!isResizing}
+                                                                    onDragStart={(e) => { if(isResizing) return e.preventDefault(); e.stopPropagation(); setDragEvent(ev); }}
                                                                     onDragEnd={() => { setDragEvent(null); setDropTarget(null); }}
-                                                                    className={`absolute top-0.5 rounded-xl px-1.5 py-1.5 border ${col.border} ${col.bg} cursor-grab active:cursor-grabbing hover:shadow-sm hover:z-20 z-10 overflow-hidden`}
+                                                                    className={`absolute top-0.5 rounded-xl px-1.5 py-1.5 border ${col.border} ${col.bg} flex flex-col ${!isResizing ? 'cursor-grab active:cursor-grabbing' : ''} hover:shadow-sm hover:z-20 z-10 overflow-hidden group`}
                                                                     style={{ 
-                                                                        height: `${Math.max(1, evEndHour(ev) - h) * 60 - 4}px`,
+                                                                        height: finalHeight,
                                                                         left: `calc(${leftPercent}% + 2px)`,
                                                                         width: `calc(${widthPercent}% - 4px)`
                                                                     }}>
-                                                                    <p className={`text-[9px] leading-tight font-bold ${col.text} truncate`}>{ev.title}</p>
-                                                                    <p className="text-[9px] leading-none text-[#A0AEC0] mt-0.5 truncate">{evStartTime(ev)}</p>
+                                                                    <div className="flex-1 min-h-0">
+                                                                        <p className={`text-[9px] leading-tight font-bold ${col.text} truncate`}>{ev.title}</p>
+                                                                        <p className="text-[9px] leading-none text-[#A0AEC0] mt-0.5 truncate">{evStartTime(ev)}</p>
+                                                                    </div>
+                                                                    {/* Resize Handle */}
+                                                                    <div 
+                                                                        onMouseDown={(e) => {
+                                                                            e.stopPropagation();
+                                                                            isResizingRef.current = true;
+                                                                            setResizingEvent({ id: ev.id, startY: e.clientY, initialHeight: dur * 60 - 4, mode: "week" });
+                                                                            resizeHeightRef.current = dur * 60 - 4;
+                                                                        }}
+                                                                        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-black/10 flex items-center justify-center rounded-b-xl group/resize"
+                                                                    >
+                                                                        <div className="w-4 h-0.5 rounded-full bg-black/20 group-hover/resize:bg-black/40" />
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })}
@@ -519,6 +621,7 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClos
     const [form, setForm] = useState({
         title: event?.title || (droppedCourse ? `${droppedCourse.title} — Canlı Ders` : ""),
         date: event ? event.startDate.substring(0, 10) : (defaultDate || ""),
+        endDate: event ? event.endDate.substring(0, 10) : (defaultDate || ""),
         startTime: event ? evStartTime(event) : (defaultTime || "09:00"),
         endTime: event ? evEndTime(event) : (defaultTime ? `${String(parseInt(defaultTime) + 1).padStart(2, "0")}:00` : "10:00"),
         eventType: event?.eventType || (droppedCourse ? "Canlı Ders" : "Etkinlik"),
@@ -526,10 +629,13 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClos
         courseId: event?.courseId || droppedCourse?.id,
     });
 
+    const isFullDay = form.eventType === "Tatil" || form.eventType === "Etkinlik";
+    const typeLocked = !!droppedCourse || !!event?.courseId;
+
     const buildPayload = (): CreateCalendarEventRequest => ({
         title: form.title,
-        startDate: new Date(`${form.date}T${form.startTime}:00`).toISOString(),
-        endDate: new Date(`${form.date}T${form.endTime}:00`).toISOString(),
+        startDate: isFullDay ? new Date(`${form.date}T00:00:00`).toISOString() : new Date(`${form.date}T${form.startTime}:00`).toISOString(),
+        endDate: isFullDay ? new Date(`${form.endDate}T23:59:59`).toISOString() : new Date(`${form.date}T${form.endTime}:00`).toISOString(),
         eventType: form.eventType,
         description: form.description || undefined,
         courseId: form.courseId,
@@ -553,24 +659,37 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClos
                     <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlık *</label>
                         <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
                             className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]" placeholder="Etkinlik adı" /></div>
-                    <div className="grid grid-cols-3 gap-4">
-                        <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Tarih</label>
+                    <div className={`grid ${isFullDay ? 'grid-cols-2' : 'grid-cols-3'} gap-4`}>
+                        <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">{isFullDay ? "Başlangıç Tarihi" : "Tarih"}</label>
                             <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
                                 className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
-                        <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlangıç</label>
-                            <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))}
+                        {isFullDay ? (
+                            <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş Tarihi</label>
+                            <input type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
                                 className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
-                        <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş</label>
-                            <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))}
-                                className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                        ) : (
+                            <>
+                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlangıç</label>
+                                    <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))}
+                                        className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş</label>
+                                    <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))}
+                                        className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                            </>
+                        )}
                     </div>
                     <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Tür</label>
                         <div className="grid grid-cols-3 gap-2">
                             {Object.keys(eventColors).map(t => {
                                 const c = getColor(t);
                                 const Ic = eventIcons[t];
-                                return (<button key={t} type="button" onClick={() => setForm(p => ({ ...p, eventType: t }))}
-                                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 ${form.eventType === t ? `${c.bg} ${c.border} ${c.text} ring-2 ring-offset-1` : "bg-white text-[#A9A9A9] border-[#E2E8F0] hover:bg-[#F8FAFC]"}`}>
+                                return (<button key={t} type="button" 
+                                    disabled={typeLocked && form.eventType !== t}
+                                    onClick={() => setForm(p => ({ ...p, eventType: t }))}
+                                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 
+                                        ${form.eventType === t ? `${c.bg} ${c.border} ${c.text} ring-2 ring-offset-1` : 
+                                        typeLocked ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50" :
+                                        "bg-white text-[#A9A9A9] border-[#E2E8F0] hover:bg-[#F8FAFC]"}`}>
                                     {Ic && <Ic size={14} />}{t}</button>);
                             })}
                         </div></div>

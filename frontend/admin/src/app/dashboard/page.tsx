@@ -8,6 +8,7 @@ import {
     BarChart3, Eye, Play, MessageSquare, Award, Loader2
 } from "lucide-react";
 import Link from "next/link";
+import { KpiGrid } from "@/components/ui/KpiGrid";
 import { useAuth } from "@/contexts/AuthContext";
 import {
     analyticsApi,
@@ -130,33 +131,28 @@ export default function DashboardPage() {
             </div>
 
             {/* ── Stat Cards ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                {statCards.map((s) => (
-                    <div key={s.label}
-                        className="bg-white rounded-2xl border border-[#E2E8F0] p-5 hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 group">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <p className="text-sm text-[#A9A9A9] font-medium">{s.label}</p>
-                                <p className="text-3xl font-bold text-[#0A1931] mt-1.5 tracking-tight">{s.value}</p>
-                                <p className="text-xs text-[#A0AEC0] mt-2">{s.sub}</p>
-                            </div>
-                            <div className={`w-12 h-12 rounded-2xl ${s.color} ${s.shadow} shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                                <s.icon size={22} className="text-white" />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <KpiGrid 
+                items={statCards.map(s => ({
+                    label: s.label,
+                    value: s.value,
+                    subValue: s.sub,
+                    icon: s.icon,
+                    bgClass: s.color.replace('bg-', 'bg-').replace(']', ']/10'),
+                    colorClass: s.color.replace('bg-', 'text-'),
+                    iconColorClass: s.color.replace('bg-', 'text-')
+                }))}
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5"
+            />
 
             {/* ── Quick Links ── */}
             <div className="bg-white rounded-2xl border border-[#E2E8F0] p-5">
                 <h2 className="text-sm font-semibold text-[#0A1931] mb-3">Hızlı Erişim</h2>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                     {quickLinks.map((l) => (
                         <Link key={l.label} href={l.href}
-                            className={`flex flex-col items-center gap-2 p-3.5 rounded-xl transition-all duration-200 ${l.color}`}>
-                            <l.icon size={22} />
-                            <span className="text-xs font-medium">{l.label}</span>
+                            className={`flex flex-col items-center justify-center text-center gap-2 p-3.5 rounded-xl transition-all duration-200 ${l.color}`}>
+                            <l.icon size={22} className="shrink-0" />
+                            <span className="text-xs font-medium leading-tight">{l.label}</span>
                         </Link>
                     ))}
                 </div>
@@ -187,20 +183,20 @@ export default function DashboardPage() {
                             Henüz haftalık aktivite verisi yok
                         </div>
                     ) : (
-                        <div className="flex items-end gap-3 h-48">
+                        <div className="flex items-end gap-1 sm:gap-3 h-48">
                             {weeklyData.map((d) => (
                                 <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                                     <div className="w-full flex flex-col gap-1 items-center" style={{ height: '160px' }}>
-                                        <div className="w-full flex gap-1 items-end h-full">
-                                            <div className="flex-1 rounded-lg bg-[#1B3B6F] transition-all duration-500 hover:opacity-80"
+                                        <div className="w-full flex gap-0.5 sm:gap-1 items-end h-full">
+                                            <div className="flex-1 rounded-sm sm:rounded-lg bg-[#1B3B6F] transition-all duration-500 hover:opacity-80"
                                                 style={{ height: `${(d.videoMinutes / maxViews) * 100}%` }}
                                                 title={`${d.videoMinutes} dk izlenme`} />
-                                            <div className="flex-1 rounded-lg bg-teal-500 transition-all duration-500 hover:opacity-80"
+                                            <div className="flex-1 rounded-sm sm:rounded-lg bg-teal-500 transition-all duration-500 hover:opacity-80"
                                                 style={{ height: `${(d.sessions / maxViews) * 100}%` }}
                                                 title={`${d.sessions} oturum`} />
                                         </div>
                                     </div>
-                                    <span className="text-xs font-medium text-[#A9A9A9]">{d.day}</span>
+                                    <span className="text-[10px] sm:text-xs font-medium text-[#A9A9A9] truncate w-full text-center">{d.day}</span>
                                 </div>
                             ))}
                         </div>
@@ -344,30 +340,30 @@ export default function DashboardPage() {
             </div>
 
             {/* ── Dashboard KPIs Bar ── */}
-            <div className="bg-[#0A1931] rounded-3xl p-8 border border-[#1B3B6F]/20 shadow-2xl shadow-[#0A1931]/30 flex items-center justify-between">
-                <div className="flex items-center gap-5">
+            <div className="bg-[#0A1931] rounded-3xl p-6 lg:p-8 border border-[#1B3B6F]/20 shadow-2xl shadow-[#0A1931]/30 flex flex-col xl:flex-row xl:items-center justify-between gap-6 xl:gap-0">
+                <div className="flex items-center gap-5 justify-center xl:justify-start">
                     <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] animate-pulse" />
                     <div>
                         <p className="text-sm font-bold text-white uppercase tracking-widest opacity-80">Sistem Özeti</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Gerçek zamanlı veriler</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-12">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 xl:flex xl:items-center xl:gap-12">
                     <div className="text-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{stats.activeStudents}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Aktif Öğrenci</p>
                     </div>
-                    <div className="w-px h-10 bg-[#1B3B6F]/30" />
+                    <div className="hidden xl:block w-px h-10 bg-[#1B3B6F]/30" />
                     <div className="text-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{stats.publishedCourses}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Yayında Ders</p>
                     </div>
-                    <div className="w-px h-10 bg-[#1B3B6F]/30" />
+                    <div className="hidden xl:block w-px h-10 bg-[#1B3B6F]/30" />
                     <div className="text-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{dashboard?.totalVideosWatched ?? 0}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Video İzlenme</p>
                     </div>
-                    <div className="w-px h-10 bg-[#1B3B6F]/30" />
+                    <div className="hidden xl:block w-px h-10 bg-[#1B3B6F]/30" />
                     <div className="text-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{stats.totalExams}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Sınav</p>

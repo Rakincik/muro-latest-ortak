@@ -171,6 +171,7 @@ public class UploadProcessingJob : BackgroundService
         asset.FilePath      = null;                      // Orijinal kaynak bırakılabilir veya null yapılabilir, mevcut kodda null
         asset.HlsPath       = $"/hls/{asset.TenantId}/{asset.Id}/master.m3u8";
         asset.ThumbnailPath = string.IsNullOrEmpty(result.ThumbnailPath) ? null : $"/hls/{asset.TenantId}/{asset.Id}/thumbnail.jpg";
+        if (result.DurationSeconds.HasValue) asset.DurationSeconds = result.DurationSeconds;
         asset.Status        = MediaStatus.Ready;
 
         await UpdateRecordingStatusAsync(db, asset.Id, MediaStatus.Ready, ct);

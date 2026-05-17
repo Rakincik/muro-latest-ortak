@@ -1,9 +1,14 @@
+using MURO.Domain.Common;
+
 namespace MURO.Domain.Entities;
 
-public class Assignment
+public class Assignment : ISoftDeletable
 {
     public Guid Id { get; set; }
     public Guid CourseId { get; set; }
+
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
     public Guid TenantId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

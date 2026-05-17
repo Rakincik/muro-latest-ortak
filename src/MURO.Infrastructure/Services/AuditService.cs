@@ -114,4 +114,69 @@ public class AuditService : IAuditService
             );
         }, TimeSpan.FromMinutes(2));
     }
+
+    public async Task<PagedResult<UserAuditSummaryDto>> GetUserAuditSummariesAsync(Guid tenantId, int page, int pageSize, string? search = null)
+    {
+        var q = _context.AuditLogs.AsNoTracking()
+            .Where(a => a.TenantId == tenantId); // Sadece tenantId filtrele, null olanları da getir.
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            q = q.Where(a => a.UserName != null && a.UserName.ToLower().Contains(searchLower));
+        }
+
+        var grouped = q.GroupBy(a => new { a.UserId, a.UserName })
+            .Select(g => new {
+                g.Key.UserId,
+                g.Key.UserName,
+                ActionCount = g.Count(),
+                LastActionAt = g.Max(a => a.CreatedAt)
+            });
+
+        var total = await grouped.CountAsync();
+        
+        var items = await grouped.OrderByDescending(x => x.ActionCount)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var result = items.Select(x => new UserAuditSummaryDto(
+            x.UserId, x.UserName, x.ActionCount, x.LastActionAt
+        )).ToList();
+
+        return new PagedResult<UserAuditSummaryDto>(result, total, page, pageSize, (int)Math.Ceiling(total / (double)pageSize));
+    }
+
+    public async Task<List<SuspiciousUserDto>> GetSuspiciousUsersAsync(Guid tenantId)
+    {
+        // Get suspicious security events within the last 7 days
+        var thresholdDate = DateTime.UtcNow.AddDays(-7);
+        var suspiciousEvents = await _context.SecurityEvents.AsNoTracking()
+            .Include(e => e.User)
+            .Where(e => e.TenantId == tenantId && 
+                        e.CreatedAt >= thresholdDate && 
+                        e.UserId != null &&
+                        (e.EventType == "SESSION_KICKED" || e.EventType == "BRUTE_FORCE_DETECTED" || e.EventType == "LOGIN_FAILED"))
+            .ToListAsync();
+
+        // We only flag users who have SESSION_KICKED, BRUTE_FORCE, or >=5 LOGIN_FAILED
+        var grouped = suspiciousEvents
+            .GroupBy(e => new { e.UserId, UserName = e.User != null ? e.User.FirstName + " " + e.User.LastName : "Bilinmeyen Kullanıcı", e.EventType })
+            .Select(g => new
+            {
+                g.Key.UserId,
+                g.Key.UserName,
+                g.Key.EventType,
+                EventCount = g.Count(),
+                LastEventAt = g.Max(e => e.CreatedAt)
+            })
+            .Where(x => x.EventType != "LOGIN_FAILED" || x.EventCount >= 5) // Only flag if multiple failures
+            .OrderByDescending(x => x.LastEventAt)
+            .Take(20)
+            .Select(x => new SuspiciousUserDto(x.UserId, x.UserName, x.EventType, x.EventCount, x.LastEventAt))
+            .ToList();
+
+        return grouped;
+    }
 }

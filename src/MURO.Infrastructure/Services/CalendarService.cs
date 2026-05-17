@@ -30,7 +30,7 @@ public class CalendarService : ICalendarService
                 query = query.Where(e => e.GroupId == groupId);
 
             if (instructorId.HasValue)
-                query = query.Where(e => e.CourseId != null && e.Course.InstructorId == instructorId.Value);
+                query = query.Where(e => e.CourseId != null && e.Course!.InstructorId == instructorId.Value);
 
             return await query
                 .Include(e => e.Group)

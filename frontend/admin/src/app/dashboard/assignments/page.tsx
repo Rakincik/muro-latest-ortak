@@ -226,11 +226,18 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
     const [isSearchingUsers, setIsSearchingUsers] = useState(false);
     const [userSearchFocused, setUserSearchFocused] = useState(false);
 
-    // Fetch groups once
+    // Fetch groups dynamically based on selected course
     useEffect(() => {
-        if (!token || !tenantId) return;
-        groupsApi.list(token, tenantId, { pageSize: 200 }).then(res => setGroups(res.items || [])).catch(() => {});
-    }, [token, tenantId]);
+        if (!token || !tenantId || !form.courseId) {
+            setGroups([]);
+            return;
+        }
+        courseApi.getById(token, tenantId, form.courseId)
+            .then(res => {
+                setGroups(res.groups?.map(g => ({ id: g.groupId, name: g.groupName } as GroupListDto)) || []);
+            })
+            .catch(() => setGroups([]));
+    }, [form.courseId, token, tenantId]);
 
     // Search users with debounce
     useEffect(() => {

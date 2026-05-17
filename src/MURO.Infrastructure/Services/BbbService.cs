@@ -211,7 +211,7 @@ public class BbbService : IBbbService
                     RecordingId: r.RecordId ?? "",
                     MeetingId: r.MeetingId ?? meetingId,
                     PlaybackUrl: r.PlaybackFormats?.FirstOrDefault()?.Url,
-                    DurationSeconds: ParseDuration(r.Duration),
+                    DurationSeconds: ParseRecordingDuration(r),
                     StartTime: ParseUnixTimestamp(r.StartTime),
                     Status: r.State ?? "unknown"
                 ))
@@ -425,6 +425,17 @@ public class BbbService : IBbbService
         if (long.TryParse(value, out var ms))
             return (int)(ms / 1000);
         return 0;
+    }
+
+    private static int ParseRecordingDuration(BbbXmlRecording r)
+    {
+        // format.length is usually in minutes
+        var format = r.PlaybackFormats?.FirstOrDefault();
+        if (format != null && !string.IsNullOrEmpty(format.Length) && int.TryParse(format.Length, out var minutes) && minutes > 0)
+        {
+            return minutes * 60;
+        }
+        return ParseDuration(r.Duration);
     }
 
     private static DateTime ParseUnixTimestamp(string? value)

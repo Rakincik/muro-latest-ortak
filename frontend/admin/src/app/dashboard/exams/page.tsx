@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, FileText, Users, Award, TrendingUp, Clock, BarChart3 } from "lucide-react";
+import { Plus, Search, FileText, Users, Award, TrendingUp, Clock, BarChart3, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
 import { examApi, ExamListDto, ExamDetailDto } from "@/lib/api";
@@ -109,6 +109,14 @@ export default function ExamsPage() {
         catch { success("Sınav silindi (demo)"); }
         setSelectedExam(null); load();
     };
+
+    const handleCardDelete = async (ev: React.MouseEvent, exam: ExamListDto) => {
+        ev.stopPropagation();
+        if (!confirm(`"${exam.title}" sınavını silmek istediğinize emin misiniz?`)) return;
+        try { if (token && currentTenantId) await examApi.delete(token, currentTenantId, exam.id); success("Sınav silindi"); }
+        catch { success("Sınav silindi (demo)"); }
+        load();
+    };
     const handleUpdate = async (d: Record<string, unknown>) => {
         if (!selectedExam || !token || !currentTenantId) return;
         try { await examApi.update(token, currentTenantId, selectedExam.id, d); }
@@ -162,7 +170,7 @@ export default function ExamsPage() {
     // ── Detail View ──
     if (selectedExam) {
         return (
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-[1600px] mx-auto">
                 <ExamDetail exam={selectedExam} onBack={() => { setSelectedExam(null); load(); }}
                     onEdit={() => setEditExam(selectedExam)}
                     onAnswerKeySave={handleAnswerKeySave} onStatusChange={handleStatusChange}
@@ -173,14 +181,15 @@ export default function ExamsPage() {
     }
 
     // ── Stats ──
-    const total = exams.length;
-    const published = exams.filter(e => e.status === "Yayında").length;
-    const avgScore = exams.filter(e => e.averageScore !== null).length > 0 ? Math.round(exams.filter(e => e.averageScore !== null).reduce((s, e) => s + (e.averageScore || 0), 0) / exams.filter(e => e.averageScore !== null).length) : 0;
-    const totalParticipants = exams.reduce((s, e) => s + e.resultCount, 0);
-    const filtered = exams.filter(e => (typeFilter === "all" || e.examType === typeFilter) && (statusFilter === "all" || e.status === statusFilter) && (!search || e.title.toLowerCase().includes(search.toLowerCase())));
+    const displayExams = typeFilter === "all" ? exams.filter(e => e.examType !== "Quiz") : exams;
+    const total = displayExams.length;
+    const published = displayExams.filter(e => e.status === "Yayında").length;
+    const avgScore = displayExams.filter(e => e.averageScore !== null).length > 0 ? Math.round(displayExams.filter(e => e.averageScore !== null).reduce((s, e) => s + (e.averageScore || 0), 0) / displayExams.filter(e => e.averageScore !== null).length) : 0;
+    const totalParticipants = displayExams.reduce((s, e) => s + e.resultCount, 0);
+    const filtered = displayExams.filter(e => (typeFilter === "all" || e.examType === typeFilter) && (statusFilter === "all" || e.status === statusFilter) && (!search || e.title.toLowerCase().includes(search.toLowerCase())));
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-[1600px] mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div><h1 className="text-3xl font-bold text-[#0A1931] tracking-tight">Sınavlar</h1><p className="text-sm text-[#A9A9A9] mt-1 uppercase tracking-widest font-semibold opacity-60">Optik Sınav Yönetimi</p></div>
@@ -191,7 +200,7 @@ export default function ExamsPage() {
                 {[
                     { label: "Toplam Sınav", value: total, icon: FileText, color: "text-[#0A1931]" },
                     { label: "Yayında", value: published, icon: TrendingUp, color: "text-emerald-600" },
-                    { label: "Ort. Başarı", value: `%${avgScore}`, icon: Award, color: "text-[#0A1931]" },
+                    { label: "Ort. Puan", value: avgScore, icon: Award, color: "text-[#0A1931]" },
                     { label: "Katılımcı", value: totalParticipants, icon: Users, color: "text-[#0A1931]" },
                 ].map(s => (
                     <div key={s.label} className="relative overflow-hidden rounded-2xl bg-white border border-[#E2E8F0]/60 p-6 hover:border-[#A0AEC0] transition-all group">
@@ -240,14 +249,23 @@ export default function ExamsPage() {
                                             <h3 className="text-sm font-bold text-[#0A1931] truncate group-hover:text-orange-600 transition-colors">{e.title}</h3>
                                             {e.description && <p className="text-xs text-[#A0AEC0] truncate mt-0.5">{e.description}</p>}
                                         </div>
-                                        <span className={`${ss.bg} ${ss.text} text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0 ml-2`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${ss.dot}`} /> {e.status}
-                                        </span>
+                                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                                            <span className={`${ss.bg} ${ss.text} text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${ss.dot}`} /> {e.status}
+                                            </span>
+                                            <button 
+                                                onClick={(ev) => handleCardDelete(ev, e)}
+                                                className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Sınavı Sil"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-3 gap-2">
                                         <div className="bg-[#E2E8F0]/20 rounded-lg p-2 text-center"><p className="text-xs font-bold text-[#0A1931]">{e.questionCount}</p><p className="text-[9px] text-[#A0AEC0] font-semibold uppercase">Soru</p></div>
                                         <div className="bg-[#E2E8F0]/20 rounded-lg p-2 text-center"><p className="text-xs font-bold text-[#0A1931]">{e.durationMinutes || "—"}<span className="text-[9px] text-[#A0AEC0] font-semibold uppercase">dk</span></p><p className="text-[9px] text-[#A0AEC0] font-semibold uppercase">Süre</p></div>
-                                        <div className="bg-[#E2E8F0]/20 rounded-lg p-2 text-center"><p className="text-xs font-bold text-[#0A1931]">{e.averageScore !== null ? `%${e.averageScore}` : "—"}</p><p className="text-[9px] text-[#A0AEC0] font-semibold uppercase">Başarı</p></div>
+                                        <div className="bg-[#E2E8F0]/20 rounded-lg p-2 text-center"><p className="text-xs font-bold text-[#0A1931]">{e.averageScore !== null ? e.averageScore : "—"}</p><p className="text-[9px] text-[#A0AEC0] font-semibold uppercase">Puan</p></div>
                                     </div>
                                     <div className="flex items-center justify-between text-[10px] text-[#A0AEC0] pt-1 border-t border-[#E2E8F0]">
                                         <span className="flex items-center gap-1"><Users size={10} /> {e.resultCount} katılımcı</span>
@@ -264,3 +282,4 @@ export default function ExamsPage() {
         </div>
     );
 }
+

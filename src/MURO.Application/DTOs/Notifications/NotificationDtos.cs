@@ -16,5 +16,6 @@ public record CreateNotificationRequest(
 
 public record BulkNotificationRequest(
     List<Guid> UserIds, string Title, string Body, string? Type,
-    Guid? GroupId = null, bool SendToAll = false, DateTime? ScheduledAt = null
+    Guid? GroupId = null, bool SendToAll = false, DateTime? ScheduledAt = null,
+    Guid? CourseId = null
 );

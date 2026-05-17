@@ -64,6 +64,9 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
@@ -72,6 +75,9 @@ namespace MURO.Infrastructure.Migrations
 
                     b.Property<string>("FileUrl")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("MaxScore")
                         .HasColumnType("integer");
@@ -245,11 +251,17 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
                     b.Property<Guid?>("InstructorId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("boolean");
@@ -367,17 +379,27 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("MediaAssetId")
+                    b.Property<Guid?>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("MediaAssetId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("OrderIndex")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
 
                     b.HasIndex("MediaAssetId");
 
                     b.HasIndex("OrderIndex");
+
+                    b.HasIndex("SessionId");
 
                     b.HasIndex("CourseId", "MediaAssetId")
                         .IsUnique();
@@ -440,10 +462,19 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<string>("AnswerKeyJson")
                         .HasColumnType("text");
 
+                    b.Property<double>("BaseScore")
+                        .HasColumnType("double precision");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DigitalQuestionsJson")
                         .HasColumnType("text");
 
                     b.Property<int?>("DurationMinutes")
@@ -455,6 +486,9 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<string>("ExamType")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<double>("MaxScore")
                         .HasColumnType("double precision");
@@ -591,6 +625,46 @@ namespace MURO.Infrastructure.Migrations
                     b.ToTable("ExamResults");
                 });
 
+            modelBuilder.Entity("MURO.Domain.Entities.ExamSubmissionQueue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExamId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.ToTable("ExamSubmissionQueues");
+                });
+
             modelBuilder.Entity("MURO.Domain.Entities.Faq", b =>
                 {
                     b.Property<Guid>("Id")
@@ -636,11 +710,17 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
                     b.Property<string>("EducationType")
                         .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1084,11 +1164,17 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
                     b.Property<int?>("DurationMinutes")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsFree")
                         .HasColumnType("boolean");
@@ -1193,6 +1279,38 @@ namespace MURO.Infrastructure.Migrations
                     b.ToTable("SessionRecordings");
                 });
 
+            modelBuilder.Entity("MURO.Domain.Entities.StudentExamDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("ExamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ExamId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("StudentExamDrafts");
+                });
+
             modelBuilder.Entity("MURO.Domain.Entities.SupportMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1289,6 +1407,9 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Domain")
                         .HasColumnType("text");
 
@@ -1302,6 +1423,9 @@ namespace MURO.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("JitsiServerUrl")
@@ -1448,6 +1572,9 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("DemoExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1463,6 +1590,9 @@ namespace MURO.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastLoginAt")
@@ -1767,15 +1897,26 @@ namespace MURO.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MURO.Domain.Entities.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId");
+
                     b.HasOne("MURO.Domain.Entities.MediaAsset", "MediaAsset")
                         .WithMany("CourseMedias")
                         .HasForeignKey("MediaAssetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MURO.Domain.Entities.Session", "Session")
+                        .WithMany()
+                        .HasForeignKey("SessionId");
 
                     b.Navigation("Course");
 
+                    b.Navigation("Exam");
+
                     b.Navigation("MediaAsset");
+
+                    b.Navigation("Session");
                 });
 
             modelBuilder.Entity("MURO.Domain.Entities.DeviceSession", b =>
@@ -1827,6 +1968,25 @@ namespace MURO.Infrastructure.Migrations
 
                     b.HasOne("MURO.Domain.Entities.User", "User")
                         .WithMany("ExamResults")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MURO.Domain.Entities.ExamSubmissionQueue", b =>
+                {
+                    b.HasOne("MURO.Domain.Entities.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MURO.Domain.Entities.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2095,6 +2255,25 @@ namespace MURO.Infrastructure.Migrations
                     b.Navigation("MediaAsset");
 
                     b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("MURO.Domain.Entities.StudentExamDraft", b =>
+                {
+                    b.HasOne("MURO.Domain.Entities.Exam", "Exam")
+                        .WithMany()
+                        .HasForeignKey("ExamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MURO.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Exam");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MURO.Domain.Entities.SupportMessage", b =>

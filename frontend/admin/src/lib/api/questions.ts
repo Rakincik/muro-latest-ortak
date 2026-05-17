@@ -8,23 +8,24 @@ export const questionApi = {
         if (params?.pageSize) qs.set('pageSize', String(params.pageSize));
         if (params?.status) qs.set('status', params.status);
         if (params?.instructorId) qs.set('instructorId', params.instructorId);
-        return api<{ items: QuestionDto[]; totalCount: number; page: number; pageSize: number; totalPages: number }>(`/questions?${qs}`, { token, tenantId });
+        return api<{ items: QuestionDto[]; totalCount: number; page: number; pageSize: number; totalPages: number }>("/questions?" + qs.toString(), { token, tenantId });
     },
 
     getById: (token: string, tenantId: string, id: string) =>
-        api<QuestionDto>(`/questions/${id}`, { token, tenantId }),
+        api<QuestionDto>("/questions/" + id, { token, tenantId }),
 
     ask: (token: string, tenantId: string, data: CreateQuestionRequest) =>
         api<QuestionDto>('/questions', { method: 'POST', token, tenantId, body: JSON.stringify(data) }),
 
     answer: (token: string, tenantId: string, id: string, answerText: string) =>
-        api<QuestionDto>(`/questions/${id}/answer`, { method: 'PUT', token, tenantId, body: JSON.stringify({ answer: answerText }) }),
+        api<QuestionDto>("/questions/" + id + "/answer", { method: 'PUT', token, tenantId, body: JSON.stringify({ answer: answerText }) }),
 
     updateNote: (token: string, tenantId: string, id: string, note: string | null) =>
-        api<QuestionDto>(`/questions/${id}/note`, { method: 'PATCH', token, tenantId, body: JSON.stringify({ note }) }),
+        api<QuestionDto>("/questions/" + id + "/note", { method: 'PATCH', token, tenantId, body: JSON.stringify({ note }) }),
+        
+    deleteQuestion: (token: string, tenantId: string, id: string) =>
+        api<void>("/questions/" + id, { method: 'DELETE', token, tenantId }),
+        
+    deleteAnswer: (token: string, tenantId: string, id: string) =>
+        api<QuestionDto>("/questions/" + id + "/answer", { method: 'DELETE', token, tenantId }),
 };
-
-// ── Audit API ─────────────────────────────────────────────────────────────
-
-
-

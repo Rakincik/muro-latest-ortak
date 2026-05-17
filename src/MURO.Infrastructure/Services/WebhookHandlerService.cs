@@ -206,7 +206,7 @@ public class WebhookHandlerService : IWebhookHandlerService
             _context.SessionRecordings.Add(recording);
         }
 
-        if (recording.MediaAssetId == null && !string.IsNullOrEmpty(evt.RecordingUrl))
+        if (!string.IsNullOrEmpty(evt.RecordingUrl))
         {
             int? durationSeconds = null;
             if (!string.IsNullOrEmpty(session.BbbMeetingId))
@@ -223,21 +223,26 @@ public class WebhookHandlerService : IWebhookHandlerService
                 }
             }
 
-            var asset = new MediaAsset
+            var asset = recording.MediaAsset;
+            if (asset == null)
             {
-                Id = Guid.NewGuid(),
-                TenantId = evt.TenantId != Guid.Empty ? evt.TenantId : session.Course.TenantId,
-                CourseId = session.CourseId,
-                Title = $"{evt.SessionTitle ?? session.Title} — Kayıt",
-                FilePath = evt.RecordingUrl,
-                HlsPath = null,
-                DurationSeconds = durationSeconds,
-                Status = MediaStatus.Ready,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.MediaAssets.Add(asset);
+                asset = new MediaAsset
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = evt.TenantId != Guid.Empty ? evt.TenantId : session.Course.TenantId,
+                    CourseId = session.CourseId,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.MediaAssets.Add(asset);
+                recording.MediaAssetId = asset.Id;
+            }
 
-            recording.MediaAssetId = asset.Id;
+            asset.Title = $"{evt.SessionTitle ?? session.Title} — Kayıt";
+            asset.FilePath = evt.RecordingUrl;
+            asset.HlsPath = null;
+            asset.DurationSeconds = durationSeconds;
+            asset.Status = MediaStatus.Ready;
+
             recording.Status = MediaStatus.Ready;
         }
 

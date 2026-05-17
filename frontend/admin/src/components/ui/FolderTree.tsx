@@ -76,35 +76,35 @@ const FolderNode: React.FC<FolderNodeProps> = ({ folder, level, activeFolderId, 
                     <span className="truncate text-sm select-none">{folder.name}</span>
                 </div>
 
-                {/* Inline Actions (Hover) */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Inline Actions */}
+                <div className="flex items-center gap-1.5 ml-auto">
                     <button 
                         onClick={(e) => { e.stopPropagation(); onAction('createSub', folder); }}
-                        className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
                         title="Alt Klasör Ekle"
                     >
-                        <Plus size={14} />
+                        <Plus size={18} />
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onAction('rename', folder); }}
-                        className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
                         title="Yeniden Adlandır"
                     >
-                        <Edit2 size={14} />
+                        <Edit2 size={18} />
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onAction('assign', folder); }}
-                        className="p-1 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
                         title="Derse Tanımla"
                     >
-                        <BookOpen size={14} />
+                        <BookOpen size={18} />
                     </button>
                     <button 
                         onClick={(e) => { e.stopPropagation(); onAction('delete', folder); }}
-                        className="p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-100 transition-colors"
                         title="Sil"
                     >
-                        <Trash2 size={14} />
+                        <Trash2 size={18} />
                     </button>
                 </div>
             </div>
@@ -181,13 +181,13 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
             <div className="flex-1 overflow-y-auto p-2">
                 <div 
                     className={`flex items-center gap-2 py-2 px-3 mb-2 cursor-pointer rounded-lg transition-colors ${dragOverFolderId === null ? 'bg-blue-100 ring-2 ring-blue-400' : activeFolderId === null ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'}`}
-                    onClick={() => onSelect(null, [{id: null, name: 'Kök Dizin'}])}
+                    onClick={() => onSelect(null, [{id: null, name: 'Ana Klasör'}])}
                     onDragOver={(e) => onDragOverFolder(e, null)}
                     onDragLeave={onDragLeaveFolder}
                     onDrop={(e) => onDropOnFolder(e, null)}
                 >
                     <Folder size={18} className={activeFolderId === null ? 'text-blue-600' : 'text-gray-400'} />
-                    <span className="text-sm">Kök Dizin</span>
+                    <span className="text-sm font-semibold">Ana Klasör</span>
                 </div>
 
                 {isLoading ? (
@@ -202,7 +202,7 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
                                 folder={folder} 
                                 level={0} 
                                 activeFolderId={activeFolderId}
-                                path={[{id: null, name: 'Kök Dizin'}]}
+                                path={[{id: null, name: 'Ana Klasör'}]}
                                 onSelect={onSelect}
                                 onAction={onAction}
                                 dragOverFolderId={dragOverFolderId}
@@ -222,3 +222,4 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
         </div>
     );
 }
+

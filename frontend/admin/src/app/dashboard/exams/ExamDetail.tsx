@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ArrowLeft, FileText, Clock, Users, Award, BarChart3, Settings, Trash2, ExternalLink, Download, Plus, X, CheckCircle, Upload } from "lucide-react";
 import { uploadApi, type ExamDetailDto } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,6 +83,12 @@ export default function ExamDetail({ exam, onBack, onEdit, onAnswerKeySave, onSt
 
     const filledCount = Object.keys(answerKey).length;
 
+    const sections = useMemo<{ name: string, start: number, end: number }[]>(() => {
+        if (!exam.sectionsJson) return [];
+        try {
+            return JSON.parse(exam.sectionsJson);
+        } catch { return []; }
+    }, [exam.sectionsJson]);
     return (
         <div className="space-y-6">
             {/* Back */}
@@ -109,8 +115,8 @@ export default function ExamDetail({ exam, onBack, onEdit, onAnswerKeySave, onSt
                         {[
                             { label: "Soru", value: exam.questionCount, icon: FileText },
                             { label: "Süre", value: exam.durationMinutes ? `${exam.durationMinutes} dk` : "—", icon: Clock },
-                            { label: "Katılımcı", value: exam.resultCount, icon: Users },
-                            { label: "Ortalama", value: exam.averageScore !== null ? `${exam.averageScore}%` : "—", icon: Award },
+                            { label: "Katılımcı", value: exam.resultCount ?? 0, icon: Users },
+                            { label: "Ortalama", value: (exam.averageScore !== null && exam.averageScore !== undefined) ? `${exam.averageScore}` : "—", icon: Award },
                         ].map(s => (
                             <div key={s.label} className="bg-white/15 rounded-xl p-3 text-center backdrop-blur-sm">
                                 <p className="text-lg font-bold">{s.value}</p>
@@ -185,31 +191,66 @@ export default function ExamDetail({ exam, onBack, onEdit, onAnswerKeySave, onSt
                     </div>
                     {/* Grid */}
                     <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-[#E2E8F0]/60">
-                                    <th className="py-2 px-3 text-left text-xs font-bold text-[#A9A9A9] w-16">#</th>
-                                    {options.map(o => <th key={o} className="py-2 px-2 text-center text-xs font-bold text-[#A9A9A9] w-14">{o}</th>)}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {Array.from({ length: exam.questionCount }, (_, i) => i + 1).map(q => (
-                                    <tr key={q} className={`border-b border-[#E2E8F0] ${q % 2 === 0 ? "bg-[#E2E8F0]/15" : ""}`}>
-                                        <td className="py-1.5 px-3 text-xs font-bold text-[#1B3B6F]">{q}</td>
-                                        {options.map(o => (
-                                            <td key={o} className="py-1.5 px-2 text-center">
-                                                <button onClick={() => toggleAnswer(q, o)}
-                                                    className={`w-10 h-10 rounded-xl border-2 text-sm font-bold transition-all ${answerKey[q] === o
-                                                        ? "bg-[#0A1931] border-[#E2E8F0] text-white scale-110 shadow-lg shadow-[#0A1931]900/20"
-                                                        : "border-[#E2E8F0]/60 text-[#A0AEC0] hover:border-[#E2E8F0] hover:text-[#A9A9A9]"}`}>
-                                                    {o}
-                                                </button>
-                                            </td>
-                                        ))}
-                                    </tr>
+                        {sections.length > 0 ? (
+                            <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar">
+                                {sections.map((sec, idx) => (
+                                    <div key={idx} className="min-w-[max-content] shrink-0">
+                                        <div className="text-center font-bold text-xs bg-[#1B3B6F] text-white py-1.5 rounded-t-lg">{sec.name}</div>
+                                        <table className="w-full border-x border-b border-[#E2E8F0]/60 rounded-b-lg">
+                                            <thead>
+                                                <tr className="border-b border-[#E2E8F0]/60 bg-gray-50">
+                                                    <th className="py-2 px-2 text-left text-xs font-bold text-[#A9A9A9] w-12">#</th>
+                                                    {options.map(o => <th key={o} className="py-2 px-1 text-center text-xs font-bold text-[#A9A9A9] w-10">{o}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Array.from({ length: sec.end - sec.start + 1 }, (_, i) => sec.start + i).map(q => (
+                                                    <tr key={q} className={`border-b border-[#E2E8F0] ${q % 2 === 0 ? "bg-[#E2E8F0]/15" : ""}`}>
+                                                        <td className="py-1 px-2 text-[11px] font-bold text-[#1B3B6F]">{q - sec.start + 1}</td>
+                                                        {options.map(o => (
+                                                            <td key={o} className="py-1 px-1 text-center">
+                                                                <button onClick={() => toggleAnswer(q, o)}
+                                                                    className={`w-8 h-8 rounded-lg border-2 text-[11px] font-bold transition-all ${answerKey[q] === o
+                                                                        ? "bg-[#0A1931] border-[#0A1931] text-white scale-110 shadow-sm"
+                                                                        : "border-[#E2E8F0]/60 text-[#A0AEC0] hover:border-[#E2E8F0] hover:text-[#A9A9A9]"}`}>
+                                                                    {o}
+                                                                </button>
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 ))}
-                            </tbody>
-                        </table>
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-[#E2E8F0]/60">
+                                        <th className="py-2 px-3 text-left text-xs font-bold text-[#A9A9A9] w-16">#</th>
+                                        {options.map(o => <th key={o} className="py-2 px-2 text-center text-xs font-bold text-[#A9A9A9] w-14">{o}</th>)}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Array.from({ length: exam.questionCount }, (_, i) => i + 1).map(q => (
+                                        <tr key={q} className={`border-b border-[#E2E8F0] ${q % 2 === 0 ? "bg-[#E2E8F0]/15" : ""}`}>
+                                            <td className="py-1.5 px-3 text-xs font-bold text-[#1B3B6F]">{q}</td>
+                                            {options.map(o => (
+                                                <td key={o} className="py-1.5 px-2 text-center">
+                                                    <button onClick={() => toggleAnswer(q, o)}
+                                                        className={`w-10 h-10 rounded-xl border-2 text-sm font-bold transition-all ${answerKey[q] === o
+                                                            ? "bg-[#0A1931] border-[#E2E8F0] text-white scale-110 shadow-lg shadow-[#0A1931]900/20"
+                                                            : "border-[#E2E8F0]/60 text-[#A0AEC0] hover:border-[#E2E8F0] hover:text-[#A9A9A9]"}`}>
+                                                        {o}
+                                                    </button>
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             )}

@@ -172,4 +172,7 @@ public class BbbXmlPlaybackFormat
 
     [XmlElement("url")]
     public string? Url { get; set; }
+
+    [XmlElement("length")]
+    public string? Length { get; set; }
 }

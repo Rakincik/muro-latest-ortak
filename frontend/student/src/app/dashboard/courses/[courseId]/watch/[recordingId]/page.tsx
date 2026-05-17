@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { sessionRecordingApi, videoApi, type RecordingDto, type VideoNoteDto } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import Hls from "hls.js";
+import { PremiumPlayer } from "@/components/video/PremiumPlayer";
 import { initSecurityKiosk } from "@/lib/security/antiDebug";
 import {
     ChevronLeft, Play, SkipBack, SkipForward,
@@ -44,10 +44,6 @@ export default function WatchPage() {
     const [sideTab, setSideTab] = useState<"playlist" | "notes">("playlist");
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [securityViolation, setSecurityViolation] = useState(false);
-    
-    // Video and HLS refs
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const hlsRef = useRef<Hls | null>(null);
 
     // ── Watch tracking ──
     const [watchedMap, setWatchedMap] = useState<Record<string, boolean>>({});
@@ -87,57 +83,9 @@ export default function WatchPage() {
     useEffect(() => {
         const cleanup = initSecurityKiosk(() => {
             setSecurityViolation(true);
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-            }
-            if (videoRef.current) {
-                videoRef.current.src = "";
-            }
         });
         return cleanup;
     }, []);
-
-    // ── HLS.js Initialization ──
-    useEffect(() => {
-        if (!currentRec?.playbackUrl || securityViolation || !videoRef.current) return;
-
-        const video = videoRef.current;
-        const url = currentRec.playbackUrl;
-
-        // Destroy previous instance
-        if (hlsRef.current) {
-            hlsRef.current.destroy();
-            hlsRef.current = null;
-        }
-
-        if (Hls.isSupported()) {
-            const hls = new Hls({
-                maxBufferLength: 30, // Limit buffer to prevent full download
-            });
-            hlsRef.current = hls;
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            
-            // Auto play on load
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(() => { /* Autoplay blocked */ });
-            });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            // Native HLS (Safari)
-            video.src = url;
-            video.addEventListener("loadedmetadata", () => {
-                video.play().catch(() => { /* Autoplay blocked */ });
-            });
-        }
-
-        return () => {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-            }
-        };
-    }, [currentRec?.playbackUrl, securityViolation]);
 
     // Load data
     useEffect(() => {
@@ -286,17 +234,15 @@ export default function WatchPage() {
             <div className="flex-1 flex overflow-hidden">
                 {/* ── Video Area ── */}
                 <div className="flex-1 flex flex-col min-w-0">
-                    {/* Video Player (HLS.js / Blob URL) */}
-                    <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden select-none" onContextMenu={e => e.preventDefault()}>
-                        <video
-                            ref={videoRef}
-                            className="w-full h-full outline-none"
-                            controls
-                            controlsList="nodownload nofullscreen noremoteplayback"
-                            disablePictureInPicture
-                            playsInline
-                            webkit-playsinline="true"
-                        />
+                    {/* Video Player */}
+                    <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden select-none">
+                        {currentRec?.playbackUrl && (
+                            <PremiumPlayer 
+                                src={currentRec.playbackUrl} 
+                                poster={currentRec.thumbnailPath}
+                                autoplay={true} 
+                            />
+                        )}
                     </div>
 
                     {/* ── Bottom Info Bar ── */}

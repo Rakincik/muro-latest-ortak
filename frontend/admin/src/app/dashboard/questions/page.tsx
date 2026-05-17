@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import {
     MessageSquare, Search, Send, X, User, Clock,
-    CheckCircle, AlertCircle, Filter, ChevronDown, Image
+    CheckCircle, AlertCircle, Filter, ChevronDown, Image, Trash2
 } from "lucide-react";
 import { useToast } from "@/components/toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { questionApi, type QuestionDto } from "@/lib/api";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 interface Question {
     id: string;
@@ -62,7 +63,7 @@ const statusStyles: Record<string, { bg: string; text: string; dot: string }> = 
 };
 
 export default function QuestionsPage() {
-    const { success } = useToast();
+    const { success, error } = useToast();
     const { token, currentTenantId: tenantId } = useAuth();
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
@@ -70,6 +71,7 @@ export default function QuestionsPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState("");
+    const [confirmConfig, setConfirmConfig] = useState<{open: boolean, title: string, message: string, onConfirm: () => void}>({ open: false, title: "", message: "", onConfirm: () => {} });
 
     // ── Fetch questions from API ──
     const fetchQuestions = async () => {
@@ -108,7 +110,74 @@ export default function QuestionsPage() {
         }
     };
 
+    const handleDeleteQuestion = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!selected || !token || !tenantId) return;
+        setConfirmConfig({
+            open: true,
+            title: "Soruyu Sil",
+            message: "Bu soruyu tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+            onConfirm: async () => {
+                try {
+                    await questionApi.deleteQuestion(token, tenantId, selected.id);
+                    setQuestions(prev => prev.filter(q => q.id !== selected.id));
+                    setSelectedId(null);
+                    success("Soru başarıyla silindi");
+                } catch (e: any) {
+                    error("Hata", e.message || "Soru silinemedi");
+                }
+            }
+        });
+        return;
+        try {
+            await questionApi.deleteQuestion(token, tenantId, selected.id);
+            setQuestions(prev => prev.filter(q => q.id !== selected.id));
+            setSelectedId(null);
+            success("Soru başarıyla silindi");
+        } catch (e: any) {
+            success("Hata", e.message || "Soru silinemedi");
+        }
+    };
+
+    const handleDeleteAnswer = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!selected || !token || !tenantId) return;
+        setConfirmConfig({
+            open: true,
+            title: "Cevabı Sil",
+            message: "Bu cevabı silmek istediğinize emin misiniz? Soru tekrar 'Bekliyor' statüsüne dönecektir.",
+            onConfirm: async () => {
+                try {
+                    const updated = await questionApi.deleteAnswer(token, tenantId, selected.id);
+                    setQuestions(prev => prev.map(q => q.id === selected.id ? mapQuestion(updated) : q));
+                    success("Cevap başarıyla silindi");
+                } catch (e: any) {
+                    error("Hata", e.message || "Cevap silinemedi");
+                }
+            }
+        });
+        return;
+        try {
+            const updated = await questionApi.deleteAnswer(token, tenantId, selected.id);
+            setQuestions(prev => prev.map(q => q.id === selected.id ? mapQuestion(updated) : q));
+            success("Cevap başarıyla silindi");
+        } catch (e: any) {
+            success("Hata", e.message || "Cevap silinemedi");
+        }
+    };
+
     return (
+        <>
+        <ConfirmDialog
+            open={confirmConfig.open}
+            onClose={() => setConfirmConfig(prev => ({ ...prev, open: false }))}
+            onConfirm={confirmConfig.onConfirm}
+            title={confirmConfig.title}
+            message={confirmConfig.message}
+            confirmText="Evet, Sil"
+            cancelText="İptal"
+            variant="danger"
+        />
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
@@ -168,12 +237,18 @@ export default function QuestionsPage() {
                 <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
                     {selected ? (
                         <>
-                            <div className="px-6 py-4 border-b border-[#E2E8F0]/60">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h2 className="text-base font-bold text-[#0A1931]">{selected.title}</h2>
-                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg ${(statusStyles[selected.status] || statusStyles.Bekliyor).bg} ${(statusStyles[selected.status] || statusStyles.Bekliyor).text}`}>{selected.status}</span>
+                            <div className="px-6 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <h2 className="text-base font-bold text-[#0A1931]">{selected.title}</h2>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg ${(statusStyles[selected.status] || statusStyles.Bekliyor).bg} ${(statusStyles[selected.status] || statusStyles.Bekliyor).text}`}>{selected.status}</span>
+                                    </div>
+                                    <p className="text-xs text-[#A0AEC0]">{selected.studentName} · {selected.course} · {selected.createdAt}</p>
                                 </div>
-                                <p className="text-xs text-[#A0AEC0]">{selected.studentName} · {selected.course} · {selected.createdAt}</p>
+                                <button onClick={handleDeleteQuestion} title="Soruyu Komple Sil"
+                                    className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
 
                             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
@@ -202,12 +277,18 @@ export default function QuestionsPage() {
                                 {/* Answer */}
                                 {selected.answer && (
                                     <div className="flex gap-3 justify-end">
-                                        <div className="flex-1 bg-[#E2E8F0]/30 rounded-xl p-4 max-w-[85%]">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <p className="text-xs font-semibold text-[#0A1931]">Eğitmen Yanıtı</p>
+                                        <div className="flex-1 max-w-[85%] group">
+                                            <div className="bg-[#E2E8F0]/30 rounded-xl p-4">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <p className="text-xs font-semibold text-[#0A1931]">Eğitmen Yanıtı</p>
+                                                    <button onClick={handleDeleteAnswer} title="Cevabı Sil"
+                                                        className="text-[#A0AEC0] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                                <p className="text-sm text-[#1B3B6F]">{selected.answer}</p>
+                                                {selected.answeredAt && <p className="text-[10px] text-[#A0AEC0] mt-2">{selected.answeredAt}</p>}
                                             </div>
-                                            <p className="text-sm text-[#1B3B6F]">{selected.answer}</p>
-                                            {selected.answeredAt && <p className="text-[10px] text-[#A0AEC0] mt-2">{selected.answeredAt}</p>}
                                         </div>
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1B3B6F] to-[#1B3B6F] flex items-center justify-center text-white text-xs font-bold shrink-0">
                                             <CheckCircle size={14} />
@@ -240,5 +321,7 @@ export default function QuestionsPage() {
                 </div>
             </div>
         </div>
+        </>
     );
 }
+

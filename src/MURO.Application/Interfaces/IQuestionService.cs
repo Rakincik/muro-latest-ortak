@@ -9,5 +9,7 @@ public interface IQuestionService
     Task<QuestionDto> GetByIdAsync(Guid tenantId, Guid questionId);
     Task<QuestionDto> AskAsync(Guid tenantId, Guid userId, CreateQuestionRequest request);
     Task<QuestionDto> AnswerAsync(Guid tenantId, Guid questionId, AnswerQuestionRequest request);
+    Task<QuestionDto> DeleteAnswerAsync(Guid tenantId, Guid questionId);
     Task<QuestionDto> UpdateNoteAsync(Guid tenantId, Guid questionId, Guid userId, UpdateNoteRequest request);
+    Task DeleteAsync(Guid tenantId, Guid questionId, Guid? userId = null);
 }

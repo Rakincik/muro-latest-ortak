@@ -4,6 +4,7 @@ using MURO.Application.Interfaces;
 using MURO.Infrastructure.Persistence;
 using MURO.Infrastructure.Services;
 using MURO.Worker.Jobs;
+using StackExchange.Redis;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -28,12 +29,23 @@ builder.Services.AddHttpClient("bbb-download", client =>
 builder.Services.AddHttpClient<BbbService>();
 
 // --- Services ---
+var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "127.0.0.1:6379,abortConnect=false";
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConnection;
+    options.InstanceName = "muro:";
+});
+builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+
 builder.Services.AddScoped<IBbbService, BbbService>();
 builder.Services.AddScoped<IHlsProcessingService, HlsProcessingService>();
 
 // --- Background Jobs ---
 builder.Services.AddHostedService<BbbRecordingSyncJob>();
 builder.Services.AddHostedService<UploadProcessingJob>();
+builder.Services.AddHostedService<ExamScoringJob>();
+builder.Services.AddHostedService<SoftDeleteCleanupJob>();
 
 var host = builder.Build();
 

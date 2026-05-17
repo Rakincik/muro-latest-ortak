@@ -19,7 +19,8 @@ public record ExamListDto(
     double WrongPenaltyWeight = 0.25,
     string ResultMode = "immediate",
     DateTime? ResultPublishDate = null,
-    double MaxScore = 0,
+    double MaxScore = 100,
+    double BaseScore = 0,
     int VirtualParticipantCount = 0
 );
 
@@ -47,49 +48,57 @@ public record ExamDetailDto(
     DateTime? ResultPublishDate = null,
     Dictionary<int, double>? QuestionWeights = null,
     string? SectionsJson = null,
-    double MaxScore = 0,
-    int VirtualParticipantCount = 0
+    double MaxScore = 100,
+    double BaseScore = 0,
+    int VirtualParticipantCount = 0,
+    string? DigitalQuestionsJson = null
 );
 
 // ── Oluşturma ──
-public record CreateExamRequest(
-    string Title,
-    string? Description,
-    string ExamType,
-    int QuestionCount,
-    int OptionCount,
-    int? DurationMinutes,
-    DateTime? StartDate,
-    DateTime? EndDate,
-    bool ShowResults,
-    double WrongPenaltyWeight = 0.25,
-    string ResultMode = "immediate",
-    DateTime? ResultPublishDate = null,
-    Dictionary<int, double>? QuestionWeights = null,
-    string? SectionsJson = null,
-    double MaxScore = 0,
-    int VirtualParticipantCount = 0
-);
+public class CreateExamRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string ExamType { get; set; } = string.Empty;
+    public int QuestionCount { get; set; }
+    public int OptionCount { get; set; }
+    public int? DurationMinutes { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public bool ShowResults { get; set; }
+    public double WrongPenaltyWeight { get; set; } = 0.25;
+    public string ResultMode { get; set; } = "immediate";
+    public DateTime? ResultPublishDate { get; set; }
+    public Dictionary<int, double>? QuestionWeights { get; set; }
+    public string? SectionsJson { get; set; }
+    public double MaxScore { get; set; } = 100;
+    public double BaseScore { get; set; } = 0;
+    public int VirtualParticipantCount { get; set; } = 0;
+    public string? DigitalQuestionsJson { get; set; }
+}
 
 // ── Güncelleme ──
-public record UpdateExamRequest(
-    string? Title,
-    string? Description,
-    string? ExamType,
-    int? QuestionCount,
-    int? OptionCount,
-    int? DurationMinutes,
-    DateTime? StartDate,
-    DateTime? EndDate,
-    bool? ShowResults,
-    double? WrongPenaltyWeight,
-    string? ResultMode = null,
-    DateTime? ResultPublishDate = null,
-    Dictionary<int, double>? QuestionWeights = null,
-    string? SectionsJson = null,
-    double? MaxScore = null,
-    int? VirtualParticipantCount = null
-);
+public class UpdateExamRequest
+{
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public string? ExamType { get; set; }
+    public int? QuestionCount { get; set; }
+    public int? OptionCount { get; set; }
+    public int? DurationMinutes { get; set; }
+    public DateTime? StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public bool? ShowResults { get; set; }
+    public double? WrongPenaltyWeight { get; set; }
+    public string? ResultMode { get; set; }
+    public DateTime? ResultPublishDate { get; set; }
+    public Dictionary<int, double>? QuestionWeights { get; set; }
+    public string? SectionsJson { get; set; }
+    public double? MaxScore { get; set; }
+    public double? BaseScore { get; set; }
+    public int? VirtualParticipantCount { get; set; }
+    public string? DigitalQuestionsJson { get; set; }
+}
 
 // ── Cevap Anahtarı ──
 public record UpdateAnswerKeyRequest(
@@ -138,7 +147,8 @@ public record ExamResultDto(
     DateTime SubmittedAt,
     DateTime? StartedAt = null,
     int? DurationSeconds = null,
-    Dictionary<string, SectionResultDto>? SectionResults = null
+    Dictionary<string, SectionResultDto>? SectionResults = null,
+    bool IsPending = false
 );
 
 public record ExamResultSummaryDto(

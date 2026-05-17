@@ -13,6 +13,10 @@ public interface IAuditService
                                                  string? search = null, DateTime? from = null, DateTime? to = null);
 
     Task<AuditSummaryDto> GetSummaryAsync(Guid tenantId, DateTime from, DateTime to);
+    
+    Task<PagedResult<UserAuditSummaryDto>> GetUserAuditSummariesAsync(Guid tenantId, int page, int pageSize, string? search = null);
+    
+    Task<List<SuspiciousUserDto>> GetSuspiciousUsersAsync(Guid tenantId);
 }
 
 public record AuditLogDto(
@@ -28,4 +32,19 @@ public record AuditSummaryDto(
     int DeleteCount,
     int NightActivityCount,
     Dictionary<string, int> TopEntities
+);
+
+public record UserAuditSummaryDto(
+    Guid? UserId,
+    string? UserName,
+    int ActionCount,
+    DateTime LastActionAt
+);
+
+public record SuspiciousUserDto(
+    Guid? UserId,
+    string? UserName,
+    string AlertType,
+    int EventCount,
+    DateTime LastEventAt
 );

@@ -106,6 +106,21 @@ public class QuestionService : IQuestionService
         return ToDto(q, $"{q.User.FirstName} {q.User.LastName}", $"{q.Instructor.FirstName} {q.Instructor.LastName}", q.Course?.Title);
     }
 
+    public async Task<QuestionDto> DeleteAnswerAsync(Guid tenantId, Guid questionId)
+    {
+        var q = await _context.Questions.Include(q => q.User).Include(q => q.Instructor)
+            .FirstOrDefaultAsync(q => q.Id == questionId && q.TenantId == tenantId)
+            ?? throw new KeyNotFoundException("Soru bulunamadı.");
+
+        q.Answer = null;
+        q.AnsweredAt = null;
+        q.Status = "pending";
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
+
+        return ToDto(q, $"{q.User.FirstName} {q.User.LastName}", $"{q.Instructor.FirstName} {q.Instructor.LastName}", q.Course?.Title);
+    }
+
     public async Task<QuestionDto> UpdateNoteAsync(Guid tenantId, Guid questionId, Guid userId, UpdateNoteRequest request)
     {
         var q = await _context.Questions.Include(q => q.User).Include(q => q.Instructor)
@@ -117,5 +132,20 @@ public class QuestionService : IQuestionService
         await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
 
         return ToDto(q, $"{q.User.FirstName} {q.User.LastName}", $"{q.Instructor.FirstName} {q.Instructor.LastName}", q.Course?.Title);
+    }
+
+    public async Task DeleteAsync(Guid tenantId, Guid questionId, Guid? userId = null)
+    {
+        var query = _context.Questions.Where(q => q.Id == questionId && q.TenantId == tenantId);
+        if (userId.HasValue) query = query.Where(q => q.UserId == userId.Value);
+
+        var q = await query.FirstOrDefaultAsync() ?? throw new KeyNotFoundException("Soru bulunamadı veya silme yetkiniz yok.");
+        
+        if (userId.HasValue && q.Status != "pending")
+            throw new InvalidOperationException("Yanıtlanmış sorular silinemez.");
+
+        _context.Questions.Remove(q);
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
     }
 }

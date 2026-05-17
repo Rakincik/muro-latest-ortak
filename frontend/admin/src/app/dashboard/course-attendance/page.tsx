@@ -31,12 +31,14 @@ function CountUp({ target, duration = 600 }: { target: number; duration?: number
 
 
 function rateColor(rate: number) {
+    if (rate === 0) return "text-[#A0AEC0]";
     if (rate >= 80) return "text-emerald-600";
     if (rate >= 60) return "text-amber-600";
     return "text-red-600";
 }
 
 function rateBg(rate: number) {
+    if (rate === 0) return "bg-[#E2E8F0]";
     if (rate >= 80) return "bg-emerald-500";
     if (rate >= 60) return "bg-amber-500";
     return "bg-red-500";
@@ -87,6 +89,15 @@ export default function CourseAttendancePage() {
     // Build student-level attendance data
     const studentMap = useMemo(() => {
         const map = new Map<string, { name: string; sessions: Map<string, boolean> }>();
+        
+        // Önce kayıtlı tüm öğrencileri map'e ekle (0% olarak başlasınlar)
+        if (report?.enrolledStudents) {
+            report.enrolledStudents.forEach(st => {
+                map.set(st.userId, { name: st.fullName, sessions: new Map() });
+            });
+        }
+        
+        // Sonra oturum katılımlarını işle
         sessionDetails.forEach(sd => {
             sd.attendees.forEach(a => {
                 if (!map.has(a.userId)) map.set(a.userId, { name: a.userFullName, sessions: new Map() });
@@ -94,7 +105,7 @@ export default function CourseAttendancePage() {
             });
         });
         return map;
-    }, [sessionDetails]);
+    }, [sessionDetails, report]);
 
     const students = useMemo(() => {
         if (!report) return [];
@@ -254,9 +265,11 @@ export default function CourseAttendancePage() {
                             <div className={`rounded-xl border p-4 ${riskStudents.length > 0 ? "bg-red-50/50 border-red-200" : "bg-emerald-50/50 border-emerald-200"}`}>
                                 <h3 className="text-sm font-semibold text-[#0A1931] flex items-center gap-1.5 mb-3">
                                     <AlertTriangle size={14} className={riskStudents.length > 0 ? "text-red-500" : "text-emerald-500"} />
-                                    {riskStudents.length > 0 ? "Risk Altındaki Öğrenciler" : "Tüm Öğrenciler İyi Durumda"}
+                                    {students.length === 0 ? "Risk Durumu" : riskStudents.length > 0 ? "Risk Altındaki Öğrenciler" : "Tüm Öğrenciler İyi Durumda"}
                                 </h3>
-                                {riskStudents.length > 0 ? (
+                                {students.length === 0 ? (
+                                    <p className="text-xs text-[#A0AEC0]">Henüz devam verisi oluşmadı.</p>
+                                ) : riskStudents.length > 0 ? (
                                     <div className="space-y-2 max-h-[200px] overflow-y-auto">
                                         {riskStudents.map(s => (
                                             <div key={s.id} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-red-200">

@@ -67,4 +67,23 @@ public class QuestionsController : ControllerBase
     [HttpPatch("{id:guid}/note")]
     public async Task<ActionResult<QuestionDto>> UpdateNote(Guid id, [FromBody] UpdateNoteRequest request)
         => Ok(await _questionService.UpdateNoteAsync(GetTenantId(), id, GetUserId(), request));
+
+    [HttpDelete("{id:guid}/answer")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
+    public async Task<ActionResult<QuestionDto>> DeleteAnswer(Guid id)
+    {
+        var q = await _questionService.DeleteAnswerAsync(GetTenantId(), id);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "DeleteAnswer", "Question", id.ToString(), null, null, GetIp()));
+        return Ok(q);
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<ActionResult> Delete(Guid id)
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        Guid? userId = role == "Student" ? GetUserId() : null;
+        await _questionService.DeleteAsync(GetTenantId(), id, userId);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "Question", id.ToString(), null, null, GetIp()));
+        return NoContent();
+    }
 }

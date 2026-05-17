@@ -49,7 +49,7 @@ public class ExamServiceTests : IDisposable
 
     private CreateExamRequest MakeExam(string title = "TYT Deneme 01", int qCount = 40, int optCount = 5,
         double penalty = 0.25) =>
-        new(title, "Matematik denemesi", "TYT", qCount, optCount, 120, null, null, true, penalty);
+        new CreateExamRequest { Title = title, Description = "Matematik denemesi", ExamType = "TYT", QuestionCount = qCount, OptionCount = optCount, DurationMinutes = 120, ShowResults = true, WrongPenaltyWeight = penalty };
 
     // ═════════════════════════════════════════════════════════════════════════
     // CREATE
@@ -118,7 +118,7 @@ public class ExamServiceTests : IDisposable
     {
         var created = await _service.CreateExamAsync(_tenantId, MakeExam());
         var updated = await _service.UpdateExamAsync(_tenantId, created.Id,
-            new UpdateExamRequest("Güncel Başlık", null, null, 80, null, 180, null, null, null, null));
+            new UpdateExamRequest { Title = "Güncel Başlık", QuestionCount = 80, DurationMinutes = 180 });
 
         updated.Title.Should().Be("Güncel Başlık");
         updated.QuestionCount.Should().Be(80);
@@ -128,7 +128,7 @@ public class ExamServiceTests : IDisposable
     public async Task UpdateExam_NonExistent_ShouldThrow()
     {
         var act = () => _service.UpdateExamAsync(_tenantId, Guid.NewGuid(),
-            new UpdateExamRequest("X", null, null, null, null, null, null, null, null, null));
+            new UpdateExamRequest { Title = "X" });
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 

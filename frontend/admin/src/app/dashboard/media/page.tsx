@@ -10,10 +10,20 @@ import { FolderTree } from "@/components/ui/FolderTree";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { VideoPlayerModal } from "@/components/ui/VideoPlayerModal";
 
+const getFileUrl = (path: string | null) => {
+    if (!path) return "";
+    if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
+    let hostname = "localhost";
+    if (typeof window !== "undefined") {
+        hostname = window.location.hostname;
+    }
+    return `http://${hostname}:5292${path.startsWith("/") ? "" : "/"}${path}`;
+};
+
 const FallbackImage = ({ src }: { src: string }) => {
     const [error, setError] = useState(false);
     if (error || !src) return <FileVideo size={20} className="text-gray-400" />;
-    return <img src={src} alt="" className="w-full h-full object-cover" onError={() => setError(true)} />;
+    return <img src={getFileUrl(src)} alt="" className="w-full h-full object-cover" onError={() => setError(true)} />;
 };
 
 export default function MediaLibraryPage() {
@@ -51,20 +61,23 @@ export default function MediaLibraryPage() {
     // Video Player Modal state
     const [playingAsset, setPlayingAsset] = useState<MediaAssetDto | null>(null);
 
+    // Pagination state
+    const [pageSize, setPageSize] = useState<number | "all">(12);
+    const [currentPage, setCurrentPage] = useState(1);
+
     useEffect(() => {
         loadData();
     }, [currentFolderId]);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, currentFolderId, pageSize]);
+
     const loadData = async () => {
         setLoading(true);
         try {
-            // Load folders
-            const f = await mediaLibraryApi.getFolders(currentFolderId || undefined);
-            setFolders(f);
-            
             const a = await mediaLibraryApi.getAssets(currentFolderId || undefined);
             setAssets(a);
-            
         } catch (error) {
             toastError("Hata", "Veriler yüklenirken bir hata oluştu.");
         } finally {
@@ -247,6 +260,11 @@ export default function MediaLibraryPage() {
     const filteredFolders = folders.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const filteredAssets = assets.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const paginatedAssets = pageSize === "all" 
+        ? filteredAssets 
+        : filteredAssets.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+    const totalPages = pageSize === "all" ? 1 : Math.ceil(filteredAssets.length / pageSize);
+
     return (
         <div className="max-w-[1600px] mx-auto h-[calc(100vh-64px)] flex overflow-hidden">
             {/* Left Pane (30%): Folder Tree */}
@@ -267,9 +285,12 @@ export default function MediaLibraryPage() {
             <div className="flex-1 bg-gray-50 flex flex-col h-full overflow-hidden p-4 md:p-6">
                 
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div>
-                        <div className="flex items-center flex-wrap gap-1 text-sm font-medium text-gray-500 mb-2">
+
+                {/* Header Section & Toolbar */}
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+                    {/* Breadcrumbs & Title */}
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center flex-wrap gap-1 text-xs font-medium text-gray-500 mb-1">
                             {breadcrumbs.map((crumb, idx) => (
                                 <div key={idx} className="flex items-center">
                                     <button 
@@ -278,62 +299,49 @@ export default function MediaLibraryPage() {
                                     >
                                         {crumb.name}
                                     </button>
-                                    {idx < breadcrumbs.length - 1 && <ChevronRight size={16} className="mx-1 text-gray-400" />}
+                                    {idx < breadcrumbs.length - 1 && <ChevronRight size={14} className="mx-1 text-gray-400" />}
                                 </div>
                             ))}
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                            {currentFolderId 
-                                ? breadcrumbs[breadcrumbs.length - 1]?.name || "Klasör İçeriği" 
-                                : "Kök Dizin"}
+                        <h1 className="text-xl font-bold text-gray-900 tracking-tight truncate">
+                            {currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}
                         </h1>
                     </div>
-                    <div className="flex gap-3 w-full md:w-auto">
-                        <button 
-                            onClick={() => setIsCreateFolderModalOpen(true)}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl font-medium transition-all flex-1 md:flex-none shadow-sm"
-                        >
-                            <FolderPlus size={16} />
-                            <span>Yeni Klasör</span>
-                        </button>
-                        <button 
-                            onClick={() => setIsUploadModalOpen(true)}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all flex-1 md:flex-none shadow-sm shadow-blue-500/20 border border-blue-500"
-                        >
-                            <UploadCloud size={16} />
-                            <span>Video Yükle</span>
-                        </button>
-                    </div>
-                </div>
 
-                {/* Top Toolbar */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-2xl bg-white border border-gray-200 shadow-sm mb-4">
-                    {/* Search */}
-                    <div className="relative w-full sm:w-64 shrink-0">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Kütüphanede ara..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50/50"
-                        />
-                    </div>
+                    {/* Actions & Filters */}
+                    <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                        <div className="relative w-full sm:w-56">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Videolarda ara..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 transition-all"
+                            />
+                        </div>
 
-                    {/* View Modes */}
-                    <div className="flex items-center p-1 bg-gray-100 rounded-xl w-full sm:w-auto shrink-0">
-                        <button
-                            onClick={() => setViewMode("grid")}
-                            className={`flex-1 sm:flex-none p-1.5 rounded-lg flex items-center justify-center transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-                        >
-                            <Grid size={16} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode("list")}
-                            className={`flex-1 sm:flex-none p-1.5 rounded-lg flex items-center justify-center transition-all ${viewMode === "list" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}
-                        >
-                            <ListIcon size={16} />
-                        </button>
+                        <div className="h-9 w-px bg-gray-200 hidden sm:block" />
+
+                        <div className="flex items-center p-1 bg-gray-100 rounded-xl">
+                            <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}><Grid size={16} /></button>
+                            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}><ListIcon size={16} /></button>
+                        </div>
+
+                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                            <button 
+                                onClick={() => setIsCreateFolderModalOpen(true)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-sm font-medium transition-all"
+                            >
+                                <FolderPlus size={16} /> <span className="hidden sm:inline">Yeni Klasör</span>
+                            </button>
+                            <button 
+                                onClick={() => setIsUploadModalOpen(true)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm"
+                            >
+                                <UploadCloud size={16} /> <span className="hidden sm:inline">Video Yükle</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -348,65 +356,152 @@ export default function MediaLibraryPage() {
                         {filteredAssets.length > 0 && (
                             <div>
                                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Videolar</h2>
-                                <div className={viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" : "flex flex-col gap-2"}>
-                                    {filteredAssets.map(asset => (
-                                        <div 
-                                            key={asset.id}
-                                            draggable
-                                            onDragStart={(e) => handleDragStartAsset(e, asset.id)}
-                                            className={`group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-blue-400 hover:shadow-lg transition-all cursor-move ${viewMode === "list" ? "flex items-center h-20" : "flex flex-col"}`}
-                                        >
+                                {viewMode === "list" ? (
+                                    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-5 py-3 font-medium">Video Adı</th>
+                                                    <th className="px-5 py-3 font-medium w-32">Durum</th>
+                                                    <th className="px-5 py-3 font-medium w-24">Süre</th>
+                                                    <th className="px-5 py-3 font-medium text-right w-48">İşlemler</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {paginatedAssets.map(asset => (
+                                                    <tr 
+                                                        key={asset.id} 
+                                                        draggable
+                                                        onDragStart={(e) => handleDragStartAsset(e, asset.id)}
+                                                        className="hover:bg-blue-50/30 transition-colors group cursor-move"
+                                                    >
+                                                        <td className="px-5 py-3">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div 
+                                                                    className="w-14 h-9 rounded bg-gray-900 relative overflow-hidden shrink-0 cursor-pointer group-hover:ring-2 ring-blue-400 transition-all"
+                                                                    onClick={() => setPlayingAsset(asset)}
+                                                                >
+                                                                    <FallbackImage src={asset.thumbnailPath || ""} />
+                                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 transition-opacity">
+                                                                        <Play size={12} className="text-white fill-white translate-x-0.5" />
+                                                                    </div>
+                                                                </div>
+                                                                <span className="font-semibold text-gray-900 text-sm truncate" title={asset.title}>{asset.title}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-3">
+                                                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium ${asset.status === 'Ready' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse'}`}>
+                                                                <div className={`w-1.5 h-1.5 rounded-full ${asset.status === 'Ready' ? 'bg-green-500' : 'bg-amber-500'}`} />
+                                                                {asset.status === 'Ready' ? 'Hazır' : asset.status === 'Uploading' ? 'Yükleniyor' : asset.status === 'Processing' ? 'İşleniyor' : 'Hata'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-5 py-3 text-sm text-gray-500 font-medium">
+                                                            {asset.durationSeconds != null ? `${Math.floor(asset.durationSeconds / 60)}:${String(asset.durationSeconds % 60).padStart(2, '0')}` : '-'}
+                                                        </td>
+                                                        <td className="px-5 py-3 text-right">
+                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+
+                                                                <button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title }); setNewName(asset.title); setIsRenameModalOpen(true); }} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Yeniden Adlandır"><Edit2 size={16} /></button>
+                                                                <button onClick={() => handleOpenAssetCourseModal(asset)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Derse Tanımla"><BookOpen size={16} /></button>
+                                                                <button onClick={() => handleRemoveAsset(asset)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="Sil"><Trash2 size={16} /></button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {paginatedAssets.map(asset => (
                                             <div 
-                                                className={`${viewMode === "list" ? "w-32 h-full shrink-0" : "aspect-video w-full"} bg-gray-900 relative group-hover:opacity-90 transition-opacity cursor-pointer`}
-                                                onClick={() => setPlayingAsset(asset)}
+                                                key={asset.id}
+                                                draggable
+                                                onDragStart={(e) => handleDragStartAsset(e, asset.id)}
+                                                className="group bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-blue-400 hover:shadow-lg transition-all cursor-move flex flex-col"
                                             >
-                                                <FallbackImage src={asset.thumbnailPath || ""} />
-                                                {asset.durationSeconds && (
-                                                    <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-[10px] font-medium rounded-md backdrop-blur-sm">
-                                                        {Math.floor(asset.durationSeconds / 60)}:{String(asset.durationSeconds % 60).padStart(2, '0')}
+                                                <div 
+                                                    className="aspect-video w-full bg-gray-900 relative group-hover:opacity-90 transition-opacity cursor-pointer"
+                                                    onClick={() => setPlayingAsset(asset)}
+                                                >
+                                                    <FallbackImage src={asset.thumbnailPath || ""} />
+                                                                    {asset.durationSeconds != null && (
+                                                                        <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-[10px] font-medium rounded-md backdrop-blur-sm">
+                                                                            {Math.floor(asset.durationSeconds / 60)}:{String(asset.durationSeconds % 60).padStart(2, '0')}
+                                                                        </div>
+                                                                    )}
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30">
+                                                        <div className="w-12 h-12 bg-white/95 rounded-full flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform">
+                                                            <Play className="w-5 h-5 text-blue-600 translate-x-0.5" fill="currentColor" />
+                                                        </div>
                                                     </div>
-                                                )}
-                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/30">
-                                                    <div className="w-12 h-12 bg-white/95 rounded-full flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform">
-                                                        <Play className="w-5 h-5 text-blue-600 translate-x-0.5" fill="currentColor" />
+                                                </div>
+                                                <div className="p-4 flex-1 min-w-0 flex flex-col items-start gap-3">
+                                                    <div className="w-full min-w-0">
+                                                        <h3 className="font-semibold text-gray-900 truncate" title={asset.title}>{asset.title}</h3>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${asset.status === 'Ready' ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
+                                                            <p className="text-[11px] text-gray-500 font-medium">
+                                                                {asset.status === 'Ready' ? 'Hazır' : 
+                                                                 asset.status === 'Uploading' ? 'Yükleniyor' : 
+                                                                 asset.status === 'Processing' ? 'İşleniyor' : 
+                                                                 'Hata'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-1 w-full justify-end border-t border-gray-50 pt-3">
+
+                                                        <button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title }); setNewName(asset.title); setIsRenameModalOpen(true); }} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Yeniden Adlandır"><Edit2 size={16} /></button>
+                                                        <button onClick={() => handleOpenAssetCourseModal(asset)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Derse Tanımla"><BookOpen size={16} /></button>
+                                                        <button onClick={() => handleRemoveAsset(asset)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="Sil"><Trash2 size={16} /></button>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className={`p-4 flex-1 min-w-0 flex items-center justify-between ${viewMode === "list" ? "" : "flex-col items-start gap-3"}`}>
-                                                <div className="w-full min-w-0">
-                                                    <h3 className="font-semibold text-gray-900 truncate" title={asset.title}>{asset.title}</h3>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${asset.status === 'Ready' ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
-                                                        <p className="text-[11px] text-gray-500 font-medium">{asset.status}</p>
-                                                    </div>
-                                                </div>
-                                                <div className={`flex gap-1 ${viewMode === "list" ? "opacity-0 group-hover:opacity-100" : "w-full justify-end border-t border-gray-50 pt-3"}`}>
-                                                    <button 
-                                                        onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title }); setNewName(asset.title); setIsRenameModalOpen(true); }}
-                                                        className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"
-                                                        title="Yeniden Adlandır"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleOpenAssetCourseModal(asset)}
-                                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
-                                                        title="Derse Tanımla"
-                                                    >
-                                                        <BookOpen size={16} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleRemoveAsset(asset)}
-                                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
-                                                        title="Sil"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                
+                                {/* Pagination Controls */}
+                                {totalPages > 1 && (
+                                    <div className="mt-8 flex items-center justify-between border-t border-gray-200 pt-4 px-2">
+                                        <div className="text-sm text-gray-500">
+                                            Toplam <span className="font-medium text-gray-900">{filteredAssets.length}</span> videodan{' '}
+                                            <span className="font-medium text-gray-900">{(currentPage - 1) * (pageSize as number) + 1}</span> -{' '}
+                                            <span className="font-medium text-gray-900">{Math.min(currentPage * (pageSize as number), filteredAssets.length)}</span> arası gösteriliyor.
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                disabled={currentPage === 1}
+                                                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Önceki
+                                            </button>
+                                            <div className="flex items-center gap-1 mx-2">
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                    <button
+                                                        key={page}
+                                                        onClick={() => setCurrentPage(page)}
+                                                        className={`w-8 h-8 flex items-center justify-center text-sm font-medium rounded-lg ${
+                                                            currentPage === page 
+                                                                ? 'bg-blue-600 text-white' 
+                                                                : 'text-gray-700 hover:bg-gray-100'
+                                                        }`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={currentPage === totalPages}
+                                                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Sonraki
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -503,6 +598,7 @@ export default function MediaLibraryPage() {
 
             {isUploadModalOpen && (
                 <VideoUploaderModal 
+                    isOpen={true}
                     folderId={currentFolderId || undefined}
                     onClose={() => setIsUploadModalOpen(false)}
                     onSuccess={() => loadData()}
@@ -540,3 +636,4 @@ export default function MediaLibraryPage() {
         </div>
     );
 }
+

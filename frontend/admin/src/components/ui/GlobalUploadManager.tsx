@@ -1,157 +1,187 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { uploadApi } from '@/lib/api/upload';
 import { courseApi } from '@/lib/api/courses';
+import { mediaLibraryApi } from '@/lib/api/mediaLibrary';
 import { useAuth } from '@/contexts/AuthContext';
-import { X, UploadCloud, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle2, XCircle, X, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 
-export interface UploadTask {
+interface UploadTask {
     id: string;
-    courseId?: string;
-    folderId?: string;
-    title: string;
     file: File;
+    title: string;
     progress: number;
-    status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error';
+    status: 'pending' | 'uploading' | 'processing' | 'success' | 'error';
+    courseId: string | null;
+    folderId?: string;
     error?: string;
+    assetId?: string;
+    assetStatus?: string;
 }
 
 interface GlobalUploadContextType {
-    tasks: UploadTask[];
+    uploads: UploadTask[];
     startUpload: (courseId: string | null, title: string, file: File, durationSeconds: number, folderId?: string) => void;
-    dismissTask: (id: string) => void;
+    removeUpload: (id: string) => void;
+    clearCompleted: () => void;
 }
 
 const GlobalUploadContext = createContext<GlobalUploadContextType | undefined>(undefined);
 
-export function useGlobalUpload() {
-    const ctx = useContext(GlobalUploadContext);
-    if (!ctx) throw new Error("useGlobalUpload must be used within GlobalUploadProvider");
-    return ctx;
-}
-
 export function GlobalUploadProvider({ children }: { children: ReactNode }) {
-    const { token, currentTenantId: tenantId } = useAuth();
-    const [tasks, setTasks] = useState<UploadTask[]>([]);
+    const [uploads, setUploads] = useState<UploadTask[]>([]);
+    const [isMinimized, setIsMinimized] = useState(false);
+    const { currentTenantId, token } = useAuth();
 
-    const updateTask = useCallback((id: string, updates: Partial<UploadTask>) => {
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-    }, []);
+    // Poll for asset status if there are any uploads in "success" state but not "Ready"
+    React.useEffect(() => {
+        const pollingUploads = uploads.filter(u => u.status === 'success' && u.assetId && u.assetStatus !== 'Ready');
+        if (pollingUploads.length === 0) return;
 
-    const startUpload = useCallback(async (courseId: string | null, title: string, file: File, durationSeconds: number, folderId?: string) => {
-        if (!token || !tenantId) return;
+        const interval = setInterval(async () => {
+            for (const upload of pollingUploads) {
+                try {
+                    const asset = await mediaLibraryApi.getAsset(upload.assetId!);
+                    if (asset.status !== upload.assetStatus) {
+                        setUploads(prev => prev.map(t => t.id === upload.id ? { ...t, assetStatus: asset.status } : t));
+                    }
+                } catch (e) {
+                    console.error("Polling failed for asset", upload.assetId, e);
+                }
+            }
+        }, 5000);
 
-        const taskId = Math.random().toString(36).substring(7);
-        const newTask: UploadTask = {
-            id: taskId,
-            courseId: courseId || undefined,
-            folderId,
-            title,
-            file,
-            progress: 0,
-            status: 'uploading'
-        };
+        return () => clearInterval(interval);
+    }, [uploads]);
 
-        setTasks(prev => [...prev, newTask]);
+    const startUpload = async (courseId: string | null, title: string, file: File, durationSeconds: number, folderId?: string) => {
+        const id = Math.random().toString(36).substring(7);
+        const newTask: UploadTask = { id, file, title, progress: 0, status: 'pending', courseId, folderId };
+        
+        setUploads(prev => [...prev, newTask]);
+        setIsMinimized(false);
 
         try {
-            // 1. Presigned URL al
-            const presigned = await uploadApi.getPresignedUrl(token, tenantId, file.name, file.type);
+            if (!token) throw new Error("Oturum süresi dolmuş veya geçersiz.");
+
+            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'uploading' } : t));
             
-            // 2. XMLHttpRequest ile progress'li yükleme
+            // 1. Get presigned URL
+            const presigned = await uploadApi.getPresignedUrl(token, currentTenantId ?? "", file.name, file.type);
+
+            // 2. Upload file directly to BunnyCDN
             await uploadApi.uploadMediaWithProgress(presigned.uploadUrl, file, (progress) => {
-                updateTask(taskId, { progress });
+                setUploads(prev => prev.map(t => t.id === id ? { ...t, progress } : t));
             });
 
-            // 3. Yükleme bitince Backend'e Session+MediaAsset kaydı yap (İşleniyor durumuna geçer)
-            updateTask(taskId, { status: 'processing', progress: 100 });
-            
+            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'processing', progress: 100 } : t));
+
+            // 3. Create Media Asset in Database
+            const asset = await mediaLibraryApi.createAsset({
+                title: title,
+                type: 'Video',
+                filePath: presigned.publicUrl,
+                durationSeconds: durationSeconds,
+                folderId: folderId || null
+            });
+
+            // 4. Assign to course if courseId is provided
             if (courseId) {
-                await courseApi.addVodToCourse(token, tenantId, courseId, title, presigned.publicUrl, durationSeconds);
-            } else {
-                // Sadece Kütüphane'ye yüklüyorsak
-                await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5292/api/v1"}/media/assets`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Tenant-Id': tenantId },
-                    body: JSON.stringify({ title, filePath: presigned.publicUrl, folderId })
-                });
+                await mediaLibraryApi.assignMediaToCourse(courseId, asset.id);
             }
-            
-            // 4. Bitti
-            updateTask(taskId, { status: 'completed' });
-            
-            // Başarı sesi çal (çift bip)
-            try {
-                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                const playBeep = (freq: number, timeOffset: number) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + timeOffset);
-                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime + timeOffset);
-                    osc.start(audioCtx.currentTime + timeOffset);
-                    gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + timeOffset + 0.2);
-                    osc.stop(audioCtx.currentTime + timeOffset + 0.2);
-                };
-                playBeep(659.25, 0);    // E5
-                playBeep(880.00, 0.15); // A5
-            } catch (e) { }
-            
-            // Başarılıysa 5 saniye sonra gizle
-            setTimeout(() => dismissTask(taskId), 5000);
 
-        } catch (err: any) {
-            updateTask(taskId, { status: 'error', error: err.message || 'Yükleme başarısız' });
+            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'success', assetId: asset.id, assetStatus: asset.status } : t));
+        } catch (error: any) {
+            console.error("Upload failed:", error);
+            const errorMessage = error instanceof Error ? error.message : "Yükleme başarısız oldu.";
+            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'error', error: errorMessage } : t));
         }
-    }, [token, tenantId, updateTask]);
+    };
 
-    const dismissTask = useCallback((id: string) => {
-        setTasks(prev => prev.filter(t => t.id !== id));
-    }, []);
+    const removeUpload = (id: string) => setUploads(prev => prev.filter(t => t.id !== id));
+    const clearCompleted = () => setUploads(prev => prev.filter(t => t.status !== 'success' && t.status !== 'error'));
+
+    const activeUploadsCount = uploads.filter(u => u.status === 'uploading' || u.status === 'pending' || u.status === 'processing').length;
+    const completedUploadsCount = uploads.filter(u => u.status === 'success').length;
+    const totalUploadsCount = uploads.length;
 
     return (
-        <GlobalUploadContext.Provider value={{ tasks, startUpload, dismissTask }}>
+        <GlobalUploadContext.Provider value={{ uploads, startUpload, removeUpload, clearCompleted }}>
             {children}
-            {/* Sağ Alt Köşe Widget */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-                {tasks.map(task => (
-                    <div key={task.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 w-80 p-4 transition-all animate-in slide-in-from-bottom-5">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                {task.status === 'uploading' && <UploadCloud className="w-5 h-5 text-blue-500 animate-pulse" />}
-                                {task.status === 'processing' && <UploadCloud className="w-5 h-5 text-indigo-500 animate-bounce" />}
-                                {task.status === 'completed' && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-                                {task.status === 'error' && <AlertCircle className="w-5 h-5 text-red-500" />}
-                                
-                                <div>
-                                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">{task.title}</h4>
-                                    <p className="text-xs text-gray-500">
-                                        {task.status === 'uploading' && `%${task.progress} Yükleniyor...`}
-                                        {task.status === 'processing' && 'İşleniyor (Kaydediliyor)...'}
-                                        {task.status === 'completed' && 'Yükleme Tamamlandı'}
-                                        {task.status === 'error' && <span className="text-red-500">{task.error}</span>}
-                                    </p>
-                                </div>
+            {totalUploadsCount > 0 && (
+                <div className={`fixed bottom-6 right-6 z-[9999] w-[360px] bg-white dark:bg-[#09090B] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl transition-all duration-300 flex flex-col overflow-hidden ${isMinimized ? 'h-[64px]' : 'h-auto max-h-[400px]'}`}>
+                    
+                    {/* Header */}
+                    <div 
+                        className="h-[64px] px-5 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors border-b border-gray-100 dark:border-white/5 shrink-0"
+                        onClick={() => setIsMinimized(!isMinimized)}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
+                                {activeUploadsCount > 0 ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5 text-green-500" />}
                             </div>
-                            <button onClick={() => dismissTask(task.id)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {activeUploadsCount > 0 ? `${totalUploadsCount} öğeden ${completedUploadsCount}'si yüklendi` : `${completedUploadsCount} öğe yüklendi`}
+                                </h4>
+                                <p className="text-[11px] text-gray-500 dark:text-[#A0AEC0]">
+                                    {activeUploadsCount > 0 ? 'Arka planda yükleniyor...' : 'Tüm yüklemeler tamamlandı'}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <button className="p-1.5 text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors">
+                                {isMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setUploads([]); }} className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg transition-colors">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
-                        
-                        {(task.status === 'uploading' || task.status === 'processing') && (
-                            <div className="mt-3 h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div 
-                                    className={`h-full transition-all duration-300 ease-out ${task.status === 'processing' ? 'bg-indigo-500 w-full animate-pulse' : 'bg-blue-500'}`}
-                                    style={{ width: task.status === 'uploading' ? `${task.progress}%` : undefined }}
-                                />
-                            </div>
-                        )}
                     </div>
-                ))}
-            </div>
+
+                    {/* Body */}
+                    {!isMinimized && (
+                        <div className="p-2 overflow-y-auto flex-1 space-y-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
+                            {uploads.map(upload => (
+                                <div key={upload.id} className="p-3 bg-gray-50 dark:bg-white/5 rounded-xl border border-transparent dark:border-white/5 flex items-center justify-between group hover:border-gray-200 dark:hover:border-white/10 transition-colors">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        {upload.status === 'pending' && <UploadCloud className="w-5 h-5 text-gray-400" />}
+                                        {upload.status === 'uploading' && <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />}
+                                        {upload.status === 'processing' && <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />}
+                                        {upload.status === 'success' && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                                        {upload.status === 'error' && <XCircle className="w-5 h-5 text-red-500" />}
+                                        
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{upload.title}</p>
+                                            {upload.status === 'uploading' && (
+                                                <div className="mt-1.5 h-1 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${upload.progress}%` }} />
+                                                </div>
+                                            )}
+                                            {upload.status === 'processing' && <p className="text-[11px] text-purple-500 mt-0.5">Sisteme kaydediliyor...</p>}
+                                            {upload.status === 'success' && upload.assetStatus !== 'Ready' && <p className="text-[11px] text-green-600 dark:text-green-400 mt-0.5">Yüklendi • Arka planda işleniyor</p>}
+                                            {upload.status === 'success' && upload.assetStatus === 'Ready' && <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">İşlem tamamlandı, yayına hazır ✨</p>}
+                                            {upload.status === 'error' && <p className="text-[11px] text-red-500 mt-0.5 truncate">{upload.error}</p>}
+                                        </div>
+                                    </div>
+                                    <button onClick={() => removeUpload(upload.id)} className="ml-3 p-1.5 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all shrink-0">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </GlobalUploadContext.Provider>
     );
+}
+
+export function useGlobalUpload() {
+    const context = useContext(GlobalUploadContext);
+    if (context === undefined) {
+        throw new Error('useGlobalUpload must be used within a GlobalUploadProvider');
+    }
+    return context;
 }

@@ -25,7 +25,7 @@ export default function CoursesPage() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
@@ -37,7 +37,7 @@ export default function CoursesPage() {
                     placeholder="Kurs ara..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[#0A1931] text-sm placeholder-[#A9A9A9] focus:outline-none focus:ring-2 focus:ring-violet-500 w-full sm:w-56 transition-all"
+                    className="px-4 py-2 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-full sm:w-56 transition-all shadow-sm"
                 />
             </div>
 
@@ -76,7 +76,7 @@ export default function CoursesPage() {
                                 )}
                                 <div className="absolute top-3 right-3">
                                     <span className="px-2 py-1 bg-black/50 backdrop-blur-sm text-xs text-[#A0AEC0] rounded-full">
-                                        {course.sessionCount} ders
+                                        {course.sessionCount} içerik
                                     </span>
                                 </div>
                             </div>
@@ -107,7 +107,7 @@ export default function CoursesPage() {
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs text-[#1B3B6F]">{course.sessionCount} oturum</span>
+                                    <span className="text-xs text-[#1B3B6F]">{course.sessionCount} içerik</span>
                                     <span className="text-violet-400 text-xs font-medium group-hover:text-[#1B3B6F]">
                                         {(course.completionPercentage ?? 0) >= 100 ? '✓ Tamamlandı' : 'Devam Et →'}
                                     </span>

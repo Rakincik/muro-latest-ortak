@@ -43,6 +43,17 @@ export const getAssets = async (folderId?: string): Promise<MediaAssetDto[]> => 
     return res.items || [];
 };
 
+export const getAsset = async (id: string): Promise<MediaAssetDto> => {
+    return fetchApi(`/media/${id}`);
+};
+
+export const createAsset = async (data: { title: string; type: string; filePath: string; durationSeconds?: number; folderId?: string | null }): Promise<MediaAssetDto> => {
+    return fetchApi('/media/assets', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+};
+
 export const updateAsset = async (id: string, data: { title?: string; folderId?: string | null }): Promise<MediaAssetDto> => {
     return fetchApi(`/media/assets/${id}`, {
         method: 'PUT',
@@ -72,6 +83,13 @@ export const assignMediaToCourse = async (courseId: string, mediaAssetId: string
     });
 };
 
+export const assignExamToCourse = async (courseId: string, examId: string): Promise<CourseMediaDto> => {
+    return fetchApi(`/courses/${courseId}/media/assign-exam`, {
+        method: 'POST',
+        body: JSON.stringify({ examId }),
+    });
+};
+
 export const bulkAssignFolderToCourse = async (courseId: string, folderId: string): Promise<void> => {
     return fetchApi(`/courses/${courseId}/media/bulk-assign-folder`, {
         method: 'POST',
@@ -81,6 +99,12 @@ export const bulkAssignFolderToCourse = async (courseId: string, folderId: strin
 
 export const removeMediaFromCourse = async (courseId: string, mediaAssetId: string): Promise<void> => {
     return fetchApi(`/courses/${courseId}/media/${mediaAssetId}`, {
+        method: 'DELETE',
+    });
+};
+
+export const removeItemFromCourse = async (courseId: string, courseMediaId: string): Promise<void> => {
+    return fetchApi(`/courses/${courseId}/media/item/${courseMediaId}`, {
         method: 'DELETE',
     });
 };
@@ -99,12 +123,15 @@ export const mediaLibraryApi = {
     updateFolder,
     deleteFolder,
     getAssets,
+    createAsset,
     updateAsset,
     deleteAsset,
     getAssetCourses,
     getCourseMedias,
     assignMediaToCourse,
+    assignExamToCourse,
     bulkAssignFolderToCourse,
     removeMediaFromCourse,
+    removeItemFromCourse,
     reorderCourseMedias
 };

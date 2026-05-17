@@ -2,11 +2,14 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAdminHub } from "@/hooks/useAdminHub";
 import { useToast } from "@/components/toast";
+import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
+import NotificationBell from "@/components/NotificationBell";
 
 const routeRoles: Record<string, string[]> = {
     "/dashboard/users": ["Admin", "SuperAdmin", "Assistant"],
@@ -46,8 +49,9 @@ export default function DashboardLayout({
     const { user, isLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const pathname = usePathname();
 
-    // ── Real-time SignalR notifications (global) ──
     useAdminHub({
         onLiveSessionUpdate: useCallback((session: Record<string, unknown>) => {
             const title = (session.title || session.sessionTitle || "Canlı Ders") as string;
@@ -58,12 +62,13 @@ export default function DashboardLayout({
                 toast("info", "Canlı Ders Bitti", title);
             }
         }, [toast]),
-        onDashboardUpdate: useCallback(() => {
-            // Dashboard istatistikleri güncellendi — sessiz (page kendisi handle eder)
-        }, []),
+        onDashboardUpdate: useCallback(() => {}, []),
     });
 
-    const pathname = usePathname();
+    // Close sidebar on route change on mobile
+    useEffect(() => {
+        setIsSidebarOpen(false);
+    }, [pathname]);
 
     useEffect(() => {
         if (!isLoading && !user) {
@@ -93,14 +98,32 @@ export default function DashboardLayout({
     if (!user) return null;
 
     return (
-        <div className="flex min-h-screen">
-            <Sidebar />
-            <main className="flex-1 ml-[260px] p-8">
-                <ErrorBoundary pageName="Dashboard">
-                    {children}
-                </ErrorBoundary>
-            </main>
-        </div>
+        <GlobalUploadProvider>
+            <div className="flex min-h-screen bg-[#F8FAFC]">
+                <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+                <div className="flex-1 flex flex-col min-w-0 lg:ml-[260px]">
+                    {/* Mobile Header */}
+                    <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="p-2 -ml-2 text-[#1B3B6F] hover:bg-[#F1F5F9] rounded-lg transition-colors"
+                                aria-label="Menüyü Aç"
+                            >
+                                <Menu size={24} />
+                            </button>
+                            <h1 className="text-lg font-bold text-[#1B3B6F] tracking-tight">MURO Yönetim</h1>
+                        </div>
+                        <NotificationBell />
+                    </header>
+
+                    <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
+                        <ErrorBoundary pageName="Dashboard">
+                            {children}
+                        </ErrorBoundary>
+                    </main>
+                </div>
+            </div>
+        </GlobalUploadProvider>
     );
 }
-

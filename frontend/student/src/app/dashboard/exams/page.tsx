@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { examApi, type MyExamResultDto, type ExamListDto } from "@/lib/api";
+import { KpiGrid } from "@/components/ui/KpiGrid";
+import { FileText, Target, Trophy } from "lucide-react";
 
 function GaugeBar({ value, max, color }: { value: number; max: number; color: string }) {
     return (
@@ -26,10 +28,19 @@ export default function ExamsPage() {
             examApi.myResults(token, tenantId).catch(() => []),
             examApi.list(token, tenantId, "Yayında").catch(() => [])
         ]).then(([resData, availData]) => {
-            setResults(resData);
-            // Girilmiş sınavları aktif listeden çıkar
+            const filteredResults = resData.filter(r => r.examType !== "Quiz");
+            setResults(filteredResults);
+            // Girilmiş sınavları aktif listeden çıkar ve quizleri gizle
             const completedExamIds = new Set(resData.map(r => r.examId));
-            setAvailable(availData.filter(exam => !completedExamIds.has(exam.id)));
+            const now = new Date();
+            
+            setAvailable(availData.filter(exam => {
+                const isNotCompleted = !completedExamIds.has(exam.id);
+                const isNotQuiz = exam.examType !== "Quiz";
+                const isNotExpired = !exam.endDate || new Date(exam.endDate) >= now;
+                
+                return isNotCompleted && isNotQuiz && isNotExpired;
+            }));
         }).finally(() => setLoading(false));
     }, [token, tenantId]);
 
@@ -79,19 +90,15 @@ export default function ExamsPage() {
 
             {/* Summary bar */}
             {results.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div className="stat-card text-center">
-                        <p className="text-2xl font-bold gradient-text">{results.length}</p>
-                        <p className="text-[#A9A9A9] text-xs mt-1">Toplam Sınav</p>
-                    </div>
-                    <div className="stat-card text-center">
-                        <p className="text-2xl font-bold text-blue-400">{avgNet}</p>
-                        <p className="text-[#A9A9A9] text-xs mt-1">Ortalama Net</p>
-                    </div>
-                    <div className="stat-card text-center">
-                        <p className="text-2xl font-bold text-green-400">{bestScore}</p>
-                        <p className="text-[#A9A9A9] text-xs mt-1">En Yüksek Puan</p>
-                    </div>
+                <div className="mb-8">
+                    <KpiGrid 
+                        items={[
+                            { label: "Toplam Sınav", value: results.length, icon: FileText, colorClass: "text-[#0A1931]", bgClass: "bg-[#1B3B6F]/10", iconColorClass: "text-[#1B3B6F]" },
+                            { label: "Ortalama Net", value: avgNet, icon: Target, colorClass: "text-[#0A1931]", bgClass: "bg-blue-100", iconColorClass: "text-blue-600" },
+                            { label: "En Yüksek Puan", value: bestScore, icon: Trophy, colorClass: "text-[#0A1931]", bgClass: "bg-emerald-100", iconColorClass: "text-emerald-600" }
+                        ]}
+                        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+                    />
                 </div>
             )}
 

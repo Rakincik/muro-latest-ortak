@@ -29,26 +29,20 @@ public class AnalyticsService : IAnalyticsService
             var memberships = _context.TenantMemberships
                 .Where(tm => tm.TenantId == tenantId && tm.Status == "active");
 
-            var totalUsersTask       = memberships.CountAsync();
-            var activeStudentsTask   = memberships.CountAsync(tm => tm.User.Role == UserRole.Student && tm.User.IsActive && tm.User.StudentType == StudentType.Active);
-            var demoStudentsTask     = memberships.CountAsync(tm => tm.User.Role == UserRole.Student && tm.User.StudentType == StudentType.Demo);
-            var totalCoursesTask     = _context.Courses.CountAsync(c => c.TenantId == tenantId);
-            var publishedCoursesTask = _context.Courses.CountAsync(c => c.TenantId == tenantId && c.IsPublished);
-            var totalExamsTask       = _context.Exams.CountAsync(e => e.TenantId == tenantId);
-            var totalAssignmentsTask = _context.Assignments.CountAsync(a => a.TenantId == tenantId);
-            var totalGroupsTask      = _context.Groups.CountAsync(g => g.TenantId == tenantId);
-            var pendingTicketsTask   = _context.SupportTickets.CountAsync(t => t.TenantId == tenantId && t.Status == TicketStatus.Open);
-
-            await Task.WhenAll(
-                totalUsersTask, activeStudentsTask, demoStudentsTask,
-                totalCoursesTask, publishedCoursesTask, totalExamsTask,
-                totalAssignmentsTask, totalGroupsTask, pendingTicketsTask);
+            var totalUsers       = await memberships.CountAsync();
+            var activeStudents   = await memberships.CountAsync(tm => tm.User.Role == UserRole.Student && tm.User.IsActive && tm.User.StudentType == StudentType.Active);
+            var demoStudents     = await memberships.CountAsync(tm => tm.User.Role == UserRole.Student && tm.User.StudentType == StudentType.Demo);
+            var totalCourses     = await _context.Courses.CountAsync(c => c.TenantId == tenantId);
+            var publishedCourses = await _context.Courses.CountAsync(c => c.TenantId == tenantId && c.IsPublished);
+            var totalExams       = await _context.Exams.CountAsync(e => e.TenantId == tenantId);
+            var totalAssignments = await _context.Assignments.CountAsync(a => a.TenantId == tenantId);
+            var totalGroups      = await _context.Groups.CountAsync(g => g.TenantId == tenantId);
+            var pendingTickets   = await _context.SupportTickets.CountAsync(t => t.TenantId == tenantId && t.Status == TicketStatus.Open);
 
             return new DashboardStatsDto(
-                totalUsersTask.Result, activeStudentsTask.Result, demoStudentsTask.Result,
-                totalCoursesTask.Result, publishedCoursesTask.Result,
-                totalExamsTask.Result, totalAssignmentsTask.Result,
-                totalGroupsTask.Result, pendingTicketsTask.Result);
+                totalUsers, activeStudents, demoStudents,
+                totalCourses, publishedCourses, totalExams,
+                totalAssignments, totalGroups, pendingTickets);
         }, TimeSpan.FromMinutes(2));
     }
 
@@ -151,23 +145,24 @@ public class AnalyticsService : IAnalyticsService
             // Get per-student attendance rates
             var allStudentIds = await _context.CourseGroups
                 .Where(cg => cg.CourseId == courseId)
-                .Join(_context.GroupMembers, cg => cg.GroupId, gm => gm.GroupId, (cg, gm) => gm.UserId)
+                .Join(_context.GroupMembers, cg => cg.GroupId, gm => gm.GroupId, (cg, gm) => gm.User)
+                .Select(u => new EnrolledStudentDto(u.Id, $"{u.FirstName} {u.LastName}"))
                 .Distinct()
                 .ToListAsync();
 
             int riskStudentCount = 0;
             if (sessions.Count > 0)
             {
-                foreach (var studentId in allStudentIds)
+                foreach (var student in allStudentIds)
                 {
-                    var attended = sessions.Count(s => s.SessionAttendances.Any(a => a.UserId == studentId && a.DurationMinutes > 0));
+                    var attended = sessions.Count(s => s.SessionAttendances.Any(a => a.UserId == student.UserId && a.DurationMinutes > 0));
                     var rate = (double)attended / sessions.Count * 100;
                     if (rate < 50) riskStudentCount++;
                 }
             }
 
             return new CourseAttendanceReportDto(
-                course.Id, course.Title, sessions.Count, totalEnrolled, avgRate, riskStudentCount, sessionSummaries);
+                course.Id, course.Title, sessions.Count, totalEnrolled, avgRate, riskStudentCount, sessionSummaries, allStudentIds);
         }, TimeSpan.FromMinutes(2));
     }
 

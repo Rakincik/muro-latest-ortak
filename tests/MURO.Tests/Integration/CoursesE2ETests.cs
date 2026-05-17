@@ -34,7 +34,7 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
 
         // Create
         var createRes = await admin.PostAsJsonAsync("/api/v1/courses",
-            new CreateCourseRequest("Fizik 101", "Temel fizik", null, "Online", null, null));
+            new CreateCourseRequest("Fizik 101", "Temel fizik", null, "Online", null, null, null));
         createRes.StatusCode.Should().Be(HttpStatusCode.Created);
         var course = await createRes.Content.ReadFromJsonAsync<CourseListDto>();
         course!.Title.Should().Be("Fizik 101");
@@ -76,7 +76,7 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
         // 5 kurs oluştur
         for (int i = 1; i <= 5; i++)
             await admin.PostAsJsonAsync("/api/v1/courses",
-                new CreateCourseRequest($"Paginate Kurs {i}", null, null, "Online", null, null));
+                new CreateCourseRequest($"Paginate Kurs {i}", null, null, "Online", null, null, null));
 
         // Sayfa 1 (2'li sayfa)
         var p1 = await admin.GetAsync("/api/v1/courses?page=1&pageSize=2");
@@ -96,9 +96,9 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
     {
         var admin = _f.CreateAdminClient();
         await admin.PostAsJsonAsync("/api/v1/courses",
-            new CreateCourseRequest("Matematik Dersi Aranan", null, null, "Online", null, null));
+            new CreateCourseRequest("Matematik Dersi Aranan", null, null, "Online", null, null, null));
         await admin.PostAsJsonAsync("/api/v1/courses",
-            new CreateCourseRequest("Biyoloji Ders", null, null, "Online", null, null));
+            new CreateCourseRequest("Biyoloji Ders", null, null, "Online", null, null, null));
 
         var res = await admin.GetAsync("/api/v1/courses?search=Matematik");
         var result = await res.Content.ReadFromJsonAsync<PagedResult<CourseListDto>>();
@@ -116,7 +116,7 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
 
         // Kurs oluştur
         var courseRes = await admin.PostAsJsonAsync("/api/v1/courses",
-            new CreateCourseRequest("Session Kurs", null, null, "Online", null, null));
+            new CreateCourseRequest("Session Kurs", null, null, "Online", null, null, null));
         var course = await courseRes.Content.ReadFromJsonAsync<CourseListDto>();
 
         // Session oluştur
@@ -157,7 +157,7 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
         for (int i = 0; i < 3; i++)
         {
             var r = await admin.PostAsJsonAsync("/api/v1/courses",
-                new CreateCourseRequest($"Tutarlılık Kurs {i}", null, null, "Online", null, null));
+                new CreateCourseRequest($"Tutarlılık Kurs {i}", null, null, "Online", null, null, null));
             var c = await r.Content.ReadFromJsonAsync<CourseListDto>();
             ids.Add(c!.Id);
         }
@@ -198,7 +198,7 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
         var student = _f.CreateStudentClient();
 
         var r = await admin.PostAsJsonAsync("/api/v1/courses",
-            new CreateCourseRequest("Student Detay Kurs", null, null, "Online", null, null));
+            new CreateCourseRequest("Student Detay Kurs", null, null, "Online", null, null, null));
         var c = await r.Content.ReadFromJsonAsync<CourseListDto>();
 
         var res = await student.GetAsync($"/api/v1/courses/{c!.Id}");
@@ -228,7 +228,7 @@ public class CoursesE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
     {
         var admin = _f.CreateAdminClient();
         var r = await admin.PostAsJsonAsync("/api/v1/courses",
-            new CreateCourseRequest("Çift Sil", null, null, "Online", null, null));
+            new CreateCourseRequest("Çift Sil", null, null, "Online", null, null, null));
         var c = await r.Content.ReadFromJsonAsync<CourseListDto>();
 
         (await admin.DeleteAsync($"/api/v1/courses/{c!.Id}")).StatusCode

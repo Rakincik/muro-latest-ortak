@@ -9,4 +9,5 @@ namespace MURO.Application.Interfaces;
 public interface INotificationPush
 {
     Task PushToUserAsync(string userId, NotificationDto dto);
+    Task PushToUsersAsync(IReadOnlyList<string> userIds, NotificationDto dto);
 }

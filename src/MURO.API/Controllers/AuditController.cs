@@ -47,4 +47,21 @@ public class AuditController : ControllerBase
         var t = to ?? DateTime.UtcNow;
         return Ok(await _auditService.GetSummaryAsync(GetTenantId(), f, t));
     }
+
+    [HttpGet("users")]
+    public async Task<ActionResult<PagedResult<UserAuditSummaryDto>>> GetUserAudits(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null)
+    {
+        var result = await _auditService.GetUserAuditSummariesAsync(GetTenantId(), page, pageSize, search);
+        return Ok(result);
+    }
+
+    [HttpGet("suspicious")]
+    public async Task<ActionResult<List<SuspiciousUserDto>>> GetSuspiciousUsers()
+    {
+        var result = await _auditService.GetSuspiciousUsersAsync(GetTenantId());
+        return Ok(result);
+    }
 }

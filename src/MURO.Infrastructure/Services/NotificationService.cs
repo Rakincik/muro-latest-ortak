@@ -110,6 +110,19 @@ public class NotificationService : INotificationService
                 .Select(gm => gm.UserId)
                 .ToListAsync();
         }
+        else if (request.CourseId.HasValue)
+        {
+            var groupIds = await _context.CourseGroups.AsNoTracking()
+                .Where(cg => cg.CourseId == request.CourseId.Value)
+                .Select(cg => cg.GroupId)
+                .ToListAsync();
+                
+            userIds = await _context.GroupMembers.AsNoTracking()
+                .Where(gm => groupIds.Contains(gm.GroupId))
+                .Select(gm => gm.UserId)
+                .Distinct()
+                .ToListAsync();
+        }
         else
         {
             userIds = request.UserIds;
@@ -132,13 +145,16 @@ public class NotificationService : INotificationService
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:notifications:");
 
-        // ── SignalR push: her kullanıcıya kendi grubundan ────────────────────
-        var pushTasks = notifications.Select(n =>
+        // ── SignalR push: toplu gönderim (batch push) ────────────────────────────
+        if (notifications.Any())
         {
-            var dto = new NotificationDto(n.Id, n.Title, n.Body, n.Type, n.IsRead, n.Channel.ToString(), n.CreatedAt);
-            return _push.PushToUserAsync(n.UserId.ToString(), dto);
-        });
-        await Task.WhenAll(pushTasks);
+            var firstNotif = notifications.First();
+            var dto = new NotificationDto(firstNotif.Id, firstNotif.Title, firstNotif.Body, firstNotif.Type, firstNotif.IsRead, firstNotif.Channel.ToString(), firstNotif.CreatedAt);
+            
+            // Kullanıcı ID'lerini string listesi olarak hazırla
+            var targetUsers = userIds.Select(u => u.ToString()).ToList();
+            await _push.PushToUsersAsync(targetUsers, dto);
+        }
 
         return notifications.Count;
     }

@@ -12,6 +12,7 @@ import {
     type AdminSentNotificationDto,
     type GroupSummaryDto,
     type UserDto,
+    courseApi
 } from "@/lib/api";
 
 // ─── Type badge helpers ─────────────────────────────────────────────────────
@@ -39,19 +40,25 @@ interface SendModalProps {
     onSent: () => void;
     groups: GroupSummaryDto[];
     users: UserDto[];
+    courses: { id: string, title: string }[];
 }
 
-function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
+function SendNotifModal({ onClose, onSent, groups, users, courses }: SendModalProps) {
     const { token, currentTenantId: tenantId } = useAuth();
     const { success, error: toastError } = useToast();
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
     const [type, setType] = useState("Bilgi");
-    const [target, setTarget] = useState<"all" | "group" | "single">("all");
+    const [target, setTarget] = useState<"all" | "group" | "course" | "single">("all");
     const [groupId, setGroupId] = useState("");
+    const [courseId, setCourseId] = useState("");
     const [userId, setUserId] = useState("");
     const [scheduledAt, setScheduledAt] = useState("");
     const [sending, setSending] = useState(false);
+    
+    // For student search
+    const [studentSearch, setStudentSearch] = useState("");
+    const [studentSearchFocused, setStudentSearchFocused] = useState(false);
 
     const handleSend = async () => {
         if (!token || !tenantId) return;
@@ -60,6 +67,7 @@ function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
         let userIds: string[] = [];
         let sendToAll = false;
         let targetGroupId: string | undefined = undefined;
+        let targetCourseId: string | undefined = undefined;
 
         if (target === "all") {
             sendToAll = true;
@@ -67,6 +75,10 @@ function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
             const g = groups.find(g => g.id === groupId);
             if (!g) { toastError("Hata", "Lütfen bir grup seçin."); return; }
             targetGroupId = g.id;
+        } else if (target === "course") {
+            const c = courses.find(c => c.id === courseId);
+            if (!c) { toastError("Hata", "Lütfen bir ders seçin."); return; }
+            targetCourseId = c.id;
         } else {
             if (!userId) { toastError("Hata", "Lütfen bir öğrenci seçin."); return; }
             userIds = [userId];
@@ -78,7 +90,7 @@ function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
         try {
             const count = await notificationApi.bulkSend(
                 token, tenantId, userIds, title, body, type, 
-                scheduledAt || undefined, targetGroupId, sendToAll
+                scheduledAt || undefined, targetGroupId, sendToAll, targetCourseId
             );
             const schedMsg = scheduledAt ? ` (${new Date(scheduledAt).toLocaleString("tr-TR")} için zamanlandı)` : "";
             success("Bildirim Gönderildi", `${count} kullanıcıya gönderildi${schedMsg}.`);
@@ -135,6 +147,7 @@ function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
                                 className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20">
                                 <option value="all">👥 Tüm Kullanıcılar</option>
                                 <option value="group">🏫 Grup</option>
+                                <option value="course">📚 Ders</option>
                                 <option value="single">👤 Tek Öğrenci</option>
                             </select>
                         </div>
@@ -166,16 +179,42 @@ function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
                             </select>
                         </div>
                     )}
-                    {target === "single" && (
+                    {target === "course" && (
                         <div>
-                            <label className="block text-xs font-semibold text-[#1B3B6F] mb-1.5">Öğrenci</label>
-                            <select value={userId} onChange={e => setUserId(e.target.value)}
+                            <label className="block text-xs font-semibold text-[#1B3B6F] mb-1.5">Ders</label>
+                            <select value={courseId} onChange={e => setCourseId(e.target.value)}
                                 className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20">
-                                <option value="">— Öğrenci seçin —</option>
-                                {users.filter(u => u.role === "Student" || u.role === "student").map(u => (
-                                    <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                                <option value="">— Ders seçin —</option>
+                                {courses.map(c => (
+                                    <option key={c.id} value={c.id}>{c.title}</option>
                                 ))}
                             </select>
+                        </div>
+                    )}
+                    {target === "single" && (
+                        <div className="relative">
+                            <label className="block text-xs font-semibold text-[#1B3B6F] mb-1.5">Öğrenci</label>
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                <input value={studentSearch} onChange={e => { setStudentSearch(e.target.value); setUserId(""); }}
+                                    onFocus={() => setStudentSearchFocused(true)}
+                                    onBlur={() => setTimeout(() => setStudentSearchFocused(false), 200)}
+                                    placeholder="Listeden seçin veya aramak için yazın..."
+                                    className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] placeholder:text-[#A0AEC0]" />
+                                {studentSearchFocused && (
+                                    <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-[#E2E8F0] max-h-60 overflow-y-auto">
+                                        {users.filter(u => (u.role === "Student" || u.role === "student") && 
+                                            (!studentSearch || `${u.firstName} ${u.lastName}`.toLowerCase().includes(studentSearch.toLowerCase())))
+                                            .map(uItem => (
+                                            <div key={uItem.id} onClick={() => { setUserId(uItem.id); setStudentSearch(`${uItem.firstName} ${uItem.lastName}`); setStudentSearchFocused(false); }}
+                                                className={`px-4 py-3 cursor-pointer transition-colors border-b border-[#E2E8F0] last:border-0 ${userId === uItem.id ? "bg-emerald-50 hover:bg-emerald-100" : "hover:bg-[#F8FAFC]"}`}>
+                                                <p className="text-sm font-bold text-[#0A1931]">{uItem.firstName} {uItem.lastName}</p>
+                                                <p className="text-xs text-[#A0AEC0]">{uItem.email}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -183,7 +222,9 @@ function SendNotifModal({ onClose, onSent, groups, users }: SendModalProps) {
                 <div className="flex items-center justify-between px-6 py-4 border-t border-[#E2E8F0]/60 bg-[#E2E8F0]/15 rounded-b-2xl">
                     <p className="text-xs text-[#A0AEC0]">
                         {target === "all" ? `${users.length} kullanıcıya gönderilecek` :
-                            target === "single" ? "1 kullanıcıya gönderilecek" : "Gruba gönderilecek"}
+                            target === "single" ? "1 kullanıcıya gönderilecek" : 
+                            target === "course" ? "Derse kayıtlı gruplara gönderilecek" :
+                            "Gruba gönderilecek"}
                     </p>
                     <div className="flex gap-3">
                         <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-[#1B3B6F] bg-white border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20">İptal</button>
@@ -208,6 +249,7 @@ export default function NotificationsPage() {
     const [notifs, setNotifs] = useState<AdminSentNotificationDto[]>([]);
     const [groups, setGroups] = useState<GroupSummaryDto[]>([]);
     const [users, setUsers] = useState<UserDto[]>([]);
+    const [courses, setCourses] = useState<{ id: string, title: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
@@ -217,14 +259,16 @@ export default function NotificationsPage() {
         if (!token || !tenantId) return;
         setLoading(true);
         try {
-            const [n, g, u] = await Promise.all([
+            const [n, g, u, cRes] = await Promise.all([
                 notificationApi.adminSent(token, tenantId).catch(() => [] as AdminSentNotificationDto[]),
                 notificationApi.groups(token, tenantId).catch(() => [] as GroupSummaryDto[]),
                 notificationApi.allUsers(token, tenantId).catch(() => [] as UserDto[]),
+                courseApi.list(token, tenantId, { pageSize: 200 }).catch(() => ({ items: [] })),
             ]);
             setNotifs(n);
             setGroups(g);
             setUsers(u);
+            setCourses(Array.isArray(cRes) ? cRes : (cRes?.items || []).map((c: any) => ({ id: c.id, title: c.title })));
         } finally {
             setLoading(false);
         }
@@ -342,7 +386,7 @@ export default function NotificationsPage() {
                 </div>
             )}
 
-            {showForm && <SendNotifModal onClose={() => setShowForm(false)} onSent={() => { load(); success("Bildirim gönderildi!"); }} groups={groups} users={users} />}
+            {showForm && <SendNotifModal onClose={() => setShowForm(false)} onSent={() => { load(); success("Bildirim gönderildi!"); }} groups={groups} users={users} courses={courses} />}
         </div>
     );
 }

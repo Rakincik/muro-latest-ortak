@@ -32,8 +32,8 @@ public class ExamsE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
         var student = _f.CreateStudentClient();
 
         // 1. Admin sınav oluşturur
-        var createRes = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest(
-            "Matematik Vize", null, "MultipleChoice", 10, 4, null, null, null, true, 0.25));
+        var createRes = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest {
+            Title = "Matematik Vize", ExamType = "MultipleChoice", QuestionCount = 10, OptionCount = 4, ShowResults = true, WrongPenaltyWeight = 0.25 });
         createRes.StatusCode.Should().Be(HttpStatusCode.Created);
         var exam = await createRes.Content.ReadFromJsonAsync<ExamListDto>();
         exam!.Title.Should().Be("Matematik Vize");
@@ -94,8 +94,8 @@ public class ExamsE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
         var admin = _f.CreateAdminClient();
         var student = _f.CreateStudentClient();
 
-        var res = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest(
-            "Anahtarsız Sınav", null, "MultipleChoice", 5, 4, null, null, null, true));
+        var res = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest {
+            Title = "Anahtarsız Sınav", ExamType = "MultipleChoice", QuestionCount = 5, OptionCount = 4, ShowResults = true });
         var exam = await res.Content.ReadFromJsonAsync<ExamListDto>();
 
         // Cevap anahtarı girilmeden öğrenci gönderim yapar
@@ -117,13 +117,13 @@ public class ExamsE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
     {
         var admin = _f.CreateAdminClient();
 
-        var res = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest(
-            "Silinecek Sınav", null, "MultipleChoice", 5, 4, null, null, null, true));
+        var res = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest {
+            Title = "Silinecek Sınav", ExamType = "MultipleChoice", QuestionCount = 5, OptionCount = 4, ShowResults = true });
         var exam = await res.Content.ReadFromJsonAsync<ExamListDto>();
 
         // Update
         var updateRes = await admin.PutAsJsonAsync($"/api/v1/exams/{exam!.Id}",
-            new UpdateExamRequest("Güncellenen Sınav", null, "ClassicExam", null, null, null, null, null, null, 0.33));
+            new UpdateExamRequest { Title = "Güncellenen Sınav", ExamType = "ClassicExam", WrongPenaltyWeight = 0.33 });
         updateRes.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateRes.Content.ReadFromJsonAsync<ExamListDto>();
         updated!.Title.Should().Be("Güncellenen Sınav");
@@ -147,8 +147,8 @@ public class ExamsE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
         var admin = _f.CreateAdminClient();
 
         for (int i = 0; i < 5; i++)
-            await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest(
-                $"Page Sınav {i}", null, "MultipleChoice", 5, 4, null, null, null, true));
+            await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest {
+                Title = $"Page Sınav {i}", ExamType = "MultipleChoice", QuestionCount = 5, OptionCount = 4, ShowResults = true });
 
         var p1 = await admin.GetAsync("/api/v1/exams?page=1&pageSize=2");
         var page1 = await p1.Content.ReadFromJsonAsync<PagedResult<ExamListDto>>();
@@ -159,8 +159,8 @@ public class ExamsE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
     public async Task ExamList_SearchFilter_ShouldWork()
     {
         var admin = _f.CreateAdminClient();
-        await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest(
-            "Aranacak Fizik Final", null, "MultipleChoice", 5, 4, null, null, null, true));
+        await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest {
+            Title = "Aranacak Fizik Final", ExamType = "MultipleChoice", QuestionCount = 5, OptionCount = 4, ShowResults = true });
 
         var res = await admin.GetAsync("/api/v1/exams?search=Aranacak");
         var list = await res.Content.ReadFromJsonAsync<PagedResult<ExamListDto>>();
@@ -176,8 +176,8 @@ public class ExamsE2ETests : IClassFixture<MuroTestFactory>, IAsyncLifetime
     {
         var admin = _f.CreateAdminClient();
 
-        var res = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest(
-            "Aktif Sınav Filter", null, "MultipleChoice", 5, 4, null, null, null, true));
+        var res = await admin.PostAsJsonAsync("/api/v1/exams", new CreateExamRequest {
+            Title = "Aktif Sınav Filter", ExamType = "MultipleChoice", QuestionCount = 5, OptionCount = 4, ShowResults = true });
         var exam = await res.Content.ReadFromJsonAsync<ExamListDto>();
 
         await admin.PutAsJsonAsync($"/api/v1/exams/{exam!.Id}/status",

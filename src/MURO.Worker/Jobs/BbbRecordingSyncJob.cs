@@ -43,19 +43,26 @@ public class BbbRecordingSyncJob : BackgroundService
     {
         _logger.LogInformation("BbbRecordingSyncJob başlatıldı.");
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await ProcessPendingRecordingsAsync(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "BbbRecordingSyncJob döngüsünde beklenmedik hata.");
-            }
+                try
+                {
+                    await ProcessPendingRecordingsAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "BbbRecordingSyncJob döngüsünde beklenmedik hata.");
+                }
 
-            // Her 20 dakikada bir çalış (webhook birincil akışı handle eder, bu sadece fallback)
-            await Task.Delay(TimeSpan.FromMinutes(20), stoppingToken);
+                // Her 20 dakikada bir çalış (webhook birincil akışı handle eder, bu sadece fallback)
+                await Task.Delay(TimeSpan.FromMinutes(20), stoppingToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("BbbRecordingSyncJob durduruluyor...");
         }
     }
 
@@ -75,6 +82,23 @@ public class BbbRecordingSyncJob : BackgroundService
             .Where(r => r.Status == MediaStatus.Processing)
             .ToListAsync(ct);
 
+        // Auto-fix for stuck "Ready" recordings that don't have a FilePath (caused by old bug)
+        var brokenRecs = await db.SessionRecordings
+            .Include(r => r.MediaAsset)
+            .Where(r => r.Status == MediaStatus.Ready && r.MediaAsset != null && r.MediaAsset.FilePath == null && r.MediaAsset.HlsPath == null)
+            .ToListAsync(ct);
+
+        if (brokenRecs.Any())
+        {
+            foreach (var r in brokenRecs)
+            {
+                r.Status = MediaStatus.Processing;
+                if (r.MediaAsset != null) r.MediaAsset.Status = MediaStatus.Processing;
+                allProcessing.Add(r);
+            }
+            _logger.LogInformation("{Count} adet sıkışmış 'Ready' kayıt onarılmak üzere Processing'e çekildi.", brokenRecs.Count);
+        }
+
         // 24 saatten eski → Failed
         var stale = allProcessing.Where(r => r.CreatedAt <= cutoff).ToList();
         foreach (var s in stale)
@@ -82,11 +106,11 @@ public class BbbRecordingSyncJob : BackgroundService
             s.Status = MediaStatus.Failed;
             _logger.LogWarning("SessionRecording süresi doldu → Failed. Id: {Id}", s.Id);
         }
-        if (stale.Count > 0) await db.SaveChangesAsync(ct);
+        if (stale.Count > 0 || brokenRecs.Count > 0) await db.SaveChangesAsync(ct);
 
-        // 24 saatten yeni ve MediaAsset henüz oluşturulmamış
+        // 24 saatten yeni ve MediaAsset henüz oluşturulmamış veya geçici oluşturulmuş (Processing)
         var pending = allProcessing
-            .Where(r => r.CreatedAt > cutoff && r.MediaAsset == null)
+            .Where(r => r.CreatedAt > cutoff && (r.MediaAsset == null || r.MediaAsset.Status == MediaStatus.Processing))
             .ToList();
 
         if (pending.Count == 0)
@@ -139,25 +163,28 @@ public class BbbRecordingSyncJob : BackgroundService
         // Bu bir MP4 URL'i değil, web oynatıcı URL'idir.
         // İframe ile embed edilir, HLS dönüşümüne gerek yok.
         var tenantId = recording.Session.Course.TenantId;
-        var assetId  = Guid.NewGuid();
-
-        var asset = new Domain.Entities.MediaAsset
+        
+        var asset = recording.MediaAsset;
+        if (asset == null)
         {
-            Id            = assetId,
-            TenantId      = tenantId,
-            CourseId      = recording.Session.CourseId,
-            Title         = $"{recording.Session.Title} — Kayıt",
-            FilePath      = videoRecord.PlaybackUrl,   // BBB playback URL (iframe embed)
-            HlsPath       = null,                       // HLS yok — iframe ile gösterilir
-            ThumbnailPath = null,
-            DurationSeconds = videoRecord.DurationSeconds,
-            Status        = MediaStatus.Ready,
-            CreatedAt     = DateTime.UtcNow
-        };
-        db.MediaAssets.Add(asset);
+            asset = new Domain.Entities.MediaAsset
+            {
+                Id            = Guid.NewGuid(),
+                TenantId      = tenantId,
+                CourseId      = recording.Session.CourseId,
+                CreatedAt     = DateTime.UtcNow
+            };
+            db.MediaAssets.Add(asset);
+            recording.MediaAssetId = asset.Id;
+        }
 
-        // SessionRecording güncelle
-        recording.MediaAssetId = assetId;
+        asset.Title         = $"{recording.Session.Title} — Kayıt";
+        asset.FilePath      = videoRecord.PlaybackUrl;   // BBB playback URL (iframe embed)
+        asset.HlsPath       = null;                       // HLS yok — iframe ile gösterilir
+        asset.ThumbnailPath = null;
+        asset.DurationSeconds = videoRecord.DurationSeconds;
+        asset.Status        = MediaStatus.Ready;
+
         recording.Status       = MediaStatus.Ready;
 
         await db.SaveChangesAsync(ct);

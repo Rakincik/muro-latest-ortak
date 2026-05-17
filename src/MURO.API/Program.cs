@@ -151,7 +151,8 @@ if (!builder.Environment.IsDevelopment())
 // --- 🔐 Request Size Limits + HTTP/2 ---
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 256 * 1024 * 1024; // 256MB (video upload)
+    options.Limits.MaxRequestBodySize = null; // Sınırsız (Endpoint bazlı kontrol)
+    options.Limits.MinRequestBodyDataRate = null; // Çoklu yavaş yüklemelerde timeout atmaması için
     options.ConfigureEndpointDefaults(lo =>
         lo.Protocols = HttpProtocols.Http1AndHttp2);
 });

@@ -151,6 +151,9 @@ public class SystemController : ControllerBase
             AccentColor = req.AccentColor,
             FooterText = req.FooterText,
             Features = req.Features,
+            BbbServerUrl = req.BbbServerUrl,
+            BbbSecret = req.BbbSecret,
+            ServerGroup = req.ServerGroup,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

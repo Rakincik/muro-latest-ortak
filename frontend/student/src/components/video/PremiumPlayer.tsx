@@ -1,0 +1,181 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+import { Plyr, APITypes, PlyrProps } from "plyr-react";
+import Hls from "hls.js";
+
+interface PremiumPlayerProps {
+    src: string;
+    onLoaded?: () => void;
+    autoplay?: boolean;
+    poster?: string | null;
+}
+
+export const PremiumPlayer = React.memo(function PremiumPlayer({ src, onLoaded, autoplay = false, poster }: PremiumPlayerProps) {
+    const plyrRef = useRef<APITypes>(null);
+    const hlsRef = useRef<Hls | null>(null);
+    const lastValidSrcRef = useRef<string>(src);
+    const [supported, setSupported] = useState(true);
+    const [qualities, setQualities] = useState<number[]>([]);
+
+    if (src) {
+        lastValidSrcRef.current = src;
+    }
+    const currentSrc = src || lastValidSrcRef.current || "";
+
+    if (!currentSrc) return null;
+
+
+    // Tam URL'yi oluştur
+    const fullSrc = currentSrc.startsWith("/") 
+        ? `${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292"}${currentSrc}`
+        : currentSrc;
+
+    const isHls = fullSrc.includes(".m3u8");
+
+    useEffect(() => {
+        // HLS Kurulumu
+        const initializePlayer = () => {
+            const plyrInstance = plyrRef.current?.plyr;
+            if (!plyrInstance) return;
+
+            const videoElement = plyrInstance.media as HTMLVideoElement;
+            if (!videoElement) return;
+
+            if (isHls) {
+                if (Hls.isSupported()) {
+                    if (hlsRef.current) {
+                        hlsRef.current.destroy();
+                    }
+
+                    const hls = new Hls({ maxBufferLength: 30 });
+                    hls.loadSource(fullSrc);
+                    hls.attachMedia(videoElement);
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                        const availableQualities = data.levels.map((l) => l.height).sort((a, b) => b - a);
+                        setQualities(availableQualities);
+                        if (onLoaded) onLoaded();
+                        if (autoplay) {
+                            const playPromise = videoElement.play();
+                            if (playPromise !== undefined) {
+                                playPromise.catch(() => { /* Autoplay engellendi */ });
+                            }
+                        }
+                    });
+
+                    // HLS kalite seviyelerini Plyr'a tanıt
+                    hls.on(Hls.Events.LEVEL_LOADED, (event, data) => {
+                        // Plyr üzerinden kalite menüsünü doldurmak istersen burada yapabiliriz.
+                    });
+
+                    hlsRef.current = hls;
+
+                } else if (videoElement.canPlayType("application/vnd.apple.mpegurl")) {
+                    // Native HLS (Safari vb.)
+                    videoElement.src = fullSrc;
+                    videoElement.addEventListener("loadedmetadata", () => {
+                        if (onLoaded) onLoaded();
+                        if (autoplay) {
+                            videoElement.play().catch(() => {});
+                        }
+                    });
+                } else {
+                    setSupported(false);
+                }
+            } else {
+                // Native MP4 (Direct File)
+                videoElement.src = fullSrc;
+                videoElement.addEventListener("loadeddata", () => {
+                    if (onLoaded) onLoaded();
+                    if (autoplay) {
+                        videoElement.play().catch(() => {});
+                    }
+                });
+            }
+        };
+
+        const timer = setTimeout(() => {
+            initializePlayer();
+        }, 50);
+
+        return () => {
+            clearTimeout(timer);
+            if (hlsRef.current) {
+                try { hlsRef.current.destroy(); } catch (e) { console.error("HLS destroy error", e); }
+                hlsRef.current = null;
+            }
+        };
+    }, [fullSrc, isHls, onLoaded, autoplay]);
+
+    if (!supported) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-[#0A1931] text-white/50 text-sm">
+                Tarayıcınız bu video formatını desteklemiyor.
+            </div>
+        );
+    }
+
+    const vttPath = fullSrc.includes("master.m3u8") 
+        ? fullSrc.replace("master.m3u8", "thumbnails.vtt")
+        : undefined;
+
+    const plyrOptions: PlyrProps["options"] = {
+        ratio: "16:9",
+        fullscreen: { enabled: true, fallback: true, iosNative: true },
+        controls: [
+            "play-large", "play", "progress", "current-time", "duration", 
+            "mute", "volume", "captions", "settings", "pip", "airplay", "fullscreen"
+        ],
+        settings: ["quality", "speed"],
+        quality: qualities.length > 0 ? {
+            default: qualities[0],
+            options: qualities,
+            forced: true,
+            onChange: (q: number) => {
+                if (hlsRef.current) {
+                    const levelIndex = hlsRef.current.levels.findIndex(l => l.height === q);
+                    if (levelIndex !== -1) {
+                        hlsRef.current.currentLevel = levelIndex;
+                    }
+                }
+            }
+        } : {
+            default: 720,
+            options: [1080, 720, 480, 360],
+            forced: false
+        },
+        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+        disableContextMenu: true,
+        keyboard: { focused: true, global: true },
+        tooltips: { controls: true, seek: true },
+        previewThumbnails: vttPath ? { enabled: true, src: vttPath } : { enabled: false },
+    };
+
+    const posterFullUrl = poster 
+        ? (poster.startsWith("/") ? `${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292"}${poster}` : poster)
+        : undefined;
+
+    return (
+        <div className="w-full h-full premium-player-wrapper bg-black" onContextMenu={e => e.preventDefault()}>
+            <Plyr
+                ref={plyrRef}
+                source={{
+                    type: "video",
+                    poster: posterFullUrl,
+                    sources: [
+                        {
+                            src: fullSrc,
+                            type: isHls ? "application/x-mpegURL" : "video/mp4",
+                        }
+                    ]
+                }}
+                options={plyrOptions}
+            />
+        </div>
+    );
+}, (prevProps, nextProps) => {
+    return prevProps.src === nextProps.src && 
+           prevProps.poster === nextProps.poster && 
+           prevProps.autoplay === nextProps.autoplay;
+});

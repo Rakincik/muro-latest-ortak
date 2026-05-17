@@ -20,7 +20,7 @@ export const examApi = {
         optionCount: number; durationMinutes?: number; startDate?: string; endDate?: string;
         showResults: boolean; wrongPenaltyWeight?: number; resultMode?: string;
         resultPublishDate?: string; questionWeights?: Record<number, number>; sectionsJson?: string;
-        maxScore?: number; virtualParticipantCount?: number;
+        maxScore?: number; baseScore?: number; virtualParticipantCount?: number; digitalQuestionsJson?: string;
     }) =>
         api<ExamListDto>("/exams", { method: "POST", token, tenantId, body: JSON.stringify(data) }),
 

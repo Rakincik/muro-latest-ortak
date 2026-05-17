@@ -10,6 +10,7 @@ import {
     Play, Clock, Flame, BookOpen, Calendar, CheckCircle2, Video,
     ArrowRight, Zap, Trophy, Target, Star
 } from "lucide-react";
+import { KpiGrid } from "@/components/ui/KpiGrid";
 
 
 
@@ -39,6 +40,18 @@ export default function StudentDashboardPage() {
         }).catch(() => setError(true)).finally(() => setLoading(false));
     }, [token, tenantId]);
 
+    // Background polling for live sessions every 15 seconds
+    useEffect(() => {
+        if (!token || !tenantId) return;
+        const interval = setInterval(() => {
+            courseApi.getUpcomingSessions(token, tenantId).then(sessions => {
+                setLiveSessions((sessions as UpcomingSessionDto[])?.filter?.(s => s.status === "Live") || []);
+                setUpcomingSessions((sessions as UpcomingSessionDto[])?.filter?.(s => s.status !== "Live")?.slice(0, 5) || []);
+            }).catch(() => {});
+        }, 15000);
+        return () => clearInterval(interval);
+    }, [token, tenantId]);
+
     const handleJoinLive = async (session: UpcomingSessionDto) => {
         if (!token || !tenantId) return;
         setJoiningId(session.id);
@@ -59,11 +72,11 @@ export default function StudentDashboardPage() {
     const weeklyData = stats?.weeklyActivity || [];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 space-y-6">
             {/* ── Hero Welcome ── */}
             <div className="hero-continue p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in">
                 <div className="relative z-10">
-                    <p className="text-white/50 text-sm font-medium mb-1">{greeting} 👋</p>
+                    <p className="text-white/50 text-sm font-medium mb-1">{greeting}</p>
                     <h1 className="text-3xl font-bold text-white mb-2">{user?.firstName} {user?.lastName}</h1>
                     <p className="text-white/40 text-sm">
                         {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -77,81 +90,102 @@ export default function StudentDashboardPage() {
                     )}
                 </div>
                 <div className="hidden md:flex items-center gap-6 relative z-10">
-                    {/* Stats in hero */}
                     <div className="text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/10">
+                        <div className="w-14 h-14 mx-auto rounded-2xl bg-white/10 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/10">
                             <Clock size={22} className="text-white/70" />
                         </div>
                         <p className="text-white font-bold text-lg">{hours}s {mins}dk</p>
-                        <p className="text-white/40 text-[10px]">çalışma süresi</p>
+                        <p className="text-white/60 text-xs font-medium">çalışma süresi</p>
                     </div>
                     <div className="text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/10">
+                        <div className="w-14 h-14 mx-auto rounded-2xl bg-white/10 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/10">
                             <Video size={22} className="text-white/70" />
                         </div>
                         <p className="text-white font-bold text-lg">{stats?.completedVideos ?? 0}</p>
-                        <p className="text-white/40 text-[10px]">tamamlanan video</p>
+                        <p className="text-white/60 text-xs font-medium">tamamlanan video</p>
                     </div>
                     <div className="text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/10">
+                        <div className="w-14 h-14 mx-auto rounded-2xl bg-white/10 flex items-center justify-center mb-2 backdrop-blur-sm border border-white/10">
                             <Target size={22} className="text-white/70" />
                         </div>
                         <p className="text-white font-bold text-lg">%{stats?.attendanceRate ?? 0}</p>
-                        <p className="text-white/40 text-[10px]">katılım oranı</p>
+                        <p className="text-white/60 text-xs font-medium">katılım oranı</p>
                     </div>
                 </div>
             </div>
 
             {/* 🔴 Canlı Ders Banner */}
             {liveSessions?.length > 0 && (
-                <div className="space-y-2 animate-fade-in animate-fade-in-delay-1">
+                <div className="space-y-4 animate-fade-in animate-fade-in-delay-1">
                     {liveSessions.map(s => (
-                        <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-red-50 border border-red-200">
-                            <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
-                                <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-                                    <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                        <div key={s.id} className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-red-600 via-red-500 to-orange-500 shadow-2xl shadow-red-500/40 p-6 sm:p-8">
+                            {/* Animated Background Elements */}
+                            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl animate-pulse" />
+                            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-48 h-48 bg-black opacity-10 rounded-full blur-2xl animate-pulse" />
+                            
+                            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                <div className="flex items-center gap-5 sm:gap-6">
+                                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 rounded-2xl sm:rounded-3xl flex items-center justify-center shrink-0 backdrop-blur-md border border-white/30 shadow-inner">
+                                        <div className="relative flex items-center justify-center">
+                                            <span className="absolute w-8 h-8 rounded-full bg-red-400 animate-ping opacity-75" />
+                                            <span className="relative w-6 h-6 rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,1)]" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <span className="px-3 py-1 rounded-lg bg-white/20 text-white text-[11px] font-black uppercase tracking-widest backdrop-blur-md border border-white/20">Şu An Canlı</span>
+                                            <span className="text-white/90 text-sm font-semibold">{s.courseTitle}</span>
+                                        </div>
+                                        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white drop-shadow-lg tracking-tight">
+                                            {s.title}
+                                        </h2>
+                                        <p className="text-white/80 text-sm mt-2 font-medium">Öğretmen seni bekliyor, hemen katıl!</p>
+                                    </div>
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[#0A1931] text-sm font-bold truncate">{s.title}</p>
-                                    <p className="text-[#A9A9A9] text-xs truncate">{s.courseTitle} • Şu an canlı</p>
-                                </div>
+                                
+                                <button 
+                                    onClick={() => handleJoinLive(s)} 
+                                    disabled={joiningId === s.id}
+                                    className="w-full md:w-auto px-8 py-4 sm:py-5 bg-white hover:bg-gray-50 text-red-600 font-extrabold text-lg sm:text-xl rounded-2xl sm:rounded-3xl transition-all hover:scale-105 hover:-translate-y-1 active:scale-95 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex items-center justify-center gap-3 shrink-0 group"
+                                >
+                                    {joiningId === s.id ? (
+                                        <span className="animate-pulse">Bağlanıyor...</span>
+                                    ) : (
+                                        <>
+                                            <span className="relative flex h-5 w-5 sm:h-6 sm:w-6">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-5 w-5 sm:h-6 sm:w-6 bg-red-600">
+                                                    <Play size={14} className="text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ml-0.5" fill="currentColor" />
+                                                </span>
+                                            </span>
+                                            <span>Canlı Derse Katıl</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                            <button onClick={() => handleJoinLive(s)} disabled={joiningId === s.id}
-                                className="shrink-0 w-full sm:w-auto justify-center px-5 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-60 text-white text-xs font-bold rounded-xl transition-all hover:scale-105 active:scale-95 flex items-center gap-2 shadow-lg shadow-red-500/25">
-                                {joiningId === s.id ? "Bağlanıyor..." : "🔴 Katıl"}
-                            </button>
                         </div>
                     ))}
                 </div>
             )}
 
             {/* ── Stats Grid (Mobile) ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:hidden animate-fade-in animate-fade-in-delay-1">
-                {loading ? Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="glass-card p-4"><div className="w-9 h-9 rounded-xl shimmer mb-3" /><div className="h-3 shimmer rounded w-16 mb-2" /><div className="h-6 shimmer rounded w-12" /></div>
-                )) : (
-                    <>
-                        <div className="glass-card p-4 bg-gradient-to-br from-[#1B3B6F]/5 to-[#0A1931]/5">
-                            <div className="w-9 h-9 rounded-xl bg-[#1B3B6F]/10 flex items-center justify-center mb-3"><Clock size={16} className="text-[#1B3B6F]" /></div>
-                            <p className="text-[#0A1931] text-xl font-bold">{hours}s {mins}dk</p>
-                            <p className="text-[#A9A9A9] text-[10px] mt-0.5">çalışma süresi</p>
-                        </div>
-                        <div className="glass-card p-4 bg-gradient-to-br from-emerald-50 to-green-50">
-                            <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center mb-3"><CheckCircle2 size={16} className="text-emerald-600" /></div>
-                            <p className="text-[#0A1931] text-xl font-bold">{stats?.completedVideos ?? 0}</p>
-                            <p className="text-[#A9A9A9] text-[10px] mt-0.5">tamamlanan video</p>
-                        </div>
-                        <div className="glass-card p-4 bg-gradient-to-br from-blue-50 to-indigo-50">
-                            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center mb-3"><Target size={16} className="text-blue-600" /></div>
-                            <p className="text-[#0A1931] text-xl font-bold">%{stats?.attendanceRate ?? 0}</p>
-                            <p className="text-[#A9A9A9] text-[10px] mt-0.5">katılım oranı</p>
-                        </div>
-                        <div className="glass-card p-4 bg-gradient-to-br from-orange-50 to-amber-50">
-                            <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center mb-3"><Flame size={16} className="text-orange-500" /></div>
-                            <p className="text-[#0A1931] text-xl font-bold">{streak} Gün</p>
-                            <p className="text-[#A9A9A9] text-[10px] mt-0.5">aktif seri 🔥</p>
-                        </div>
-                    </>
+            <div className="md:hidden animate-fade-in animate-fade-in-delay-1">
+                {loading ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="glass-card p-4"><div className="w-9 h-9 rounded-xl shimmer mb-3" /><div className="h-3 shimmer rounded w-16 mb-2" /><div className="h-6 shimmer rounded w-12" /></div>
+                        ))}
+                    </div>
+                ) : (
+                    <KpiGrid 
+                        items={[
+                            { label: "çalışma süresi", value: `${hours}s ${mins}dk`, icon: Clock, colorClass: "text-[#0A1931]", bgClass: "bg-[#1B3B6F]/10", iconColorClass: "text-[#1B3B6F]" },
+                            { label: "tamamlanan video", value: stats?.completedVideos ?? 0, icon: CheckCircle2, colorClass: "text-[#0A1931]", bgClass: "bg-emerald-100", iconColorClass: "text-emerald-600" },
+                            { label: "katılım oranı", value: `%${stats?.attendanceRate ?? 0}`, icon: Target, colorClass: "text-[#0A1931]", bgClass: "bg-blue-100", iconColorClass: "text-blue-600" },
+                            { label: "aktif seri 🔥", value: `${streak} Gün`, icon: Flame, colorClass: "text-[#0A1931]", bgClass: "bg-orange-100", iconColorClass: "text-orange-500" }
+                        ]}
+                        className="grid grid-cols-2 gap-4"
+                    />
                 )}
             </div>
 
@@ -180,7 +214,7 @@ export default function StudentDashboardPage() {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-semibold text-[#0A1931] truncate group-hover:text-[#1B3B6F] transition-colors">{c.title}</p>
-                                                <p className="text-[10px] text-[#A9A9A9] mt-0.5">{c.sessionCount} oturum</p>
+                                                <p className="text-[11px] font-medium text-[#4A5568] bg-[#F1F5F9] px-2 py-0.5 rounded inline-flex mt-1 border border-[#E2E8F0]">{c.sessionCount} içerik</p>
                                             </div>
                                             <ArrowRight size={14} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors shrink-0" />
                                         </Link>
@@ -298,7 +332,7 @@ export default function StudentDashboardPage() {
                             </div>
                             <div>
                                 <p className="text-sm font-bold text-[#0A1931]">
-                                    {streak >= 7 ? "Muhteşem! 🏆" : streak >= 3 ? "Harika gidiyorsun! ⚡" : "Başlayalım! 🚀"}
+                                    {streak >= 7 ? "Muhteşem! 🏆" : streak >= 3 ? "Harika gidiyorsun! ⚡" : "Başlayalım!"}
                                 </p>
                                 <p className="text-[10px] text-[#A9A9A9]">
                                     {streak >= 7

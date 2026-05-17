@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { API_URL } from "@/lib/api/core";
 import { mediaLibraryApi, type CourseMediaDto } from "@/lib/api";
-import { GripVertical, Plus, Trash2, Video, Play, Users, Check } from "lucide-react";
+import { GripVertical, Plus, Trash2, Video, Play, Users, Check, X, Edit2, Loader2, FileText, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
 import { LibrarySelectorModal } from "@/components/ui/LibrarySelectorModal";
+import { ExamSelectorModal } from "@/components/ui/ExamSelectorModal";
 
 export function CourseMediaTab({ 
     courseId, 
@@ -14,18 +18,25 @@ export function CourseMediaTab({
     courseId: string;
     recordings?: any[];
     onViewAttendance?: (sessionId: string) => void;
-    onPlay?: (title: string, url: string, type: "video" | "iframe") => void;
 }) {
+    const { user, currentTenantId } = useAuth();
     const { success, error: toastError } = useToast();
+    const [activeVideo, setActiveVideo] = useState<{ id: string; url: string; type: "video" | "iframe"; title: string; vttPath?: string } | null>(null);
     const [medias, setMedias] = useState<CourseMediaDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+    const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     
     // Inline confirmation states
     const [inlineDeleteConfirm, setInlineDeleteConfirm] = useState<string | null>(null);
     const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+    
+    // Inline edit states
+    const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
+    const [editingTitle, setEditingTitle] = useState("");
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
 
     const [filter, setFilter] = useState<'all' | 'video' | 'recording'>('all');
     const [pageSize, setPageSize] = useState<number>(20);
@@ -34,6 +45,15 @@ export function CourseMediaTab({
     useEffect(() => {
         loadMedias();
     }, [courseId]);
+
+    const hasExamsFeature = useMemo(() => {
+        const t = user?.tenants.find(x => x.tenantId === currentTenantId);
+        if (!t?.features) return false;
+        try {
+            const f = JSON.parse(t.features);
+            return !!f.exams;
+        } catch { return false; }
+    }, [user, currentTenantId]);
 
     const loadMedias = async () => {
         setLoading(true);
@@ -44,6 +64,21 @@ export function CourseMediaTab({
             toastError("Hata", "Videolar yüklenemedi.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveEdit = async (mediaAssetId: string) => {
+        if (!editingTitle.trim()) return;
+        setIsSavingEdit(true);
+        try {
+            await mediaLibraryApi.updateAsset(mediaAssetId, { title: editingTitle });
+            setMedias(prev => prev.map(m => m.mediaAssetId === mediaAssetId ? { ...m, mediaAsset: { ...m.mediaAsset, title: editingTitle } } : m));
+            setEditingMediaId(null);
+            success("Başlık başarıyla güncellendi.");
+        } catch {
+            toastError("Hata", "Başlık güncellenemedi.");
+        } finally {
+            setIsSavingEdit(false);
         }
     };
 
@@ -89,9 +124,9 @@ export function CourseMediaTab({
         const ids = Array.from(selectedItems);
         try {
             for (const id of ids) {
-                await mediaLibraryApi.removeMediaFromCourse(courseId, id);
+                await mediaLibraryApi.removeItemFromCourse(courseId, id);
             }
-            setMedias(medias.filter(m => !ids.includes(m.mediaAssetId)));
+            setMedias(medias.filter(m => !ids.includes(m.id)));
             setSelectedItems(new Set());
             success(`${ids.length} içerik kurstan kaldırıldı.`);
         } catch (error) {
@@ -101,13 +136,13 @@ export function CourseMediaTab({
         }
     };
 
-    const confirmInlineRemove = async (mediaAssetId: string) => {
+    const confirmInlineRemove = async (courseMediaId: string) => {
         try {
-            await mediaLibraryApi.removeMediaFromCourse(courseId, mediaAssetId);
-            setMedias(medias.filter(m => m.mediaAssetId !== mediaAssetId));
+            await mediaLibraryApi.removeItemFromCourse(courseId, courseMediaId);
+            setMedias(medias.filter(m => m.id !== courseMediaId));
             setSelectedItems(prev => {
                 const newSet = new Set(prev);
-                newSet.delete(mediaAssetId);
+                newSet.delete(courseMediaId);
                 return newSet;
             });
             success("İçerik kurstan kaldırıldı.");
@@ -144,9 +179,25 @@ export function CourseMediaTab({
         }
     };
 
-    const filteredMedias = medias.filter(media => {
-        const recording = recordings.find(r => r.mediaAssetId && r.mediaAssetId === media.mediaAsset.id);
-        const isRecording = !!recording;
+    const handleExamSelect = async (selectedExamIds: string[]) => {
+        try {
+            for (const examId of selectedExamIds) {
+                await mediaLibraryApi.assignExamToCourse(courseId, examId);
+            }
+            success("Seçilen sınavlar kursa eklendi.");
+            setIsExamModalOpen(false);
+            loadMedias();
+        } catch (error) {
+            toastError("Hata", "Sınavlar eklenirken bir hata oluştu.");
+        }
+    };
+
+    const combinedMedias = useMemo(() => {
+        return [...medias];
+    }, [medias]);
+
+    const filteredMedias = combinedMedias.filter(media => {
+        const isRecording = media.type === "Session" || !!recordings.find(r => r.mediaAssetId && r.mediaAssetId === media?.mediaAsset?.id);
         if (filter === 'video' && isRecording) return false;
         if (filter === 'recording' && !isRecording) return false;
         return true;
@@ -228,11 +279,54 @@ export function CourseMediaTab({
                         className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
                     >
                         <Plus size={16} />
-                        Kütüphaneden Ekle
+                        Medya Ekle
                     </button>
+                    {hasExamsFeature && (
+                        <button 
+                            onClick={() => setIsExamModalOpen(true)}
+                            className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
+                        >
+                            <FileText size={16} />
+                            Quiz Ekle
+                        </button>
+                    )}
                 </div>
             </div>
 
+            {/* Immersive Theater Modal */}
+            {activeVideo && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0A1931]/80 backdrop-blur-md animate-in fade-in duration-300">
+                    {/* Click outside to close (optional, but good UX) */}
+                    <div className="absolute inset-0 cursor-pointer" onClick={() => setActiveVideo(null)} />
+                    
+                    <div className="relative w-full max-w-4xl 2xl:max-w-5xl bg-black rounded-[2rem] overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.5)] border border-white/20 animate-in zoom-in-95 duration-300 group">
+                        {/* Overlay Top Bar */}
+                        <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="flex-1 min-w-0 pr-4">
+                                <h3 className="text-white font-bold text-lg tracking-tight drop-shadow-md">{activeVideo.title}</h3>
+                                <p className="text-white/70 text-xs mt-0.5 drop-shadow-md">{activeVideo.type === "video" ? "Video Kaydı" : "Canlı Ders Kaydı"}</p>
+                            </div>
+                            <button 
+                                onClick={() => setActiveVideo(null)} 
+                                className="w-10 h-10 rounded-full bg-white/10 hover:bg-red-500 hover:scale-110 text-white flex items-center justify-center backdrop-blur-md transition-all shrink-0 border border-white/20"
+                                title="Kapat"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        
+                        {/* Video Area */}
+                        <div className="w-full aspect-video bg-black relative">
+                            {activeVideo.type === "video" ? (
+                                <HlsVideoPlayer src={activeVideo.url} mediaId={activeVideo.id} vttPath={activeVideo.vttPath} />
+                            ) : (
+                                <iframe src={activeVideo.url} className="w-full h-full border-0" allowFullScreen />
+                            )}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {filteredMedias.length === 0 ? (
                 <div className="text-center py-16 border border-dashed border-[#E2E8F0] rounded-[2rem] bg-white shadow-sm">
@@ -243,28 +337,34 @@ export function CourseMediaTab({
                 <div className="space-y-3">
                     {paginatedMedias.map((media, displayIndex) => {
                         const globalIndex = medias.findIndex(m => m.id === media.id);
-                        const recording = recordings.find(r => r.mediaAssetId && r.mediaAssetId === media.mediaAsset.id);
+                        const recording = recordings.find(r => r.mediaAssetId && r.mediaAssetId === media.mediaAsset?.id);
                         const isRecording = !!recording;
 
                         return (
-                            <div
-                                key={media.id}
-                                draggable={isReorderEnabled}
-                                onDragStart={isReorderEnabled ? () => handleDragStart(globalIndex) : undefined}
-                                onDragOver={isReorderEnabled ? (e) => handleDragOver(e, globalIndex) : undefined}
-                                onDrop={isReorderEnabled ? handleDrop : undefined}
-                                onDragEnd={isReorderEnabled ? handleDrop : undefined}
-                                className={`flex items-center gap-5 bg-white border border-[#E2E8F0]/60 shadow-sm hover:shadow-md p-4 rounded-2xl transition-all group ${draggedItemIndex === globalIndex ? 'opacity-50 scale-[1.02] border-blue-500 ring-2 ring-blue-500/20' : 'hover:border-blue-300'} ${isReorderEnabled ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                            >
+                            <div key={media.id} className="flex flex-col gap-2">
+                                <div
+                                    draggable={isReorderEnabled}
+                                    onDragStart={isReorderEnabled ? () => handleDragStart(globalIndex) : undefined}
+                                    onDragOver={isReorderEnabled ? (e) => handleDragOver(e, globalIndex) : undefined}
+                                    onDrop={isReorderEnabled ? handleDrop : undefined}
+                                    onDragEnd={isReorderEnabled ? handleDrop : undefined}
+                                    className={`flex items-center gap-5 bg-white border shadow-sm p-4 rounded-2xl transition-all group ${activeVideo?.id === media.id ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' : 'border-[#E2E8F0]/60 hover:shadow-md hover:border-blue-300'} ${draggedItemIndex === globalIndex ? 'opacity-50 scale-[1.02]' : ''} ${isReorderEnabled && !(media as any).isFake ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                                >
+                                <div className="w-10 flex items-center justify-center shrink-0 border-r border-[#E2E8F0]/80 pr-3">
+                                    <span className="text-base font-black text-[#1B3B6F]/60 font-mono drop-shadow-sm">
+                                        {(combinedMedias.findIndex(m => m.id === media.id) + 1).toString().padStart(2, '0')}
+                                    </span>
+                                </div>
+                                
                                 <div 
                                     className="p-2 cursor-pointer shrink-0" 
-                                    onClick={(e) => { e.stopPropagation(); toggleItemSelection(media.mediaAssetId); }}
+                                    onClick={(e) => { e.stopPropagation(); toggleItemSelection(media.id); }}
                                 >
-                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedItems.has(media.mediaAssetId) ? 'bg-[#1B3B6F] border-[#1B3B6F] text-white' : 'border-[#A0AEC0]/40 text-transparent hover:border-[#1B3B6F]/50'}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={selectedItems.has(media.mediaAssetId) ? 'opacity-100' : 'opacity-0'}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedItems.has(media.id) ? 'bg-[#1B3B6F] border-[#1B3B6F] text-white' : 'border-[#A0AEC0]/40 text-transparent hover:border-[#1B3B6F]/50'}`}>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={selectedItems.has(media.id) ? 'opacity-100' : 'opacity-0'}><polyline points="20 6 9 17 4 12"></polyline></svg>
                                     </div>
                                 </div>
-                                {isReorderEnabled ? (
+                                {isReorderEnabled && !(media as any).isFake ? (
                                     <div className="text-[#A0AEC0] p-1 cursor-grab group-hover:text-blue-500 transition-colors">
                                         <GripVertical size={20} />
                                     </div>
@@ -272,40 +372,119 @@ export function CourseMediaTab({
                                     <div className="w-5" /> // placeholder
                                 )}
                                 
-                                <button 
-                                    onClick={() => {
-                                        if (onPlay) {
-                                            const url = media.mediaAsset.hlsPath || media.mediaAsset.filePath;
-                                            if (url) {
-                                                onPlay(
-                                                    media.mediaAsset.title, 
-                                                    url, 
-                                                    media.mediaAsset.hlsPath ? "video" : "iframe"
-                                                );
+                                {media.type === "Exam" ? (
+                                    <button 
+                                        disabled
+                                        className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-inner bg-purple-50 text-purple-600"
+                                        title="Sınav"
+                                    >
+                                        <FileText size={24} />
+                                    </button>
+                                ) : media.type === "Session" ? (() => {
+                                    const rec = recordings.find(r => r.sessionId === media.sessionId && (r.playbackUrl || r.hlsPath));
+                                    const canPlay = !!rec;
+                                    return (
+                                        <button 
+                                            disabled={!canPlay}
+                                            onClick={() => {
+                                                if (!canPlay) return;
+                                                if (activeVideo?.id === media.id) {
+                                                    setActiveVideo(null);
+                                                } else {
+                                                    const url = rec.hlsPath || rec.playbackUrl;
+                                                    if (url) {
+                                                        setActiveVideo({ 
+                                                            id: media.id, 
+                                                            title: media.sessionTitle || "Canlı Ders Kaydı",
+                                                            url, 
+                                                            type: rec.hlsPath ? "video" : "iframe",
+                                                            vttPath: rec.thumbnailPath || undefined
+                                                        });
+                                                    }
+                                                }
+                                            }}
+                                            className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-inner transition-all ${canPlay ? (activeVideo?.id === media.id ? 'bg-[#0A1931] text-white shadow-lg' : 'hover:scale-105 active:scale-95 cursor-pointer bg-blue-50 text-blue-600 hover:bg-blue-100') : 'bg-red-50 text-red-500/50 cursor-not-allowed'}`}
+                                            title={canPlay ? (activeVideo?.id === media.id ? "Kapat" : "Oynat") : "Canlı Ders (Kayıt Yok)"}
+                                        >
+                                            {activeVideo?.id === media.id ? <X size={24} /> : <Video size={24} />}
+                                        </button>
+                                    );
+                                })() : (
+                                    <button 
+                                        onClick={() => {
+                                            if (activeVideo?.id === media.id) {
+                                                setActiveVideo(null);
+                                            } else if (media.mediaAsset) {
+                                                const url = media.mediaAsset.hlsPath || media.mediaAsset.filePath;
+                                                if (url) {
+                                                    setActiveVideo({ 
+                                                        id: media.id, 
+                                                        title: media.mediaAsset.title,
+                                                        url, 
+                                                        type: media.mediaAsset.hlsPath ? "video" : "iframe",
+                                                        vttPath: (media.mediaAsset as any).vttPath
+                                                    });
+                                                }
                                             }
-                                        }
-                                    }}
-                                    className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-inner transition-all hover:scale-105 active:scale-95 cursor-pointer ${isRecording ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
-                                    title="Oynat"
-                                >
-                                    {isRecording ? <Video size={24} /> : <Play size={24} />}
-                                </button>
+                                        }}
+                                        className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-inner transition-all hover:scale-105 active:scale-95 cursor-pointer ${activeVideo?.id === media.id ? 'bg-[#0A1931] text-white shadow-lg' : isRecording ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
+                                        title={activeVideo?.id === media.id ? "Kapat" : "Oynat"}
+                                    >
+                                        {activeVideo?.id === media.id ? <X size={24} /> : isRecording ? <Video size={24} /> : <Play size={24} />}
+                                    </button>
+                                )}
                                 
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <p className="text-[#0A1931] font-bold text-base truncate">{media.mediaAsset.title}</p>
-                                        {isRecording && (
-                                            <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-wider">
-                                                CANLI DERS
-                                            </span>
-                                        )}
+                                {editingMediaId === media.id ? (
+                                    <div className="flex-1 min-w-0 pr-4 animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                                        <div className="flex items-center gap-2">
+                                            <input 
+                                                type="text" 
+                                                value={editingTitle} 
+                                                onChange={(e) => setEditingTitle(e.target.value)}
+                                                className="w-full bg-[#F8FAFC] border-2 border-[#1B3B6F]/20 rounded-xl px-3 py-2 text-sm font-bold text-[#0A1931] focus:outline-none focus:border-[#1B3B6F] focus:ring-4 focus:ring-[#1B3B6F]/10 transition-all"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        if (media.mediaAssetId) handleSaveEdit(media.mediaAssetId);
+                                                    }
+                                                    if (e.key === 'Escape') setEditingMediaId(null);
+                                                }}
+                                                disabled={isSavingEdit}
+                                            />
+                                            <button onClick={() => media.mediaAssetId && handleSaveEdit(media.mediaAssetId)} disabled={isSavingEdit} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl shrink-0 transition-colors">
+                                                {isSavingEdit ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                                            </button>
+                                            <button onClick={() => setEditingMediaId(null)} disabled={isSavingEdit} className="p-2 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-xl shrink-0 transition-colors">
+                                                <X size={18} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p className="text-xs font-medium text-[#A0AEC0] flex items-center gap-2">
-                                        {media.mediaAsset.durationSeconds ? `${Math.floor(media.mediaAsset.durationSeconds / 60)} dk` : 'Süre bilinmiyor'} 
-                                        <span className="w-1 h-1 rounded-full bg-[#E2E8F0]" /> 
-                                        <span className={media.mediaAsset.status === 'Ready' ? 'text-emerald-500' : 'text-amber-500'}>{media.mediaAsset.status}</span>
-                                    </p>
-                                </div>
+                                ) : (
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <p className="text-[#0A1931] font-bold text-base truncate">{media.type === "Exam" ? media.examTitle : media.type === "Session" ? media.sessionTitle : media.mediaAsset?.title}</p>
+                                            {media.type === "Exam" && (
+                                                <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-wider">
+                                                    SINAV / QUİZ
+                                                </span>
+                                            )}
+                                            {isRecording && (
+                                                <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 text-[10px] font-black uppercase tracking-wider">
+                                                    CANLI DERS
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p className="text-xs font-medium text-[#A0AEC0] flex items-center gap-2">
+                                            {media.type === "Exam" ? "Öğrenci Sınavı" : media.type === "Session" ? "Canlı Ders Oturumu" : (
+                                                <>
+                                                    {media.mediaAsset?.durationSeconds ? `${Math.floor(media.mediaAsset.durationSeconds / 60)} dk` : 'Süre bilinmiyor'} 
+                                                    <span className="w-1 h-1 rounded-full bg-[#E2E8F0]" /> 
+                                                    <span className={media.mediaAsset?.status === 'Ready' ? 'text-emerald-500' : 'text-amber-500'}>{media.mediaAsset?.status}</span>
+                                                </>
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
 
                                 <div className="flex items-center gap-2">
                                     {isRecording && recording && onViewAttendance && (
@@ -317,31 +496,72 @@ export function CourseMediaTab({
                                             <Users size={18} />
                                         </button>
                                     )}
-                                    {inlineDeleteConfirm === media.mediaAssetId ? (
-                                        <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-2">
-                                            <button 
-                                                onClick={() => confirmInlineRemove(media.mediaAssetId)}
-                                                className="px-3 py-2 bg-red-500 text-white text-xs font-bold rounded-xl hover:bg-red-600 transition-all shadow-md flex items-center gap-1"
-                                            >
-                                                <Check size={14} /> Onayla
-                                            </button>
-                                            <button 
-                                                onClick={() => setInlineDeleteConfirm(null)}
-                                                className="px-3 py-2 bg-[#F8FAFC] text-[#A0AEC0] border border-[#E2E8F0] text-xs font-bold rounded-xl hover:bg-[#E2E8F0] transition-all"
-                                            >
-                                                İptal
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button 
-                                            onClick={() => setInlineDeleteConfirm(media.mediaAssetId)}
-                                            className="p-3 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                            title="Kurstan Çıkar"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                    {!(media as any).isFake && (
+                                        inlineDeleteConfirm === media.id ? (
+                                            <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2 bg-red-50/80 p-2 rounded-xl border border-red-100">
+                                                <span className="text-[10px] font-bold text-red-600/80 max-w-[180px] leading-tight">
+                                                    {media.type === "Media" 
+                                                        ? "💡 Bu videoyu dersten çıkarmak istiyor musunuz?" 
+                                                        : "⚠️ Bu oturumu takvimden tamamen silmek istiyor musunuz?"}
+                                                </span>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button 
+                                                        onClick={() => removeItemFromCourse(media.id)}
+                                                        className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-lg hover:bg-red-600 transition-all shadow-sm"
+                                                    >
+                                                        Onayla
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setInlineDeleteConfirm(null)}
+                                                        className="px-3 py-1.5 bg-white text-[#0A1931] text-xs font-bold rounded-lg border border-[#E2E8F0] hover:bg-gray-100 transition-all"
+                                                    >
+                                                        Vazgeç
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {media.type === "Media" && media.mediaAssetId && (
+                                                    <>
+                                                        <Link
+                                                            href="/dashboard/media"
+                                                            target="_blank"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="p-3 text-[#A0AEC0] hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                            title="Kütüphanede Göster"
+                                                        >
+                                                            <ExternalLink size={18} />
+                                                        </Link>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingTitle(media.mediaAsset?.title || "");
+                                                                setEditingMediaId(media.id);
+                                                            }}
+                                                            className="p-3 text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"
+                                                            title="Başlığı Düzenle"
+                                                        >
+                                                            <Edit2 size={18} />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setInlineDeleteConfirm(media.id);
+                                                    }}
+                                                    className="p-3 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                    title={media.type === "Media" ? "Dersten Çıkar" : "Tamamen Sil"}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </>
+                                        )
                                     )}
                                 </div>
+                                </div>
+                                
+                                {/* The Inline Theater Box has been moved to a global modal */}
                             </div>
                         );
                     })}
@@ -379,6 +599,114 @@ export function CourseMediaTab({
                     onSelect={handleLibrarySelect}
                 />
             )}
+
+            {isExamModalOpen && (
+                <ExamSelectorModal 
+                    onClose={() => setIsExamModalOpen(false)}
+                    onSelect={handleExamSelect}
+                />
+            )}
+
         </div>
     );
+}
+
+// ─── HLS Player Component ──────────────────────────────────────────────────
+function HlsVideoPlayer({ src, mediaId, vttPath }: { src: string; mediaId: string; vttPath?: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !src) return;
+        const fullSrc = src.startsWith("/") 
+            ? `${API_URL.replace("/api/v1", "")}${src}`
+            : src;
+            
+        let hls: any = null;
+        let player: any = null;
+        const storageKey = `muro_progress_${mediaId}`;
+
+        const initPlyr = async (availableQualities: number[] = []) => {
+            const Plyr = (await import("plyr")).default;
+            await import("plyr/dist/plyr.css");
+            
+            const plyrOptions: any = {
+                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                settings: ['captions', 'quality', 'speed'],
+                speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+                keyboard: { focused: true, global: true }
+            };
+
+            if (vttPath) {
+                plyrOptions.previewThumbnails = { enabled: true, src: vttPath };
+            }
+
+            if (availableQualities.length > 0) {
+                plyrOptions.quality = {
+                    default: availableQualities[0],
+                    options: availableQualities,
+                    forced: true,
+                    onChange: (newQuality: number) => {
+                        if (hls) {
+                            window.hls = hls;
+                            hls.levels.forEach((level: any, levelIndex: number) => {
+                                if (level.height === newQuality) {
+                                    hls.currentLevel = levelIndex;
+                                }
+                            });
+                        }
+                    }
+                };
+            }
+
+            player = new Plyr(video, plyrOptions);
+            
+            // Auto-resume logic
+            const savedTime = localStorage.getItem(storageKey);
+            if (savedTime && parseFloat(savedTime) > 0) {
+                // Resume a bit earlier so they remember where they were
+                video.currentTime = Math.max(0, parseFloat(savedTime) - 3);
+            }
+
+            video.addEventListener('timeupdate', () => {
+                if (video.currentTime > 5) { // Only save if they watched more than 5 seconds
+                    localStorage.setItem(storageKey, video.currentTime.toString());
+                }
+            });
+            
+            // Clear progress if finished
+            video.addEventListener('ended', () => {
+                localStorage.removeItem(storageKey);
+            });
+        };
+
+        const load = async () => {
+            if (video.canPlayType("application/vnd.apple.mpegurl")) {
+                video.src = fullSrc;
+                video.addEventListener('loadedmetadata', () => {
+                    initPlyr();
+                });
+            } else {
+                const Hls = (await import("hls.js")).default;
+                if (Hls.isSupported()) {
+                    hls = new Hls();
+                    hls.loadSource(fullSrc);
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.MANIFEST_PARSED, (event: any, data: any) => {
+                        const qualities = data.levels.map((l: any) => l.height).sort((a: number, b: number) => b - a);
+                        initPlyr(qualities);
+                    });
+                }
+            }
+        };
+        load();
+
+        return () => {
+            if (video) {
+                localStorage.setItem(storageKey, video.currentTime.toString());
+            }
+            if (hls) hls.destroy();
+            if (player) player.destroy();
+        };
+    }, [src, mediaId, vttPath]);
+    return <video ref={videoRef} crossOrigin="anonymous" className="w-full h-full outline-none" />;
 }
