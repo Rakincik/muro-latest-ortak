@@ -10,14 +10,13 @@ import { FolderTree } from "@/components/ui/FolderTree";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { VideoPlayerModal } from "@/components/ui/VideoPlayerModal";
 
+import { API_URL } from "@/lib/api";
+
 const getFileUrl = (path: string | null) => {
     if (!path) return "";
     if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
-    let hostname = "localhost";
-    if (typeof window !== "undefined") {
-        hostname = window.location.hostname;
-    }
-    return `http://${hostname}:5292${path.startsWith("/") ? "" : "/"}${path}`;
+    const baseUrl = API_URL.replace("/api/v1", "");
+    return `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
 const FallbackImage = ({ src }: { src: string }) => {

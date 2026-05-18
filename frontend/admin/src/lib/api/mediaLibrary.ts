@@ -123,6 +123,7 @@ export const mediaLibraryApi = {
     updateFolder,
     deleteFolder,
     getAssets,
+    getAsset,
     createAsset,
     updateAsset,
     deleteAsset,
