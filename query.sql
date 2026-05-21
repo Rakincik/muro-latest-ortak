@@ -1,0 +1,1 @@
+SELECT c."Id", c."Title", (SELECT COUNT(*) FROM "CourseMedias" WHERE "CourseId" = c."Id") as CM, (SELECT COUNT(*) FROM "Sessions" WHERE "CourseId" = c."Id") as S FROM "Courses" c WHERE c."Title" = 'test';

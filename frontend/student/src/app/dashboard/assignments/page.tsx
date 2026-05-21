@@ -169,19 +169,19 @@ export default function AssignmentsPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto pt-16 md:pt-0">
             <h1 className="text-2xl font-bold text-[#0A1931] mb-1">📝 Ödevlerim</h1>
             <p className="text-[#A9A9A9] text-sm mb-6">{assignments.length} ödev</p>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <div className="flex overflow-x-auto sm:grid sm:grid-cols-4 gap-3 mb-6 pb-2 snap-x hide-scrollbar">
                 {[
                     { label: "Toplam", value: counts.all, emoji: "📋", color: "text-[#0A1931]" },
                     { label: "Bekliyor", value: counts.pending, emoji: "⏳", color: "text-amber-600" },
                     { label: "Gönderilen", value: counts.submitted, emoji: "📤", color: "text-blue-600" },
                     { label: "Notlanan", value: counts.graded, emoji: "✅", color: "text-emerald-600" },
                 ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-[#E2E8F0] p-4 text-center">
+                    <div key={s.label} className="bg-white rounded-2xl border border-[#E2E8F0] p-4 text-center shrink-0 w-36 sm:w-auto snap-center">
                         <span className="text-xl mb-1 block">{s.emoji}</span>
                         <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mt-0.5">{s.label}</p>

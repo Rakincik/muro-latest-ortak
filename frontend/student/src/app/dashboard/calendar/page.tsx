@@ -128,7 +128,7 @@ export default function StudentCalendarPage() {
     }, [events]);
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 pt-16 md:pt-0">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -150,9 +150,9 @@ export default function StudentCalendarPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="flex overflow-x-auto sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3 pb-2 snap-x hide-scrollbar">
                 {Object.entries(eventColors).map(([type, c]) => (
-                    <div key={type} className={`${c.bg} rounded-xl p-3 flex items-center gap-2 border ${c.border}`}>
+                    <div key={type} className={`${c.bg} rounded-xl p-3 flex items-center gap-2 border ${c.border} shrink-0 w-36 sm:w-auto snap-center`}>
                         <div className={`w-2.5 h-2.5 rounded-full ${c.dot}`} />
                         <span className={`text-xs font-bold ${c.text}`}>{type}</span>
                         <span className={`text-xs font-bold ${c.text} ml-auto`}>{events.filter(e => e.eventType === type).length}</span>
@@ -286,10 +286,10 @@ export default function StudentCalendarPage() {
                 {/* Month View */}
                 {viewMode === "month" && (
                     <div className="flex flex-col lg:grid lg:grid-cols-10 gap-5">
-                        <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E2E8F0] p-3 sm:p-5 overflow-x-auto">
-                            <div className="min-w-[600px] sm:min-w-0">
+                        <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E2E8F0] p-2 sm:p-5 overflow-x-hidden sm:overflow-x-auto">
+                            <div className="min-w-0">
                                 <div className="grid grid-cols-7 mb-2">
-                                {DAYS_TR.map(d => <div key={d} className="text-center text-xs font-bold text-[#A0AEC0] py-2">{d}</div>)}
+                                {DAYS_TR.map(d => <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-[#A0AEC0] py-2">{d}</div>)}
                             </div>
                             <div className="grid grid-cols-7 gap-1">
                                 {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-24 rounded-xl bg-[#E2E8F0]/20 animate-pulse" />) :
@@ -301,16 +301,27 @@ export default function StudentCalendarPage() {
                                         return (
                                             <button key={cell.date} onClick={() => setSelectedDate(cell.date)}
                                                 onDoubleClick={() => { setSelectedDate(cell.date); setCurrentDate(new Date(cell.date)); setViewMode("day"); }}
-                                                className={`h-24 rounded-xl p-2 text-left flex flex-col transition-all hover:bg-[#E2E8F0]/20
+                                                className={`aspect-square sm:h-24 sm:aspect-auto rounded-lg sm:rounded-xl p-1 sm:p-2 text-center sm:text-left flex flex-col transition-all hover:bg-[#E2E8F0]/20
                                                     ${isSelected ? "bg-[#1B3B6F]/5 ring-2 ring-[#1B3B6F]/20" : ""}
                                                     ${isToday && !isSelected ? "bg-[#E2E8F0]/20" : ""}`}>
-                                                <span className={`text-xs font-bold mb-1 ${isToday ? "w-6 h-6 bg-[#1B3B6F] text-white rounded-full flex items-center justify-center" : "text-[#1B3B6F]"}`}>{cell.day}</span>
-                                                <div className="flex-1 space-y-0.5 overflow-hidden">
+                                                <span className={`text-[10px] sm:text-xs font-bold mb-1 mx-auto sm:mx-0 ${isToday ? "w-5 h-5 sm:w-6 sm:h-6 bg-[#1B3B6F] text-white rounded-full flex items-center justify-center" : "text-[#1B3B6F]"}`}>{cell.day}</span>
+                                                
+                                                {/* Desktop: Texts */}
+                                                <div className="hidden sm:flex flex-1 flex-col space-y-0.5 overflow-hidden w-full">
                                                     {dayEvents.slice(0, 2).map(ev => {
                                                         const col = getColor(ev.eventType);
-                                                        return (<div key={ev.id} className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${col.bg} ${col.text} truncate`}>{ev.title}</div>);
+                                                        return (<div key={ev.id} className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${col.bg} ${col.text} truncate w-full`}>{ev.title}</div>);
                                                     })}
                                                     {dayEvents.length > 2 && <span className="text-[9px] text-[#A0AEC0] px-1">+{dayEvents.length - 2}</span>}
+                                                </div>
+
+                                                {/* Mobile: Dots */}
+                                                <div className="flex sm:hidden flex-wrap gap-0.5 justify-center mt-auto w-full pb-1">
+                                                    {dayEvents.slice(0, 3).map(ev => {
+                                                        const col = getColor(ev.eventType);
+                                                        return (<div key={ev.id} className={`w-1.5 h-1.5 rounded-full ${col.dot}`} />);
+                                                    })}
+                                                    {dayEvents.length > 3 && <div className="w-1 h-1 rounded-full bg-[#A0AEC0] self-center" />}
                                                 </div>
                                             </button>
                                         );

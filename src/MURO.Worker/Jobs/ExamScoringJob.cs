@@ -47,7 +47,7 @@ public class ExamScoringJob : BackgroundService
             .Include(q => q.Exam)
             .Where(q => q.Status == "Pending")
             .OrderBy(q => q.SubmittedAt)
-            .Take(50)
+            .Take(500)
             .ToListAsync(cancellationToken);
 
         if (!pendingItems.Any())
@@ -55,7 +55,11 @@ public class ExamScoringJob : BackgroundService
 
         _logger.LogInformation($"Processing {pendingItems.Count} pending exam submissions.");
 
-        foreach (var item in pendingItems)
+        var resultsToAdd = new System.Collections.Concurrent.ConcurrentBag<ExamResult>();
+        var queuesToRemove = new System.Collections.Concurrent.ConcurrentBag<ExamSubmissionQueue>();
+        var cacheKeysToRemove = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>();
+
+        Parallel.ForEach(pendingItems, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, item =>
         {
             try
             {
@@ -64,7 +68,7 @@ public class ExamScoringJob : BackgroundService
                 {
                     item.Status = "Failed";
                     item.ErrorMessage = "Exam not found";
-                    continue;
+                    return;
                 }
 
                 var answers = JsonSerializer.Deserialize<Dictionary<int, string>>(item.AnswersJson) ?? new();
@@ -116,23 +120,32 @@ public class ExamScoringJob : BackgroundService
                     WrongCount = wrong,
                     EmptyCount = empty,
                     Score = score,
-                    StartedAt = null, // Can be improved
+                    StartedAt = null,
                     SubmittedAt = item.SubmittedAt
                 };
 
-                db.ExamResults.Add(result);
+                resultsToAdd.Add(result);
                 item.Status = "Processed";
-                
-                // Remove from queue completely or keep for logs
-                db.ExamSubmissionQueues.Remove(item);
-                
-                await cache.RemoveByPrefixAsync($"{item.TenantId}:exams:");
+                queuesToRemove.Add(item);
+                cacheKeysToRemove.TryAdd($"{item.TenantId}:exams:", 1);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Failed to process submission {item.Id}");
                 item.Status = "Failed";
                 item.ErrorMessage = ex.Message;
+            }
+        });
+
+        // ── Bulk Insert & Delete ──
+        if (resultsToAdd.Any())
+        {
+            db.ExamResults.AddRange(resultsToAdd);
+            db.ExamSubmissionQueues.RemoveRange(queuesToRemove);
+            
+            foreach (var key in cacheKeysToRemove.Keys)
+            {
+                await cache.RemoveByPrefixAsync(key);
             }
         }
 

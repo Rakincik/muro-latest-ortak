@@ -78,7 +78,7 @@ public class CourseService : ICourseService
                 .ToListAsync();
 
             return new PagedResult<CourseListDto>(items, totalCount, page, pageSize, totalPages);
-        }, TimeSpan.FromMinutes(5));
+        }, TimeSpan.FromMinutes(1));
     }
 
     /// <summary>
@@ -87,90 +87,99 @@ public class CourseService : ICourseService
     public async Task<PagedResult<CourseListDto>> GetCoursesByUserAsync(
         Guid tenantId, Guid userId, int page, int pageSize, string? search, string? courseType)
     {
-        var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
-
-        var query = _context.Courses
-            .AsNoTracking()
-            .Where(c => c.TenantId == tenantId && c.IsPublished && accessibleIds.Contains(c.Id));
-
-        if (!string.IsNullOrWhiteSpace(search))
+        var cacheKey = $"{tenantId}:courses:user:{userId}:{page}:{pageSize}:{search ?? ""}:{courseType ?? ""}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var s = search.ToLower();
-            query = query.Where(c => c.Title.ToLower().Contains(s) || (c.Description != null && c.Description.ToLower().Contains(s)));
-        }
+            var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
 
-        if (!string.IsNullOrWhiteSpace(courseType) && Enum.TryParse<CourseType>(courseType, true, out var ct))
-            query = query.Where(c => c.CourseType == ct);
+            var query = _context.Courses
+                .AsNoTracking()
+                .Where(c => c.TenantId == tenantId && c.IsPublished && accessibleIds.Contains(c.Id));
 
-        var totalCount = await query.CountAsync();
-        var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.ToLower();
+                query = query.Where(c => c.Title.ToLower().Contains(s) || (c.Description != null && c.Description.ToLower().Contains(s)));
+            }
 
-        var items = await query
-            .OrderBy(c => c.Order).ThenByDescending(c => c.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(c => new CourseListDto(
-                c.Id, c.Title, c.Description, c.ThumbnailUrl,
-                c.CourseType.ToString(), c.IsPublished,
-                c.CourseMedias.Count, c.CourseGroups.Count,
-                c.Order, c.StartDate, c.CreatedAt,
-                c.InstructorId,
-                c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null))
-            .ToListAsync();
+            if (!string.IsNullOrWhiteSpace(courseType) && Enum.TryParse<CourseType>(courseType, true, out var ct))
+                query = query.Where(c => c.CourseType == ct);
 
-        return new PagedResult<CourseListDto>(items, totalCount, page, pageSize, totalPages);
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var items = await query
+                .OrderBy(c => c.Order).ThenByDescending(c => c.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(c => new CourseListDto(
+                    c.Id, c.Title, c.Description, c.ThumbnailUrl,
+                    c.CourseType.ToString(), c.IsPublished,
+                    c.CourseMedias.Count, c.CourseGroups.Count,
+                    c.Order, c.StartDate, c.CreatedAt,
+                    c.InstructorId,
+                    c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null))
+                .ToListAsync();
+
+            return new PagedResult<CourseListDto>(items, totalCount, page, pageSize, totalPages);
+        }, TimeSpan.FromMinutes(1));
     }
 
     public async Task<CourseDetailDto> GetCourseByIdAsync(Guid tenantId, Guid courseId, Guid? userId = null)
     {
-        // Erişim kontrolü: userId verilmişse grup kontrolü yap
-        if (userId.HasValue && !await _groupAccess.CanAccessCourseAsync(tenantId, userId.Value, courseId))
-            throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
-
-        var course = await _context.Courses
-            .AsNoTracking()
-            .Where(c => c.Id == courseId && c.TenantId == tenantId)
-            .Include(c => c.Instructor)
-            .Include(c => c.Sessions.OrderBy(s => s.Order))
-            .Include(c => c.CourseGroups).ThenInclude(cg => cg.Group)
-            .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException("Ders bulunamadı.");
-
-        // BBB ile oturum durumu senkronizasyonu: Live oturumları kontrol et
-        var liveSessions = course.Sessions.Where(s => s.Status == SessionStatus.Live && s.BbbMeetingId != null).ToList();
-        foreach (var session in liveSessions)
+        var cacheKey = $"{tenantId}:courses:detail:{courseId}:{userId}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            try
+            // Erişim kontrolü: userId verilmişse grup kontrolü yap
+            if (userId.HasValue && !await _groupAccess.CanAccessCourseAsync(tenantId, userId.Value, courseId))
+                throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
+
+            var course = await _context.Courses
+                .AsNoTracking()
+                .AsSplitQuery() // <-- Cartesian Explosion engelleyici (Performans)
+                .Where(c => c.Id == courseId && c.TenantId == tenantId)
+                .Include(c => c.Instructor)
+                .Include(c => c.Sessions.OrderBy(s => s.Order))
+                .Include(c => c.CourseGroups).ThenInclude(cg => cg.Group)
+                .FirstOrDefaultAsync()
+                ?? throw new KeyNotFoundException("Ders bulunamadı.");
+
+            // BBB ile oturum durumu senkronizasyonu: Live oturumları kontrol et
+            var liveSessions = course.Sessions.Where(s => s.Status == SessionStatus.Live && s.BbbMeetingId != null).ToList();
+            foreach (var session in liveSessions)
             {
-                var isRunning = await _bbbService.IsMeetingRunningAsync(session.BbbMeetingId!);
-                if (!isRunning)
+                try
                 {
-                    // BBB'de toplantı bitmiş, DB'yi güncelle
-                    var dbSession = await _context.Sessions.FindAsync(session.Id);
-                    if (dbSession != null)
+                    var isRunning = await _bbbService.IsMeetingRunningAsync(session.BbbMeetingId!);
+                    if (!isRunning)
                     {
-                        dbSession.Status = SessionStatus.Ended;
-                        await _context.SaveChangesAsync();
-                        session.Status = SessionStatus.Ended; // DTO için de güncelle
+                        // BBB'de toplantı bitmiş, DB'yi güncelle
+                        var dbSession = await _context.Sessions.FindAsync(session.Id);
+                        if (dbSession != null)
+                        {
+                            dbSession.Status = SessionStatus.Ended;
+                            await _context.SaveChangesAsync();
+                            session.Status = SessionStatus.Ended; // DTO için de güncelle
+                        }
                     }
                 }
+                catch { /* BBB bağlantı hatası olursa sessizce geç */ }
             }
-            catch { /* BBB bağlantı hatası olursa sessizce geç */ }
-        }
 
-        return new CourseDetailDto(
-            course.Id, course.Title, course.Description, course.ThumbnailUrl,
-            course.CourseType.ToString(), course.IsPublished, course.Order, course.StartDate, course.CreatedAt,
-            course.Sessions.Select(s => new SessionDto(
-                s.Id, s.Title, s.Description, s.Order, s.VideoUrl,
-                s.DurationMinutes, s.IsFree,
-                s.ScheduledStart, s.ScheduledEnd, s.RecordingEnabled,
-                s.Status.ToString(), s.BbbMeetingId,
-                s.CreatedAt)).ToList(),
-            course.CourseGroups.Select(cg => new CourseGroupDto(
-                cg.GroupId, cg.Group.Name, cg.Mode.ToString())).ToList(),
-            course.InstructorId,
-            course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null);
+            return new CourseDetailDto(
+                course.Id, course.Title, course.Description, course.ThumbnailUrl,
+                course.CourseType.ToString(), course.IsPublished, course.Order, course.StartDate, course.CreatedAt,
+                course.Sessions.Select(s => new SessionDto(
+                    s.Id, s.Title, s.Description, s.Order, s.VideoUrl,
+                    s.DurationMinutes, s.IsFree,
+                    s.ScheduledStart, s.ScheduledEnd, s.RecordingEnabled,
+                    s.Status.ToString(), s.BbbMeetingId,
+                    s.CreatedAt)).ToList(),
+                course.CourseGroups.Select(cg => new CourseGroupDto(
+                    cg.GroupId, cg.Group.Name, cg.Mode.ToString())).ToList(),
+                course.InstructorId,
+                course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null);
+        }, TimeSpan.FromMinutes(1));
     }
 
     public async Task<CourseListDto> CreateCourseAsync(Guid tenantId, CreateCourseRequest request)

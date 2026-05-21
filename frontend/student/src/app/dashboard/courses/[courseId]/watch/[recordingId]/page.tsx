@@ -236,13 +236,30 @@ export default function WatchPage() {
                 <div className="flex-1 flex flex-col min-w-0">
                     {/* Video Player */}
                     <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden select-none">
-                        {currentRec?.playbackUrl && (
-                            <PremiumPlayer 
-                                src={currentRec.playbackUrl} 
-                                poster={currentRec.thumbnailPath}
-                                autoplay={true} 
-                            />
-                        )}
+                        {(() => {
+                            const src = currentRec?.hlsPath || currentRec?.playbackUrl;
+                            if (!src) return null;
+                            
+                            // Check if it's a BigBlueButton presentation URL
+                            if (src.includes("/playback/presentation/") || src.includes("meetingId=")) {
+                                return (
+                                    <iframe 
+                                        src={src} 
+                                        className="w-full h-full border-0"
+                                        allowFullScreen
+                                        allow="camera; microphone; display-capture; fullscreen"
+                                    />
+                                );
+                            }
+
+                            return (
+                                <PremiumPlayer 
+                                    src={src} 
+                                    poster={currentRec?.thumbnailPath}
+                                    autoplay={true} 
+                                />
+                            );
+                        })()}
                     </div>
 
                     {/* ── Bottom Info Bar ── */}

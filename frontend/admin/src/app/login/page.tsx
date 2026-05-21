@@ -2,15 +2,24 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { tenantApi, TenantBrandingDto } from "@/lib/api";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [branding, setBranding] = useState<TenantBrandingDto | null>(null);
   const { login, isLoading: authLoading, user } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    tenantApi.getBranding()
+      .then(setBranding)
+      .catch(() => { /* fallback to default */ });
+  }, []);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -46,18 +55,32 @@ export default function AdminLoginPage() {
     );
   }
 
+  const brandName = branding?.name || "MURO";
+  const brandInitial = brandName.charAt(0).toUpperCase();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#060E1A] via-[#0A1931] to-[#060E1A]">
       <div className="w-full max-w-md p-6">
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#0A1931]/40"
-            style={{ background: "linear-gradient(135deg, #1B3B6F, #0A1931)" }}>
-            <span className="text-white font-black text-2xl">M</span>
-          </div>
+          {branding?.logoUrl ? (
+            <Image 
+              src={branding.logoUrl} 
+              alt={brandName} 
+              width={80} 
+              height={80} 
+              className="w-20 h-20 rounded-2xl mx-auto mb-4 object-contain shadow-2xl shadow-[#0A1931]/40" 
+              priority 
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-[#0A1931]/40"
+              style={{ background: branding?.primaryColor ? branding.primaryColor : "linear-gradient(135deg, #1B3B6F, #0A1931)" }}>
+              <span className="text-white font-black text-2xl">{brandInitial}</span>
+            </div>
+          )}
           <h1 className="text-3xl font-bold bg-gradient-to-r from-[#A0AEC0] via-[#E2E8F0] to-[#A9A9A9] bg-clip-text text-transparent">
-            MURO
+            {brandName}
           </h1>
           <p className="text-[#A0AEC0] text-xs mt-2">Yönetim Paneli</p>
         </div>

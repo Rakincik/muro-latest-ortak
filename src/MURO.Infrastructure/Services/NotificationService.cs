@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MURO.Application.DTOs;
 using MURO.Application.DTOs.Notifications;
@@ -15,19 +16,22 @@ public class NotificationService : INotificationService
     private readonly IEmailSender _emailSender;
     private readonly ISmsSender _smsSender;
     private readonly ICacheService _cache;
+    private readonly IJobQueue _jobQueue;
 
     public NotificationService(
         MuroDbContext context,
         INotificationPush push,
         IEmailSender emailSender,
         ISmsSender smsSender,
-        ICacheService cache)
+        ICacheService cache,
+        IJobQueue jobQueue)
     {
         _context     = context;
         _push        = push;
         _emailSender = emailSender;
         _smsSender   = smsSender;
         _cache       = cache;
+        _jobQueue    = jobQueue;
     }
 
     // ─── Kullanıcı: Bildirim Listesi ────────────────────────────────────────
@@ -62,32 +66,21 @@ public class NotificationService : INotificationService
         var channel = Enum.TryParse<NotificationChannel>(request.Channel, true, out var ch)
             ? ch : NotificationChannel.System;
 
-        var notification = new Notification
+        var payload = new NotificationJobPayload
         {
-            Id       = Guid.NewGuid(),
             TenantId = tenantId,
-            UserId   = request.UserId,
-            Title    = request.Title,
-            Body     = request.Body,
-            Type     = request.Type,
-            Channel  = channel
+            UserIds = new List<Guid> { request.UserId },
+            Title = request.Title,
+            Body = request.Body,
+            Type = request.Type,
+            Channel = channel.ToString()
         };
 
-        _context.Notifications.Add(notification);
-        await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:notifications:");
+        var jsonPayload = JsonSerializer.Serialize(payload);
+        await _jobQueue.EnqueueAsync("notifications", jsonPayload);
 
-        var dto = new NotificationDto(
-            notification.Id, notification.Title, notification.Body,
-            notification.Type, notification.IsRead, notification.Channel.ToString(), notification.CreatedAt);
-
-        // ── SignalR push ──────────────────────────────────────────────────────
-        await _push.PushToUserAsync(request.UserId.ToString(), dto);
-
-        // ── E-posta / SMS ─────────────────────────────────────────────────────
-        await DispatchExternalChannelAsync(request.UserId, notification.Title, notification.Body);
-
-        return dto;
+        // API'nin beklemesini engellemek için anında DTO dönüyoruz. (Id arka planda oluşacak)
+        return new NotificationDto(Guid.NewGuid(), request.Title, request.Body, request.Type, false, channel.ToString(), DateTime.UtcNow);
     }
 
     // ─── Admin: Toplu Gönderim ───────────────────────────────────────────────
@@ -130,33 +123,20 @@ public class NotificationService : INotificationService
 
         if (userIds.Count == 0) return 0;
 
-        var notifications = userIds.Select(uid => new Notification
+        var payload = new NotificationJobPayload
         {
-            Id       = Guid.NewGuid(),
             TenantId = tenantId,
-            UserId   = uid,
-            Title    = request.Title,
-            Body     = request.Body,
-            Type     = request.Type,
-            Channel  = NotificationChannel.System
-        }).ToList();
+            UserIds = userIds,
+            Title = request.Title,
+            Body = request.Body,
+            Type = request.Type,
+            Channel = NotificationChannel.System.ToString()
+        };
 
-        _context.Notifications.AddRange(notifications);
-        await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:notifications:");
+        var jsonPayload = JsonSerializer.Serialize(payload);
+        await _jobQueue.EnqueueAsync("notifications", jsonPayload);
 
-        // ── SignalR push: toplu gönderim (batch push) ────────────────────────────
-        if (notifications.Any())
-        {
-            var firstNotif = notifications.First();
-            var dto = new NotificationDto(firstNotif.Id, firstNotif.Title, firstNotif.Body, firstNotif.Type, firstNotif.IsRead, firstNotif.Channel.ToString(), firstNotif.CreatedAt);
-            
-            // Kullanıcı ID'lerini string listesi olarak hazırla
-            var targetUsers = userIds.Select(u => u.ToString()).ToList();
-            await _push.PushToUsersAsync(targetUsers, dto);
-        }
-
-        return notifications.Count;
+        return userIds.Count;
     }
 
     // ─── Okundu İşlemleri ────────────────────────────────────────────────────

@@ -62,7 +62,7 @@ public class MediaService : IMediaService
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(x => new MediaAssetDto(x.Asset.Id, x.Asset.Title, x.Asset.FilePath, x.Asset.HlsPath, x.Asset.ThumbnailPath,
                     x.Asset.DurationSeconds, x.Asset.Status.ToString(), courseId,
-                    null, x.Asset.FolderId, x.Asset.CreatedAt))
+                    null, x.Asset.FolderId, x.Asset.CreatedAt, x.Asset.Tags))
                 .ToListAsync();
         }
         else
@@ -71,7 +71,7 @@ public class MediaService : IMediaService
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(m => new MediaAssetDto(m.Id, m.Title, m.FilePath, m.HlsPath, m.ThumbnailPath,
                     m.DurationSeconds, m.Status.ToString(), m.CourseId,
-                    null, m.FolderId, m.CreatedAt))
+                    null, m.FolderId, m.CreatedAt, m.Tags))
                 .ToListAsync();
         }
 
@@ -107,7 +107,7 @@ public class MediaService : IMediaService
 
         return new MediaAssetDto(a.Id, a.Title, a.FilePath, a.HlsPath, a.ThumbnailPath,
             a.DurationSeconds, a.Status.ToString(), a.CourseId,
-            a.Course != null ? a.Course.Title : null, a.FolderId, a.CreatedAt);
+            a.Course != null ? a.Course.Title : null, a.FolderId, a.CreatedAt, a.Tags);
     }
 
     public async Task<MediaAssetDto> CreateAssetAsync(Guid tenantId, CreateMediaAssetRequest request)
@@ -116,7 +116,7 @@ public class MediaService : IMediaService
         {
             Id = Guid.NewGuid(), TenantId = tenantId,
             Title = request.Title, FilePath = request.FilePath, CourseId = request.CourseId,
-            FolderId = request.FolderId
+            FolderId = request.FolderId, Tags = request.Tags
         };
         _context.MediaAssets.Add(asset);
         
@@ -137,7 +137,7 @@ public class MediaService : IMediaService
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:media:");
         return new MediaAssetDto(asset.Id, asset.Title, asset.FilePath, null, null, null,
-            asset.Status.ToString(), asset.CourseId, null, asset.FolderId, asset.CreatedAt);
+            asset.Status.ToString(), asset.CourseId, null, asset.FolderId, asset.CreatedAt, asset.Tags);
     }
 
     public async Task<MediaAssetDto> UpdateAssetAsync(Guid tenantId, Guid assetId, UpdateMediaAssetRequest request)
@@ -150,10 +150,11 @@ public class MediaService : IMediaService
         if (request.DurationSeconds.HasValue) a.DurationSeconds = request.DurationSeconds;
         if (request.Status != null && Enum.TryParse<MediaStatus>(request.Status, true, out var st)) a.Status = st;
         if (request.FolderId.HasValue) a.FolderId = request.FolderId;
+        if (request.Tags != null) a.Tags = request.Tags;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:media:");
         return new MediaAssetDto(a.Id, a.Title, a.FilePath, a.HlsPath, a.ThumbnailPath,
-            a.DurationSeconds, a.Status.ToString(), a.CourseId, null, a.FolderId, a.CreatedAt);
+            a.DurationSeconds, a.Status.ToString(), a.CourseId, null, a.FolderId, a.CreatedAt, a.Tags);
     }
 
     public async Task DeleteAssetAsync(Guid tenantId, Guid assetId)

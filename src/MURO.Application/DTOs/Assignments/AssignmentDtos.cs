@@ -8,7 +8,11 @@ public record AssignmentListDto(
     string CourseName,
     DateTime DueDate,
     int SubmissionCount,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int MaxScore,
+    string? FileUrl,
+    int GradedCount,
+    double? AverageScore
 );
 
 public record AssignmentDetailDto(

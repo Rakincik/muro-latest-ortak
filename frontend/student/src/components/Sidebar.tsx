@@ -9,7 +9,7 @@ import NotificationsModal from "./NotificationsModal";
 import {
     LayoutDashboard, BookOpen, Radio, CalendarDays,
     ClipboardList, FileText, BookMarked, CalendarCheck,
-    Mic2, MessageCircleQuestion, Bell, LogOut, ChevronDown
+    Mic2, MessageCircleQuestion, Bell, LogOut, ChevronDown, Headset
 } from "lucide-react";
 
 const sections = [
@@ -36,11 +36,12 @@ const sections = [
         items: [
             { href: "/dashboard/podcast", label: "Podcast", icon: Mic2 },
             { href: "/dashboard/questions", label: "Soru Sor", icon: MessageCircleQuestion },
+            { href: "/dashboard/support", label: "Teknik Destek", icon: Headset },
         ]
     }
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
     const pathname = usePathname();
     const router = useRouter();
     const { user, logout, token, currentTenantId } = useAuth();
@@ -80,7 +81,10 @@ export default function Sidebar() {
     };
 
     return (
-        <aside className="w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931]">
+        <aside 
+            className={`sidebar w-[280px] md:w-[260px] flex flex-col h-screen fixed left-0 top-0 z-[70] md:z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 md:translate-x-0 ${!isOpen ? "-translate-x-full" : ""}`}
+            style={isOpen ? { transform: 'translateX(0)' } : undefined}
+        >
             {/* Logo + Tenant */}
             <div className="px-6 py-7 flex items-center gap-3">
                 {branding?.logoUrl ? (

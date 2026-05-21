@@ -1,94 +1,112 @@
 """
-MURO Podcast TTS Mikroservisi — Google Cloud TTS Chirp3-HD
-En yüksek kaliteli, doğal Türkçe ses üretimi.
+MURO Podcast TTS Mikroservisi
+Birincil Motor: Google Cloud TTS Chirp3-HD (en yuksek kalite)
+Yedek Motor: Microsoft Edge TTS (ucretsiz fallback)
+
 Endpoint: POST /synthesize { "script": "...", "voice": "tr-TR-Chirp3-HD-Achird" }
 """
+import asyncio
 import base64
 import io
 import os
+import json
+import tempfile
 import requests
 from flask import Flask, request, send_file, jsonify
 
 app = Flask(__name__)
 
-# Google Cloud TTS API
+# --- Google Cloud TTS ---
 GOOGLE_TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize"
-API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+API_KEY = ""
 
-# Türkçe Chirp3-HD sesleri — Google'ın en yeni ve en kaliteli sesleri
-VOICES = {
-    # Erkek sesler
-    "tr-TR-Chirp3-HD-Achird":    {"gender": "MALE",   "label": "Achird (Erkek)"},
-    "tr-TR-Chirp3-HD-Enceladus": {"gender": "MALE",   "label": "Enceladus (Erkek)"},
-    "tr-TR-Chirp3-HD-Charon":    {"gender": "MALE",   "label": "Charon (Erkek)"},
-    "tr-TR-Chirp3-HD-Fenrir":    {"gender": "MALE",   "label": "Fenrir (Erkek)"},
-    "tr-TR-Chirp3-HD-Puck":      {"gender": "MALE",   "label": "Puck (Erkek)"},
-    # Kadın sesler
-    "tr-TR-Chirp3-HD-Achernar":  {"gender": "FEMALE", "label": "Achernar (Kadın)"},
-    "tr-TR-Chirp3-HD-Aoede":     {"gender": "FEMALE", "label": "Aoede (Kadın)"},
-    "tr-TR-Chirp3-HD-Kore":      {"gender": "FEMALE", "label": "Kore (Kadın)"},
-    "tr-TR-Chirp3-HD-Leda":      {"gender": "FEMALE", "label": "Leda (Kadın)"},
-    "tr-TR-Chirp3-HD-Zephyr":    {"gender": "FEMALE", "label": "Zephyr (Kadın)"},
+# Chirp3-HD sesleri (Google'in en kaliteli sesleri)
+CHIRP3_VOICES = {
+    "tr-TR-Chirp3-HD-Achird":    {"gender": "MALE",   "label": "Kaan (Erkek)"},
+    "tr-TR-Chirp3-HD-Enceladus": {"gender": "MALE",   "label": "Emre (Erkek)"},
+    "tr-TR-Chirp3-HD-Charon":    {"gender": "MALE",   "label": "Burak (Erkek)"},
+    "tr-TR-Chirp3-HD-Fenrir":    {"gender": "MALE",   "label": "Mert (Erkek)"},
+    "tr-TR-Chirp3-HD-Puck":      {"gender": "MALE",   "label": "Cem (Erkek)"},
+    "tr-TR-Chirp3-HD-Achernar":  {"gender": "FEMALE", "label": "Elif (Kadin)"},
+    "tr-TR-Chirp3-HD-Aoede":     {"gender": "FEMALE", "label": "Zeynep (Kadin)"},
+    "tr-TR-Chirp3-HD-Kore":      {"gender": "FEMALE", "label": "Ayse (Kadin)"},
+    "tr-TR-Chirp3-HD-Leda":      {"gender": "FEMALE", "label": "Selin (Kadin)"},
+    "tr-TR-Chirp3-HD-Zephyr":    {"gender": "FEMALE", "label": "Deniz (Kadin)"},
 }
 
-DEFAULT_VOICE = "tr-TR-Chirp3-HD-Achird"  # Erkek, doğal
+# Edge TTS yedek sesler
+EDGE_VOICES = {
+    "tr-TR-AhmetNeural": {"gender": "MALE",   "label": "Ahmet (Erkek) [Yedek]"},
+    "tr-TR-EmelNeural":  {"gender": "FEMALE", "label": "Emel (Kadin) [Yedek]"},
+}
 
+DEFAULT_VOICE = "tr-TR-Chirp3-HD-Achird"
+
+
+# --- Health & Voices ---
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
         "status": "ok",
-        "engine": "google-cloud-tts-chirp3-hd",
-        "voices": [{"id": k, "label": v["label"]} for k, v in VOICES.items()],
+        "primaryEngine": "google-cloud-tts-chirp3-hd",
+        "fallbackEngine": "edge-tts",
         "apiKeyConfigured": bool(API_KEY),
+        "voices": [{"id": k, "label": v["label"], "gender": v["gender"]} for k, v in CHIRP3_VOICES.items()],
     })
 
 
 @app.route("/voices", methods=["GET"])
 def list_voices():
-    """Kullanılabilir Türkçe Chirp3-HD seslerini listele."""
-    return jsonify([
-        {"id": k, "label": v["label"], "gender": v["gender"]}
-        for k, v in VOICES.items()
-    ])
+    voices = [{"id": k, "label": v["label"], "gender": v["gender"]} for k, v in CHIRP3_VOICES.items()]
+    return jsonify(voices)
 
+
+# --- Synthesize ---
 
 @app.route("/synthesize", methods=["POST"])
 def synthesize():
-    """Metni Google Cloud TTS Chirp3-HD ile sese çevirip MP3 olarak döndür."""
-    if not API_KEY:
-        return jsonify({"error": "GOOGLE_API_KEY ayarlanmamış"}), 500
-
     data = request.get_json(force=True)
     script = data.get("script", "").strip()
     voice = data.get("voice", DEFAULT_VOICE)
 
     if not script:
-        return jsonify({"error": "Script boş olamaz."}), 400
+        return jsonify({"error": "Script bos olamaz."}), 400
 
-    # Bilinen ses listesinde yoksa default kullan
-    if voice not in VOICES:
-        # Eski edge-tts seslerini map et
-        if "Ahmet" in voice or voice == "tr-TR-AhmetNeural":
-            voice = "tr-TR-Chirp3-HD-Achird"
-        elif "Emel" in voice or voice == "tr-TR-EmelNeural":
-            voice = "tr-TR-Chirp3-HD-Aoede"
-        else:
-            voice = DEFAULT_VOICE
+    # Edge TTS voice gelirse Chirp3'e map et
+    voice = _resolve_to_chirp3(voice)
 
-    if len(script) > 5000:
-        return _synthesize_long(script, voice)
+    # 1. Chirp3-HD ile dene
+    if API_KEY:
+        try:
+            app.logger.info(f"Chirp3-HD ile sentez: {voice}, {len(script)} karakter")
+            audio = _google_tts_synthesize(script, voice)
+            return send_file(io.BytesIO(audio), mimetype="audio/mpeg", download_name="podcast.mp3")
+        except Exception as e:
+            app.logger.warning(f"Chirp3-HD basarisiz, Edge TTS'e geciliyor: {e}")
 
+    # 2. Fallback: Edge TTS
+    edge_voice = _chirp3_to_edge(voice)
     try:
-        audio_bytes = _call_google_tts(script, voice)
-        buffer = io.BytesIO(audio_bytes)
-        return send_file(buffer, mimetype="audio/mpeg", as_attachment=False, download_name="podcast.mp3")
+        app.logger.info(f"Edge TTS fallback: {edge_voice}, {len(script)} karakter")
+        audio = asyncio.run(_edge_tts_synthesize(script, edge_voice))
+        return send_file(io.BytesIO(audio), mimetype="audio/mpeg", download_name="podcast.mp3")
     except Exception as e:
-        return jsonify({"error": f"TTS hatası: {str(e)}"}), 500
+        app.logger.error(f"Edge TTS de basarisiz: {e}")
+        return jsonify({"error": f"TTS hatasi: {str(e)}"}), 500
 
 
-def _call_google_tts(text: str, voice: str) -> bytes:
-    """Google Cloud TTS API'ye tek istek gönder."""
+# --- Google Cloud TTS ---
+
+def _google_tts_synthesize(text, voice):
+    """Tek istekle Google Cloud TTS Chirp3-HD sentezi."""
+    if len(text) > 5000:
+        return _google_tts_long(text, voice)
+
+    return _google_tts_call(text, voice)
+
+
+def _google_tts_call(text, voice):
     body = {
         "input": {"text": text},
         "voice": {
@@ -103,20 +121,17 @@ def _call_google_tts(text: str, voice: str) -> bytes:
             "effectsProfileId": ["headphone-class-device"],
         },
     }
-
     resp = requests.post(f"{GOOGLE_TTS_URL}?key={API_KEY}", json=body, timeout=30)
-
     if resp.status_code != 200:
         error_msg = resp.json().get("error", {}).get("message", resp.text)
-        raise Exception(f"Google TTS API hatası ({resp.status_code}): {error_msg}")
-
+        raise Exception(f"Google TTS API hatasi ({resp.status_code}): {error_msg}")
     return base64.b64decode(resp.json()["audioContent"])
 
 
-def _synthesize_long(script: str, voice: str):
-    """5000+ karakter metinleri parçalara bölerek sentezle."""
+def _google_tts_long(text, voice):
+    """5000+ karakter metinleri parcalara bolerek sentezle."""
     chunks, current = [], ""
-    for sentence in script.replace("!", "!|").replace("?", "?|").replace(".", ".|").split("|"):
+    for sentence in text.replace("!", "!|").replace("?", "?|").replace(".", ".|").split("|"):
         sentence = sentence.strip()
         if not sentence:
             continue
@@ -131,28 +146,78 @@ def _synthesize_long(script: str, voice: str):
 
     all_audio = b""
     for chunk in chunks:
-        all_audio += _call_google_tts(chunk, voice)
+        all_audio += _google_tts_call(chunk, voice)
+    return all_audio
 
-    buffer = io.BytesIO(all_audio)
-    return send_file(buffer, mimetype="audio/mpeg", as_attachment=False, download_name="podcast.mp3")
 
+# --- Edge TTS Fallback ---
+
+async def _edge_tts_synthesize(text, voice):
+    import edge_tts
+    rate = "-8%"
+    pitch = "+2Hz" if "Emel" in voice else "+0Hz"
+    communicate = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
+
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
+        tmp_path = tmp.name
+    try:
+        await communicate.save(tmp_path)
+        with open(tmp_path, "rb") as f:
+            return f.read()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+# --- Voice Mapping ---
+
+CHIRP3_FEMALE = ["Achernar", "Aoede", "Kore", "Leda", "Zephyr"]
+
+def _resolve_to_chirp3(voice):
+    """Herhangi bir voice ID'yi Chirp3-HD'ye cozumle."""
+    if voice in CHIRP3_VOICES:
+        return voice
+    # Edge TTS -> Chirp3
+    if voice == "tr-TR-AhmetNeural":
+        return "tr-TR-Chirp3-HD-Achird"
+    if voice == "tr-TR-EmelNeural":
+        return "tr-TR-Chirp3-HD-Aoede"
+    return DEFAULT_VOICE
+
+
+def _chirp3_to_edge(voice):
+    """Chirp3 voice'u Edge TTS karsligina cevir (fallback icin)."""
+    for name in CHIRP3_FEMALE:
+        if name in voice:
+            return "tr-TR-EmelNeural"
+    return "tr-TR-AhmetNeural"
+
+
+# --- Main ---
 
 if __name__ == "__main__":
+    # API key'i appsettings.json'dan oku
     if not API_KEY:
-        import json
         try:
             settings_path = os.path.join(os.path.dirname(__file__), "..", "src", "MURO.API", "appsettings.json")
             with open(settings_path) as f:
                 settings = json.load(f)
                 API_KEY = settings.get("Gemini", {}).get("ApiKey", "")
-                print(f"✅ API Key appsettings.json'dan yüklendi")
+                if API_KEY:
+                    print("[OK] API Key appsettings.json'dan yuklendi")
         except Exception:
             pass
 
     if not API_KEY:
-        print("⚠️  GOOGLE_API_KEY bulunamadı!")
-    else:
-        print(f"✅ API Key: ...{API_KEY[-8:]}")
+        API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 
-    print("🎙️  Google Cloud TTS Chirp3-HD servisi — http://localhost:5050")
+    print("=" * 60)
+    if API_KEY:
+        print(f"[OK] API Key: ...{API_KEY[-8:]}")
+        print("[*] Birincil Motor: Google Cloud TTS Chirp3-HD")
+        print("[*] Yedek Motor: Edge TTS")
+    else:
+        print("[!] API Key bulunamadi - sadece Edge TTS kullanilacak")
+    print(f"[*] Adres: http://localhost:5050")
+    print("=" * 60)
     app.run(host="0.0.0.0", port=5050, debug=False)

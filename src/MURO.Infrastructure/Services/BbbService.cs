@@ -17,6 +17,7 @@ public class BbbService : IBbbService
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _config;
     private readonly ILogger<BbbService> _logger;
+    private readonly ICacheService _cache;
 
     // Config kısayolları
     private string BbbUrl => _config["Bbb:Url"]
@@ -24,11 +25,12 @@ public class BbbService : IBbbService
     private string BbbSecret => _config["Bbb:Secret"]
         ?? throw new InvalidOperationException("Bbb:Secret yapılandırılmamış.");
 
-    public BbbService(HttpClient httpClient, IConfiguration config, ILogger<BbbService> logger)
+    public BbbService(HttpClient httpClient, IConfiguration config, ILogger<BbbService> logger, ICacheService cache)
     {
         _httpClient = httpClient;
         _config = config;
         _logger = logger;
+        _cache = cache;
     }
 
     // ─── CreateMeeting ─────────────────────────────────────────────────────────
@@ -231,27 +233,31 @@ public class BbbService : IBbbService
 
     public async Task<bool> IsMeetingRunningAsync(string meetingId)
     {
-        var parameters = new Dictionary<string, string>
+        var cacheKey = $"bbb:meeting_running:{meetingId}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            ["meetingID"] = meetingId,
-        };
+            var parameters = new Dictionary<string, string>
+            {
+                ["meetingID"] = meetingId,
+            };
 
-        var url = BuildUrl("isMeetingRunning", parameters);
+            var url = BuildUrl("isMeetingRunning", parameters);
 
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            var data = DeserializeXml<BbbIsMeetingRunningResponse>(stream);
-            
-            return data.ReturnCode == "SUCCESS" && data.Running == "true";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "BBB IsMeetingRunning hatası: {MeetingId}", meetingId);
-            return false;
-        }
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                var data = DeserializeXml<BbbIsMeetingRunningResponse>(stream);
+                
+                return data.ReturnCode == "SUCCESS" && data.Running == "true";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "BBB IsMeetingRunning hatası: {MeetingId}", meetingId);
+                return false;
+            }
+        }, TimeSpan.FromSeconds(15)); // Canlı ders durumunu 15 saniye önbellekte tut (API Şelalesi engeli)
     }
 
     // ─── Yardımcı Metodlar ─────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ public class MediaAsset
     public string? HlsPath { get; set; }
     public string? ThumbnailPath { get; set; }
     public int? DurationSeconds { get; set; }
+    public string? Tags { get; set; }
     public MediaStatus Status { get; set; } = MediaStatus.Uploading;
     public Guid? CourseId { get; set; }
     public Guid TenantId { get; set; }

@@ -41,6 +41,11 @@ export class ApiError extends Error {
     }
 }
 
+// ── SWR Fetcher ──────────────────────────────────────────────────────────────
+export const swrFetcher = async ([endpoint, token, tenantId]: [string, string?, string?]) => {
+    return api(endpoint, { token, tenantId });
+};
+
 // ── API Cache Layer ──────────────────────────────────────────────────────────
 const _cache = new Map<string, { data: unknown; expiry: number }>();
 const _inflight = new Map<string, Promise<unknown>>();
@@ -108,6 +113,12 @@ export interface StudentDashboardDto {
 }
 export interface WeeklyActivityDto { dayLabel: string; minutes: number; isToday: boolean; }
 export interface ResumeVideoDto { mediaAssetId: string; title: string; thumbnailPath: string | null; lastPosition: number; totalSeconds: number; completionPercentage: number; }
+export interface StudentDashboardSummaryDto {
+    stats: StudentDashboardDto;
+    courses: CourseDto[];
+    upcomingSessions: UpcomingSessionDto[];
+    unreadNotificationCount: number;
+}
 
 export interface MyAttendanceDto { sessionId: string; sessionTitle: string; courseTitle: string; joinedAt: string; leftAt: string | null; durationMinutes: number | null; }
 export interface NotificationDto { id: string; title: string; body: string; type: string; isRead: boolean; createdAt: string; }
@@ -264,16 +275,6 @@ export interface RecordingDto {
     examId?: string;
 }
 
-export interface MediaAssetDto {
-    id: string;
-    title: string;
-    hlsPath?: string | null;
-    thumbnailPath?: string | null;
-    durationSeconds?: number | null;
-    status: string;
-    createdAt: string;
-}
-
 export interface CourseMediaDto {
     id: string;
     courseId: string;
@@ -350,6 +351,8 @@ export const analyticsApi = {
         cachedApi(`dashboard:${tenantId}`, () =>
             api<StudentDashboardDto>("/analytics/me/dashboard", { token, tenantId })
         , 120_000), // 2 min cache
+    dashboardSummary: (token: string, tenantId: string) =>
+        api<StudentDashboardSummaryDto>("/student/dashboard-summary", { token, tenantId })
 };
 
 export const attendanceApi = {

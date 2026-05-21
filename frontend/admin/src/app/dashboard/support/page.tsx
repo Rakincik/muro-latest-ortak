@@ -112,35 +112,35 @@ export default function SupportPage() {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[#0A1931] flex items-center gap-2">
                         <MessageSquare size={24} className="text-[#A0AEC0]" /> Destek Talepleri
                     </h1>
                     <p className="text-sm text-[#A9A9A9] mt-1">Öğrenci sorularını yönetin</p>
                 </div>
-                <button onClick={load} className="p-2.5 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#E2E8F0]/20 text-[#A9A9A9]">
+                <button onClick={load} className="self-start sm:self-auto p-2.5 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#E2E8F0]/20 text-[#A9A9A9]">
                     <RefreshCw size={15} />
                 </button>
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="flex lg:grid lg:grid-cols-3 gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x">
                 {[
                     { label: "Açık", value: open, color: "text-amber-600", bg: "bg-amber-50" },
                     { label: "Yanıtlandı", value: answered, color: "text-blue-600", bg: "bg-blue-50" },
                     { label: "Çözüldü", value: closed, color: "text-emerald-600", bg: "bg-emerald-50" },
                 ].map(s => (
-                    <div key={s.label} className={`${s.bg} rounded-xl p-4 text-center`}>
+                    <div key={s.label} className={`min-w-[140px] lg:min-w-0 shrink-0 snap-start ${s.bg} rounded-xl p-4 text-center`}>
                         <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
                         <p className="text-xs text-[#A9A9A9] mt-0.5">{s.label}</p>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-5 gap-4" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
                 {/* Left: Ticket list */}
-                <div className="col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
+                <div className={`md:col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex-col overflow-hidden ${selected ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-3 border-b border-[#E2E8F0]/60 space-y-2">
                         <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -189,7 +189,7 @@ export default function SupportPage() {
                 </div>
 
                 {/* Right: Detail Panel */}
-                <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
+                <div className={`md:col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex-col overflow-hidden ${!selected ? 'hidden md:flex' : 'flex'}`}>
                     {!selected ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-[#A0AEC0]">
                             <MessageSquare size={48} className="opacity-20 mb-3" />
@@ -198,18 +198,23 @@ export default function SupportPage() {
                     ) : (
                         <>
                             {/* Header */}
-                            <div className="px-5 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between">
-                                <div className="min-w-0">
-                                    <h2 className="text-base font-bold text-[#0A1931] truncate">{selected.subject}</h2>
-                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                        <span className="text-xs text-[#A9A9A9]">{selected.studentName}</span>
-                                        <span className="text-[#A0AEC0]">·</span>
-                                        <span className="text-[11px] text-[#A0AEC0] flex items-center gap-1"><Tag size={10} />{selected.category}</span>
-                                        <span className="text-[#A0AEC0]">·</span>
-                                        <span className="text-[11px] text-[#A0AEC0]">{new Date(selected.createdAt).toLocaleDateString("tr-TR")}</span>
+                            <div className="px-4 md:px-5 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 min-w-0">
+                                    <button onClick={() => setSelected(null)} className="md:hidden p-1.5 -ml-1 mt-0.5 rounded-lg bg-[#E2E8F0]/40 text-[#1B3B6F] hover:bg-[#E2E8F0] shrink-0">
+                                        <X size={16} />
+                                    </button>
+                                    <div className="min-w-0">
+                                        <h2 className="text-base font-bold text-[#0A1931] truncate">{selected.subject}</h2>
+                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            <span className="text-xs text-[#A9A9A9]">{selected.studentName}</span>
+                                            <span className="text-[#A0AEC0]">·</span>
+                                            <span className="text-[11px] text-[#A0AEC0] flex items-center gap-1"><Tag size={10} />{selected.category}</span>
+                                            <span className="text-[#A0AEC0]">·</span>
+                                            <span className="text-[11px] text-[#A0AEC0]">{new Date(selected.createdAt).toLocaleDateString("tr-TR")}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 ml-3 shrink-0">
+                                <div className="flex items-center gap-1 ml-auto shrink-0">
                                     <select
                                         value={selected.status}
                                         onChange={e => handleStatusChange(selected.id, e.target.value)}
@@ -223,7 +228,7 @@ export default function SupportPage() {
                                         className="p-1.5 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-500">
                                         <Trash2 size={14} />
                                     </button>
-                                    <button onClick={() => setSelected(null)} className="p-1.5 rounded-lg hover:bg-[#E2E8F0]/40 text-[#A0AEC0]">
+                                    <button onClick={() => setSelected(null)} className="hidden md:block p-1.5 rounded-lg hover:bg-[#E2E8F0]/40 text-[#A0AEC0]">
                                         <X size={14} />
                                     </button>
                                 </div>

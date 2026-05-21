@@ -296,35 +296,35 @@ export default function CalendarPage() {
     return (
         <div className="space-y-5">
             {/* Header — clean single bar */}
-            <div className="flex items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] px-6 py-4">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-lg font-bold text-[#0A1931] flex items-center gap-2"><CalIcon size={20} className="text-[#1B3B6F]" /> Takvim</h1>
-                    <div className="w-px h-6 bg-[#E2E8F0]" />
-                    <button onClick={() => navigate(-1)} className="p-1.5 rounded-xl hover:bg-[#E2E8F0]/40 transition-colors"><ChevronLeft size={18} className="text-[#1B3B6F]" /></button>
-                    <span className="text-base font-bold text-[#0A1931] min-w-[150px] text-center">{navLabel}</span>
-                    <button onClick={() => navigate(1)} className="p-1.5 rounded-xl hover:bg-[#E2E8F0]/40 transition-colors"><ChevronRight size={18} className="text-[#1B3B6F]" /></button>
-                    <button onClick={goToday} className="px-3 py-1.5 text-xs font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/40 rounded-xl transition-colors">Bugün</button>
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between bg-white rounded-2xl border border-[#E2E8F0] p-4 xl:px-6 gap-4">
+                <div className="flex items-center gap-2 xl:gap-4 overflow-x-auto hide-scrollbar w-full xl:w-auto pb-1 xl:pb-0">
+                    <h1 className="text-lg font-bold text-[#0A1931] flex items-center gap-2 shrink-0"><CalIcon size={20} className="text-[#1B3B6F]" /> Takvim</h1>
+                    <div className="w-px h-6 bg-[#E2E8F0] shrink-0" />
+                    <button onClick={() => navigate(-1)} className="p-1.5 rounded-xl hover:bg-[#E2E8F0]/40 transition-colors shrink-0"><ChevronLeft size={18} className="text-[#1B3B6F]" /></button>
+                    <span className="text-sm xl:text-base font-bold text-[#0A1931] min-w-[120px] xl:min-w-[150px] text-center shrink-0">{navLabel}</span>
+                    <button onClick={() => navigate(1)} className="p-1.5 rounded-xl hover:bg-[#E2E8F0]/40 transition-colors shrink-0"><ChevronRight size={18} className="text-[#1B3B6F]" /></button>
+                    <button onClick={goToday} className="px-3 py-1.5 text-xs font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/40 rounded-xl transition-colors shrink-0">Bugün</button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center bg-[#E2E8F0]/20 rounded-xl overflow-hidden mr-2 p-1">
+                <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full xl:w-auto pb-1 xl:pb-0">
+                    <div className="flex items-center bg-[#E2E8F0]/20 rounded-xl overflow-hidden mr-0 xl:mr-2 p-1 shrink-0">
                         {([["day", "Gün", Sun], ["week", "Hafta", Layers], ["month", "Ay", LayoutGrid]] as const).map(([val, lbl, Icon]) => (
                             <button key={val} onClick={() => setViewMode(val)}
-                                className={`px-5 py-2.5 text-sm font-bold flex items-center gap-2 transition-all ${viewMode === val ? "bg-[#0A1931] text-white rounded-lg shadow-sm" : "text-[#A9A9A9] hover:text-[#1B3B6F]"}`}>
-                                <Icon size={16} /> {lbl}
+                                className={`px-3 py-2 xl:px-5 xl:py-2.5 text-xs xl:text-sm font-bold flex items-center gap-1.5 xl:gap-2 transition-all ${viewMode === val ? "bg-[#0A1931] text-white rounded-lg shadow-sm" : "text-[#A9A9A9] hover:text-[#1B3B6F]"}`}>
+                                <Icon size={14} className="xl:w-4 xl:h-4" /> <span className="hidden sm:inline">{lbl}</span>
                             </button>
                         ))}
                     </div>
-                    <button onClick={load} className="p-2.5 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 text-[#A9A9A9] transition-colors"><RefreshCw size={16} /></button>
+                    <button onClick={load} className="p-2 xl:p-2.5 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 text-[#A9A9A9] transition-colors shrink-0"><RefreshCw size={14} className="xl:w-4 xl:h-4" /></button>
                     <button onClick={() => { setEditEvent(null); setShowForm(true); }}
-                        className="px-4 py-2.5 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] flex items-center gap-2 shadow-lg shadow-[#0A1931]/10 transition-colors">
-                        <Plus size={16} /> Yeni Etkinlik
+                        className="px-3 py-2 xl:px-4 xl:py-2.5 text-xs xl:text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] flex items-center gap-1.5 xl:gap-2 shadow-lg shadow-[#0A1931]/10 transition-colors shrink-0">
+                        <Plus size={14} className="xl:w-4 xl:h-4" /> <span className="whitespace-nowrap">Yeni Etkinlik</span>
                     </button>
                 </div>
             </div>
 
-            <div className="flex gap-3" style={{ minHeight: "calc(100vh - 140px)" }}>
+            <div className="flex flex-col xl:flex-row gap-4" style={{ minHeight: "calc(100vh - 140px)" }}>
                 {/* ── Courses Sidebar (always visible) ── */}
-                <div className="w-64 shrink-0 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden flex flex-col shadow-sm">
+                <div className="w-full xl:w-64 h-[250px] xl:h-auto shrink-0 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden flex flex-col shadow-sm">
                     <div className="p-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                         <div className="flex items-center gap-2 mb-3">
                             <BookOpen size={16} className="text-emerald-600" />
@@ -337,7 +337,8 @@ export default function CalendarPage() {
                     <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                         {filteredCourses.map(c => (
                             <div key={c.id} draggable onDragStart={() => setDragCourse(c)} onDragEnd={() => { setDragCourse(null); setDropTarget(null); }}
-                                className="flex items-center gap-2.5 px-3 py-3 rounded-xl bg-transparent hover:bg-emerald-50 border border-transparent hover:border-emerald-200 cursor-grab active:cursor-grabbing transition-all group">
+                                onClick={() => dragCourse?.id === c.id ? setDragCourse(null) : setDragCourse(c)}
+                                className={`flex items-center gap-2.5 px-3 py-3 rounded-xl transition-all group ${dragCourse?.id === c.id ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-100 shadow-sm' : 'bg-transparent hover:bg-emerald-50 border border-transparent hover:border-emerald-200 cursor-grab active:cursor-grabbing'}`}>
                                 <GripVertical size={14} className="text-[#CBD5E1] group-hover:text-emerald-500 shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-bold text-[#1E293B] truncate group-hover:text-emerald-800">{c.title}</p>
@@ -350,7 +351,9 @@ export default function CalendarPage() {
                         )}
                     </div>
                     <div className="p-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-                        <p className="text-[11px] font-medium text-[#64748B] text-center flex justify-center items-center gap-1.5">☘️ Sürükle ve bırak</p>
+                        <p className={`text-[11px] font-bold text-center flex justify-center items-center gap-1.5 ${dragCourse ? 'text-emerald-600' : 'text-[#64748B]'}`}>
+                            {dragCourse ? "✨ Şimdi takvimde bir saate dokunun" : "☘️ Sürükle bırak veya dokunarak seç"}
+                        </p>
                     </div>
                 </div>
 
@@ -359,8 +362,8 @@ export default function CalendarPage() {
 
                     {/* Day View */}
                     {viewMode === "day" && (
-                        <div className="grid grid-cols-10 gap-5">
-                            <div className="col-span-7 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
+                        <div className="flex flex-col lg:grid lg:grid-cols-10 gap-5">
+                            <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
                                 <div className="px-6 py-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                                     <p className="text-lg font-bold text-[#0A1931]">{DAYS_FULL_TR[dayOfWeek(currentDate)]}</p>
                                     <p className="text-xs font-bold text-[#64748B] uppercase tracking-widest mt-0.5">{selectedDate === today ? "Bugün" : selectedDate}</p>
@@ -368,7 +371,10 @@ export default function CalendarPage() {
                                 <div className="relative" style={{ height: `${HOURS.length * 76}px` }}>
                                     {HOURS.map(h => (
                                         <div key={h} className="absolute w-full flex" style={{ top: `${(h - 7) * 76}px`, height: "76px" }}
-                                            onClick={() => { setEditEvent(null); setDefaultTime(`${String(h).padStart(2, "0")}:00`); setShowForm(true); }}
+                                            onClick={() => { 
+                                                if (dragCourse) { handleDrop(selectedDate, h); } 
+                                                else { setEditEvent(null); setDefaultTime(`${String(h).padStart(2, "0")}:00`); setShowForm(true); }
+                                            }}
                                             onDragOver={e => { e.preventDefault(); setDropTarget({ date: selectedDate, hour: h }); }}
                                             onDragLeave={() => setDropTarget(null)}
                                             onDrop={e => { e.preventDefault(); handleDrop(selectedDate, h); }}>
@@ -445,7 +451,7 @@ export default function CalendarPage() {
                                     })()}
                                 </div>
                             </div>
-                            <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0] p-6 max-h-[800px] overflow-y-auto custom-scrollbar">
+                            <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E2E8F0] p-6 max-h-[800px] overflow-y-auto custom-scrollbar">
                                 <h3 className="text-base font-bold text-[#0A1931] mb-4">📅 Bugünün Etkinlikleri</h3>
                                 {selectedEvents.length > 0 ? (
                                     <div className="space-y-3">{selectedEvents.sort((a, b) => a.startDate.localeCompare(b.startDate)).map(ev => <EventCard key={ev.id} ev={ev} />)}</div>
@@ -469,9 +475,10 @@ export default function CalendarPage() {
 
                     {/* Week View */}
                     {viewMode === "week" && (
-                        <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
-                            <div className="grid grid-cols-8 border-b border-[#E2E8F0]">
-                                <div className="w-16 p-3" />
+                        <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-x-auto custom-scrollbar">
+                            <div className="min-w-[600px]">
+                                <div className="grid grid-cols-8 border-b border-[#E2E8F0]">
+                                    <div className="w-16 p-3" />
                                 {weekDates.map((wd, i) => {
                                     const ds = toDateStr(wd);
                                     return (
@@ -493,8 +500,11 @@ export default function CalendarPage() {
                                                 const evs = getEventsForDate(ds).filter(ev => evHour(ev) === h);
                                                 const isDropHere = dropTarget?.date === ds && dropTarget?.hour === h;
                                                 return (
-                                                    <div key={ds} className={`relative border-l border-[#E2E8F0]/20 cursor-pointer hover:bg-[#1B3B6F]/[0.03] transition-colors ${isDropHere ? "bg-emerald-50/50" : ""}`}
-                                                        onClick={() => { setSelectedDate(ds); setEditEvent(null); setDefaultTime(`${String(h).padStart(2, "0")}:00`); setShowForm(true); }}
+                                                    <div key={ds} className={`relative border-l border-[#E2E8F0]/20 cursor-pointer transition-colors ${isDropHere || dragCourse ? "hover:bg-emerald-50/30" : "hover:bg-[#1B3B6F]/[0.03]"} ${isDropHere ? "bg-emerald-50/50" : ""}`}
+                                                        onClick={() => { 
+                                                            if (dragCourse) { handleDrop(ds, h); }
+                                                            else { setSelectedDate(ds); setEditEvent(null); setDefaultTime(`${String(h).padStart(2, "0")}:00`); setShowForm(true); }
+                                                        }}
                                                         onDragOver={e => { e.preventDefault(); setDropTarget({ date: ds, hour: h }); }}
                                                         onDragLeave={() => setDropTarget(null)}
                                                         onDrop={e => { e.preventDefault(); handleDrop(ds, h); }}>
@@ -544,52 +554,58 @@ export default function CalendarPage() {
                                 ))}
                             </div>
                         </div>
+                    </div>
                     )}
 
                     {viewMode === "month" && (
                         <div className="space-y-4">
-                            <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden">
-                                {/* Day headers */}
-                                <div className="grid grid-cols-7 border-b border-[#CBD5E1]">
-                                    {DAYS_TR.map((d, i) => <div key={d} className={`text-center text-xs font-bold uppercase tracking-wider py-3 ${i >= 5 ? "text-[#94A3B8] bg-[#F8FAFC]" : "text-[#64748B]"} ${i < 6 ? "border-r border-[#E2E8F0]" : ""}`}>{d}</div>)}
-                                </div>
-                                {/* Calendar grid */}
-                                <div className="grid grid-cols-7">
-                                    {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="min-h-[140px] bg-[#E2E8F0]/20 animate-pulse border-r border-b border-[#E2E8F0]" />) :
-                                        cells.map((cell, i) => {
-                                            const colIndex = i % 7;
-                                            const isWeekend = colIndex >= 5;
-                                            if (!cell.day) return <div key={`empty-${i}`} className={`min-h-[140px] ${colIndex < 6 ? "border-r" : ""} border-b border-[#E2E8F0] ${isWeekend ? "bg-[#F8FAFC]" : ""}`} />;
-                                            const dayEvents = getEventsForDate(cell.date);
-                                            const isSelected = selectedDate === cell.date;
-                                            const isToday = cell.date === today;
-                                            const isDrop = dropTarget?.date === cell.date;
-                                            return (
-                                                <button key={cell.date} onClick={() => setSelectedDate(cell.date)}
-                                                    onDoubleClick={() => { setSelectedDate(cell.date); setCurrentDate(new Date(cell.date)); setViewMode("day"); }}
-                                                    onDragOver={e => { e.preventDefault(); setDropTarget({ date: cell.date }); }}
-                                                    onDragLeave={() => setDropTarget(null)}
-                                                    onDrop={e => { e.preventDefault(); handleDrop(cell.date); }}
-                                                    className={`min-h-[140px] max-h-[180px] p-2 text-left flex flex-col transition-all border-b border-[#E2E8F0] ${colIndex < 6 ? "border-r" : ""}
-                                                        ${isWeekend && !isSelected ? "bg-[#F8FAFC]" : ""}
-                                                        ${isSelected ? "bg-[#1B3B6F]/5 ring-2 ring-inset ring-[#1B3B6F]/30" : "hover:bg-[#F1F5F9]"}
-                                                        ${isToday && !isSelected ? "bg-blue-50/50" : ""}
-                                                        ${isDrop ? "bg-emerald-50 ring-2 ring-inset ring-emerald-300" : ""}`}>
-                                                    <span className={`text-sm font-bold mb-1 ${isToday ? "w-6 h-6 bg-[#1B3B6F] text-white rounded-full flex items-center justify-center" : isWeekend ? "text-[#94A3B8]" : "text-[#1B3B6F]"}`}>{cell.day}</span>
-                                                    <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar pr-1 pb-1 w-full">
-                                                        {dayEvents.map(ev => {
-                                                            const col = getColor(ev.eventType);
-                                                            const Ic = eventIcons[ev.eventType];
-                                                            return (<div key={ev.id} 
-                                                                draggable
-                                                                onDragStart={(e) => { e.stopPropagation(); setDragEvent(ev); }}
-                                                                onDragEnd={() => { setDragEvent(null); setDropTarget(null); }}
-                                                                className={`text-[10px] font-bold px-1.5 py-1 rounded-md ${col.bg} ${col.text} truncate flex items-center gap-1 border ${col.border} cursor-grab active:cursor-grabbing hover:opacity-80`}>{Ic && <Ic size={10} />}{ev.title}</div>);
-                                                        })}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
+                            <div className="bg-white rounded-2xl border border-[#E2E8F0] overflow-x-auto custom-scrollbar">
+                                <div className="min-w-[700px]">
+                                    {/* Day headers */}
+                                    <div className="grid grid-cols-7 border-b border-[#CBD5E1]">
+                                        {DAYS_TR.map((d, i) => <div key={d} className={`text-center text-xs font-bold uppercase tracking-wider py-3 ${i >= 5 ? "text-[#94A3B8] bg-[#F8FAFC]" : "text-[#64748B]"} ${i < 6 ? "border-r border-[#E2E8F0]" : ""}`}>{d}</div>)}
+                                    </div>
+                                    {/* Calendar grid */}
+                                    <div className="grid grid-cols-7">
+                                        {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="min-h-[140px] bg-[#E2E8F0]/20 animate-pulse border-r border-b border-[#E2E8F0]" />) :
+                                            cells.map((cell, i) => {
+                                                const colIndex = i % 7;
+                                                const isWeekend = colIndex >= 5;
+                                                if (!cell.day) return <div key={`empty-${i}`} className={`min-h-[140px] ${colIndex < 6 ? "border-r" : ""} border-b border-[#E2E8F0] ${isWeekend ? "bg-[#F8FAFC]" : ""}`} />;
+                                                const dayEvents = getEventsForDate(cell.date);
+                                                const isSelected = selectedDate === cell.date;
+                                                const isToday = cell.date === today;
+                                                const isDrop = dropTarget?.date === cell.date;
+                                                return (
+                                                    <button key={cell.date} onClick={() => {
+                                                            if (dragCourse) { handleDrop(cell.date); }
+                                                            else { setSelectedDate(cell.date); }
+                                                        }}
+                                                        onDoubleClick={() => { setSelectedDate(cell.date); setCurrentDate(new Date(cell.date)); setViewMode("day"); }}
+                                                        onDragOver={e => { e.preventDefault(); setDropTarget({ date: cell.date }); }}
+                                                        onDragLeave={() => setDropTarget(null)}
+                                                        onDrop={e => { e.preventDefault(); handleDrop(cell.date); }}
+                                                        className={`min-h-[140px] max-h-[180px] p-2 text-left flex flex-col transition-all border-b border-[#E2E8F0] ${colIndex < 6 ? "border-r" : ""}
+                                                            ${isWeekend && !isSelected ? "bg-[#F8FAFC]" : ""}
+                                                            ${isSelected ? "bg-[#1B3B6F]/5 ring-2 ring-inset ring-[#1B3B6F]/30" : "hover:bg-[#F1F5F9]"}
+                                                            ${isToday && !isSelected ? "bg-blue-50/50" : ""}
+                                                            ${isDrop ? "bg-emerald-50 ring-2 ring-inset ring-emerald-300" : ""}`}>
+                                                        <span className={`text-sm font-bold mb-1 ${isToday ? "w-6 h-6 bg-[#1B3B6F] text-white rounded-full flex items-center justify-center" : isWeekend ? "text-[#94A3B8]" : "text-[#1B3B6F]"}`}>{cell.day}</span>
+                                                        <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar pr-1 pb-1 w-full">
+                                                            {dayEvents.map(ev => {
+                                                                const col = getColor(ev.eventType);
+                                                                const Ic = eventIcons[ev.eventType];
+                                                                return (<div key={ev.id} 
+                                                                    draggable
+                                                                    onDragStart={(e) => { e.stopPropagation(); setDragEvent(ev); }}
+                                                                    onDragEnd={() => { setDragEvent(null); setDropTarget(null); }}
+                                                                    className={`text-[10px] font-bold px-1.5 py-1 rounded-md ${col.bg} ${col.text} truncate flex items-center gap-1 border ${col.border} cursor-grab active:cursor-grabbing hover:opacity-80`}>{Ic && <Ic size={10} />}{ev.title}</div>);
+                                                            })}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                    </div>
                                 </div>
                             </div>
                             {/* Selected date events - compact bar below calendar */}

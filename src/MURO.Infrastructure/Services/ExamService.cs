@@ -65,72 +65,76 @@ public class ExamService : IExamService
     // ── GET BY ID ──
     public async Task<ExamDetailDto> GetExamByIdAsync(Guid tenantId, Guid examId)
     {
-        var exam = await _context.Exams
-            .AsNoTracking()
-            .Where(e => e.Id == examId && e.TenantId == tenantId)
-            .Include(e => e.ExamAssignments)
-            .Include(e => e.Results).ThenInclude(r => r.User)
-            .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException("Sınav bulunamadı.");
-
-        // Parse answer key
-        Dictionary<int, string>? answerKey = null;
-        if (!string.IsNullOrEmpty(exam.AnswerKeyJson))
-            answerKey = JsonSerializer.Deserialize<Dictionary<int, string>>(exam.AnswerKeyJson);
-
-        // Parse question weights
-        Dictionary<int, double>? questionWeights = null;
-        if (!string.IsNullOrEmpty(exam.QuestionWeightsJson))
-            questionWeights = JsonSerializer.Deserialize<Dictionary<int, double>>(exam.QuestionWeightsJson);
-
-        // Build assignments
-        var assignments = new List<ExamAssignmentDto>();
-        foreach (var ea in exam.ExamAssignments)
+        var cacheKey = $"{tenantId}:exams:detail:{examId}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var targetName = ea.TargetType switch
+            var exam = await _context.Exams
+                .AsNoTracking()
+                .Where(e => e.Id == examId && e.TenantId == tenantId)
+                .Include(e => e.ExamAssignments)
+                .Include(e => e.Results).ThenInclude(r => r.User)
+                .FirstOrDefaultAsync()
+                ?? throw new KeyNotFoundException("Sınav bulunamadı.");
+
+            // Parse answer key
+            Dictionary<int, string>? answerKey = null;
+            if (!string.IsNullOrEmpty(exam.AnswerKeyJson))
+                answerKey = JsonSerializer.Deserialize<Dictionary<int, string>>(exam.AnswerKeyJson);
+
+            // Parse question weights
+            Dictionary<int, double>? questionWeights = null;
+            if (!string.IsNullOrEmpty(exam.QuestionWeightsJson))
+                questionWeights = JsonSerializer.Deserialize<Dictionary<int, double>>(exam.QuestionWeightsJson);
+
+            // Build assignments
+            var assignments = new List<ExamAssignmentDto>();
+            foreach (var ea in exam.ExamAssignments)
             {
-                "Group" => (await _context.Groups.FindAsync(ea.TargetId))?.Name ?? "—",
-                "User" => await _context.Users.Where(u => u.Id == ea.TargetId)
-                    .Select(u => u.FirstName + " " + u.LastName).FirstOrDefaultAsync() ?? "—",
-                _ => "—"
-            };
-            assignments.Add(new ExamAssignmentDto(ea.Id, ea.TargetType, ea.TargetId, targetName, ea.StartsAt, ea.EndsAt, ea.AssignedAt));
-        }
+                var targetName = ea.TargetType switch
+                {
+                    "Group" => (await _context.Groups.FindAsync(ea.TargetId))?.Name ?? "—",
+                    "User" => await _context.Users.Where(u => u.Id == ea.TargetId)
+                        .Select(u => u.FirstName + " " + u.LastName).FirstOrDefaultAsync() ?? "—",
+                    _ => "—"
+                };
+                assignments.Add(new ExamAssignmentDto(ea.Id, ea.TargetType, ea.TargetId, targetName, ea.StartsAt, ea.EndsAt, ea.AssignedAt));
+            }
 
-        // Build result summary
-        ExamResultSummaryDto? resultSummary = null;
-        if (exam.Results.Any())
-        {
-            var results = exam.Results.Select(r => new ExamResultDto(
-                r.Id, r.UserId,
-                r.User.FirstName + " " + r.User.LastName,
-                r.CorrectCount, r.WrongCount, r.EmptyCount,
-                Math.Round(r.CorrectCount - (r.WrongCount * 0.25), 2),
-                r.Score,
-                r.SubmittedAt
-            )).OrderByDescending(r => r.Score).ToList();
+            // Build result summary
+            ExamResultSummaryDto? resultSummary = null;
+            if (exam.Results.Any())
+            {
+                var results = exam.Results.Select(r => new ExamResultDto(
+                    r.Id, r.UserId,
+                    r.User.FirstName + " " + r.User.LastName,
+                    r.CorrectCount, r.WrongCount, r.EmptyCount,
+                    Math.Round(r.CorrectCount - (r.WrongCount * 0.25), 2),
+                    r.Score,
+                    r.SubmittedAt
+                )).OrderByDescending(r => r.Score).ToList();
 
-            var scores = exam.Results.Select(r => r.Score).ToList();
-            var nets = results.Select(r => r.Net).ToList();
+                var scores = exam.Results.Select(r => r.Score).ToList();
+                var nets = results.Select(r => r.Net).ToList();
 
-            resultSummary = new ExamResultSummaryDto(
-                results.Count,
-                Math.Round(scores.Average(), 1),
-                Math.Round(nets.Average(), 2),
-                scores.Max(),
-                scores.Min(),
-                results
-            );
-        }
+                resultSummary = new ExamResultSummaryDto(
+                    results.Count,
+                    Math.Round(scores.Average(), 1),
+                    Math.Round(nets.Average(), 2),
+                    scores.Max(),
+                    scores.Min(),
+                    results
+                );
+            }
 
-        return new ExamDetailDto(
-            exam.Id, exam.Title, exam.Description, exam.ExamType,
-            exam.QuestionCount, exam.OptionCount, exam.DurationMinutes,
-            exam.Status, exam.ShowResults, exam.PdfUrl, exam.SolutionPdfUrl,
-            answerKey, exam.StartDate, exam.EndDate, exam.CreatedAt,
-            assignments, resultSummary, exam.WrongPenaltyWeight,
-            exam.ResultMode, exam.ResultPublishDate, questionWeights, exam.SectionsJson, 
-            exam.MaxScore, exam.BaseScore, exam.VirtualParticipantCount, exam.DigitalQuestionsJson);
+            return new ExamDetailDto(
+                exam.Id, exam.Title, exam.Description, exam.ExamType,
+                exam.QuestionCount, exam.OptionCount, exam.DurationMinutes,
+                exam.Status, exam.ShowResults, exam.PdfUrl, exam.SolutionPdfUrl,
+                answerKey, exam.StartDate, exam.EndDate, exam.CreatedAt,
+                assignments, resultSummary, exam.WrongPenaltyWeight,
+                exam.ResultMode, exam.ResultPublishDate, questionWeights, exam.SectionsJson, 
+                exam.MaxScore, exam.BaseScore, exam.VirtualParticipantCount, exam.DigitalQuestionsJson);
+        }, TimeSpan.FromMinutes(10));
     }
 
     // ── GET DIGITAL QUESTIONS ──

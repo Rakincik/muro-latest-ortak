@@ -85,7 +85,7 @@ function ScorecardPanel({ user, classAvg, sessions, onClose }: {
     return (
         <div className="fixed inset-0 z-[100] flex" onClick={onClose}>
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-            <div className="ml-auto relative w-[560px] bg-white shadow-2xl border-l border-[#E2E8F0] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="ml-auto relative w-full max-w-[560px] bg-white shadow-2xl border-l border-[#E2E8F0] overflow-y-auto h-full" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-[#E2E8F0]">
                     <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ function ScorecardPanel({ user, classAvg, sessions, onClose }: {
                 ) : activeTab === "overview" ? (
                     <div className="p-6 space-y-5">
                         {/* KPI Grid */}
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {[
                                 { label: "İzleme Süresi", value: `${card.totalWatchedMinutes}dk`, icon: Video, color: "text-violet-600", bg: "bg-violet-50" },
                                 { label: "Video", value: `${card.completedVideos}/${card.totalVideos}`, icon: Eye, color: "text-blue-600", bg: "bg-blue-50" },
@@ -357,7 +357,7 @@ export default function StudentScorecardPage() {
 
             {/* Class Average KPIs */}
             {classAvg && (
-                <div className="grid grid-cols-5 gap-3">
+                <div className="flex lg:grid lg:grid-cols-5 gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x">
                     {[
                         { label: "Öğrenci Sayısı", value: String(users.length), icon: Users, color: "text-[#1B3B6F]", bg: "bg-[#1B3B6F]/5" },
                         { label: "Ort. Devam", value: `${classAvg.attendanceRate.toFixed(0)}%`, icon: BookOpen, color: rateColor(classAvg.attendanceRate), bg: classAvg.attendanceRate >= 80 ? "bg-emerald-50" : "bg-amber-50" },
@@ -365,7 +365,7 @@ export default function StudentScorecardPage() {
                         { label: "Ort. Sınav", value: classAvg.avgExamScore > 0 ? classAvg.avgExamScore.toFixed(1) : "—", icon: FileText, color: "text-orange-600", bg: "bg-orange-50" },
                         { label: "Ort. İzleme", value: `${classAvg.totalWatchedMinutes}dk`, icon: Clock, color: "text-violet-600", bg: "bg-violet-50" },
                     ].map(s => (
-                        <div key={s.label} className={`${s.bg} rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3`}>
+                        <div key={s.label} className={`min-w-[140px] lg:min-w-0 shrink-0 snap-start ${s.bg} rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3`}>
                             <s.icon size={16} className={s.color} />
                             <div>
                                 <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
@@ -377,24 +377,26 @@ export default function StudentScorecardPage() {
             )}
 
             {/* Search + Sort */}
-            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-3 flex items-center gap-3">
-                <div className="flex-1 relative">
+            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-3 flex flex-col sm:flex-row items-center gap-3">
+                <div className="w-full sm:flex-1 relative">
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                     <input type="text" placeholder="Öğrenci ara..." value={search} onChange={e => setSearch(e.target.value)}
                         className="w-full pl-8 pr-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10" />
                 </div>
-                <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                    className="px-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#1B3B6F]">
-                    <option value="name">İsme Göre</option>
-                    <option value="attendance">Devam Oranına Göre</option>
-                    <option value="video">Video Tamamlamaya Göre</option>
-                    <option value="exam">Sınav Ortalamasına Göre</option>
-                </select>
-                <span className="text-xs text-[#A0AEC0] font-bold">{filtered.length} öğrenci</span>
+                <div className="w-full sm:w-auto flex items-center gap-3">
+                    <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                        className="flex-1 sm:flex-none px-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#1B3B6F]">
+                        <option value="name">İsme Göre</option>
+                        <option value="attendance">Devam Oranına Göre</option>
+                        <option value="video">Video Tamamlamaya Göre</option>
+                        <option value="exam">Sınav Ortalamasına Göre</option>
+                    </select>
+                    <span className="text-xs text-[#A0AEC0] font-bold shrink-0">{filtered.length} öğrenci</span>
+                </div>
             </div>
 
             {/* Student Table */}
-            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
+            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 overflow-x-auto">
                 {loading ? (
                     <div className="p-4 space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-[#E2E8F0]/40 animate-pulse" />)}</div>
                 ) : filtered.length === 0 ? (

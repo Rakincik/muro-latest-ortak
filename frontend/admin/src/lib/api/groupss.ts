@@ -9,12 +9,12 @@ export const groupsApi = {
     },
     get: (token: string, tenantId: string, id: string) =>
         api<GroupDetailDto>(`/groups/${id}`, { token, tenantId }),
-    create: async (token: string, tenantId: string, data: { name: string; description?: string; parentGroupId?: string; color?: string; educationType?: string }) => {
+    create: async (token: string, tenantId: string, data: { name: string; description?: string; parentGroupId?: string; color?: string; educationType?: string; expirationDate?: string }) => {
         const res = await api<GroupListDto>('/groups', { method: 'POST', token, tenantId, body: JSON.stringify(data) });
         invalidateCacheByPrefix('groups:');
         return res;
     },
-    update: async (token: string, tenantId: string, id: string, data: { name?: string; description?: string; color?: string; educationType?: string }) => {
+    update: async (token: string, tenantId: string, id: string, data: { name?: string; description?: string; color?: string; educationType?: string; expirationDate?: string }) => {
         const res = await api<GroupListDto>(`/groups/${id}`, { method: 'PUT', token, tenantId, body: JSON.stringify(data) });
         invalidateCacheByPrefix('groups:');
         return res;

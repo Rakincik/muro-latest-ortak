@@ -46,7 +46,8 @@ public class CourseMediaService : ICourseMediaService
                     cm.CourseId,
                     cm.Course.Title,
                     cm.MediaAsset.FolderId,
-                    cm.MediaAsset.CreatedAt
+                    cm.MediaAsset.CreatedAt,
+                    cm.MediaAsset.Tags
                 ) : null,
                 cm.ExamId,
                 cm.Exam != null ? cm.Exam.Title : null,
@@ -96,7 +97,7 @@ public class CourseMediaService : ICourseMediaService
             courseMedia.OrderIndex,
             new MediaAssetDto(
                 media.Id, media.Title, media.FilePath, media.HlsPath, media.ThumbnailPath, 
-                media.DurationSeconds, media.Status.ToString(), courseId, course.Title, media.FolderId, media.CreatedAt
+                media.DurationSeconds, media.Status.ToString(), courseId, course.Title, media.FolderId, media.CreatedAt, media.Tags
             ),
             null, null, null, null, "Media"
         );

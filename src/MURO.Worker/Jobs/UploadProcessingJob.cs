@@ -77,10 +77,15 @@ public class UploadProcessingJob : BackgroundService
 
         _logger.LogInformation("{Count} video işlenecek.", pending.Count);
 
-        foreach (var asset in pending)
+        await Parallel.ForEachAsync(pending, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount / 2 > 0 ? Environment.ProcessorCount / 2 : 1, CancellationToken = ct }, async (asset, token) =>
         {
-            await ProcessSingleUploadAsync(db, hlsService, httpClientFactory, asset, ct);
-        }
+            using var innerScope = _scopeFactory.CreateScope();
+            var innerDb = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
+            var innerHls = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
+            var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+
+            await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, token);
+        });
     }
 
     private async Task ProcessSingleUploadAsync(

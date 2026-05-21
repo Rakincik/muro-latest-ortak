@@ -36,19 +36,19 @@ export function KpiGrid({ items, className = "" }: KpiGridProps) {
                 }
 
                 return (
-                    <div key={idx} className="bg-white rounded-2xl sm:rounded-3xl border border-[#E2E8F0] p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:border-[#A0AEC0] transition-all">
+                    <div key={idx} className="bg-white rounded-2xl sm:rounded-3xl border border-[#E2E8F0] p-4 sm:p-5 flex flex-col gap-3 sm:gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden group hover:border-[#A0AEC0] transition-all min-w-[150px] shrink-0 sm:shrink snap-start sm:snap-none">
                         <div 
                             className="absolute -right-4 -top-4 w-20 h-20 sm:w-24 sm:h-24 rounded-full opacity-10 blur-2xl transition-all group-hover:opacity-20" 
                             style={{ backgroundColor: glowColor }}
                         ></div>
                         
-                        <div className="flex items-center justify-between relative z-10">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between relative z-10 gap-2 sm:gap-0">
                             <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[0.8rem] sm:rounded-[1rem] ${s.bgClass || "bg-[#E2E8F0]/50"} flex items-center justify-center ring-1 ring-black/5`}>
                                 <s.icon size={20} className={`transition-transform group-hover:scale-110 ${s.iconColorClass || s.colorClass || "text-[#A0AEC0]"}`} />
                             </div>
-                            <div>
-                                <p className={`text-2xl sm:text-3xl font-black tracking-tight ${s.colorClass || "text-[#0A1931]"} text-right`}>{s.value}</p>
-                                {s.subValue && <p className="text-[10px] sm:text-xs text-[#A0AEC0] text-right font-medium mt-0.5">{s.subValue}</p>}
+                            <div className="text-left sm:text-right w-full sm:w-auto">
+                                <p className={`text-2xl sm:text-3xl font-black tracking-tight ${s.colorClass || "text-[#0A1931]"}`}>{s.value}</p>
+                                {s.subValue && <p className="text-[10px] sm:text-xs text-[#A0AEC0] font-medium mt-0.5">{s.subValue}</p>}
                             </div>
                         </div>
                         <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-[#64748B] relative z-10">{s.label}</p>

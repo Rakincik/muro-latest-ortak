@@ -63,52 +63,52 @@ export default function CoursesPage() {
                         <Link
                             key={course.id}
                             href={`/dashboard/courses/${course.id}`}
-                            className="glass-card overflow-hidden hover:border-[#A0AEC0] transition-all block group"
+                            className="glass-card overflow-hidden hover:border-[#A0AEC0] transition-all flex flex-row md:flex-col group"
                         >
                             {/* Thumbnail */}
-                            <div className="aspect-video bg-gradient-to-br from-indigo-900/50 to-purple-900/50 relative overflow-hidden">
+                            <div className="w-28 sm:w-40 md:w-full h-24 sm:h-28 md:h-auto md:aspect-video bg-gradient-to-br from-indigo-900/50 to-purple-900/50 relative overflow-hidden shrink-0 m-2.5 md:m-0 rounded-xl md:rounded-none">
                                 {course.thumbnailUrl ? (
                                     <Image src={getFileUrl(course.thumbnailUrl)} alt={course.title} width={400} height={225} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center">
-                                        <span className="text-5xl opacity-30 group-hover:opacity-50 transition-opacity">📚</span>
+                                        <span className="text-3xl md:text-5xl opacity-30 group-hover:opacity-50 transition-opacity">📚</span>
                                     </div>
                                 )}
-                                <div className="absolute top-3 right-3">
-                                    <span className="px-2 py-1 bg-black/50 backdrop-blur-sm text-xs text-[#A0AEC0] rounded-full">
+                                <div className="absolute top-1.5 left-1.5 md:top-3 md:right-3 md:left-auto">
+                                    <span className="px-1.5 py-0.5 md:px-2 md:py-1 bg-black/60 backdrop-blur-md text-[9px] md:text-xs text-white rounded-md md:rounded-full font-medium">
                                         {course.sessionCount} içerik
                                     </span>
                                 </div>
                             </div>
 
                             {/* Info */}
-                            <div className="p-5">
-                                <h3 className="text-[#0A1931] font-semibold text-sm mb-2 line-clamp-2 group-hover:text-[#1B3B6F] transition-colors">
+                            <div className="p-3 md:p-5 flex-1 min-w-0 flex flex-col justify-center">
+                                <h3 className="text-[#0A1931] font-bold text-xs md:text-sm mb-1.5 md:mb-2 line-clamp-2 group-hover:text-[#1B3B6F] transition-colors leading-tight">
                                     {course.title}
                                 </h3>
                                 {course.description && (
-                                    <p className="text-[#A9A9A9] text-xs line-clamp-2 mb-3">{course.description}</p>
+                                    <p className="text-[#A9A9A9] text-[10px] md:text-xs line-clamp-1 md:line-clamp-2 mb-2 md:mb-3">{course.description}</p>
                                 )}
                                 {/* İlerleme çubuğu */}
                                 {(course.completionPercentage ?? 0) > 0 && (
-                                    <div className="mb-3">
+                                    <div className="mb-2 md:mb-3">
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="text-xs text-[#A9A9A9]">İlerleme</span>
-                                            <span className={`text-xs font-semibold ${(course.completionPercentage ?? 0) >= 100 ? 'text-emerald-400' : 'text-violet-400'}`}>
+                                            <span className="text-[10px] md:text-xs text-[#A9A9A9]">İlerleme</span>
+                                            <span className={`text-[10px] md:text-xs font-semibold ${(course.completionPercentage ?? 0) >= 100 ? 'text-emerald-500' : 'text-[#1B3B6F]'}`}>
                                                 %{Math.round(course.completionPercentage ?? 0)}
                                             </span>
                                         </div>
-                                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all ${(course.completionPercentage ?? 0) >= 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-violet-500'}`}
+                                                className={`h-full rounded-full transition-all ${(course.completionPercentage ?? 0) >= 100 ? 'bg-emerald-500' : 'bg-[#1B3B6F]'}`}
                                                 style={{ width: `${Math.min(100, course.completionPercentage ?? 0)}%` }}
                                             />
                                         </div>
                                     </div>
                                 )}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-[#1B3B6F]">{course.sessionCount} içerik</span>
-                                    <span className="text-violet-400 text-xs font-medium group-hover:text-[#1B3B6F]">
+                                <div className="flex items-center justify-between mt-auto">
+                                    <span className="text-[10px] md:text-xs text-[#A0AEC0] hidden md:block">{course.sessionCount} içerik</span>
+                                    <span className="text-[#1B3B6F] text-[10px] md:text-xs font-bold group-hover:underline ml-auto">
                                         {(course.completionPercentage ?? 0) >= 100 ? '✓ Tamamlandı' : 'Devam Et →'}
                                     </span>
                                 </div>

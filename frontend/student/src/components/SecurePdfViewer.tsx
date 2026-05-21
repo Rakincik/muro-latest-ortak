@@ -1,129 +1,141 @@
 "use client";
-
-import { useState, useRef, useEffect } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-
-// Next.js client ortamında pdf worker ayarı
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+import { useState, useEffect, useRef } from "react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 
 interface SecurePdfViewerProps {
     url: string;
 }
 
 export default function SecurePdfViewer({ url }: SecurePdfViewerProps) {
-    const [numPages, setNumPages] = useState<number>();
-    const [pageNumber, setPageNumber] = useState<number>(1);
-    const [scale, setScale] = useState<number>(1.0);
-    const [containerWidth, setContainerWidth] = useState<number>();
+    const [isLoading, setIsLoading] = useState(true);
+    const [scale, setScale] = useState(1.25); // Mobil uyum için varsayılan ölçek
+    const [error, setError] = useState<string | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Konteynerin genişliğini takip et (Responsive Fit-to-Width)
     useEffect(() => {
-        const observer = new ResizeObserver((entries) => {
-            if (entries[0]?.contentRect.width) {
-                // Yanlardan boşluk bırakmak için 40px çıkarıyoruz
-                setContainerWidth(entries[0].contentRect.width - 40);
+        let isMounted = true;
+        setIsLoading(true);
+        setError(null);
+
+        const scriptId = "pdfjs-lib-script";
+        let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+        const initPdf = async () => {
+            if (!isMounted) return;
+            try {
+                // @ts-ignore
+                const pdfjsLib = window.pdfjsLib;
+                if (!pdfjsLib) throw new Error("PDF.js kütüphanesi yüklenemedi.");
+
+                pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+                const loadingTask = pdfjsLib.getDocument(url);
+                const pdf = await loadingTask.promise;
+                
+                if (!isMounted) return;
+                setIsLoading(false);
+
+                if (containerRef.current) {
+                    containerRef.current.innerHTML = ''; 
+                    
+                    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                        if (!isMounted) break;
+                        
+                        const page = await pdf.getPage(pageNum);
+                        const viewport = page.getViewport({ scale });
+                        
+                        const canvas = document.createElement("canvas");
+                        const context = canvas.getContext("2d");
+                        
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        canvas.className = "mb-4 rounded-xl shadow-md border border-[#E2E8F0] max-w-full h-auto";
+                        // Mobilde resmin üzerine basılı tutarak "Kaydet" çıkmasını engellemek için:
+                        canvas.style.webkitTouchCallout = "none";
+
+                        containerRef.current.appendChild(canvas);
+
+                        if (context) {
+                            const renderContext = {
+                                canvasContext: context,
+                                viewport: viewport
+                            };
+                            await page.render(renderContext).promise;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("PDF Load Error:", err);
+                if (isMounted) {
+                    setError("Sınav kitapçığı yüklenemedi. Bağlantınızı kontrol edin.");
+                    setIsLoading(false);
+                }
             }
-        });
+        };
 
-        if (containerRef.current) {
-            observer.observe(containerRef.current);
+        if (!script) {
+            script = document.createElement("script");
+            script.id = scriptId;
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+            script.async = true;
+            script.onload = initPdf;
+            document.body.appendChild(script);
+        } else {
+            // @ts-ignore
+            if (window.pdfjsLib) {
+                initPdf();
+            } else {
+                script.addEventListener("load", initPdf);
+            }
         }
-        return () => observer.disconnect();
-    }, []);
+        
+        return () => {
+            isMounted = false;
+            if (script) script.removeEventListener("load", initPdf);
+        };
+    }, [url, scale]); 
 
-    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-        setNumPages(numPages);
-        setPageNumber(1);
-    };
-
-    const changePage = (offset: number) => {
-        setPageNumber((prev) => Math.min(Math.max(1, prev + offset), numPages || 1));
-    };
-
-    const zoomIn = () => setScale(s => Math.min(s + 0.3, 3.0));
-    const zoomOut = () => setScale(s => Math.max(s - 0.2, 0.6));
+    const handleZoomIn = () => setScale(s => Math.min(s + 0.25, 3.0));
+    const handleZoomOut = () => setScale(s => Math.max(s - 0.25, 0.75));
 
     return (
-        <div className="flex flex-col h-full bg-[#E2E8F0]/20 select-none" onContextMenu={(e) => e.preventDefault()}>
+        <div 
+            className="flex flex-col h-full bg-[#E2E8F0]/20 select-none relative rounded-xl overflow-hidden" 
+            onContextMenu={(e) => e.preventDefault()}
+        >
             {/* Araç Çubuğu (Toolbar) */}
-            <div className="flex items-center justify-between p-3 bg-white border-b border-[#E2E8F0] shadow-sm z-10 shrink-0 rounded-t-xl">
+            <div className="flex items-center justify-between p-3 bg-white border-b border-[#E2E8F0] shadow-sm z-10 shrink-0">
+                <span className="text-sm font-bold text-[#1B3B6F]">
+                    Sınav Kitapçığı
+                </span>
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => changePage(-1)} 
-                        disabled={pageNumber <= 1}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#E2E8F0]/50 hover:bg-[#E2E8F0] text-[#0A1931] disabled:opacity-30 transition-all font-bold"
-                    >
-                        ◀
+                    <button onClick={handleZoomOut} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-[#1B3B6F]">
+                        <ZoomOut size={18} />
                     </button>
-                    <span className="text-sm font-bold text-[#1B3B6F] min-w-[60px] text-center">
-                        {pageNumber} / {numPages || "-"}
-                    </span>
-                    <button 
-                        onClick={() => changePage(1)} 
-                        disabled={numPages === undefined || pageNumber >= numPages}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#E2E8F0]/50 hover:bg-[#E2E8F0] text-[#0A1931] disabled:opacity-30 transition-all font-bold"
-                    >
-                        ▶
-                    </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={zoomOut}
-                        disabled={scale <= 0.5}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 disabled:opacity-30 transition-all font-bold text-lg"
-                    >
-                        -
-                    </button>
-                    <button
-                        onClick={() => setScale(1.0)}
-                        className="px-2 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-[#1B3B6F] transition-all font-semibold text-xs border border-transparent hover:border-slate-200"
-                        title="Ekrana Sığdır"
-                    >
-                        {Math.round(scale * 100)}%
-                    </button>
-                    <button 
-                        onClick={zoomIn}
-                        disabled={scale >= 3.0}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-violet-100 hover:bg-violet-200 text-violet-700 disabled:opacity-30 transition-all font-bold text-lg"
-                    >
-                        +
+                    <span className="text-xs font-semibold text-[#5A6A7A] w-10 text-center">{Math.round(scale * 100)}%</span>
+                    <button onClick={handleZoomIn} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors text-[#1B3B6F]">
+                        <ZoomIn size={18} />
                     </button>
                 </div>
             </div>
 
             {/* PDF Görüntüleme Alanı */}
-            <div ref={containerRef} className="flex-1 overflow-auto flex justify-center p-4 custom-scrollbar bg-slate-50 relative rounded-b-xl">
-                <Document
-                    file={url}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    loading={
-                        <div className="flex flex-col items-center justify-center text-[#A9A9A9] h-full mt-20">
-                            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mb-4" />
-                            <p className="font-semibold">Sınav kitapçığı işleniyor...</p>
-                        </div>
-                    }
-                    error={
-                        <div className="flex flex-col items-center justify-center text-red-500 h-full mt-20">
-                            <p className="text-4xl mb-3">⚠️</p>
-                            <p className="font-bold">PDF yüklenemedi veya erişim engellendi.</p>
-                        </div>
-                    }
-                >
-                    {/* Page Wrapper for Watermark Alignment */}
-                    <div className="relative shadow-xl border border-[#E2E8F0] bg-white inline-block">
-                        <Page 
-                            pageNumber={pageNumber} 
-                            width={containerWidth}
-                            scale={scale} 
-                            // Güvenlik: Yazı katmanı ve tıklanabilir linkleri tamamen kapatıyoruz ki PDF sadece bir resim olsun.
-                            renderTextLayer={false}
-                            renderAnnotationLayer={false}
-                            className="bg-white"
-                        />
+            <div className="flex-1 overflow-auto relative bg-slate-50 p-4 custom-scrollbar">
+                {isLoading && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm">
+                        <div className="w-8 h-8 border-2 border-[#1B3B6F] border-t-transparent rounded-full animate-spin mb-4" />
+                        <p className="font-semibold text-[#1B3B6F]">Sınav kitapçığı çiziliyor...</p>
                     </div>
-                </Document>
+                )}
+
+                {error && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50">
+                        <p className="font-semibold text-rose-500">{error}</p>
+                    </div>
+                )}
+                
+                {/* Canvas Konteyneri */}
+                <div ref={containerRef} className="flex flex-col items-center justify-start min-h-full pb-10" />
             </div>
         </div>
     );

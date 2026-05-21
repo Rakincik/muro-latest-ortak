@@ -23,6 +23,7 @@ public class CoursesController : ControllerBase
     private readonly ITenantService _tenantService;
     private readonly IBackgroundJobQueue _jobQueue;
     private readonly IWebHostEnvironment _env;
+    private readonly Microsoft.AspNetCore.OutputCaching.IOutputCacheStore _outputCacheStore;
 
     public CoursesController(
         ICourseService courseService, 
@@ -32,7 +33,8 @@ public class CoursesController : ControllerBase
         ICourseMaterialService materialService,
         ITenantService tenantService, 
         IBackgroundJobQueue jobQueue, 
-        IWebHostEnvironment env)
+        IWebHostEnvironment env,
+        Microsoft.AspNetCore.OutputCaching.IOutputCacheStore outputCacheStore)
     {
         _courseService = courseService;
         _sessionService = sessionService;
@@ -42,6 +44,7 @@ public class CoursesController : ControllerBase
         _tenantService = tenantService;
         _jobQueue = jobQueue;
         _env = env;
+        _outputCacheStore = outputCacheStore;
     }
 
     private Guid GetTenantId() =>
@@ -56,6 +59,7 @@ public class CoursesController : ControllerBase
     // --- Courses ---
 
     [HttpGet]
+    [Microsoft.AspNetCore.OutputCaching.OutputCache(PolicyName = "TenantCourses")]
     public async Task<ActionResult<PagedResult<CourseListDto>>> GetCourses(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null, [FromQuery] string? courseType = null,
@@ -93,6 +97,10 @@ public class CoursesController : ControllerBase
     {
         var course = await _courseService.CreateCourseAsync(GetTenantId(), request);
         await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetActorId(), null, "Create", "Course", course.Id.ToString(), request.Title, null, GetIp()));
+        
+        // Önbelleği patlat (Active Invalidation)
+        await _outputCacheStore.EvictByTagAsync("TenantCourses", default);
+        
         return Created($"/api/v1/courses/{course.Id}", course);
     }
 
@@ -101,6 +109,10 @@ public class CoursesController : ControllerBase
     {
         var result = await _courseService.UpdateCourseAsync(GetTenantId(), id, request);
         await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetActorId(), null, "Update", "Course", id.ToString(), request.Title, null, GetIp()));
+        
+        // Önbelleği patlat
+        await _outputCacheStore.EvictByTagAsync("TenantCourses", default);
+        
         return Ok(result);
     }
 
@@ -109,6 +121,10 @@ public class CoursesController : ControllerBase
     {
         await _courseService.DeleteCourseAsync(GetTenantId(), id);
         await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetActorId(), null, "Delete", "Course", id.ToString(), null, null, GetIp()));
+        
+        // Önbelleği patlat
+        await _outputCacheStore.EvictByTagAsync("TenantCourses", default);
+        
         return NoContent();
     }
 

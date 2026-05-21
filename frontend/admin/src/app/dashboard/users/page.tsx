@@ -454,13 +454,13 @@ export default function UsersPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1931] tracking-tight flex items-center gap-3">Kullanıcılar</h1>
                     <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Kullanıcı ve Rol Yönetimi</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <button className="flex-1 sm:flex-none px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm" onClick={downloadTemplate}><Download size={16} className="shrink-0" /> <span className="hidden sm:inline">Şablon</span></button>
-                    <button onClick={exportExcel} className="flex-1 sm:flex-none px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm" title="Excel olarak indir">
-                        <Download size={16} className="shrink-0" /> <span className="hidden sm:inline">İndir</span>
+                <div className="flex flex-row items-center gap-2 sm:gap-3 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar">
+                    <button className="shrink-0 snap-start px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm" onClick={downloadTemplate}><Download size={16} className="shrink-0" /> Şablon</button>
+                    <button onClick={exportExcel} className="shrink-0 snap-start px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm" title="Excel olarak indir">
+                        <Download size={16} className="shrink-0" /> İndir
                     </button>
-                    <button onClick={() => { setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }} className="flex-1 sm:flex-none px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm"><Upload size={16} className="shrink-0" /> <span className="hidden sm:inline">Toplu Ekle</span></button>
-                    <button onClick={() => { setEditUser(null); setShowAddModal(true); }} className="w-full sm:w-auto px-6 py-3 text-sm sm:text-base font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A1931]/20"><UserPlus size={20} className="shrink-0" /> Yeni Kullanıcı</button>
+                    <button onClick={() => { setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }} className="shrink-0 snap-start px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm"><Upload size={16} className="shrink-0" /> Toplu Ekle</button>
+                    <button onClick={() => { setEditUser(null); setShowAddModal(true); }} className="shrink-0 snap-start px-6 py-2.5 text-sm sm:text-base font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A1931]/20"><UserPlus size={18} className="shrink-0" /> Yeni Kullanıcı</button>
                 </div>
             </div>
             <KpiGrid 
@@ -470,6 +470,7 @@ export default function UsersPage() {
                     { label: "Öğrenci", value: stats.students, icon: GraduationCap, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
                     { label: "Demo", value: stats.demo, icon: CalendarIcon, colorClass: "text-amber-600", bgClass: "bg-amber-50" }
                 ]}
+                className="flex xl:grid xl:grid-cols-4 gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar"
             />
             <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
                 <div className="w-full lg:flex-1 relative">
@@ -537,71 +538,56 @@ export default function UsersPage() {
 
                 {/* ── PREMIUM MOBILE CARDS VIEW ── */}
                 <div className="lg:hidden flex flex-col gap-4">
-                    <div className="px-5 py-4 bg-white rounded-2xl border border-[#E2E8F0]/60 shadow-sm flex items-center justify-between">
+                    <div className="px-4 py-3 bg-white rounded-xl border border-[#E2E8F0]/60 shadow-sm flex items-center justify-between">
                         <label className="flex items-center gap-3 cursor-pointer">
-                            <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={selAll} className="w-5 h-5 rounded border-[#A0AEC0] text-[#1B3B6F] focus:ring-[#1B3B6F]" />
-                            <span className="text-sm font-extrabold text-[#0A1931] uppercase tracking-widest">Tümünü Seç ({paginated.length})</span>
+                            <input type="checkbox" checked={selected.size === paginated.length && paginated.length > 0} onChange={selAll} className="w-4 h-4 rounded border-[#A0AEC0] text-[#1B3B6F] focus:ring-[#1B3B6F]" />
+                            <span className="text-[11px] font-extrabold text-[#0A1931] uppercase tracking-widest">Tümünü Seç ({paginated.length})</span>
                         </label>
                     </div>
                     {paginated.map((u) => {
                         const c = rc[u.role] || _default;
                         const isSelected = selected.has(u.id);
                         return (
-                            <div key={u.id} className={`relative p-5 rounded-2xl border transition-all duration-300 shadow-sm ${isSelected ? "bg-blue-50/50 border-blue-300 ring-2 ring-blue-500/20" : "bg-white border-[#E2E8F0]/60 hover:shadow-md"}`}>
-                                {/* Checkbox Absolute Top Right */}
-                                <div className="absolute top-5 right-5 z-10">
-                                    <input type="checkbox" checked={isSelected} onChange={() => toggleSel(u.id)} className="w-5 h-5 rounded border-[#A0AEC0] text-[#0A1931] focus:ring-[#0A1931]" />
+                            <div key={u.id} className={`relative p-4 rounded-xl border transition-all duration-300 shadow-sm ${isSelected ? "bg-blue-50/50 border-blue-300 ring-1 ring-blue-500/20" : "bg-white border-[#E2E8F0]/60 hover:shadow-md"}`}>
+                                <div className="absolute top-4 right-4 z-10">
+                                    <input type="checkbox" checked={isSelected} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931] focus:ring-[#0A1931]" />
                                 </div>
-
-                                <div className="flex flex-col gap-4" onClick={() => setDetailUser(u)}>
-                                    {/* Header: Avatar + Info */}
-                                    <div className="flex items-center gap-4 pr-8">
-                                        <div className={`w-14 h-14 rounded-2xl ${c.avatar} flex items-center justify-center text-white text-lg font-bold shadow-lg shrink-0 border-2 border-white`}>
-                                            {ini(u)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-base font-extrabold text-[#0A1931] tracking-tight truncate">{u.firstName} {u.lastName}</p>
-                                            <p className="text-xs text-[#A0AEC0] font-medium truncate mt-0.5">{u.email}</p>
+                                <div className="flex flex-col gap-3" onClick={() => setDetailUser(u)}>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3 pr-8">
+                                            <div className={`w-12 h-12 rounded-full ${c.avatar} flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0 border border-white`}>
+                                                {ini(u)}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-[#0A1931] tracking-tight truncate">{u.firstName} {u.lastName}</p>
+                                                <p className="text-[11px] text-[#A0AEC0] font-medium truncate mt-0.5">{u.email}</p>
+                                                <div className="flex items-center gap-2 mt-1 text-[10px]">
+                                                    <span className={`font-bold uppercase tracking-widest ${c.text}`}>{roleLabel[u.role] || u.role}</span>
+                                                    <span className="text-[#E2E8F0]">•</span>
+                                                    <span className={`font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}>{u.isActive ? "AKTİF" : "PASİF"}</span>
+                                                    {u.studentType === "Demo" && (
+                                                        <>
+                                                            <span className="text-[#E2E8F0]">•</span>
+                                                            <span className="font-bold text-amber-600 uppercase tracking-widest">DEMO</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    
-                                    {/* Badges */}
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl ${c.bg} ${c.text} shadow-sm border`}>
-                                            {roleLabel[u.role] || u.role}
-                                        </span>
-                                        <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-sm border ${u.isActive ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-[#F0F4F8] text-[#A0AEC0] border-[#E2E8F0]"}`}>
-                                            <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} />
-                                            {u.isActive ? "AKTİF" : "PASİF"}
-                                        </span>
-                                        {u.studentType === "Demo" && (
-                                            <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 shadow-sm">
-                                                DEMO
-                                            </span>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Contact */}
-                                    {u.phone && (
-                                        <div className="flex items-center gap-2 bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0]/50">
-                                            <a href={`tel:${u.phone.replace(/\s/g, '')}`} onClick={e => e.stopPropagation()} className="flex-1 flex items-center justify-center gap-2 text-xs font-bold text-[#1B3B6F] bg-white py-2 rounded-lg shadow-sm border border-[#E2E8F0]">
-                                                <Phone size={14} className="text-[#A0AEC0]" /> {u.phone}
-                                            </a>
-                                            <a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} onClick={e => e.stopPropagation()} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center w-10 h-10 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors">
-                                                <MessageCircle size={18} />
-                                            </a>
-                                        </div>
-                                    )}
-
-                                    {/* Actions */}
-                                    <div className="flex items-center justify-between mt-2 pt-4 border-t border-[#E2E8F0]/60" onClick={e => e.stopPropagation()}>
-                                        <button onClick={() => setDetailUser(u)} className="flex items-center gap-2 text-xs font-bold text-[#1B3B6F] px-4 py-2.5 rounded-xl hover:bg-[#F0F4F8] transition-colors">
-                                            <Eye size={16} /> Profili İncele
+                                    <div className="flex items-center justify-between mt-1 pt-3 border-t border-[#E2E8F0]/60" onClick={e => e.stopPropagation()}>
+                                        <button onClick={() => setDetailUser(u)} className="text-[11px] font-bold text-[#1B3B6F] hover:text-[#0A1931] transition-colors flex items-center gap-1">
+                                            <Eye size={14} /> Profili İncele
                                         </button>
-                                        <div className="flex items-center gap-2">
-                                            <button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#E2E8F0] shadow-sm text-[#A0AEC0] hover:text-amber-600 hover:border-amber-200 transition-colors"><Edit3 size={16} /></button>
-                                            <button onClick={() => toggleActive(u.id)} className={`w-10 h-10 flex items-center justify-center rounded-xl border shadow-sm transition-colors ${u.isActive ? "bg-white border-[#E2E8F0] text-[#A0AEC0] hover:text-orange-500 hover:border-orange-200" : "bg-emerald-50 border-emerald-200 text-emerald-600"}`}>{u.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}</button>
-                                            <button onClick={() => setDeleteTarget(u.id)} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#E2E8F0] shadow-sm text-[#A0AEC0] hover:text-red-600 hover:border-red-200 transition-colors"><Trash2 size={16} /></button>
+                                        <div className="flex items-center gap-1">
+                                            {u.phone && (
+                                                <a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-[#25D366]/10 text-[#25D366] flex items-center justify-center hover:bg-[#25D366]/20 transition-colors mr-1">
+                                                    <MessageCircle size={14} />
+                                                </a>
+                                            )}
+                                            <button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-amber-50 hover:text-amber-600 transition-colors"><Edit3 size={14} /></button>
+                                            <button onClick={() => toggleActive(u.id)} className={`w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center transition-colors ${u.isActive ? "hover:bg-orange-50 hover:text-orange-500" : "hover:bg-emerald-50 hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}</button>
+                                            <button onClick={() => setDeleteTarget(u.id)} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
                                         </div>
                                     </div>
                                 </div>

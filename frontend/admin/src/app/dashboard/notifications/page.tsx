@@ -292,7 +292,7 @@ export default function NotificationsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-[#0A1931] tracking-tight flex items-center gap-3">
                         <Bell size={28} className="text-[#1B3B6F]" /> Bildirimler
@@ -300,15 +300,15 @@ export default function NotificationsPage() {
                     <p className="text-sm text-[#A9A9A9] mt-1">Öğrencilere toplu bildirim gönderin ve geçmişi takip edin</p>
                 </div>
                 <button onClick={() => setShowForm(true)}
-                    className="px-4 py-2.5 text-sm font-semibold bg-[#1B3B6F] text-white rounded-xl hover:bg-[#0A1931] shadow-sm shadow-[#0A1931]/25 flex items-center gap-2 transition-colors">
+                    className="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold bg-[#1B3B6F] text-white rounded-xl hover:bg-[#0A1931] shadow-sm shadow-[#0A1931]/25 flex items-center justify-center gap-2 transition-colors">
                     <Send size={15} /> Bildirim Gönder
                 </button>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="flex lg:grid lg:grid-cols-4 gap-4 overflow-x-auto hide-scrollbar pb-2 snap-x">
                 {stats.map(s => (
-                    <div key={s.label} className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3">
+                    <div key={s.label} className="min-w-[160px] lg:min-w-0 shrink-0 snap-start bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[#E2E8F0]/20 flex items-center justify-center">
                             <s.icon size={18} className="text-[#A0AEC0]" />
                         </div>
@@ -321,7 +321,7 @@ export default function NotificationsPage() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3">
+            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div className="flex-1 relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                     <input type="text" placeholder="Bildirim ara..." value={search} onChange={e => setSearch(e.target.value)}
@@ -363,8 +363,8 @@ export default function NotificationsPage() {
                                         <Icon size={18} className={ts.text} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-sm font-bold text-[#0A1931] truncate">{n.title}</h3>
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                            <h3 className="text-sm font-bold text-[#0A1931] truncate max-w-full">{n.title}</h3>
                                             {n.type && (
                                                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg shrink-0 ${ts.bg} ${ts.text}`}>{n.type}</span>
                                             )}

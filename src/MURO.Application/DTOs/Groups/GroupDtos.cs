@@ -10,6 +10,7 @@ public record GroupListDto(
     string? EducationType,
     int MemberCount,
     int CourseCount,
+    DateTime? ExpirationDate,
     DateTime CreatedAt
 );
 
@@ -26,6 +27,7 @@ public record GroupDetailDto(
     List<GroupMemberDto> Members,
     List<GroupCourseDto> Courses,
     List<GroupChildDto> Children,
+    DateTime? ExpirationDate,
     DateTime CreatedAt
 );
 
@@ -45,7 +47,8 @@ public record CreateGroupRequest(
     string? Description,
     Guid? ParentGroupId,
     string? Color,
-    string? EducationType
+    string? EducationType,
+    DateTime? ExpirationDate
 );
 
 public record UpdateGroupRequest(
@@ -53,7 +56,8 @@ public record UpdateGroupRequest(
     string? Description,
     Guid? ParentGroupId,
     string? Color,
-    string? EducationType
+    string? EducationType,
+    DateTime? ExpirationDate
 );
 
 public record AddGroupMembersRequest(List<Guid> UserIds);

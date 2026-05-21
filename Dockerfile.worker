@@ -1,0 +1,54 @@
+# ============================================
+# MURO.Worker — Production Dockerfile
+# Heavy background processing (FFmpeg, Scoring)
+# ============================================
+
+# --- Stage 1: Build ---
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy solution and project files for layer caching
+COPY MURO.sln ./
+COPY src/MURO.Domain/MURO.Domain.csproj src/MURO.Domain/
+COPY src/MURO.Application/MURO.Application.csproj src/MURO.Application/
+COPY src/MURO.Infrastructure/MURO.Infrastructure.csproj src/MURO.Infrastructure/
+COPY src/MURO.Worker/MURO.Worker.csproj src/MURO.Worker/
+COPY src/MURO.API/MURO.API.csproj src/MURO.API/
+
+# Restore dependencies (cached layer)
+RUN dotnet restore src/MURO.Worker/MURO.Worker.csproj
+
+# Copy all source code
+COPY src/ src/
+
+# Build & publish in Release mode
+RUN dotnet publish src/MURO.Worker/MURO.Worker.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# --- Stage 2: Runtime ---
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+# Install FFmpeg for HLS video transcoding (Since Worker does heavy lifting)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create required directories
+RUN mkdir -p /app/wwwroot/hls \
+             /app/wwwroot/uploads \
+             /app/logs \
+             /tmp/muro_processing
+
+# Copy published app
+COPY --from=build /app/publish .
+
+# Environment
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_ENVIRONMENT=Production
+
+# Worker is a background service, it does not expose ports
+
+ENTRYPOINT ["dotnet", "MURO.Worker.dll"]

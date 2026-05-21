@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
   // Experimental optimizations
   experimental: {
     optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'react-icons'],
   },
 
   // Skip ESLint and TypeScript errors during production builds
@@ -30,6 +31,13 @@ const nextConfig: NextConfig = {
   },
   typescript: {
     ignoreBuildErrors: true,
+  },
+
+  // PDFJS-dist fix is removed because we migrated to native iframe
+  webpack: (config) => {
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+    return config;
   },
 };
 

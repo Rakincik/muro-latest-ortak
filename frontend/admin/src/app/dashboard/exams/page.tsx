@@ -6,7 +6,7 @@ import { useToast } from "@/components/toast";
 import { examApi, ExamListDto, ExamDetailDto } from "@/lib/api";
 import ExamFormModal, { ExamFormData } from "./ExamFormModal";
 import ExamDetail from "./ExamDetail";
-
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const statusStyles: Record<string, { bg: string; text: string; dot: string }> = {
     Taslak: { bg: "bg-[#E2E8F0]/40", text: "text-[#1B3B6F]", dot: "bg-[#A0AEC0]" },
@@ -26,6 +26,7 @@ export default function ExamsPage() {
     const [showForm, setShowForm] = useState(false);
     const [editExam, setEditExam] = useState<ExamListDto | null>(null);
     const [selectedExam, setSelectedExam] = useState<ExamDetailDto | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string, title?: string, isDetail?: boolean } | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -102,19 +103,28 @@ export default function ExamsPage() {
         try { const det = await examApi.updatePdf(token, currentTenantId, selectedExam.id, d); setSelectedExam(det); }
         catch { setSelectedExam(p => p ? { ...p, ...d } : p); }
     };
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!selectedExam) return;
-        if (!confirm("Bu sınavı silmek istediğinize emin misiniz?")) return;
-        try { if (token && currentTenantId) await examApi.delete(token, currentTenantId, selectedExam.id); success("Sınav silindi"); }
-        catch { success("Sınav silindi (demo)"); }
-        setSelectedExam(null); load();
+        setDeleteTarget({ id: selectedExam.id, title: selectedExam.title, isDetail: true });
     };
 
-    const handleCardDelete = async (ev: React.MouseEvent, exam: ExamListDto) => {
+    const handleCardDelete = (ev: React.MouseEvent, exam: ExamListDto) => {
         ev.stopPropagation();
-        if (!confirm(`"${exam.title}" sınavını silmek istediğinize emin misiniz?`)) return;
-        try { if (token && currentTenantId) await examApi.delete(token, currentTenantId, exam.id); success("Sınav silindi"); }
+        setDeleteTarget({ id: exam.id, title: exam.title });
+    };
+
+    const executeDelete = async () => {
+        if (!deleteTarget) return;
+        try { 
+            if (token && currentTenantId) await examApi.delete(token, currentTenantId, deleteTarget.id); 
+            success("Sınav silindi"); 
+        }
         catch { success("Sınav silindi (demo)"); }
+        
+        if (deleteTarget.isDetail) {
+            setSelectedExam(null);
+        }
+        setDeleteTarget(null);
         load();
     };
     const handleUpdate = async (d: Record<string, unknown>) => {
@@ -191,19 +201,24 @@ export default function ExamsPage() {
     return (
         <div className="max-w-[1600px] mx-auto space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div><h1 className="text-3xl font-bold text-[#0A1931] tracking-tight">Sınavlar</h1><p className="text-sm text-[#A9A9A9] mt-1 uppercase tracking-widest font-semibold opacity-60">Optik Sınav Yönetimi</p></div>
-                <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-6 py-3 text-sm font-bold text-white bg-[#0A1931] rounded-xl hover:bg-[#1B3B6F] transition-all shadow-lg shadow-[#0A1931]900/10"><Plus size={18} /> Yeni Sınav</button>
+            <div className="flex flex-row items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                    <h1 className="text-3xl font-bold text-[#0A1931] tracking-tight truncate">Sınavlar</h1>
+                    <p className="text-[10px] sm:text-sm text-[#A9A9A9] mt-1 uppercase tracking-widest font-semibold opacity-60 truncate">Optik Sınav Yönetimi</p>
+                </div>
+                <button onClick={() => setShowForm(true)} className="shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-3 text-xs sm:text-sm font-bold text-white bg-[#0A1931] rounded-xl hover:bg-[#1B3B6F] transition-all shadow-lg shadow-[#0A1931]/10">
+                    <Plus size={18} /> Yeni Sınav
+                </button>
             </div>
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="flex sm:grid sm:grid-cols-4 gap-4 overflow-x-auto hide-scrollbar snap-x pb-2">
                 {[
                     { label: "Toplam Sınav", value: total, icon: FileText, color: "text-[#0A1931]" },
                     { label: "Yayında", value: published, icon: TrendingUp, color: "text-emerald-600" },
                     { label: "Ort. Puan", value: avgScore, icon: Award, color: "text-[#0A1931]" },
                     { label: "Katılımcı", value: totalParticipants, icon: Users, color: "text-[#0A1931]" },
                 ].map(s => (
-                    <div key={s.label} className="relative overflow-hidden rounded-2xl bg-white border border-[#E2E8F0]/60 p-6 hover:border-[#A0AEC0] transition-all group">
+                    <div key={s.label} className="shrink-0 snap-start min-w-[140px] flex-1 relative overflow-hidden rounded-2xl bg-white border border-[#E2E8F0]/60 p-5 sm:p-6 hover:border-[#A0AEC0] transition-all group">
                         <div className="relative">
                             <s.icon size={20} className="text-[#A0AEC0] mb-3 group-hover:text-[#A0AEC0] transition-colors" />
                             <p className={`text-3xl font-bold tracking-tighter ${s.color}`}>{s.value}</p>
@@ -213,12 +228,12 @@ export default function ExamsPage() {
                 ))}
             </div>
             {/* Filters */}
-            <div className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
+            <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1 snap-x snap-mandatory">
+                <div className="relative w-[160px] sm:flex-1 shrink-0 snap-start max-w-sm">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
-                    <input value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20" placeholder="Sınav ara..." />
+                    <input value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20" placeholder="Sınav ara..." />
                 </div>
-                <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="px-3 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20">
+                <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="shrink-0 snap-start px-3 py-2.5 text-xs sm:text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer">
                     <option value="all">Tüm Tipler</option>
                     <optgroup label="YKS"><option value="TYT">TYT</option><option value="AYT Sayısal">AYT Sayısal</option><option value="AYT Sözel">AYT Sözel</option><option value="AYT Eşit Ağırlık">AYT EA</option><option value="YDT">YDT</option></optgroup>
                     <optgroup label="Lise/Ortaokul"><option value="LGS">LGS</option></optgroup>
@@ -226,22 +241,22 @@ export default function ExamsPage() {
                     <optgroup label="Diğer"><option value="ALES">ALES</option><option value="YDS">YDS</option><option value="DGS">DGS</option></optgroup>
                     <optgroup label="Serbest"><option value="Deneme">Deneme</option><option value="Quiz">Quiz</option><option value="Genel">Genel</option></optgroup>
                 </select>
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-3 py-2.5 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20">
+                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="shrink-0 snap-start px-3 py-2.5 text-xs sm:text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 cursor-pointer">
                     <option value="all">Tüm Durumlar</option><option value="Taslak">Taslak</option><option value="Yayında">Yayında</option><option value="Tamamlandı">Tamamlandı</option>
                 </select>
             </div>
             {/* Card Grid */}
             {loading ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">{[1, 2, 3].map(i => <div key={i} className="h-48 rounded-xl bg-[#E2E8F0]/40 animate-pulse" />)}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{[1, 2, 3].map(i => <div key={i} className="h-48 rounded-xl bg-[#E2E8F0]/40 animate-pulse" />)}</div>
             ) : filtered.length === 0 ? (
                 <div className="text-center py-20 text-[#A0AEC0]"><BarChart3 size={40} className="mx-auto mb-3 opacity-30" /><p className="text-base font-medium">Sınav bulunamadı</p><p className="text-sm mt-1">Yeni bir sınav oluşturun veya filtreleri değiştirin</p></div>
             ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filtered.map(e => {
                         const ss = statusStyles[e.status] || statusStyles.Taslak;
                         const tc = typeColors[e.examType] || typeColors.Genel;
                         return (
-                            <button key={e.id} onClick={() => openDetail(e)} className="text-left bg-white rounded-2xl border border-[#E2E8F0]/60 overflow-hidden hover:shadow-xl hover:border-[#A0AEC0] transition-all group active:scale-[0.98]">
+                            <div key={e.id} onClick={() => openDetail(e)} className="text-left bg-white rounded-2xl border border-[#E2E8F0]/60 overflow-hidden hover:shadow-xl hover:border-[#A0AEC0] transition-all group active:scale-[0.98] cursor-pointer" role="button" tabIndex={0} onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); openDetail(e); } }}>
                                 <div className={`h-1.5 ${tc}`} />
                                 <div className="p-4 space-y-3">
                                     <div className="flex items-start justify-between">
@@ -272,13 +287,22 @@ export default function ExamsPage() {
                                         {e.startDate && <span className="flex items-center gap-1"><Clock size={10} /> {new Date(e.startDate).toLocaleDateString("tr-TR")}</span>}
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         );
                     })}
                 </div>
             )}
             {/* Modal */}
             {showForm && <ExamFormModal onClose={() => setShowForm(false)} onSave={handleCreate} />}
+            
+            {/* Delete confirm */}
+            <ConfirmDialog 
+                open={deleteTarget !== null} 
+                onClose={() => setDeleteTarget(null)} 
+                onConfirm={executeDelete}
+                title="Sınavı Sil" 
+                message={deleteTarget?.title ? `"${deleteTarget.title}" sınavını silmek istediğinize emin misiniz?` : "Bu sınavı silmek istediğinize emin misiniz?"} 
+            />
         </div>
     );
 }

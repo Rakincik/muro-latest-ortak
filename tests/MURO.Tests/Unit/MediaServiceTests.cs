@@ -48,7 +48,7 @@ public class MediaServiceTests : IDisposable
     public async Task CreateAsset_ShouldSaveToDb()
     {
         var result = await _service.CreateAssetAsync(_tenantId,
-            new CreateMediaAssetRequest("Video 1", "/uploads/v1.mp4", _courseId));
+            new CreateMediaAssetRequest("Video 1", "/uploads/v1.mp4", _courseId, null, null));
 
         result.Title.Should().Be("Video 1");
         result.Status.Should().Be("Uploading");
@@ -62,7 +62,7 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task GetAssetById_ShouldReturn()
     {
-        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", _courseId));
+        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", _courseId, null, null));
         var result = await _service.GetAssetByIdAsync(_tenantId, created.Id);
         result.Title.Should().Be("V1");
     }
@@ -77,7 +77,7 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task GetAssetById_StudentWithAccess_ShouldReturn()
     {
-        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", _courseId));
+        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", _courseId, null, null));
         _groupAccessMock.Setup(g => g.CanAccessCourseAsync(_tenantId, _userId, _courseId)).ReturnsAsync(true);
 
         var result = await _service.GetAssetByIdAsync(_tenantId, created.Id, _userId);
@@ -87,7 +87,7 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task GetAssetById_StudentWithoutAccess_ShouldThrow()
     {
-        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", _courseId));
+        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", _courseId, null, null));
         _groupAccessMock.Setup(g => g.CanAccessCourseAsync(_tenantId, _userId, _courseId)).ReturnsAsync(false);
 
         var act = () => _service.GetAssetByIdAsync(_tenantId, created.Id, _userId);
@@ -101,9 +101,9 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task UpdateAsset_ShouldModifyFields()
     {
-        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", null));
+        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", null, null, null));
         var updated = await _service.UpdateAssetAsync(_tenantId, created.Id,
-            new UpdateMediaAssetRequest("Yeni Başlık", "/hls/v1/index.m3u8", "/thumb/v1.jpg", 3600, "Ready"));
+            new UpdateMediaAssetRequest("Yeni Başlık", "/hls/v1/index.m3u8", "/thumb/v1.jpg", 3600, "Ready", null, null));
 
         updated.Title.Should().Be("Yeni Başlık");
         updated.HlsPath.Should().Be("/hls/v1/index.m3u8");
@@ -114,7 +114,7 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task UpdateAsset_NonExistent_ShouldThrow()
     {
-        var act = () => _service.UpdateAssetAsync(_tenantId, Guid.NewGuid(), new UpdateMediaAssetRequest("X", null, null, null, null));
+        var act = () => _service.UpdateAssetAsync(_tenantId, Guid.NewGuid(), new UpdateMediaAssetRequest("X", null, null, null, null, null, null));
         await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
@@ -125,7 +125,7 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task DeleteAsset_ShouldRemove()
     {
-        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", null));
+        var created = await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("V1", "/v.mp4", null, null, null));
         await _service.DeleteAssetAsync(_tenantId, created.Id);
         (await _db.MediaAssets.AnyAsync(m => m.Id == created.Id)).Should().BeFalse();
     }
@@ -145,7 +145,7 @@ public class MediaServiceTests : IDisposable
     public async Task GetAssets_Paging_ShouldWork()
     {
         for (int i = 0; i < 15; i++)
-            await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest($"Video {i}", null, null));
+            await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest($"Video {i}", null, null, null, null));
 
         var p1 = await _service.GetAssetsAsync(_tenantId, 1, 10, null);
         var p2 = await _service.GetAssetsAsync(_tenantId, 2, 10, null);
@@ -157,8 +157,8 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task GetAssets_SearchByTitle_ShouldFilter()
     {
-        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Matematik Video", null, null));
-        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Fizik Video", null, null));
+        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Matematik Video", null, null, null, null));
+        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Fizik Video", null, null, null, null));
 
         var result = await _service.GetAssetsAsync(_tenantId, 1, 10, null, "fizik");
         result.Items.Should().HaveCount(1);
@@ -168,8 +168,8 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task GetAssets_FilterByCourse_ShouldFilter()
     {
-        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Kursa ait", null, _courseId));
-        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Genel", null, null));
+        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Kursa ait", null, _courseId, null, null));
+        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Genel", null, null, null, null));
 
         var result = await _service.GetAssetsAsync(_tenantId, 1, 10, _courseId);
         result.Items.Should().HaveCount(1);
@@ -179,11 +179,11 @@ public class MediaServiceTests : IDisposable
     [Fact]
     public async Task GetAssets_StudentFilter_ShouldOnlyShowAccessible()
     {
-        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Erişilebilir", null, _courseId));
+        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Erişilebilir", null, _courseId, null, null));
         var otherCourseId = Guid.NewGuid();
         _db.Courses.Add(new Course { Id = otherCourseId, TenantId = _tenantId, Title = "Gizli Kurs" });
         await _db.SaveChangesAsync();
-        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Erişilemez", null, otherCourseId));
+        await _service.CreateAssetAsync(_tenantId, new CreateMediaAssetRequest("Erişilemez", null, otherCourseId, null, null));
 
         _groupAccessMock.Setup(g => g.GetAccessibleCourseIdsAsync(_tenantId, _userId))
             .ReturnsAsync(new HashSet<Guid> { _courseId });

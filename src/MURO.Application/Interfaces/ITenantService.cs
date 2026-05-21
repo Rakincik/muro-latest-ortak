@@ -20,5 +20,6 @@ public interface ITenantService
     bool HasFeature(string featureName);
 
     Task<TenantAdminDto?> GetSettingsAsync();
+    Task<TenantBrandingDto?> GetBrandingAsync(Guid tenantId);
     Task<TenantAdminDto?> UpdateSettingsAsync(string? name, string? logoUrl, string? faviconUrl, string? primaryColor, string? accentColor, string? footerText);
 }

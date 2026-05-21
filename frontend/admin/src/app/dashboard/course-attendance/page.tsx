@@ -147,6 +147,7 @@ export default function CourseAttendancePage() {
                 <div className="flex items-center gap-2">
                     {students.length > 0 && (
                         <button onClick={exportCSV} className="px-3 py-2 text-xs font-bold bg-white border border-[#E2E8F0] rounded-xl text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-1.5">
+
                             <Download size={12} /> CSV İndir
                         </button>
                     )}
@@ -154,11 +155,11 @@ export default function CourseAttendancePage() {
             </div>
 
             {/* Course Picker */}
-            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-4">
+            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                 <label className="text-sm font-medium text-[#1B3B6F] whitespace-nowrap">Kurs Seç:</label>
                 <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}
                     disabled={loadingCourses}
-                    className="flex-1 px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 disabled:opacity-50 text-[#0A1931]">
+                    className="w-full sm:flex-1 px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 disabled:opacity-50 text-[#0A1931]">
                     {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
             </div>
@@ -168,16 +169,16 @@ export default function CourseAttendancePage() {
             ) : !report ? null : (
                 <>
                     {/* KPI Cards */}
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4">
+                    <div className="flex lg:grid lg:grid-cols-4 gap-4 overflow-x-auto hide-scrollbar pb-2 snap-x">
+                        <div className="min-w-[160px] lg:min-w-0 shrink-0 snap-start bg-white rounded-xl border border-[#E2E8F0]/60 p-4">
                             <div className="flex items-center gap-2 mb-2"><Users size={14} className="text-[#1B3B6F]" /><span className="text-[10px] text-[#A0AEC0] font-medium">KAYITLI ÖĞRENCİ</span></div>
                             <p className="text-2xl font-bold text-[#0A1931]"><CountUp target={report.totalEnrolled} /></p>
                         </div>
-                        <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4">
+                        <div className="min-w-[160px] lg:min-w-0 shrink-0 snap-start bg-white rounded-xl border border-[#E2E8F0]/60 p-4">
                             <div className="flex items-center gap-2 mb-2"><BarChart3 size={14} className="text-blue-500" /><span className="text-[10px] text-[#A0AEC0] font-medium">TOPLAM OTURUM</span></div>
                             <p className="text-2xl font-bold text-blue-600"><CountUp target={report.sessions.length} /></p>
                         </div>
-                        <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4">
+                        <div className="min-w-[160px] lg:min-w-0 shrink-0 snap-start bg-white rounded-xl border border-[#E2E8F0]/60 p-4">
                             <div className="flex items-center gap-2 mb-2"><TrendingUp size={14} className={rateColor(report.avgAttendanceRate)} /><span className="text-[10px] text-[#A0AEC0] font-medium">GENEL DEVAM</span></div>
                             <p className={`text-2xl font-bold ${rateColor(report.avgAttendanceRate)}`}>{report.avgAttendanceRate.toFixed(0)}%</p>
                             <div className="mt-1.5 h-1.5 bg-[#E2E8F0]/40 rounded-full overflow-hidden">
@@ -185,7 +186,7 @@ export default function CourseAttendancePage() {
                                     style={{ width: `${report.avgAttendanceRate}%` }} />
                             </div>
                         </div>
-                        <div className={`rounded-xl border p-4 ${riskStudents.length > 0 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+                        <div className={`min-w-[160px] lg:min-w-0 shrink-0 snap-start rounded-xl border p-4 ${riskStudents.length > 0 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
                             <div className="flex items-center gap-2 mb-2">
                                 <AlertTriangle size={14} className={riskStudents.length > 0 ? "text-red-500" : "text-emerald-500"} />
                                 <span className="text-[10px] text-[#A0AEC0] font-medium">RİSK ALTINDA</span>
@@ -196,9 +197,9 @@ export default function CourseAttendancePage() {
                     </div>
 
                     {/* Main Content */}
-                    <div className="grid grid-cols-10 gap-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
                         {/* Heatmap */}
-                        <div className="col-span-7 bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
+                        <div className="col-span-1 lg:col-span-7 bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
                             <div className="px-5 py-3 border-b border-[#E2E8F0]/60 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold text-[#0A1931]">📊 Öğrenci × Oturum Matrisi</h3>
                                 {loadingDetails && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
@@ -206,24 +207,23 @@ export default function CourseAttendancePage() {
                             {students.length === 0 && !loadingDetails ? (
                                 <div className="py-16 text-center text-[#A0AEC0]"><Users size={32} className="mx-auto opacity-20 mb-2" /><p className="text-sm">Devam verisi bulunamadı</p></div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-xs">
+                                <div className="overflow-x-auto hide-scrollbar">
+                                    <table className="w-full text-xs min-w-[500px]">
                                         <thead>
                                             <tr className="bg-[#E2E8F0]/15">
-                                                <th className="sticky left-0 bg-[#E2E8F0]/15 px-3 py-2.5 text-left font-semibold text-[#A9A9A9] min-w-[180px]">Öğrenci</th>
+                                                <th className="sticky left-0 bg-[#E2E8F0]/15 px-3 py-2.5 text-left font-semibold text-[#A9A9A9] min-w-[180px] z-10 shadow-[1px_0_0_#E2E8F0]">Öğrenci</th>
                                                 {report.sessions.map(s => (
                                                     <th key={s.sessionId} className="px-1.5 py-2.5 text-center font-medium text-[#A9A9A9] min-w-[52px]" title={s.sessionTitle}>
                                                         <div className="truncate max-w-[52px]">{s.scheduledStart ? new Date(s.scheduledStart).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : s.sessionTitle.slice(0, 6)}</div>
                                                     </th>
                                                 ))}
                                                 <th className="px-3 py-2.5 text-right font-semibold text-[#A9A9A9] min-w-[70px]">Oran</th>
-
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {students.map((st, idx) => (
                                                 <tr key={st.id} className={`border-t border-[#E2E8F0]/30 ${st.rate < 50 ? "bg-red-50/30" : idx % 2 === 0 ? "" : "bg-[#E2E8F0]/5"}`}>
-                                                    <td className="sticky left-0 bg-white px-3 py-2 font-medium text-[#0A1931] whitespace-nowrap">
+                                                    <td className={`sticky left-0 px-3 py-2 font-medium text-[#0A1931] whitespace-nowrap z-10 shadow-[1px_0_0_#E2E8F0] ${st.rate < 50 ? "bg-[#fef2f2]" : idx % 2 === 0 ? "bg-white" : "bg-[#f8fafc]"}`}>
                                                         <div className="flex items-center gap-1.5">
                                                             {st.rate < 50 && <AlertTriangle size={10} className="text-red-500 flex-shrink-0" />}
                                                             <span className="truncate max-w-[150px]">{st.name}</span>
@@ -250,7 +250,6 @@ export default function CourseAttendancePage() {
                                                     <td className="px-3 py-2 text-right">
                                                         <span className={`font-bold ${rateColor(st.rate)}`}>{st.rate.toFixed(0)}%</span>
                                                     </td>
-
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -260,7 +259,7 @@ export default function CourseAttendancePage() {
                         </div>
 
                         {/* Right Panel */}
-                        <div className="col-span-3 space-y-4">
+                        <div className="col-span-1 lg:col-span-3 space-y-4">
                             {/* Risk Panel */}
                             <div className={`rounded-xl border p-4 ${riskStudents.length > 0 ? "bg-red-50/50 border-red-200" : "bg-emerald-50/50 border-emerald-200"}`}>
                                 <h3 className="text-sm font-semibold text-[#0A1931] flex items-center gap-1.5 mb-3">

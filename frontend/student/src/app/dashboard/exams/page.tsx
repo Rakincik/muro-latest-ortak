@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { examApi, type MyExamResultDto, type ExamListDto } from "@/lib/api";
 import { KpiGrid } from "@/components/ui/KpiGrid";
-import { FileText, Target, Trophy } from "lucide-react";
+import {
+    PiFilesDuotone as FileText,
+    PiTargetDuotone as Target,
+    PiTrophyDuotone as Trophy
+} from "react-icons/pi";
 
 function GaugeBar({ value, max, color }: { value: number; max: number; color: string }) {
     return (

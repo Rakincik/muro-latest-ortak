@@ -301,7 +301,7 @@ export default function QuestionsPage() {
             cancelText="İptal"
             variant="danger"
         />
-        <div className="space-y-6">
+        <div className="space-y-6 pt-16 md:pt-0">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -323,9 +323,9 @@ export default function QuestionsPage() {
             </div>
 
             {/* Split Pane Layout */}
-            <div className="grid grid-cols-5 gap-6" style={{ height: 'calc(100vh - 240px)' }}>
+            <div className="flex flex-col lg:grid lg:grid-cols-5 gap-6 h-auto lg:h-[calc(100vh-240px)]">
                 {/* Left Pane: List */}
-                <div className="col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col h-[350px] lg:h-auto overflow-hidden shrink-0">
                     <div className="p-4 border-b border-[#E2E8F0]/60 space-y-2">
                         <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -337,14 +337,14 @@ export default function QuestionsPage() {
                                 className="w-full pl-8 pr-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20" 
                             />
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => setStatusFilter("all")} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors ${statusFilter === "all" ? "bg-[#0A1931] text-white" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-[#E2E8F0]/60"}`}>
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={() => setStatusFilter("all")} className={`flex-1 min-w-[70px] py-1.5 px-2 text-[11px] sm:text-xs rounded-lg transition-colors ${statusFilter === "all" ? "bg-[#0A1931] text-white" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-[#E2E8F0]/60"}`}>
                                 Tümü ({questions.length})
                             </button>
-                            <button onClick={() => setStatusFilter("Bekliyor")} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors ${statusFilter === "Bekliyor" ? "bg-amber-100 text-amber-700 font-medium" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-amber-50"}`}>
+                            <button onClick={() => setStatusFilter("Bekliyor")} className={`flex-1 min-w-[70px] py-1.5 px-2 text-[11px] sm:text-xs rounded-lg transition-colors ${statusFilter === "Bekliyor" ? "bg-amber-100 text-amber-700 font-medium" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-amber-50"}`}>
                                 ⏳ {pendingCount}
                             </button>
-                            <button onClick={() => setStatusFilter("Yanıtlandı")} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors ${statusFilter === "Yanıtlandı" ? "bg-emerald-100 text-emerald-700 font-medium" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-emerald-50"}`}>
+                            <button onClick={() => setStatusFilter("Yanıtlandı")} className={`flex-1 min-w-[70px] py-1.5 px-2 text-[11px] sm:text-xs rounded-lg transition-colors ${statusFilter === "Yanıtlandı" ? "bg-emerald-100 text-emerald-700 font-medium" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-emerald-50"}`}>
                                 ✓ {answeredCount}
                             </button>
                         </div>
@@ -383,7 +383,7 @@ export default function QuestionsPage() {
                 </div>
 
                 {/* Right Pane: Detail */}
-                <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
+                <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col min-h-[500px] lg:min-h-0 lg:h-auto overflow-hidden">
                     {selected ? (
                         <>
                                                         <div className="px-6 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between">
@@ -478,7 +478,7 @@ export default function QuestionsPage() {
                             )}
                         </>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-[#A0AEC0]">
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-[#A0AEC0]">
                             <MessageSquare size={40} className="opacity-20 mb-3" />
                             <p className="text-sm">Detayları görmek için listeden bir soru seçin</p>
                         </div>

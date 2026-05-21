@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto } from "@/lib/api";
+import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -226,13 +226,13 @@ export default function CourseDetailPage() {
         <div className="max-w-[1400px] mx-auto animate-fade-in">
             {/* Breadcrumb */}
             <div className="mb-5">
-                <Link href="/dashboard/courses" className="text-[#A9A9A9] text-xs hover:text-[#1B3B6F] transition-colors flex items-center gap-1 w-fit">
+                <Link href="/dashboard/courses" className="text-[#A9A9A9] text-xs hover:text-[#1B3B6F] transition-colors flex items-center gap-1 w-fit ml-14 md:ml-0">
                     <ChevronLeft size={14} /> Derslerime Dön
                 </Link>
             </div>
 
             {/* ── Course Hero Card ── */}
-            <div className="relative rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-900/10 bg-[#0A1931] mb-6">
+            <div className="relative rounded-3xl md:rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-900/10 bg-[#0A1931] mb-6">
                 {course?.thumbnailUrl ? (
                     <>
                         <img src={getFileUrl(course.thumbnailUrl)} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-80" />
@@ -242,25 +242,25 @@ export default function CourseDetailPage() {
                     <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F] via-violet-600 to-blue-700" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/90 via-transparent to-white/5" />
-                <div className="relative p-10 flex flex-col md:flex-row items-center gap-8">
-                    <div className="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
+                <div className="relative p-5 md:p-10 flex flex-row items-center gap-4 md:gap-8">
+                    <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
                         {course?.thumbnailUrl ? (
                             <img src={getFileUrl(course.thumbnailUrl)} alt="Cover" className="w-full h-full object-cover" />
                         ) : (
-                            <BookOpen size={40} className="text-white" />
+                            <BookOpen size={40} className="text-white w-7 h-7 md:w-10 md:h-10" />
                         )}
                     </div>
-                    <div className="flex-1 text-center md:text-left">
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-3">
-                            <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-white/10 text-white/70 border border-white/10">
+                    <div className="flex-1 text-left min-w-0">
+                        <div className="flex flex-wrap items-center justify-start gap-2 md:gap-3 mb-1.5 md:mb-3">
+                            <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 md:px-3 md:py-1 rounded-full bg-white/10 text-white/70 border border-white/10">
                                 {course?.isPublished ? "Aktif Kurs" : "Taslak"}
                             </span>
                         </div>
-                        <h1 className="text-4xl font-black text-white tracking-tight mb-2">{course?.title ?? "Kurs"}</h1>
+                        <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-white tracking-tight mb-1 md:mb-2 truncate md:whitespace-normal">{course?.title ?? "Kurs"}</h1>
                         {course?.description && (
-                            <p className="text-sm font-medium text-white/60 max-w-xl leading-relaxed line-clamp-2">{course.description}</p>
+                            <p className="text-xs md:text-sm font-medium text-white/60 max-w-xl leading-relaxed truncate md:line-clamp-2">{course.description}</p>
                         )}
-                        <div className="flex items-center justify-center md:justify-start gap-5 mt-4 text-white/50 text-xs">
+                        <div className="flex flex-wrap items-center justify-start gap-3 md:gap-5 mt-2 md:mt-4 text-white/50 text-[10px] md:text-xs">
                             <span className="flex items-center gap-1.5"><Video size={12} />{totalVideoCount} video</span>
                             {liveSessions.length > 0 && (
                                 <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />{liveSessions.length} canlı ders</span>
@@ -271,10 +271,10 @@ export default function CourseDetailPage() {
             </div>
 
             {/* ── Tabs ── */}
-            <div className="flex items-center gap-2 mb-6 bg-white border border-[#E2E8F0] rounded-2xl p-1.5">
+            <div className="flex items-center gap-2 mb-6 bg-white border border-[#E2E8F0] rounded-2xl p-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {tabs.map(tab => (
                     <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all
+                        className={`shrink-0 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all
                             ${activeTab === tab.key ? "bg-[#0A1931] text-white shadow-sm" : "text-[#A9A9A9] hover:text-[#0A1931] hover:bg-[#E2E8F0]/30"}`}>
                         {tab.icon}
                         {tab.label}
@@ -312,7 +312,7 @@ export default function CourseDetailPage() {
                         </div>
                     ))}
                     {liveSessions.length === 0 && (
-                        <div className="glass-card p-16 text-center border-dashed">
+                        <div className="glass-card p-10 md:p-16 text-center border-dashed">
                             <div className="w-16 h-16 rounded-2xl bg-[#E2E8F0]/30 flex items-center justify-center mx-auto mb-4">
                                 <Video size={28} className="text-[#A0AEC0] opacity-50" />
                             </div>
@@ -328,7 +328,7 @@ export default function CourseDetailPage() {
                 const activeRec = selectedRec || sortedRecordings[0];
                 const activeIdx = activeRec ? sortedRecordings.findIndex(r => r.id === activeRec.id) : -1;
                 if (!activeRec) return (
-                    <div className="glass-card p-12 text-center border-dashed">
+                    <div className="glass-card p-8 md:p-12 text-center border-dashed">
                         <Video size={32} className="mx-auto text-[#A0AEC0] opacity-30 mb-3" />
                         <p className="text-[#0A1931] font-semibold mb-1">Henüz video yok</p>
                         <p className="text-[#A9A9A9] text-sm">Bu kurs için video eklendiğinde burada görünecek</p>
@@ -377,24 +377,33 @@ export default function CourseDetailPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                    ) : activeRec.hlsPath ? (
-                                        <PremiumPlayer 
-                                            key={activeRec.id} 
-                                            src={activeRec.hlsPath} 
-                                            poster={activeRec.thumbnailPath ? getFileUrl(activeRec.thumbnailPath) : null}
-                                            onLoaded={() => setIframeLoaded(true)} 
-                                        />
-                                    ) : (
-                                        <iframe
-                                            key={activeRec.id}
-                                            src={activeRec.playbackUrl || ""}
-                                            className="w-full h-full border-0"
-                                            allow="autoplay; fullscreen"
-                                            allowFullScreen
-                                            title={activeRec.sessionTitle}
-                                            onLoad={() => setIframeLoaded(true)}
-                                        />
-                                    )}
+                                    ) : (() => {
+                                        const src = activeRec.hlsPath || activeRec.playbackUrl;
+                                        if (!src) return null;
+
+                                        if (src.includes("/playback/presentation/") || src.includes("meetingId=")) {
+                                            return (
+                                                <iframe
+                                                    key={activeRec.id}
+                                                    src={src}
+                                                    className="w-full h-full border-0"
+                                                    allow="autoplay; fullscreen; camera; microphone; display-capture"
+                                                    allowFullScreen
+                                                    title={activeRec.sessionTitle}
+                                                    onLoad={() => setIframeLoaded(true)}
+                                                />
+                                            );
+                                        }
+
+                                        return (
+                                            <PremiumPlayer 
+                                                key={activeRec.id} 
+                                                src={src} 
+                                                poster={activeRec.thumbnailPath ? getFileUrl(activeRec.thumbnailPath) : null}
+                                                onLoaded={() => setIframeLoaded(true)} 
+                                            />
+                                        );
+                                    })()}
 
                                     {/* ── Floating Controls Overlay ── */}
                                     <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
@@ -435,8 +444,13 @@ export default function CourseDetailPage() {
                                             <div>
                                                 <h3 className="text-sm font-bold text-[#0A1931] mb-2">{activeRec.sessionTitle}</h3>
                                                 <p className="text-xs text-[#A9A9A9]">
-                                                    {new Date(activeRec.scheduledStart || activeRec.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}
-                                                    {activeRec.durationSeconds && activeRec.durationSeconds > 0 && ` • ${fmtDuration(activeRec.durationSeconds)}`}
+                                                    {(() => {
+                                                        const d = activeRec.scheduledStart || activeRec.createdAt;
+                                                        if (!d) return "";
+                                                        const dateObj = new Date(d);
+                                                        return isNaN(dateObj.getTime()) ? "" : dateObj.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+                                                    })()}
+                                                    {activeRec.durationSeconds && activeRec.durationSeconds > 0 ? ` • ${fmtDuration(activeRec.durationSeconds)}` : ""}
                                                 </p>
                                                 {course?.description && <p className="text-xs text-[#5A6A7A] mt-3 leading-relaxed">{course.description}</p>}
                                             </div>
@@ -480,7 +494,7 @@ export default function CourseDetailPage() {
                                 {/* Header */}
                                 <div className="h-12 flex items-center justify-between px-4 border-b border-[#E2E8F0] shrink-0">
                                     <span className="text-sm font-bold text-[#0A1931] whitespace-nowrap">Kurs İçeriği</span>
-                                    <button onClick={() => setSidebarOpen(false)} className="text-[#A0AEC0] hover:text-[#0A1931] transition-colors p-1" title="Gizle">
+                                    <button onClick={() => setSidebarOpen(false)} className="hidden md:block text-[#A0AEC0] hover:text-[#0A1931] transition-colors p-1" title="Gizle">
                                         <X size={14} />
                                     </button>
                                 </div>
@@ -514,17 +528,20 @@ export default function CourseDetailPage() {
                                                         {rec.sessionTitle}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-[10px] text-[#A0AEC0] flex items-center gap-0.5">
+                                                        <span className="text-[10px] text-[#A0AEC0] flex items-center gap-1">
                                                             {rec.type === 'Exam' ? (
-                                                                <><FileText size={8} /> Sınav / Quiz</>
+                                                                <><FileText size={10} /> <span className="font-medium">Sınav / Quiz</span></>
                                                             ) : (
-                                                                <><Video size={8} /> {rec.durationSeconds && rec.durationSeconds > 0 ? fmtDuration(rec.durationSeconds) : "Kayıt"}</>
+                                                                <><Video size={10} /> <span className="font-medium">{rec.durationSeconds && rec.durationSeconds > 0 ? fmtDuration(rec.durationSeconds) : "Kayıt"}</span></>
                                                             )}
                                                         </span>
-                                                        {rec.scheduledStart && (
-                                                            <span className="text-[10px] text-[#A0AEC0]">
-                                                                {new Date(rec.scheduledStart).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
-                                                            </span>
+                                                        {rec.scheduledStart && !isNaN(new Date(rec.scheduledStart).getTime()) && (
+                                                            <>
+                                                                <span className="text-[10px] text-[#E2E8F0]">•</span>
+                                                                <span className="text-[10px] text-[#A0AEC0] font-medium">
+                                                                    {new Date(rec.scheduledStart).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}
+                                                                </span>
+                                                            </>
                                                         )}
                                                     </div>
                                                 </div>
@@ -555,32 +572,26 @@ export default function CourseDetailPage() {
             {activeTab === "materials" && (
                 <div className="space-y-3">
                     {materials.length === 0 ? (
-                        <div className="glass-card p-12 text-center border-dashed">
+                        <div className="glass-card p-8 md:p-12 text-center border-dashed">
                             <FileText size={32} className="mx-auto text-[#A0AEC0] opacity-30 mb-3" />
                             <p className="text-[#0A1931] font-semibold mb-1">Henüz doküman yok</p>
                             <p className="text-[#A9A9A9] text-sm">Bu kurs için henüz herhangi bir materyal eklenmemiş.</p>
                         </div>
                     ) : (
                         materials.map(m => (
-                            <div key={m.id} className="glass-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:shadow-md transition-shadow group">
-                                <div className="flex items-center gap-4 flex-1 min-w-0">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${m.contentType.includes("pdf") ? "bg-red-50 text-red-500" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50 text-blue-500" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50 text-emerald-500" : "bg-[#E2E8F0]/30 text-[#A0AEC0]"}`}>
-                                        <FileText size={20} />
+                            <a key={m.id} href={getFileUrl(m.filePath)} target="_blank" rel="noopener noreferrer"
+                                className="glass-card p-4 flex items-center justify-between gap-4 hover:shadow-md transition-all group">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${m.contentType.includes("pdf") ? "bg-red-50 text-red-500" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50 text-blue-500" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50 text-emerald-500" : "bg-[#E2E8F0]/30 text-[#A0AEC0]"}`}>
+                                        <FileText size={18} />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="text-[#0A1931] font-bold text-sm truncate">{m.title}</h3>
-                                        <div className="flex items-center gap-3 mt-1 text-xs text-[#A0AEC0]">
-                                            <span>{(m.fileSize / 1024 / 1024).toFixed(2)} MB</span>
-                                            <span>•</span>
-                                            <span>{new Date(m.createdAt).toLocaleDateString("tr-TR")}</span>
-                                        </div>
+                                        <h3 className="text-[#0A1931] font-bold text-xs truncate">{m.title}</h3>
+                                        <p className="text-[10px] text-[#A0AEC0] mt-0.5">{(m.fileSize / 1024 / 1024).toFixed(2)} MB • {new Date(m.createdAt).toLocaleDateString("tr-TR")}</p>
                                     </div>
                                 </div>
-                                <a href={getFileUrl(m.filePath)} target="_blank" rel="noopener noreferrer"
-                                    className="px-5 py-2.5 bg-[#F8F9FA] hover:bg-[#1B3B6F] text-[#0A1931] hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm border border-[#E2E8F0] shrink-0 w-full sm:w-auto text-center">
-                                    Görüntüle / İndir
-                                </a>
-                            </div>
+                                <span className="text-[10px] font-bold text-[#1B3B6F] group-hover:underline">İndir</span>
+                            </a>
                         ))
                     )}
                 </div>
@@ -589,12 +600,12 @@ export default function CourseDetailPage() {
             {/* ── About Tab ── */}
             {
                 activeTab === "about" && (
-                    <div className="space-y-5">
-                        <div className="glass-card p-6">
+                    <div className="space-y-4">
+                        <div className="glass-card p-5">
                             <h3 className="text-sm font-bold text-[#0A1931] mb-3 flex items-center gap-2">
                                 <BookOpen size={14} className="text-[#1B3B6F]" /> Kurs Bilgileri
                             </h3>
-                            <p className="text-[#A9A9A9] text-sm leading-relaxed">
+                            <p className="text-[#A9A9A9] text-xs leading-relaxed">
                                 {course?.description || "Bu kurs için henüz bir açıklama eklenmemiş."}
                             </p>
                         </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { useAuth } from "@/contexts/AuthContext";
 import { analyticsApi, courseApi, type StudentDashboardDto, type UpcomingSessionDto, type CourseDto } from "@/lib/api";
 import Link from "next/link";
@@ -16,41 +17,23 @@ import { KpiGrid } from "@/components/ui/KpiGrid";
 
 export default function StudentDashboardPage() {
     const { user, token, currentTenantId: tenantId } = useAuth();
-    const [stats, setStats] = useState<StudentDashboardDto | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-    const [liveSessions, setLiveSessions] = useState<UpcomingSessionDto[]>([]);
-    const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSessionDto[]>([]);
-    const [courses, setCourses] = useState<CourseDto[]>([]);
+    
+    const { data: summary, isLoading, error } = useSWR(
+        token && tenantId ? `dashboard-summary:${tenantId}` : null,
+        () => analyticsApi.dashboardSummary(token!, tenantId!),
+        { refreshInterval: 60000 } // Refresh everything every minute
+    );
+
+    const stats = summary?.stats;
+    const sessions = summary?.upcomingSessions || [];
+    const courses = summary?.courses || [];
+    
+    const liveSessions = sessions?.filter?.(s => s.status === "Live") || [];
+    const upcomingSessions = sessions?.filter?.(s => s.status !== "Live")?.slice(0, 5) || [];
+    const loading = isLoading;
+
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const { showToast } = useToast();
-
-    useEffect(() => {
-        if (!token || !tenantId) return;
-        setLoading(true); setError(false);
-        Promise.all([
-            analyticsApi.studentDashboard(token, tenantId).catch(() => null),
-            courseApi.getUpcomingSessions(token, tenantId).catch(() => []),
-            courseApi.list(token, tenantId).catch(() => []),
-        ]).then(([s, sessions, crs]) => {
-            setStats(s);
-            setLiveSessions((sessions as UpcomingSessionDto[])?.filter?.(s => s.status === "Live") || []);
-            setUpcomingSessions((sessions as UpcomingSessionDto[])?.filter?.(s => s.status !== "Live")?.slice(0, 5) || []);
-            setCourses((crs as CourseDto[]) || []);
-        }).catch(() => setError(true)).finally(() => setLoading(false));
-    }, [token, tenantId]);
-
-    // Background polling for live sessions every 15 seconds
-    useEffect(() => {
-        if (!token || !tenantId) return;
-        const interval = setInterval(() => {
-            courseApi.getUpcomingSessions(token, tenantId).then(sessions => {
-                setLiveSessions((sessions as UpcomingSessionDto[])?.filter?.(s => s.status === "Live") || []);
-                setUpcomingSessions((sessions as UpcomingSessionDto[])?.filter?.(s => s.status !== "Live")?.slice(0, 5) || []);
-            }).catch(() => {});
-        }, 15000);
-        return () => clearInterval(interval);
-    }, [token, tenantId]);
 
     const handleJoinLive = async (session: UpcomingSessionDto) => {
         if (!token || !tenantId) return;
@@ -74,7 +57,7 @@ export default function StudentDashboardPage() {
     return (
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 space-y-6">
             {/* ── Hero Welcome ── */}
-            <div className="hero-continue p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in">
+            <div className="hero-continue pt-16 sm:pt-8 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10">
                 <div className="relative z-10">
                     <p className="text-white/50 text-sm font-medium mb-1">{greeting}</p>
                     <h1 className="text-3xl font-bold text-white mb-2">{user?.firstName} {user?.lastName}</h1>

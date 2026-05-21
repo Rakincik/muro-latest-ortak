@@ -232,7 +232,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
             setGroups([]);
             return;
         }
-        courseApi.getById(token, tenantId, form.courseId)
+        courseApi.get(token, tenantId, form.courseId)
             .then(res => {
                 setGroups(res.groups?.map(g => ({ id: g.groupId, name: g.groupName } as GroupListDto)) || []);
             })
@@ -594,26 +594,26 @@ export default function AssignmentsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-[#0A1931] tracking-tight">Ödevler</h1>
                     <p className="text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Ödev ve Teslimat Yönetimi</p>
                 </div>
                 <button onClick={() => { setEditTarget(null); setShowForm(true); }}
-                    className="px-6 py-3 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center gap-2 shadow-lg shadow-black/10">
+                    className="w-full sm:w-auto px-6 py-3 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10">
                     <Plus size={18} /> Yeni Ödev
                 </button>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="flex lg:grid lg:grid-cols-4 gap-4 overflow-x-auto hide-scrollbar pb-2 snap-x">
                 {[
                     { label: "Toplam Ödev", value: assignments.length, icon: FileText, color: "text-[#1B3B6F]", bg: "bg-[#E2E8F0]/15" },
                     { label: "Toplam Teslim", value: totalSubmissions, icon: Upload, color: "text-blue-600", bg: "bg-blue-50" },
                     { label: "Notlandırılan", value: totalGraded, icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-50" },
                     { label: "Bekleyen", value: pending, icon: Clock, color: pending > 0 ? "text-amber-600" : "text-emerald-600", bg: pending > 0 ? "bg-amber-50" : "bg-emerald-50" },
                 ].map(s => (
-                    <div key={s.label} className="bg-white rounded-2xl border border-[#E2E8F0] p-5 flex items-center gap-4 group hover:shadow-md transition-all">
+                    <div key={s.label} className="min-w-[160px] lg:min-w-0 shrink-0 snap-start bg-white rounded-2xl border border-[#E2E8F0] p-4 lg:p-5 flex items-center gap-3 lg:gap-4 group hover:shadow-md transition-all">
                         <div className={`w-12 h-12 rounded-xl ${s.bg} flex items-center justify-center`}>
                             <s.icon size={20} className={s.color} />
                         </div>
@@ -636,7 +636,7 @@ export default function AssignmentsPage() {
             )}
 
             {/* Search + Filters */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex items-center gap-3">
+            <div className="bg-white rounded-2xl border border-[#E2E8F0] p-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
                 <div className="flex-1 relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                     <input type="text" placeholder="Ödev veya ders ara..." value={search} onChange={e => setSearch(e.target.value)}
@@ -677,38 +677,40 @@ export default function AssignmentsPage() {
                             <div key={a.id}
                                 className={`bg-white rounded-xl border p-5 hover:shadow-md transition-all group cursor-pointer ${isOverdue ? "border-red-200" : "border-[#E2E8F0]"}`}
                                 onClick={() => setSelected(a)}>
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${isOverdue ? "bg-red-50" : "bg-[#E2E8F0]/20"}`}>
-                                        <FileText size={18} className={isOverdue ? "text-red-400" : "text-[#1B3B6F]"} />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-0.5">
-                                            <h3 className="text-sm font-bold text-[#0A1931]">{a.title}</h3>
-                                            {statusBadge(a)}
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                    <div className="flex items-center gap-3 w-full sm:w-auto flex-1 min-w-0">
+                                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${isOverdue ? "bg-red-50" : "bg-[#E2E8F0]/20"}`}>
+                                            <FileText size={18} className={isOverdue ? "text-red-400" : "text-[#1B3B6F]"} />
                                         </div>
-                                        <div className="flex items-center gap-3 text-xs text-[#A0AEC0]">
-                                            <span className="flex items-center gap-1"><BookOpen size={11} /> {a.courseName}</span>
-                                            <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(a.dueDate).toLocaleDateString("tr-TR")}</span>
-                                            <span className="flex items-center gap-1"><Award size={11} /> Max {a.maxScore}</span>
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-2.5">
-                                            <div className="flex-1">
-                                                <div className="flex justify-between mb-1">
-                                                    <span className="text-[11px] text-[#A0AEC0]">Teslim: {a.submissionCount || 0} | Notlandırılan: {a.gradedCount || 0}</span>
-                                                    {typeof a.averageScore === 'number' && <span className="text-[11px] font-semibold text-[#1B3B6F]">Ort. {a.averageScore.toFixed(1)}</span>}
-                                                </div>
-                                                <div className="h-1.5 bg-[#E2E8F0]/40 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(a.gradedCount || 0) > 0 && (a.submissionCount || 0) > 0 ? ((a.gradedCount || 0) / (a.submissionCount || 0)) * 100 : 0}%` }} />
-                                                </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1 sm:mb-0.5">
+                                                <h3 className="text-sm font-bold text-[#0A1931]">{a.title}</h3>
+                                                <div className="self-start">{statusBadge(a)}</div>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-[#A0AEC0]">
+                                                <span className="flex items-center gap-1"><BookOpen size={11} /> {a.courseName}</span>
+                                                <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(a.dueDate).toLocaleDateString("tr-TR")}</span>
+                                                <span className="flex items-center gap-1"><Award size={11} /> Max {a.maxScore}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                                        <button onClick={() => { setEditTarget(a); setShowForm(true); }} title="Düzenle"
-                                            className="p-1.5 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={15} /></button>
-                                        <button onClick={() => setDeleteTarget(a.id)} title="Sil"
-                                            className="p-1.5 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-600"><Trash2 size={15} /></button>
-                                        <ChevronRight size={16} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors ml-1" />
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-[#E2E8F0]">
+                                        <div className="flex-1 sm:w-32 min-w-[120px]">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-[11px] text-[#A0AEC0]">Teslim: {a.submissionCount || 0} | Okunan: {a.gradedCount || 0}</span>
+                                                {typeof a.averageScore === 'number' && <span className="text-[11px] font-semibold text-[#1B3B6F]">Ort. {a.averageScore.toFixed(1)}</span>}
+                                            </div>
+                                            <div className="h-1.5 bg-[#E2E8F0]/40 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${(a.gradedCount || 0) > 0 && (a.submissionCount || 0) > 0 ? ((a.gradedCount || 0) / (a.submissionCount || 0)) * 100 : 0}%` }} />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                            <button onClick={() => { setEditTarget(a); setShowForm(true); }} title="Düzenle"
+                                                className="p-1.5 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={15} /></button>
+                                            <button onClick={() => setDeleteTarget(a.id)} title="Sil"
+                                                className="p-1.5 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-600"><Trash2 size={15} /></button>
+                                            <ChevronRight size={16} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors ml-1 hidden sm:block" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

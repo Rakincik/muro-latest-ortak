@@ -3,5 +3,6 @@ namespace MURO.Domain.Enums;
 public enum StudentType
 {
     Active = 0,
-    Demo = 1
+    Demo = 1,
+    Passive = 2
 }

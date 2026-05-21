@@ -45,4 +45,23 @@ public class TenantSettingsController : ControllerBase
 
         return Ok(new { message = "Ayarlar güncellendi.", data = updated });
     }
+
+    [HttpGet("/api/v1/tenant/branding")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetBranding([FromQuery] Guid? tenantId)
+    {
+        // Fallback to Header if not provided in query
+        if (!tenantId.HasValue && Request.Headers.TryGetValue("X-Tenant-Id", out var tenantHeader))
+        {
+            if (Guid.TryParse(tenantHeader, out var parsed)) tenantId = parsed;
+        }
+        
+        if (!tenantId.HasValue) return BadRequest(new { message = "Tenant Id gerekli." });
+
+        // Retrieve from _tenantService, which we will add GetBrandingAsync to
+        var branding = await _tenantService.GetBrandingAsync(tenantId.Value);
+        if (branding == null) return NotFound();
+
+        return Ok(branding);
+    }
 }

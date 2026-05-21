@@ -7,6 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { examApi, getFileUrl, type ExamDetailDto, type MyExamResultDto } from "@/lib/api";
 import { useToast } from "@/components/ToastProvider";
 import dynamic from "next/dynamic";
+import { 
+    FileText, Play, ChevronLeft, AlertTriangle, Lock, Hourglass, 
+    Target, Trophy, BarChart2, Monitor, Check, X, CircleSlash,
+    WifiOff, Cloud, CloudOff
+} from "lucide-react";
+
 const SecurePdfViewer = dynamic(() => import("@/components/SecurePdfViewer"), { ssr: false });
 
 const OPTION_LABELS = ["A", "B", "C", "D", "E", "F"];
@@ -57,6 +63,10 @@ export default function ExamSolvePage() {
     const startedAt = useRef<string>(new Date().toISOString());
     const answersRef = useRef<Record<number, string>>({});
     const { showToast } = useToast();
+
+    // UX / UI States
+    const [isOnline, setIsOnline] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Hangi soruya scroll edildi
     const [activeQ, setActiveQ] = useState(1);
@@ -133,8 +143,17 @@ export default function ExamSolvePage() {
         answersRef.current = answers;
     }, [answers]);
 
-    // Auto-Save
+    // Auto-Save ve Bağlantı (Offline/Online) Takibi
     useEffect(() => {
+        // İlk yüklemede durumu al
+        setIsOnline(navigator.onLine);
+
+        const handleOnline = () => setIsOnline(true);
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener("online", handleOnline);
+        window.addEventListener("offline", handleOffline);
+
         if (phase !== "solving" || !examId) return;
 
         const localInterval = setInterval(() => {
@@ -144,12 +163,17 @@ export default function ExamSolvePage() {
         }, 10000);
 
         const serverInterval = setInterval(() => {
-            if (token && tenantId && Object.keys(answersRef.current).length > 0) {
-                examApi.saveDraft(token, tenantId, examId, answersRef.current).catch(console.error);
+            if (navigator.onLine && token && tenantId && Object.keys(answersRef.current).length > 0) {
+                setIsSaving(true);
+                examApi.saveDraft(token, tenantId, examId, answersRef.current)
+                    .then(() => setTimeout(() => setIsSaving(false), 2000))
+                    .catch(() => setIsSaving(false));
             }
         }, 60000);
 
         return () => {
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("offline", handleOffline);
             clearInterval(localInterval);
             clearInterval(serverInterval);
         };
@@ -273,13 +297,14 @@ export default function ExamSolvePage() {
             </div>
         );
     }
-
     if (phase === "error" || !exam) {
         return (
             <div className="text-center py-20">
-                <p className="text-5xl mb-4">âš ï¸</p>
+                <AlertTriangle size={48} className="mx-auto text-rose-500 mb-4" />
                 <p className="text-[#0A1931] font-semibold mb-4">Sınav yüklenemedi.</p>
-                <Link href="/dashboard/exams" className="text-violet-400 text-sm hover:underline">â† Sınavlara Dön</Link>
+                <Link href="/dashboard/exams" className="text-[#1B3B6F] text-sm hover:underline flex items-center justify-center gap-1">
+                    <ChevronLeft size={16} /> Sınavlara Dön
+                </Link>
             </div>
         );
     }
@@ -287,36 +312,40 @@ export default function ExamSolvePage() {
     if (phase === "missing_key") {
         return (
             <div className="text-center py-20">
-                <p className="text-5xl mb-4">ğŸ”’</p>
+                <Lock size={48} className="mx-auto text-amber-500 mb-4" />
                 <p className="text-[#0A1931] font-semibold mb-2">Bu sınav henüz başlatılamaz.</p>
                 <p className="text-[#A9A9A9] text-sm mb-6">Cevap anahtarı girilmediği için değerlendirme yapılamamaktadır.</p>
-                <Link href="/dashboard/exams" className="text-violet-400 text-sm hover:underline">â† Sınavlara Dön</Link>
+                <Link href="/dashboard/exams" className="text-[#1B3B6F] text-sm hover:underline flex items-center justify-center gap-1">
+                    <ChevronLeft size={16} /> Sınavlara Dön
+                </Link>
             </div>
         );
     }
 
-    // ── READY (Başlamadan) ─────────────────────────────────────────────────────
+    // === READY PHASE ===
     if (phase === "ready") {
         return (
-            <div className="max-w-xl mx-auto text-center py-12">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl shadow-violet-500/25">
-                    ğŸ“‹
+            <div className="max-w-xl mx-auto text-center py-12 pt-20 md:pt-12">
+                <div className="w-20 h-20 rounded-2xl bg-[#0A1931] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-[#0A1931]/25">
+                    <FileText className="text-white w-10 h-10" />
                 </div>
                 <h1 className="text-2xl font-bold text-[#0A1931] mb-2">{exam.title}</h1>
                 {exam.description && <p className="text-[#A0AEC0] text-sm mb-6">{exam.description}</p>}
+                <h1 className="text-2xl font-bold text-[#0A1931] mb-2">{exam.title}</h1>
+                {exam.description && <p className="text-[#A0AEC0] text-sm mb-6">{exam.description}</p>}
 
-                <div className="glass-card p-5 mb-8 grid grid-cols-3 gap-4 text-center">
+                <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-5 mb-8 grid grid-cols-3 gap-4 text-center">
                     <div>
-                        <p className="text-2xl font-bold gradient-text">{exam.questionCount}</p>
+                        <p className="text-2xl font-bold text-[#1B3B6F]">{exam.questionCount}</p>
                         <p className="text-[#A9A9A9] text-xs mt-1">Soru</p>
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-blue-400">{exam.durationMinutes ? `${exam.durationMinutes} dk` : "âˆ"}</p>
+                        <p className="text-2xl font-bold text-[#1B3B6F]">{exam.durationMinutes ? `${exam.durationMinutes} dk` : "∞"}</p>
                         <p className="text-[#A9A9A9] text-xs mt-1">Süre</p>
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-amber-400">{exam.wrongPenaltyWeight}</p>
-                        <p className="text-[#A9A9A9] text-xs mt-1">Yanlis Katsayısı</p>
+                        <p className="text-2xl font-bold text-amber-500">{exam.wrongPenaltyWeight}</p>
+                        <p className="text-[#A9A9A9] text-xs mt-1">Yanlış Katsayısı</p>
                     </div>
                 </div>
 
@@ -325,35 +354,38 @@ export default function ExamSolvePage() {
                         href={getFileUrl(exam.pdfUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/5 border border-white/10 text-[#A0AEC0] text-sm rounded-xl hover:bg-white/10 transition-all mb-4 mr-3"
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#F8F9FA] border border-[#E2E8F0] text-[#0A1931] font-semibold text-sm rounded-xl hover:bg-[#E2E8F0] transition-all mb-4 mr-3"
                     >
-                        📄 Sınav Kağıdını Aç
+                        <FileText size={16} /> Sınav Kağıdını Aç
                     </a>
                 )}
 
                 <button
                     onClick={startExam}
-                    className="inline-flex items-center gap-2 px-8 py-3 bg-violet-600 hover:bg-violet-500 text-[#0A1931] font-semibold rounded-xl transition-all shadow-lg shadow-violet-500/25"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-[#1B3B6F] hover:bg-[#0A1931] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#1B3B6F]/20"
                 >
-                    â–¶ Sınava Başla
+                    <Play size={16} className="fill-current" /> Sınava Başla
                 </button>
 
-                <div className="mt-6">
-                    <Link href="/dashboard/exams" className="text-[#1B3B6F] text-sm hover:text-[#A0AEC0]">â† Geri Dön</Link>
+                <div className="mt-6 flex justify-center">
+                    <Link href="/dashboard/exams" className="flex items-center gap-1 text-[#1B3B6F] font-semibold text-sm hover:text-[#0A1931] transition-colors">
+                        <ChevronLeft size={16} /> Geri Dön
+                    </Link>
                 </div>
             </div>
         );
     }
 
-    // ── SOLVING ────────────────────────────────────────────────────────────────
-    if (phase === "solving" || phase === "confirm") {
-        return (
-            <div className="max-w-7xl mx-auto select-none">
+    // Variables 'total' and 'answered' are already declared above.
+
+    return (
+        <div className="min-h-screen bg-[#F8F9FA] p-4 lg:p-6 pt-16 md:pt-4 lg:pt-6 select-none" onContextMenu={(e) => e.preventDefault()}>
+            <div className="max-w-[1600px] mx-auto">
                 {/* Güvenlik Katmanı: Tam Ekran Uyarı Modalı */}
                 {!isFullscreen && phase === "solving" && (
                     <div className="fixed inset-0 bg-[#0A1931] z-[100] flex flex-col items-center justify-center p-6 text-center">
-                        <div className="w-24 h-24 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center text-4xl mb-6">
-                            ğŸ–¥ï¸
+                        <div className="w-24 h-24 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mb-6">
+                            <Monitor size={48} />
                         </div>
                         <h2 className="text-3xl font-bold text-white mb-4">Sınava Tam Ekranda Devam Etmelisiniz</h2>
                         <p className="text-[#A0AEC0] mb-8 max-w-lg">
@@ -364,7 +396,7 @@ export default function ExamSolvePage() {
                                 await requestFullscreen();
                                 setIsFullscreen(true);
                             }}
-                            className="px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all shadow-lg"
+                            className="px-8 py-4 bg-[#1B3B6F] hover:bg-blue-600 text-white font-bold rounded-xl transition-all shadow-lg"
                         >
                             Tam Ekrana Dön
                         </button>
@@ -374,15 +406,15 @@ export default function ExamSolvePage() {
                 {/* Güvenlik Katmanı: Odak Kaybı / Kural İhlali Uyarı Modalı */}
                 {isSecurityWarningOpen && isFullscreen && phase === "solving" && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 text-center">
-                        <div className="glass-card p-10 max-w-md w-full bg-rose-950/30 border-rose-500/30 shadow-2xl shadow-rose-900/50">
-                            <div className="text-6xl mb-6 animate-pulse">âš ï¸</div>
-                            <h2 className="text-2xl font-bold text-white mb-2">Güvenlik Uyarısı</h2>
-                            <p className="text-rose-200 mb-6 text-sm">
+                        <div className="bg-white rounded-2xl p-10 max-w-md w-full border border-rose-500/30 shadow-2xl shadow-rose-900/50">
+                            <AlertTriangle className="mx-auto w-16 h-16 text-rose-500 mb-6 animate-pulse" />
+                            <h2 className="text-2xl font-bold text-[#0A1931] mb-2">Güvenlik Uyarısı</h2>
+                            <p className="text-[#5A6A7A] mb-6 text-sm">
                                 Sınav ekranından ayrıldığınız veya kural dışı bir eylem (sağ tık, yazdırma, ekran görüntüsü alma) gerçekleştirdiğiniz tespit edildi. Lütfen sadece sınav ekranında kalın!
                             </p>
                             <button
                                 onClick={() => setIsSecurityWarningOpen(false)}
-                                className="w-full py-3 bg-white text-rose-900 font-bold rounded-xl hover:bg-rose-50 transition-all"
+                                className="w-full py-3 bg-rose-50 text-rose-700 font-bold rounded-xl hover:bg-rose-100 transition-all"
                             >
                                 Anladım, Sınava Dön
                             </button>
@@ -390,10 +422,43 @@ export default function ExamSolvePage() {
                     </div>
                 )}
                 {/* Üst bar */}
+                {!isOnline && phase === "solving" && (
+                    <div className="mb-4 flex items-center justify-center gap-2 bg-rose-500/10 text-rose-600 p-3 rounded-xl border border-rose-500/20 shadow-sm animate-pulse">
+                        <WifiOff size={20} />
+                        <span className="font-bold text-sm">İnternet bağlantınız koptu! Sınava devam edebilirsiniz, cevaplarınız cihazınıza kaydediliyor.</span>
+                    </div>
+                )}
+                
                 <div className="flex items-center justify-between mb-6 gap-4">
                     <div>
                         <h1 className="text-[#0A1931] font-bold text-lg">{exam.title}</h1>
-                        <p className="text-[#A9A9A9] text-xs">{exam.examType} • {answered}/{total} cevaplandı</p>
+                        <div className="flex items-center gap-3 mt-1">
+                            <p className="text-[#A9A9A9] text-xs font-semibold">{exam.examType} • {answered}/{total} cevaplandı</p>
+                            
+                            {/* Auto-Save Bildirimi */}
+                            {phase === "solving" && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E8F0FE] border border-[#D2E3FC]">
+                                    {isOnline ? (
+                                        isSaving ? (
+                                            <>
+                                                <div className="w-3 h-3 border-2 border-[#1B3B6F] border-t-transparent rounded-full animate-spin" />
+                                                <span className="text-[10px] font-bold text-[#1B3B6F]">Kaydediliyor</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Cloud size={12} className="text-emerald-600" />
+                                                <span className="text-[10px] font-bold text-emerald-700">Buluta Kaydedildi</span>
+                                            </>
+                                        )
+                                    ) : (
+                                        <>
+                                            <CloudOff size={12} className="text-amber-600" />
+                                            <span className="text-[10px] font-bold text-amber-700">Cihaza Kaydedildi</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex items-center gap-4">
                         {exam.durationMinutes && (
@@ -404,9 +469,9 @@ export default function ExamSolvePage() {
                         )}
                         <button
                             onClick={() => setPhase("confirm")}
-                            className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-[#0A1931] text-sm font-medium rounded-xl transition-all shadow-lg shadow-violet-500/20"
+                            className="px-5 py-2.5 bg-[#0A1931] hover:bg-[#1B3B6F] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-[#0A1931]/20 flex items-center gap-1.5"
                         >
-                            Sınavı Bitir â†’
+                            Sınavı Bitir <ChevronLeft className="rotate-180" size={16} />
                         </button>
                     </div>
                 </div>
@@ -424,8 +489,8 @@ export default function ExamSolvePage() {
                             <SecurePdfViewer url={getFileUrl(exam.pdfUrl)} />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-[#A9A9A9]">
-                                <p className="text-4xl mb-3">📄</p>
-                                <p>Sınav kitapçığı yüklenmemiş.</p>
+                                <FileText size={48} className="mb-3 opacity-50" />
+                                <p className="font-semibold text-sm">Sınav kitapçığı yüklenmemiş.</p>
                             </div>
                         )}
                     </div>
@@ -433,13 +498,13 @@ export default function ExamSolvePage() {
                     <div className="flex flex-col gap-4 h-[calc(100vh-140px)] overflow-hidden">
                         {/* Mobil Kitapçık Aç Butonu */}
                         {exam.pdfUrl && (
-                            <button onClick={() => setShowPdfMobile(true)} className="lg:hidden w-full py-3 bg-violet-100 text-violet-700 font-bold rounded-xl border border-violet-200 flex justify-center items-center gap-2 shadow-sm shrink-0">
-                                📄 Kitapçığı Göster
+                            <button onClick={() => setShowPdfMobile(true)} className="lg:hidden w-full py-3 bg-[#E8F0FE] text-[#1B3B6F] font-bold rounded-xl border border-[#1B3B6F]/20 flex justify-center items-center gap-2 shadow-sm shrink-0">
+                                <FileText size={16} /> Kitapçığı Göster
                             </button>
                         )}
 
                         {/* Optik form */}
-                        <div className="glass-card flex flex-col overflow-hidden h-full">
+                        <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] flex flex-col overflow-hidden h-full">
                             <div className="p-4 border-b border-[#E2E8F0]/60 shrink-0">
                                 <h2 className="text-[#0A1931] text-sm font-semibold">Cevap Kağıdı</h2>
                             </div>
@@ -464,7 +529,7 @@ export default function ExamSolvePage() {
                                     <div
                                         key={qNum}
                                         id={`q${qNum}`}
-                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${activeQ === qNum ? "bg-violet-500/10 border border-violet-500/30" : "hover:bg-white/3"}`}
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${activeQ === qNum ? "bg-[#F0F4FF] border border-[#1B3B6F]/20" : "hover:bg-[#F8F9FA] border border-transparent"}`}
                                         onClick={() => setActiveQ(qNum)}
                                     >
                                         <span className="text-[#A9A9A9] text-xs font-mono w-7 flex-shrink-0">
@@ -478,8 +543,8 @@ export default function ExamSolvePage() {
                                                         key={opt}
                                                         onClick={e => { e.stopPropagation(); setAnswers(prev => ({ ...prev, [qNum]: prev[qNum] === opt ? undefined as unknown as string : opt })); }}
                                                         className={`w-9 h-9 rounded-lg text-sm font-bold transition-all border ${selected
-                                                                ? "bg-violet-600 border-violet-500 text-[#0A1931] shadow-md shadow-violet-500/25"
-                                                                : "bg-white/3 border-white/10 text-[#A9A9A9] hover:border-violet-500/40 hover:text-[#0A1931]"
+                                                                ? "bg-[#1B3B6F] border-[#1B3B6F] text-white shadow-md"
+                                                                : "bg-white border-[#E2E8F0] text-[#A0AEC0] hover:border-[#1B3B6F]/50 hover:text-[#0A1931]"
                                                             }`}
                                                     >
                                                         {opt}
@@ -495,7 +560,7 @@ export default function ExamSolvePage() {
                             <div className="p-4 border-t border-[#E2E8F0]/60 shrink-0 flex items-center justify-between text-xs font-medium text-[#A9A9A9]">
                                 <span>Tümü: {answered}/{total}</span>
                                 {sections && (
-                                    <span className="text-violet-500">{sections[activeSectionIdx].name}: {currentQuestions.filter(q => answers[q]).length}/{currentQuestions.length}</span>
+                                    <span className="text-[#1B3B6F] font-bold">{sections[activeSectionIdx].name}: {currentQuestions.filter(q => answers[q]).length}/{currentQuestions.length}</span>
                                 )}
                             </div>
                         </div>
@@ -504,44 +569,42 @@ export default function ExamSolvePage() {
 
                 {/* Onay modalı */}
                 {phase === "confirm" && (
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="glass-card p-8 max-w-sm w-full text-center">
-                            <p className="text-4xl mb-4">âš ï¸</p>
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
+                        <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center border border-[#E2E8F0] shadow-2xl">
+                            <Check className="mx-auto w-16 h-16 text-emerald-500 mb-4" />
                             <h2 className="text-[#0A1931] font-bold text-lg mb-2">Sınavı Bitir?</h2>
                             <div className="flex gap-4 justify-center text-sm mb-6">
-                                <span className="text-green-400">âœ“ {answered} cevaplandı</span>
-                                <span className="text-[#A9A9A9]">— {total - answered} boş</span>
+                                <span className="text-emerald-600 font-medium">{answered} cevaplandı</span>
+                                <span className="text-[#A9A9A9]">{total - answered} boş</span>
                             </div>
                             <p className="text-[#A9A9A9] text-sm mb-6">Gönderildikten sonra değişiklik yapılamaz.</p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setPhase("solving")}
-                                    className="flex-1 py-2.5 bg-white/5 border border-white/10 text-[#A0AEC0] rounded-xl text-sm hover:bg-white/10 transition-all"
+                                    className="flex-1 py-2.5 bg-[#F8F9FA] border border-[#E2E8F0] text-[#0A1931] font-semibold rounded-xl text-sm hover:bg-slate-100 transition-all"
                                 >
                                     Geri Dön
                                 </button>
                                 <button
-                                    onClick={() => handleSubmit(true)}
+                                    onClick={() => handleSubmit(false)}
                                     disabled={submitting}
-                                    className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-[#0A1931] rounded-xl text-sm font-semibold transition-all"
+                                    className="flex-1 py-2.5 bg-[#1B3B6F] hover:bg-blue-600 text-white font-bold rounded-xl text-sm transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
-                                    {submitting ? "Gönderiliyor..." : "Gönder âœ“"}
+                                    {submitting ? "Gönderiliyor..." : "Sınavı Bitir"}
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
             </div>
-        );
-    }
-
-    // ── DONE (Sonuç) ───────────────────────────────────────────────────────────
+        </div>
+    );
     if (phase === "done") {
         if (!result) {
             return (
                 <div className="max-w-2xl mx-auto text-center py-24 animate-fade-in-up px-4">
-                    <div className="w-24 h-24 bg-[#E2E8F0] text-[#0A1931] rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner border-4 border-white">
-                        â³
+                    <div className="w-24 h-24 bg-[#E2E8F0] text-[#1B3B6F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border-4 border-white">
+                        <Hourglass size={48} />
                     </div>
                     <h2 className="text-3xl font-black text-[#0A1931] mb-3 tracking-tight">Cevaplarınız İletildi!</h2>
                     <p className="text-[#A0AEC0] mb-8 leading-relaxed max-w-lg mx-auto">
@@ -551,21 +614,21 @@ export default function ExamSolvePage() {
                         href="/dashboard/exams"
                         className="px-8 py-3.5 bg-[#0A1931] hover:bg-[#1B3B6F] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#0A1931]/20 inline-flex items-center gap-2"
                     >
-                        Sınavlara Dön
+                        <ChevronLeft size={18} /> Sınavlara Dön
                     </Link>
                 </div>
             );
         }
 
-        const isAboveAvg = result.averageScore !== null && result.score >= result.averageScore;
-        const net = result.net ?? (result.correctCount - (result.wrongCount * exam!.wrongPenaltyWeight));
+        const isAboveAvg = result!.averageScore !== null && result!.score >= result!.averageScore;
+        const net = result!.net ?? (result!.correctCount - (result!.wrongCount * exam!.wrongPenaltyWeight));
         
         return (
-            <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 animate-fade-in-up">
+            <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6 animate-fade-in-up pt-20 md:pt-10">
                 {/* Tepedeki Devasa Başarı Kartı (Hero Scorecard) */}
                 <div className="relative rounded-[2.5rem] overflow-hidden mb-8 shadow-2xl shadow-indigo-900/10 bg-[#0A1931] group">
                     {/* Arkaplan Işık Efektleri */}
-                    <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-gradient-to-bl from-indigo-500/20 via-violet-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+                    <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-gradient-to-bl from-blue-500/20 via-cyan-500/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4"></div>
                     
                     <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center gap-10">
@@ -574,7 +637,7 @@ export default function ExamSolvePage() {
                             <div className="w-48 h-48 rounded-full border-[12px] border-white/5 flex flex-col items-center justify-center relative z-10 bg-[#0A1931]/50 backdrop-blur-sm shadow-inner">
                                 <span className="text-sm font-bold text-white/50 uppercase tracking-widest mb-1">PUAN</span>
                                 <span className="text-6xl font-black bg-clip-text text-transparent bg-gradient-to-br from-emerald-300 to-cyan-300 tracking-tighter">
-                                    {result.score != null ? Number(result.score).toFixed(1) : "—"}
+                                    {result!.score != null ? Number(result!.score).toFixed(1) : "—"}
                                 </span>
                             </div>
                             {/* Dönen dış halka efekti */}
@@ -595,80 +658,80 @@ export default function ExamSolvePage() {
 
                             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
                                 <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center font-black text-lg">
-                                        ğŸ¯
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center">
+                                        <Target size={20} />
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Toplam Net</p>
                                         <p className="text-2xl font-black text-white">{net != null ? Number(net).toFixed(2) : "—"}</p>
                                     </div>
                                 </div>
-                                {result.rank !== null && (
+                                {result!.rank !== null && (
                                     <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl px-5 py-3">
-                                        <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center font-black text-lg">
-                                            ğŸ†
+                                        <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-300 flex items-center justify-center">
+                                            <Trophy size={20} />
                                         </div>
                                         <div>
                                             <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Sıralama</p>
-                                            <p className="text-2xl font-black text-white">{result.rank}. <span className="text-sm font-medium text-white/50">sıra</span></p>
+                                            <p className="text-2xl font-black text-white">{result!.rank}. <span className="text-sm font-medium text-white/50">sıra</span></p>
                                         </div>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </div>
-                </div>
 
+                </div>
                 {/* Genel İstatistik Kartları */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xl">âœ“</div>
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600"><Check size={24} /></div>
                         <div>
                             <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Doğru</p>
-                            <p className="text-2xl font-black text-[#0A1931]">{result.correctCount}</p>
+                            <p className="text-2xl font-black text-[#0A1931]">{result!.correctCount}</p>
                         </div>
                     </div>
                     <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 font-bold text-xl">âœ•</div>
+                        <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600"><X size={24} /></div>
                         <div>
                             <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Yanlış</p>
-                            <p className="text-2xl font-black text-[#0A1931]">{result.wrongCount}</p>
+                            <p className="text-2xl font-black text-[#0A1931]">{result!.wrongCount}</p>
                         </div>
                     </div>
                     <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xl">-</div>
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500"><CircleSlash size={24} /></div>
                         <div>
                             <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Boş</p>
-                            <p className="text-2xl font-black text-[#0A1931]">{result.emptyCount}</p>
+                            <p className="text-2xl font-black text-[#0A1931]">{result!.emptyCount}</p>
                         </div>
                     </div>
-                    {result.averageScore != null && (
+                    {result!.averageScore != null && (
                         <div className="bg-white rounded-3xl p-5 border border-[#E2E8F0] shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl ${isAboveAvg ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
-                                {isAboveAvg ? "â†‘" : "â†“"}
+                                {isAboveAvg ? "↑" : "↓"}
                             </div>
                             <div>
                                 <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest">Sınıf Ort.</p>
-                                <p className="text-2xl font-black text-[#0A1931]">{Number(result.averageScore).toFixed(1)}</p>
+                                <p className="text-2xl font-black text-[#0A1931]">{Number(result!.averageScore).toFixed(1)}</p>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Ders Bazlı Analiz (Grid) */}
-                {result.sectionResults && Object.keys(result.sectionResults).length > 0 && (
+                {result!.sectionResults && Object.keys(result!.sectionResults).length > 0 && (
                     <div className="mb-10">
                         <h3 className="text-[#0A1931] font-bold text-xl mb-5 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-[#1B3B6F]/5 flex items-center justify-center text-[#1B3B6F]">ğŸ“Š</span>
+                            <span className="w-8 h-8 rounded-lg bg-[#1B3B6F]/5 flex items-center justify-center text-[#1B3B6F]"><BarChart2 size={16} /></span>
                             Bölüm Analizi
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {Object.values(result.sectionResults).map((sec, i) => {
+                            {Object.values(result!.sectionResults).map((sec, i) => {
                                 const total = sec.correctCount + sec.wrongCount + sec.emptyCount;
                                 const successRate = total > 0 ? (sec.net / total) * 100 : 0;
                                 return (
                                     <div key={i} className="bg-white rounded-3xl p-6 border border-[#E2E8F0] shadow-sm relative overflow-hidden group hover:border-[#1B3B6F]/30 hover:shadow-xl transition-all duration-300">
-                                        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#1B3B6F] to-violet-500 rounded-l-3xl"></div>
+                                        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#1B3B6F] to-blue-400 rounded-l-3xl"></div>
                                         <div className="flex items-center justify-between mb-4">
                                             <p className="font-bold text-[#0A1931] text-base truncate pr-2" title={sec.name}>{sec.name}</p>
                                             <span className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-500">{total} Soru</span>
@@ -694,11 +757,8 @@ export default function ExamSolvePage() {
                                                 <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-0.5">NET</p>
                                                 <p className="text-2xl font-black text-[#1B3B6F] bg-clip-text text-transparent bg-gradient-to-r from-[#0A1931] to-[#1B3B6F]">{Number(sec.net).toFixed(2)}</p>
                                             </div>
-                                            <div className="w-12 h-12 rounded-full border-4 border-slate-100 flex items-center justify-center relative" 
-                                                style={{ background: `conic-gradient(#10B981 ${Math.max(0, successRate)}%, transparent 0)` }}>
-                                                <div className="absolute inset-1 bg-white rounded-full flex items-center justify-center">
-                                                    <span className="text-[10px] font-bold text-[#0A1931]">{Math.max(0, Math.round(successRate))}%</span>
-                                                </div>
+                                            <div className="w-12 h-12 rounded-full border-4 border-slate-100 flex items-center justify-center text-slate-400">
+                                                <Target size={24} />
                                             </div>
                                         </div>
                                     </div>
@@ -711,9 +771,9 @@ export default function ExamSolvePage() {
                 <div className="flex flex-wrap gap-4 justify-center md:justify-end border-t border-[#E2E8F0] pt-6">
                     <Link
                         href="/dashboard/exams"
-                        className="px-6 py-3 bg-white border border-[#E2E8F0] text-[#0A1931] font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+                        className="px-6 py-3 bg-white border border-[#E2E8F0] text-[#0A1931] font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2"
                     >
-                        â† Sınavlara Dön
+                        <ChevronLeft size={16} /> Sınavlara Dön
                     </Link>
                     {exam?.solutionPdfUrl && (
                         <a
@@ -722,7 +782,7 @@ export default function ExamSolvePage() {
                             rel="noopener noreferrer"
                             className="px-6 py-3 bg-[#1B3B6F] hover:bg-[#0A1931] text-white font-bold rounded-xl transition-all shadow-lg flex items-center gap-2"
                         >
-                            📄 Çözüm Kitapçığını İncele
+                            <FileText size={16} /> Çözüm Kitapçığını İncele
                         </a>
                     )}
                 </div>
@@ -732,5 +792,3 @@ export default function ExamSolvePage() {
 
     return null;
 }
-
-

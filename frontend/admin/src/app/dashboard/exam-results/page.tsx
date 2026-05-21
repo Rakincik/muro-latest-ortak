@@ -2,9 +2,21 @@
 
 import { useState, useEffect, useMemo } from "react";
 import {
-    Search, Users, BarChart3, TrendingUp, ChevronDown, ChevronUp,
-    Download, X, Award, Target, BookOpen, Clock, Eye, RefreshCw
-} from "lucide-react";
+    PiMagnifyingGlassDuotone as Search,
+    PiUsersDuotone as Users,
+    PiChartBarDuotone as BarChart3,
+    PiTrendUpDuotone as TrendingUp,
+    PiCaretDownBold as ChevronDown,
+    PiCaretUpBold as ChevronUp,
+    PiDownloadDuotone as Download,
+    PiXBold as X,
+    PiMedalDuotone as Award,
+    PiTargetDuotone as Target,
+    PiBookOpenTextDuotone as BookOpen,
+    PiClockDuotone as Clock,
+    PiEyeDuotone as Eye,
+    PiArrowsClockwiseDuotone as RefreshCw
+} from "react-icons/pi";
 import { useAuth } from "@/contexts/AuthContext";
 import { examApi, type ExamListDto, type ExamResultSummaryDto, type ExamResultDto } from "@/lib/api";
 
@@ -89,7 +101,7 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
     return (
         <div className="fixed inset-0 z-[100] flex" onClick={onClose}>
             <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-            <div className="ml-auto relative w-[620px] bg-white shadow-2xl border-l border-[#E2E8F0] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="ml-auto relative w-full max-w-[620px] bg-white shadow-2xl border-l border-[#E2E8F0] overflow-y-auto h-full" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b border-[#E2E8F0]">
                     <div className="flex items-center justify-between">
@@ -116,7 +128,7 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
                     <>
                         {/* KPIs */}
                         <div className="p-6 border-b border-[#E2E8F0]/60">
-                            <div className="grid grid-cols-4 gap-3 mb-5">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                                 {[
                                     { label: "Katılımcı", value: String(summary.totalParticipants), icon: Users, color: "text-[#1B3B6F]", bg: "bg-[#1B3B6F]/5" },
                                     { label: "Ortalama", value: summary.averageScore.toFixed(1), icon: Target, color: scoreColor(summary.averageScore), bg: summary.averageScore >= 60 ? "bg-emerald-50" : "bg-amber-50" },
@@ -154,8 +166,8 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
                         {/* Results Table */}
                         <div className="p-6">
                             <h3 className="text-sm font-bold text-[#0A1931] mb-3">Öğrenci Sonuçları ({summary.results.length})</h3>
-                            <div className="rounded-xl border border-[#E2E8F0] overflow-hidden">
-                                <table className="w-full text-xs">
+                            <div className="rounded-xl border border-[#E2E8F0] overflow-x-auto">
+                                <table className="w-full text-xs min-w-[500px]">
                                     <thead className="bg-[#E2E8F0]/15 border-b border-[#E2E8F0]">
                                         <tr>
                                             <th className="text-left px-3 py-2.5 text-[10px] font-bold text-[#A9A9A9] uppercase">#</th>
@@ -249,14 +261,14 @@ export default function ExamResultsPage() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="flex lg:grid lg:grid-cols-4 gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x">
                 {[
                     { label: "Sonuçlu Sınav", value: String(withResults.length), icon: BookOpen, color: "text-[#1B3B6F]", bg: "bg-[#1B3B6F]/5" },
                     { label: "Toplam Katılımcı", value: String(totalParticipants), icon: Users, color: "text-violet-600", bg: "bg-violet-50" },
                     { label: "Genel Ortalama", value: overallAvg > 0 ? overallAvg.toFixed(1) : "—", icon: Target, color: scoreColor(overallAvg), bg: overallAvg >= 60 ? "bg-emerald-50" : "bg-amber-50" },
                     { label: "Sınav Tipleri", value: String(examTypes.length), icon: Award, color: "text-blue-600", bg: "bg-blue-50" },
                 ].map(s => (
-                    <div key={s.label} className={`${s.bg} rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3`}>
+                    <div key={s.label} className={`min-w-[150px] lg:min-w-0 shrink-0 snap-start ${s.bg} rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3`}>
                         <s.icon size={16} className={s.color} />
                         <div>
                             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -267,20 +279,22 @@ export default function ExamResultsPage() {
             </div>
 
             {/* Search + Filter */}
-            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-3 flex items-center gap-3">
-                <div className="flex-1 relative">
+            <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-3 flex flex-col sm:flex-row items-center gap-3">
+                <div className="w-full sm:flex-1 relative">
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                     <input type="text" placeholder="Sınav ara..." value={search} onChange={e => setSearch(e.target.value)}
                         className="w-full pl-8 pr-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10" />
                 </div>
-                {examTypes.length > 1 && (
-                    <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
-                        className="px-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#1B3B6F]">
-                        <option value="">Tüm Tipler</option>
-                        {examTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                )}
-                <span className="text-xs text-[#A0AEC0] font-bold">{filtered.length} sınav</span>
+                <div className="w-full sm:w-auto flex items-center gap-3">
+                    {examTypes.length > 1 && (
+                        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+                            className="flex-1 sm:flex-none px-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#1B3B6F]">
+                            <option value="">Tüm Tipler</option>
+                            {examTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    )}
+                    <span className="text-xs text-[#A0AEC0] font-bold shrink-0">{filtered.length} sınav</span>
+                </div>
             </div>
 
             {/* Exam Cards */}

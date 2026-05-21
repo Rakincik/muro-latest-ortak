@@ -110,6 +110,16 @@ builder.Services.AddScoped<ISmsSender, SmsPlaceholderSender>();
 // --- Redis & Caching altyapısı (tek satır) ---
 builder.Services.AddMuroCaching(redisConnection);
 
+// --- 🚀 Output Caching (Redis tabanlı) ---
+builder.Services.AddOutputCache(options =>
+{
+    // Tenant bazlı kursları 24 saat önbellekle, değiştiğinde TenantCourses tag'iyle patlatacağız.
+    options.AddPolicy("TenantCourses", policy => policy.Tag("TenantCourses").Expire(TimeSpan.FromHours(24)));
+}).AddStackExchangeRedisOutputCache(options =>
+{
+    options.Configuration = redisConnection;
+});
+
 // --- 🚀 Response Compression (Brotli + Gzip) ---
 builder.Services.AddResponseCompression(options =>
 {
@@ -134,16 +144,20 @@ builder.Services.AddResponseCaching(options =>
 var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 Directory.CreateDirectory(Path.Combine(wwwrootPath, "podcasts"));
 
-// --- Arka Plan Servisleri ---
+// --- Arka Plan Servisleri (Hafif olanlar API'de kalabilir) ---
 builder.Services.AddHostedService<PackageExpiryService>();
-builder.Services.AddHostedService<MURO.Worker.Jobs.UploadProcessingJob>();
-builder.Services.AddHostedService<MURO.Worker.Jobs.ExamScoringJob>();
-builder.Services.AddHostedService<MURO.Worker.Jobs.SoftDeleteCleanupJob>();
+// Not: UploadProcessingJob, ExamScoringJob ve SoftDeleteCleanupJob artık MURO.Worker içerisinde bağımsız çalışmaktadır.
 
-// --- BBB Kayıt İşleme ---
+// --- BBB Kayıt İşleme (Tetikleyici) ---
 builder.Services.AddScoped<IHlsProcessingService, HlsProcessingService>();
 builder.Services.AddHttpClient("bbb-download");
-builder.Services.AddHostedService<MURO.Worker.Jobs.BbbRecordingSyncJob>();
+// Not: BbbRecordingSyncJob artık MURO.Worker içerisinde bağımsız çalışmaktadır.
+
+// --- 🏥 Health Checks (Sistem Sağlığı) ---
+var rabbitMqConnection = builder.Configuration.GetConnectionString("RabbitMQ") ?? "amqp://guest:guest@localhost:5672";
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "PostgreSQL")
+    .AddRedis(redisConnection, name: "Redis");
 
 // --- 🔐 Rate Limiting (sadece Production'da aktif) ---
 if (!builder.Environment.IsDevelopment())
@@ -293,13 +307,27 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 app.UseResponseCaching();
+app.UseOutputCache(); // Enterprise Caching Middleware
 var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
 contentTypeProvider.Mappings[".m3u8"] = "application/x-mpegURL";
 contentTypeProvider.Mappings[".ts"] = "video/MP2T";
 
 app.UseStaticFiles(new StaticFileOptions
 {
-    ContentTypeProvider = contentTypeProvider
+    ContentTypeProvider = contentTypeProvider,
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name.EndsWith(".ts", StringComparison.OrdinalIgnoreCase))
+        {
+            // Video parçaları kalıcıdır, 1 yıl tarayıcıda önbellekle
+            ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=31536000");
+        }
+        else if (ctx.File.Name.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
+        {
+            // Playlist dinamik değişebilir (yeni kalite eklenebilir vs.), no-cache
+            ctx.Context.Response.Headers.Append("Cache-Control", "no-cache");
+        }
+    }
 }); // Varsayılan wwwroot (root path için, HLS desteği eklendi)
 
 // Nginx sadece /api isteklerini proxy ettiği için, uploads klasörünü /api/uploads altında dışa açıyoruz
@@ -309,7 +337,18 @@ if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
-    RequestPath = "/api/v1/uploads"
+    RequestPath = "/api/v1/uploads",
+    OnPrepareResponse = ctx =>
+    {
+        if (ctx.File.Name.EndsWith(".ts", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=31536000");
+        }
+        else if (ctx.File.Name.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "no-cache");
+        }
+    }
 });
 
 // 7. 🔐 Cookie → Authorization header (httpOnly cookie desteği)
@@ -333,6 +372,20 @@ app.Use(async (ctx, next) =>
 });
 
 app.MapControllers();
+app.MapHealthChecks("/api/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            timestamp = DateTime.UtcNow,
+            info = report.Entries.Select(e => new { service = e.Key, status = e.Value.Status.ToString() })
+        };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
 app.MapHub<NotificationHub>("/hubs/notifications");
 app.MapHub<AdminHub>("/hubs/admin");
 

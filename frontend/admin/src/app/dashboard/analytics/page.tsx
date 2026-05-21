@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[#0A1931] flex items-center gap-2">
                         <BarChart3 size={24} className="text-amber-500" /> Sistem Analitiği
@@ -152,13 +152,13 @@ export default function AnalyticsPage() {
 
             {/* KPI Cards */}
             {loading ? (
-                <div className="grid grid-cols-6 gap-3">
-                    {[...Array(6)].map((_, i) => <div key={i} className="h-24 bg-[#E2E8F0]/40 rounded-xl animate-pulse" />)}
+                <div className="flex lg:grid lg:grid-cols-6 gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x">
+                    {[...Array(6)].map((_, i) => <div key={i} className="min-w-[140px] lg:min-w-0 shrink-0 snap-start h-24 bg-[#E2E8F0]/40 rounded-xl animate-pulse" />)}
                 </div>
             ) : (
-                <div className="grid grid-cols-6 gap-3">
+                <div className="flex lg:grid lg:grid-cols-6 gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x">
                     {kpis.map(s => (
-                        <div key={s.label} className={`rounded-xl border border-[#E2E8F0]/60 p-4 ${s.bg} transition-all hover:shadow-md`}>
+                        <div key={s.label} className={`min-w-[140px] lg:min-w-0 shrink-0 snap-start rounded-xl border border-[#E2E8F0]/60 p-4 ${s.bg} transition-all hover:shadow-md`}>
                             <div className="flex items-center justify-between mb-2">
                                 <s.icon size={16} className={s.color} />
                                 {s.sparkData.length > 0 ? <MiniSparkline data={s.sparkData} color={s.color.includes("emerald") ? "#10b981" : s.color.includes("amber") ? "#f59e0b" : s.color.includes("blue") ? "#3b82f6" : "#1B3B6F"} /> : <ArrowUpRight size={12} className="text-[#A0AEC0]" />}
@@ -171,9 +171,9 @@ export default function AnalyticsPage() {
             )}
 
             {/* Heatmap + Video/Sessions tabs */}
-            <div className="grid grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Activity Heatmap */}
-                <div className="col-span-1 bg-white rounded-xl border border-[#E2E8F0]/60 p-5">
+                <div className="col-span-1 lg:col-span-1 bg-white rounded-xl border border-[#E2E8F0]/60 p-5 overflow-x-auto">
                     <h3 className="text-sm font-semibold text-[#0A1931] mb-1">🕐 Giriş Saatleri Haritası</h3>
                     <p className="text-[10px] text-[#A0AEC0] mb-3">Hangi gün/saatte giriş yapılıyor</p>
                     <div className="space-y-1">
@@ -207,7 +207,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="col-span-2 bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
+                <div className="col-span-1 lg:col-span-2 bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
                     {/* Header */}
                     <div className="flex border-b border-[#E2E8F0]">
                         <div className="flex-1 px-4 py-3 text-xs font-bold flex items-center justify-center gap-1.5 text-[#0A1931] border-b-2 border-[#0A1931] bg-[#E2E8F0]/10">
@@ -251,7 +251,7 @@ export default function AnalyticsPage() {
 
             {/* Platform Summary Row */}
             {stats && (
-                <div className="grid grid-cols-5 gap-3">
+                <div className="flex lg:grid lg:grid-cols-5 gap-3 overflow-x-auto hide-scrollbar pb-2 snap-x">
                     {[
                         { label: "Toplam Kurs", value: stats.totalCourses, sub: `${stats.publishedCourses} yayında`, icon: BookOpen, color: "text-[#1B3B6F]", bg: "bg-[#1B3B6F]/5" },
                         { label: "Toplam Sınav", value: stats.totalExams, sub: "oluşturuldu", icon: FileText, color: "text-orange-600", bg: "bg-orange-50" },
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
                         { label: "Toplam Grup", value: stats.totalGroups, sub: "oluşturuldu", icon: Users, color: "text-violet-600", bg: "bg-violet-50" },
                         { label: "Toplam Oturum", value: sessions.length, sub: `${activeSessions.length} aktif`, icon: Globe, color: "text-emerald-600", bg: "bg-emerald-50" },
                     ].map(row => (
-                        <div key={row.label} className={`${row.bg} rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3`}>
+                        <div key={row.label} className={`min-w-[200px] lg:min-w-0 shrink-0 snap-start ${row.bg} rounded-xl border border-[#E2E8F0]/60 p-4 flex items-center gap-3`}>
                             <div className={`w-10 h-10 rounded-lg ${row.bg} flex items-center justify-center`}>
                                 <row.icon size={18} className={row.color} />
                             </div>

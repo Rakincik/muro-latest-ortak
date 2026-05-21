@@ -127,11 +127,11 @@ export default function AuditTrailPage() {
                 
                 {/* ── LEFT COLUMN: USER LIST ── */}
                 <div className="lg:col-span-8 bg-white rounded-2xl border border-[#E2E8F0]/60 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
-                    <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between bg-slate-50/50">
+                    <div className="p-4 border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
                         <h2 className="text-sm font-bold text-[#0A1931] flex items-center gap-2">
                             <Activity size={16} className="text-[#1B3B6F]" /> Kullanıcı Hareketleri
                         </h2>
-                        <div className="relative w-64">
+                        <div className="relative w-full sm:w-64">
                             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                             <input 
                                 type="text" placeholder="İsimle ara..." 
@@ -141,14 +141,14 @@ export default function AuditTrailPage() {
                         </div>
                     </div>
                     
-                    <div className="flex-1 overflow-auto">
-                        <table className="w-full">
+                    <div className="flex-1 overflow-x-auto hide-scrollbar">
+                        <table className="w-full min-w-[550px]">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-[#E2E8F0]">
-                                    <th className="text-left px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase">Hareket</th>
-                                    <th className="text-left px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase">Kullanıcı</th>
-                                    <th className="text-left px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase">Son İşlem Tarihi</th>
-                                    <th className="text-right px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase">İşlemler</th>
+                                    <th className="text-left px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase whitespace-nowrap">Hareket</th>
+                                    <th className="text-left px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase whitespace-nowrap">Kullanıcı</th>
+                                    <th className="text-left px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase whitespace-nowrap">Son İşlem Tarihi</th>
+                                    <th className="text-right px-5 py-3 text-[10px] font-bold text-[#A9A9A9] uppercase whitespace-nowrap">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -171,10 +171,10 @@ export default function AuditTrailPage() {
                                                     {u.actionCount}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3 text-sm font-bold text-[#0A1931]">
+                                            <td className="px-5 py-3 text-sm font-bold text-[#0A1931] whitespace-nowrap">
                                                 {u.userName || "Sistem / Anonim"}
                                             </td>
-                                            <td className="px-5 py-3 text-xs text-[#A9A9A9]">
+                                            <td className="px-5 py-3 text-xs text-[#A9A9A9] whitespace-nowrap">
                                                 {new Date(u.lastActionAt).toLocaleString("tr-TR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                                             </td>
                                             <td className="px-5 py-3 text-right">
@@ -194,9 +194,9 @@ export default function AuditTrailPage() {
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                        <div className="p-3 border-t border-[#E2E8F0] bg-slate-50 flex items-center justify-between">
-                            <p className="text-xs font-bold text-[#A0AEC0]">{totalUsers} Kayıt</p>
-                            <div className="flex items-center gap-1">
+                        <div className="p-3 border-t border-[#E2E8F0] bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <p className="text-xs font-bold text-[#A0AEC0] text-center sm:text-left">{totalUsers} Kayıt</p>
+                            <div className="flex items-center justify-center gap-1">
                                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-lg hover:bg-white text-[#A0AEC0] border border-[#E2E8F0]"><ChevronLeft size={14} /></button>
                                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                                     let p = i + 1;

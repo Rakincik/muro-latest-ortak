@@ -108,3 +108,11 @@ public record WeeklyActivityDto(
     int Minutes,         // O gün izlenen dakika
     bool IsToday
 );
+
+// ── BFF (Backend For Frontend) ──────────────────────────────────────────
+public record StudentDashboardSummaryDto(
+    StudentDashboardDto Stats,
+    List<MURO.Application.DTOs.Courses.CourseListDto> Courses,
+    List<MURO.Application.DTOs.Courses.UpcomingSessionDto> UpcomingSessions,
+    int UnreadNotificationCount
+);

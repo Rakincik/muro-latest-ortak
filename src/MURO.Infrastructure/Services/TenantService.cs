@@ -15,10 +15,12 @@ public class TenantService : ITenantService
     public TenantInfo? CurrentTenant { get; private set; }
 
     private readonly MuroDbContext _db;
+    private readonly ICacheService _cache;
 
-    public TenantService(MuroDbContext db)
+    public TenantService(MuroDbContext db, ICacheService cache)
     {
         _db = db;
+        _cache = cache;
     }
 
     public void SetCurrentTenant(Guid tenantId)
@@ -48,6 +50,20 @@ public class TenantService : ITenantService
         return MapToAdminDto(t);
     }
 
+    public async Task<TenantBrandingDto?> GetBrandingAsync(Guid tenantId)
+    {
+        var cacheKey = $"tenant:branding:{tenantId}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
+        {
+            var t = await _db.Tenants.AsNoTracking().FirstOrDefaultAsync(x => x.Id == tenantId);
+            if (t == null) return null;
+            return new TenantBrandingDto(
+                t.Name, t.LogoUrl, t.FaviconUrl, 
+                t.PrimaryColor, t.AccentColor, t.FooterText
+            );
+        }, TimeSpan.FromHours(1)); // Cache for 1 hour, invalidate on update
+    }
+
     public async Task<TenantAdminDto?> UpdateSettingsAsync(string? name, string? logoUrl, string? faviconUrl, string? primaryColor, string? accentColor, string? footerText)
     {
         if (CurrentTenantId == null) return null;
@@ -62,6 +78,8 @@ public class TenantService : ITenantService
         if (footerText != null) t.FooterText = footerText;
 
         await _db.SaveChangesAsync();
+        await _cache.RemoveAsync($"tenant:branding:{CurrentTenantId}");
+        
         return MapToAdminDto(t);
     }
 

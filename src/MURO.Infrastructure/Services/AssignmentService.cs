@@ -43,7 +43,10 @@ public class AssignmentService : IAssignmentService
                 .Select(a => new AssignmentListDto(
                     a.Id, a.Title, a.Description,
                     a.CourseId, a.Course.Title,
-                    a.DueDate, a.Submissions.Count, a.CreatedAt))
+                    a.DueDate, a.Submissions.Count, a.CreatedAt,
+                    a.MaxScore, a.FileUrl,
+                    a.Submissions.Count(s => s.Score != null),
+                    a.Submissions.Count(s => s.Score != null) > 0 ? a.Submissions.Where(s => s.Score != null).Average(s => s.Score) : null))
                 .ToListAsync();
 
             return new PagedResult<AssignmentListDto>(items, totalCount, page, pageSize, totalPages);
@@ -93,7 +96,8 @@ public class AssignmentService : IAssignmentService
 
         var courseName = await _context.Courses.Where(c => c.Id == request.CourseId).Select(c => c.Title).FirstAsync();
         return new AssignmentListDto(assignment.Id, assignment.Title, assignment.Description,
-            assignment.CourseId, courseName, assignment.DueDate, 0, assignment.CreatedAt);
+            assignment.CourseId, courseName, assignment.DueDate, 0, assignment.CreatedAt,
+            assignment.MaxScore, assignment.FileUrl, 0, null);
     }
 
     public async Task<AssignmentListDto> UpdateAssignmentAsync(Guid tenantId, Guid assignmentId, UpdateAssignmentRequest request)
@@ -115,7 +119,10 @@ public class AssignmentService : IAssignmentService
 
         return new AssignmentListDto(assignment.Id, assignment.Title, assignment.Description,
             assignment.CourseId, assignment.Course.Title, assignment.DueDate,
-            assignment.Submissions.Count, assignment.CreatedAt);
+            assignment.Submissions.Count, assignment.CreatedAt,
+            assignment.MaxScore, assignment.FileUrl,
+            assignment.Submissions.Count(s => s.Score != null),
+            assignment.Submissions.Count(s => s.Score != null) > 0 ? assignment.Submissions.Where(s => s.Score != null).Average(s => s.Score) : null);
     }
 
     public async Task DeleteAssignmentAsync(Guid tenantId, Guid assignmentId)

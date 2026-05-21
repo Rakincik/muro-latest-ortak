@@ -314,7 +314,7 @@ public class MuroDbContext : DbContext
         // StudentExamDraft
         modelBuilder.Entity<StudentExamDraft>(entity =>
         {
-            entity.HasIndex(d => new { d.ExamId, d.UserId }).IsUnique();
+            entity.HasIndex(d => new { d.TenantId, d.ExamId, d.UserId }).IsUnique();
         });
 
         // Course — 🔧 tenant bazlı listeleme

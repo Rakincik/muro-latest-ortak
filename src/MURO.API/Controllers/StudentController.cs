@@ -16,11 +16,25 @@ public class StudentController : ControllerBase
 {
     private readonly IStudentService _studentService;
     private readonly ITenantService _tenantService;
+    private readonly IAnalyticsService _analyticsService;
+    private readonly ICourseService _courseService;
+    private readonly ICourseSessionService _sessionService;
+    private readonly INotificationService _notificationService;
 
-    public StudentController(IStudentService studentService, ITenantService tenantService)
+    public StudentController(
+        IStudentService studentService, 
+        ITenantService tenantService,
+        IAnalyticsService analyticsService,
+        ICourseService courseService,
+        ICourseSessionService sessionService,
+        INotificationService notificationService)
     {
         _studentService = studentService;
         _tenantService = tenantService;
+        _analyticsService = analyticsService;
+        _courseService = courseService;
+        _sessionService = sessionService;
+        _notificationService = notificationService;
     }
 
     private Guid GetTenantId() =>
@@ -50,5 +64,54 @@ public class StudentController : ControllerBase
 
         var events = await _studentService.GetCalendarEventsAsync(GetTenantId(), GetUserId(), start, end);
         return Ok(events);
+    }
+
+    /// <summary>
+    /// BFF (Backend For Frontend): Öğrenci dashboard'u için gerekli tüm verileri tek seferde döner.
+    /// 10k kullanıcı optimizasyonunun en kritik endpointidir (N+1 problemi çözer).
+    /// </summary>
+    [HttpGet("dashboard-summary")]
+    public async Task<ActionResult<MURO.Application.DTOs.Analytics.StudentDashboardSummaryDto>> GetDashboardSummary()
+    {
+        var tenantId = GetTenantId();
+        var userId = GetUserId();
+
+        // Güvenli kapsayıcılar (Partial Failure engellemek için)
+        async Task<MURO.Application.DTOs.Analytics.StudentDashboardDto> SafeGetStats() {
+            try { return await _analyticsService.GetStudentDashboardAsync(tenantId, userId); }
+            catch { return new MURO.Application.DTOs.Analytics.StudentDashboardDto(0, 0, 0, 0, 0, 0, 0, new(), new()); }
+        }
+
+        async Task<List<MURO.Application.DTOs.Courses.CourseListDto>> SafeGetCourses() {
+            try { return (await _courseService.GetCoursesByUserAsync(tenantId, userId, 1, 4, null, null)).Items; }
+            catch { return new List<MURO.Application.DTOs.Courses.CourseListDto>(); }
+        }
+
+        async Task<List<MURO.Application.DTOs.Courses.UpcomingSessionDto>> SafeGetSessions() {
+            try { return await _sessionService.GetUpcomingSessionsByUserAsync(tenantId, userId); }
+            catch { return new List<MURO.Application.DTOs.Courses.UpcomingSessionDto>(); }
+        }
+
+        async Task<int> SafeGetUnreadCount() {
+            try { return await _notificationService.GetUnreadCountAsync(userId); }
+            catch { return 0; }
+        }
+
+        // Paralel API çağrıları
+        var statsTask = SafeGetStats();
+        var coursesTask = SafeGetCourses();
+        var sessionsTask = SafeGetSessions();
+        var unreadCountTask = SafeGetUnreadCount();
+
+        await Task.WhenAll(statsTask, coursesTask, sessionsTask, unreadCountTask);
+
+        var dto = new MURO.Application.DTOs.Analytics.StudentDashboardSummaryDto(
+            statsTask.Result,
+            coursesTask.Result,
+            sessionsTask.Result,
+            unreadCountTask.Result
+        );
+
+        return Ok(dto);
     }
 }

@@ -54,7 +54,7 @@ export const createAsset = async (data: { title: string; type: string; filePath:
     });
 };
 
-export const updateAsset = async (id: string, data: { title?: string; folderId?: string | null }): Promise<MediaAssetDto> => {
+export const updateAsset = async (id: string, data: { title?: string; folderId?: string | null; tags?: string }): Promise<MediaAssetDto> => {
     return fetchApi(`/media/assets/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),

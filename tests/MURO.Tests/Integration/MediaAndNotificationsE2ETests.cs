@@ -50,7 +50,7 @@ public class MediaAndNotificationsE2ETests : IClassFixture<MuroTestFactory>, IAs
         // Create
         var createRes = await admin.PostAsJsonAsync("/api/v1/media/assets",
             new CreateMediaAssetRequest("Fizik Video 1",
-                "/videos/fizik1.mp4", courseId));
+                "/videos/fizik1.mp4", courseId, null, null));
         createRes.StatusCode.Should().Be(HttpStatusCode.Created);
         var asset = await createRes.Content.ReadFromJsonAsync<MediaAssetDto>();
         asset!.Title.Should().Be("Fizik Video 1");
@@ -58,7 +58,7 @@ public class MediaAndNotificationsE2ETests : IClassFixture<MuroTestFactory>, IAs
         // Create ikinci asset
         var secondRes = await admin.PostAsJsonAsync("/api/v1/media/assets",
             new CreateMediaAssetRequest("Fizik Video 2",
-                "/videos/fizik2.mp4", courseId));
+                "/videos/fizik2.mp4", courseId, null, null));
         secondRes.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // List — ikisi de olmalı
@@ -69,7 +69,7 @@ public class MediaAndNotificationsE2ETests : IClassFixture<MuroTestFactory>, IAs
 
         // Update
         var updateRes = await admin.PutAsJsonAsync($"/api/v1/media/assets/{asset.Id}",
-            new UpdateMediaAssetRequest("Fizik Video 1 (Güncel)", null, null, null, null));
+            new UpdateMediaAssetRequest("Fizik Video 1 (Güncel)", null, null, null, null, null, null));
         updateRes.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await updateRes.Content.ReadFromJsonAsync<MediaAssetDto>();
         updated!.Title.Should().Be("Fizik Video 1 (Güncel)");
@@ -93,7 +93,7 @@ public class MediaAndNotificationsE2ETests : IClassFixture<MuroTestFactory>, IAs
         // Asset oluştur
         var assetRes = await admin.PostAsJsonAsync("/api/v1/media/assets",
             new CreateMediaAssetRequest("Progress Video",
-                "/v/p.mp4", courseId));
+                "/v/p.mp4", courseId, null, null));
         var asset = await assetRes.Content.ReadFromJsonAsync<MediaAssetDto>();
 
         // Progress güncelle — %50

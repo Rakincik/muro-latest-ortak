@@ -168,9 +168,9 @@ public class CourseSessionService : ICourseSessionService
     {
         return await _context.Sessions
             .AsNoTracking()
-            .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished && s.ScheduledStart > DateTime.UtcNow)
+            .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
             .Include(s => s.Course)
-            .OrderBy(s => s.ScheduledStart)
+            .OrderBy(s => s.Status == SessionStatus.Live ? 0 : 1).ThenBy(s => s.ScheduledStart)
             .Select(s => new UpcomingSessionDto(
                 s.Id, s.Title, s.Description, s.Order,
                 s.VideoUrl, s.DurationMinutes, s.IsFree,
@@ -189,9 +189,9 @@ public class CourseSessionService : ICourseSessionService
             .AsNoTracking()
             .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished
                         && accessibleIds.Contains(s.CourseId)
-                        && s.ScheduledStart > DateTime.UtcNow)
+                        && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
             .Include(s => s.Course)
-            .OrderBy(s => s.ScheduledStart)
+            .OrderBy(s => s.Status == SessionStatus.Live ? 0 : 1).ThenBy(s => s.ScheduledStart)
             .Select(s => new UpcomingSessionDto(
                 s.Id, s.Title, s.Description, s.Order,
                 s.VideoUrl, s.DurationMinutes, s.IsFree,

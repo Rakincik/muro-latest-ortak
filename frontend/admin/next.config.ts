@@ -29,6 +29,7 @@ const nextConfig: NextConfig = {
   // Experimental optimizations
   experimental: {
     optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'react-icons'],
   },
 
   // Skip ESLint and TypeScript errors during production builds

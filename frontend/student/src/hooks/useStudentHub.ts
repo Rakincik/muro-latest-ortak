@@ -29,7 +29,7 @@ export function useStudentHub(callbacks: StudentHubCallbacks) {
                 accessTokenFactory: () => token,
             })
             .withAutomaticReconnect()
-            .configureLogging(LogLevel.Error)
+            .configureLogging(LogLevel.None)
             .build();
 
         // Canlı ders başladığında

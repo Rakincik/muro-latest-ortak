@@ -41,13 +41,19 @@ export default function MediaLibraryPage() {
     const [newFolderName, setNewFolderName] = useState("");
 
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
-    const [renameTarget, setRenameTarget] = useState<{ id: string, type: 'folder' | 'asset', currentName: string } | null>(null);
+    const [renameTarget, setRenameTarget] = useState<{ id: string, type: 'folder' | 'asset', currentName: string, currentTags?: string } | null>(null);
     const [newName, setNewName] = useState("");
+    const [newTags, setNewTags] = useState("");
+    
+    // Bulk Selection State
+    const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
+    const [isBulkMoveModalOpen, setIsBulkMoveModalOpen] = useState(false);
+    const [bulkMoveFolderId, setBulkMoveFolderId] = useState<string | null>(null);
 
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
-    const [courseAssignTarget, setCourseAssignTarget] = useState<{ id: string, type: 'folder' | 'asset' } | null>(null);
+    const [courseAssignTarget, setCourseAssignTarget] = useState<{ id: string, type: 'folder' | 'asset' | 'bulk', bulkIds?: string[] } | null>(null);
     const [initialCourseIds, setInitialCourseIds] = useState<string[]>([]);
     
     // Drag and Drop state
@@ -77,6 +83,7 @@ export default function MediaLibraryPage() {
         try {
             const a = await mediaLibraryApi.getAssets(currentFolderId || undefined);
             setAssets(a);
+            setSelectedAssetIds([]);
         } catch (error) {
             toastError("Hata", "Veriler yüklenirken bir hata oluştu.");
         } finally {
@@ -185,8 +192,8 @@ export default function MediaLibraryPage() {
                 await mediaLibraryApi.updateFolder(renameTarget.id, { name: newName });
                 success("Klasör adı güncellendi");
             } else {
-                await mediaLibraryApi.updateAsset(renameTarget.id, { title: newName });
-                success("Video adı güncellendi");
+                await mediaLibraryApi.updateAsset(renameTarget.id, { title: newName, tags: newTags });
+                success("Video bilgileri güncellendi");
             }
             setIsRenameModalOpen(false);
             if (renameTarget.type === 'folder') triggerTreeRefresh();
@@ -237,6 +244,15 @@ export default function MediaLibraryPage() {
                 for (const courseId of addedCourseIds) {
                     await mediaLibraryApi.bulkAssignFolderToCourse(courseId, courseAssignTarget.id);
                 }
+                success(`Klasör içeriği kurslara tanımlandı.`);
+            } else if (courseAssignTarget.type === 'bulk' && courseAssignTarget.bulkIds) {
+                for (const courseId of addedCourseIds) {
+                    for (const assetId of courseAssignTarget.bulkIds) {
+                        await mediaLibraryApi.assignMediaToCourse(courseId, assetId);
+                    }
+                }
+                success("Videolar seçili kurslara eklendi");
+                setSelectedAssetIds([]);
             } else {
                 for (const courseId of addedCourseIds) {
                     await mediaLibraryApi.assignMediaToCourse(courseId, courseAssignTarget.id);
@@ -246,13 +262,62 @@ export default function MediaLibraryPage() {
                         await mediaLibraryApi.removeMediaFromCourse(courseId, courseAssignTarget.id);
                     }
                 }
+                success(`Video kurslara tanımlandı.`);
             }
-            success(`İçerik başarıyla kurslara tanımlandı.`);
             setIsCourseModalOpen(false);
             setCourseAssignTarget(null);
             setInitialCourseIds([]);
         } catch (error) {
             toastError("Hata", "Kurslara tanımlanırken bir hata oluştu.");
+        }
+    };
+
+    const toggleAsset = (id: string) => {
+        setSelectedAssetIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const toggleAll = () => {
+        if (selectedAssetIds.length === paginatedAssets.length) {
+            setSelectedAssetIds([]);
+        } else {
+            setSelectedAssetIds(paginatedAssets.map(a => a.id));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Toplu Silme",
+            message: `Seçilen ${selectedAssetIds.length} videoyu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+            onConfirm: async () => {
+                setConfirmModal(prev => ({...prev, isOpen: false}));
+                try {
+                    for (const id of selectedAssetIds) {
+                        await mediaLibraryApi.deleteAsset(id);
+                    }
+                    success("Seçili videolar silindi");
+                    setSelectedAssetIds([]);
+                    loadData();
+                } catch (error) {
+                    toastError("Hata", "Bazı videolar silinemedi");
+                }
+            }
+        });
+    };
+
+    const handleBulkMoveSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            for (const id of selectedAssetIds) {
+                await mediaLibraryApi.updateAsset(id, { folderId: bulkMoveFolderId });
+            }
+            success("Videolar taşındı");
+            setIsBulkMoveModalOpen(false);
+            setSelectedAssetIds([]);
+            triggerTreeRefresh();
+            loadData();
+        } catch (error) {
+            toastError("Hata", "Videolar taşınamadı");
         }
     };
 
@@ -265,9 +330,9 @@ export default function MediaLibraryPage() {
     const totalPages = pageSize === "all" ? 1 : Math.ceil(filteredAssets.length / pageSize);
 
     return (
-        <div className="max-w-[1600px] mx-auto h-[calc(100vh-64px)] flex overflow-hidden">
+        <div className="max-w-[1600px] mx-auto min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] flex flex-col md:flex-row md:overflow-hidden bg-white">
             {/* Left Pane (30%): Folder Tree */}
-            <div className="w-[30%] min-w-[250px] max-w-[400px] flex-shrink-0 border-r border-gray-200">
+            <div className="w-full md:w-[30%] md:min-w-[250px] md:max-w-[400px] h-64 md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
                 <FolderTree 
                     activeFolderId={currentFolderId}
                     onSelect={handleTreeSelect}
@@ -281,7 +346,7 @@ export default function MediaLibraryPage() {
             </div>
 
             {/* Right Pane (70%): Content */}
-            <div className="flex-1 bg-gray-50 flex flex-col h-full overflow-hidden p-4 md:p-6">
+            <div className="flex-1 bg-gray-50 flex flex-col md:h-full overflow-visible md:overflow-hidden p-4 md:p-6">
                 
                 {/* Header Section */}
 
@@ -346,20 +411,23 @@ export default function MediaLibraryPage() {
 
                 {/* Content Area */}
                 {loading ? (
-                    <div className="flex-1 flex justify-center items-center">
+                    <div className="flex-1 flex justify-center items-center py-10 md:py-0">
                         <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : (
-                    <div className="flex-1 overflow-y-auto min-h-0 pb-12 pr-1">
+                    <div className="flex-1 md:overflow-y-auto min-h-0 pb-12 pr-1">
 
                         {filteredAssets.length > 0 && (
                             <div>
                                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Videolar</h2>
                                 {viewMode === "list" ? (
-                                    <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                                        <table className="w-full text-left border-collapse">
+                                    <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-sm">
+                                        <table className="w-full text-left border-collapse min-w-[600px]">
                                             <thead>
                                                 <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-5 py-3 w-10">
+                                                        <input type="checkbox" onChange={toggleAll} checked={selectedAssetIds.length === paginatedAssets.length && paginatedAssets.length > 0} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                                    </th>
                                                     <th className="px-5 py-3 font-medium">Video Adı</th>
                                                     <th className="px-5 py-3 font-medium w-32">Durum</th>
                                                     <th className="px-5 py-3 font-medium w-24">Süre</th>
@@ -374,6 +442,9 @@ export default function MediaLibraryPage() {
                                                         onDragStart={(e) => handleDragStartAsset(e, asset.id)}
                                                         className="hover:bg-blue-50/30 transition-colors group cursor-move"
                                                     >
+                                                        <td className="px-5 py-3 text-center">
+                                                            <input type="checkbox" checked={selectedAssetIds.includes(asset.id)} onChange={() => toggleAsset(asset.id)} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                                                        </td>
                                                         <td className="px-5 py-3">
                                                             <div className="flex items-center gap-3 min-w-0">
                                                                 <div 
@@ -385,7 +456,16 @@ export default function MediaLibraryPage() {
                                                                         <Play size={12} className="text-white fill-white translate-x-0.5" />
                                                                     </div>
                                                                 </div>
-                                                                <span className="font-semibold text-gray-900 text-sm truncate" title={asset.title}>{asset.title}</span>
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span className="font-semibold text-gray-900 text-sm truncate" title={asset.title}>{asset.title}</span>
+                                                                    {asset.tags && (
+                                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                                            {asset.tags.split(',').map(t => t.trim()).filter(Boolean).map((t, idx) => (
+                                                                                <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100">#{t}</span>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </td>
                                                         <td className="px-5 py-3">
@@ -400,7 +480,7 @@ export default function MediaLibraryPage() {
                                                         <td className="px-5 py-3 text-right">
                                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 
-                                                                <button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title }); setNewName(asset.title); setIsRenameModalOpen(true); }} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Yeniden Adlandır"><Edit2 size={16} /></button>
+                                                                <button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title, currentTags: asset.tags || "" }); setNewName(asset.title); setNewTags(asset.tags || ""); setIsRenameModalOpen(true); }} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Düzenle"><Edit2 size={16} /></button>
                                                                 <button onClick={() => handleOpenAssetCourseModal(asset)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Derse Tanımla"><BookOpen size={16} /></button>
                                                                 <button onClick={() => handleRemoveAsset(asset)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="Sil"><Trash2 size={16} /></button>
                                                             </div>
@@ -411,7 +491,7 @@ export default function MediaLibraryPage() {
                                         </table>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
                                         {paginatedAssets.map(asset => (
                                             <div 
                                                 key={asset.id}
@@ -423,6 +503,9 @@ export default function MediaLibraryPage() {
                                                     className="aspect-video w-full bg-gray-900 relative group-hover:opacity-90 transition-opacity cursor-pointer"
                                                     onClick={() => setPlayingAsset(asset)}
                                                 >
+                                                    <div className={`absolute top-2 left-2 z-10 transition-opacity ${selectedAssetIds.includes(asset.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} onClick={e => e.stopPropagation()}>
+                                                        <input type="checkbox" checked={selectedAssetIds.includes(asset.id)} onChange={() => toggleAsset(asset.id)} className="w-5 h-5 rounded border-white shadow bg-white/50 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                                                    </div>
                                                     <FallbackImage src={asset.thumbnailPath || ""} />
                                                                     {asset.durationSeconds != null && (
                                                                         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-[10px] font-medium rounded-md backdrop-blur-sm">
@@ -435,9 +518,9 @@ export default function MediaLibraryPage() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="p-4 flex-1 min-w-0 flex flex-col items-start gap-3">
+                                                <div className="p-2.5 md:p-4 flex-1 min-w-0 flex flex-col items-start gap-2 md:gap-3">
                                                     <div className="w-full min-w-0">
-                                                        <h3 className="font-semibold text-gray-900 truncate" title={asset.title}>{asset.title}</h3>
+                                                        <h3 className="text-xs md:text-sm font-semibold text-gray-900 truncate" title={asset.title}>{asset.title}</h3>
                                                         <div className="flex items-center gap-2 mt-1">
                                                             <div className={`w-1.5 h-1.5 rounded-full ${asset.status === 'Ready' ? 'bg-green-500' : 'bg-amber-500 animate-pulse'}`} />
                                                             <p className="text-[11px] text-gray-500 font-medium">
@@ -447,12 +530,18 @@ export default function MediaLibraryPage() {
                                                                  'Hata'}
                                                             </p>
                                                         </div>
+                                                        {asset.tags && (
+                                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                                {asset.tags.split(',').map(t => t.trim()).filter(Boolean).map((t, idx) => (
+                                                                    <span key={idx} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100">#{t}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div className="flex gap-1 w-full justify-end border-t border-gray-50 pt-3">
-
-                                                        <button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title }); setNewName(asset.title); setIsRenameModalOpen(true); }} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Yeniden Adlandır"><Edit2 size={16} /></button>
-                                                        <button onClick={() => handleOpenAssetCourseModal(asset)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Derse Tanımla"><BookOpen size={16} /></button>
-                                                        <button onClick={() => handleRemoveAsset(asset)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="Sil"><Trash2 size={16} /></button>
+                                                    <div className="flex gap-0.5 md:gap-1 w-full justify-end border-t border-gray-50 pt-2 md:pt-3">
+                                                        <button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title, currentTags: asset.tags || "" }); setNewName(asset.title); setNewTags(asset.tags || ""); setIsRenameModalOpen(true); }} className="p-1.5 md:p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg" title="Düzenle"><Edit2 size={14} className="md:w-4 md:h-4" /></button>
+                                                        <button onClick={() => handleOpenAssetCourseModal(asset)} className="p-1.5 md:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg" title="Derse Tanımla"><BookOpen size={14} className="md:w-4 md:h-4" /></button>
+                                                        <button onClick={() => handleRemoveAsset(asset)} className="p-1.5 md:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg" title="Sil"><Trash2 size={14} className="md:w-4 md:h-4" /></button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -561,10 +650,10 @@ export default function MediaLibraryPage() {
             {isRenameModalOpen && renameTarget && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                     <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Yeniden Adlandır</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">{renameTarget.type === 'folder' ? 'Klasörü Yeniden Adlandır' : 'Videoyu Düzenle'}</h2>
                         <form onSubmit={handleRenameSubmit}>
-                            <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Yeni Ad</label>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Ad</label>
                                 <input
                                     type="text"
                                     required
@@ -574,6 +663,18 @@ export default function MediaLibraryPage() {
                                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                                 />
                             </div>
+                            {renameTarget.type === 'asset' && (
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Etiketler (Virgülle Ayırın)</label>
+                                    <input
+                                        type="text"
+                                        value={newTags}
+                                        onChange={(e) => setNewTags(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                        placeholder="Örn: matematik, 12.sınıf, türev"
+                                    />
+                                </div>
+                            )}
                             <div className="flex justify-end gap-3">
                                 <button
                                     type="button"
@@ -584,7 +685,7 @@ export default function MediaLibraryPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={!newName.trim() || newName.trim() === renameTarget.currentName}
+                                    disabled={!newName.trim() || (newName.trim() === renameTarget.currentName && newTags.trim() === (renameTarget.currentTags || ""))}
                                     className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                                 >
                                     Kaydet
@@ -615,6 +716,47 @@ export default function MediaLibraryPage() {
                     }}
                     onSelect={handleAssignToCourse}
                 />
+            )}
+
+            {/* Bulk Move Modal */}
+            {isBulkMoveModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">Videoları Taşı</h2>
+                        <form onSubmit={handleBulkMoveSubmit}>
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Hedef Klasör</label>
+                                <select
+                                    value={bulkMoveFolderId || ""}
+                                    onChange={(e) => setBulkMoveFolderId(e.target.value || null)}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                >
+                                    <option value="">Kök Dizin (Ana Klasör)</option>
+                                    {folders.map(f => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex justify-end gap-3">
+                                <button type="button" onClick={() => setIsBulkMoveModalOpen(false)} className="px-5 py-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors">İptal</button>
+                                <button type="submit" className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors shadow-sm">Taşı</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Action Bar */}
+            {selectedAssetIds.length > 0 && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-5">
+                    <span className="font-medium text-sm">{selectedAssetIds.length} öğe seçildi</span>
+                    <div className="h-4 w-px bg-gray-700" />
+                    <button onClick={() => { setCourseAssignTarget({ id: '', type: 'bulk', bulkIds: selectedAssetIds }); setIsCourseModalOpen(true); }} className="text-sm font-medium hover:text-blue-400 transition-colors">Derse Tanımla</button>
+                    <button onClick={() => setIsBulkMoveModalOpen(true)} className="text-sm font-medium hover:text-blue-400 transition-colors">Taşı</button>
+                    <button onClick={handleBulkDelete} className="text-sm font-medium hover:text-red-400 transition-colors">Sil</button>
+                    <div className="h-4 w-px bg-gray-700" />
+                    <button onClick={() => setSelectedAssetIds([])} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">İptal</button>
+                </div>
             )}
 
             {/* Confirm Modal */}

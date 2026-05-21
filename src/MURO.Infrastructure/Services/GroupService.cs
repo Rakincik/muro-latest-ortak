@@ -48,6 +48,7 @@ public class GroupService : IGroupService
                     g.Color, g.EducationType,
                     g.Members.Count(m => m.Status == "active"),
                     g.CourseGroups.Count,
+                    g.ExpirationDate,
                     g.CreatedAt))
                 .ToListAsync();
 
@@ -108,6 +109,7 @@ public class GroupService : IGroupService
                 group.Children
                     .Select(c => new GroupChildDto(c.Id, c.Name, c.Members.Count))
                     .ToList(),
+                group.ExpirationDate,
                 group.CreatedAt);
         }, TimeSpan.FromMinutes(5));
     }
@@ -125,6 +127,7 @@ public class GroupService : IGroupService
             Id = Guid.NewGuid(), TenantId = tenantId,
             Name = request.Name, Description = request.Description,
             Color = request.Color, EducationType = request.EducationType,
+            ExpirationDate = request.ExpirationDate,
             ParentId = request.ParentGroupId
         };
 
@@ -132,7 +135,7 @@ public class GroupService : IGroupService
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
 
-        return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType, 0, 0, group.CreatedAt);
+        return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType, 0, 0, group.ExpirationDate, group.CreatedAt);
     }
 
     public async Task<GroupListDto> UpdateGroupAsync(Guid tenantId, Guid groupId, UpdateGroupRequest request)
@@ -147,6 +150,7 @@ public class GroupService : IGroupService
         if (request.Description != null) group.Description = request.Description;
         if (request.Color != null) group.Color = request.Color;
         if (request.EducationType != null) group.EducationType = request.EducationType;
+        if (request.ExpirationDate != null) group.ExpirationDate = request.ExpirationDate;
         if (request.ParentGroupId.HasValue)
         {
             if (request.ParentGroupId == groupId)
@@ -158,7 +162,7 @@ public class GroupService : IGroupService
         await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
 
         return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType,
-            group.Members.Count(m => m.Status == "active"), group.CourseGroups.Count, group.CreatedAt);
+            group.Members.Count(m => m.Status == "active"), group.CourseGroups.Count, group.ExpirationDate, group.CreatedAt);
     }
 
     public async Task DeleteGroupAsync(Guid tenantId, Guid groupId)
@@ -217,6 +221,7 @@ public class GroupService : IGroupService
             Description = group.Description,
             Color = group.Color,
             EducationType = group.EducationType,
+            ExpirationDate = group.ExpirationDate,
             ParentId = group.ParentId
         };
 
@@ -259,7 +264,7 @@ public class GroupService : IGroupService
         var finalMemberCount = copyMembers ? group.Members.Count(m => m.Status == "active") : 0;
         var finalCourseCount = copyCourses ? group.CourseGroups.Count : 0;
 
-        return new GroupListDto(newGroup.Id, newGroup.Name, newGroup.Description, newGroup.ParentId, null, newGroup.Color, newGroup.EducationType, finalMemberCount, finalCourseCount, newGroup.CreatedAt);
+        return new GroupListDto(newGroup.Id, newGroup.Name, newGroup.Description, newGroup.ParentId, null, newGroup.Color, newGroup.EducationType, finalMemberCount, finalCourseCount, newGroup.ExpirationDate, newGroup.CreatedAt);
     }
 
     public async Task AddMembersAsync(Guid tenantId, Guid groupId, List<Guid> userIds)

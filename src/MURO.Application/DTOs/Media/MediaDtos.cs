@@ -3,16 +3,16 @@ namespace MURO.Application.DTOs.Media;
 public record MediaAssetDto(
     Guid Id, string Title, string? FilePath, string? HlsPath,
     string? ThumbnailPath, int? DurationSeconds, string Status,
-    Guid? CourseId, string? CourseName, Guid? FolderId, DateTime CreatedAt
+    Guid? CourseId, string? CourseName, Guid? FolderId, DateTime CreatedAt, string? Tags
 );
 
 public record CreateMediaAssetRequest(
-    string Title, string? FilePath, Guid? CourseId, Guid? FolderId
+    string Title, string? FilePath, Guid? CourseId, Guid? FolderId, string? Tags
 );
 
 public record UpdateMediaAssetRequest(
     string? Title, string? HlsPath, string? ThumbnailPath,
-    int? DurationSeconds, string? Status, Guid? FolderId
+    int? DurationSeconds, string? Status, Guid? FolderId, string? Tags
 );
 
 // ─── Virtual Folders ────────────────────────────────────────────────────────

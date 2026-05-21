@@ -1,6 +1,19 @@
 "use client";
 import React, { useState, useMemo } from "react";
-import { ArrowLeft, Search, Download, Award, Target, Hash, CheckCircle2, XCircle, MinusCircle, Users, BarChart3, Star } from "lucide-react";
+import {
+    PiArrowLeftBold as ArrowLeft,
+    PiMagnifyingGlassDuotone as Search,
+    PiDownloadDuotone as Download,
+    PiMedalDuotone as Award,
+    PiTargetDuotone as Target,
+    PiHashDuotone as Hash,
+    PiCheckCircleDuotone as CheckCircle2,
+    PiXCircleDuotone as XCircle,
+    PiMinusCircleDuotone as MinusCircle,
+    PiUsersDuotone as Users,
+    PiChartBarDuotone as BarChart3,
+    PiStarDuotone as Star
+} from "react-icons/pi";
 import type { ExamDetailDto } from "@/lib/api";
 import StudentScorecardModal from "./StudentScorecardModal";
 

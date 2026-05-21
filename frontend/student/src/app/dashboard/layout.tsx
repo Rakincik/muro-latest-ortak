@@ -108,9 +108,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 />
             )}
 
-            {/* Sidebar with mobile open class */}
-            <div className={sidebarOpen ? '[&>.sidebar]:translate-x-0' : ''}>
-                <Sidebar />
+            {/* Sidebar */}
+            <div className="relative z-[60]">
+                <Sidebar isOpen={sidebarOpen} />
             </div>
 
             <main className="main-content" key={pathname}>

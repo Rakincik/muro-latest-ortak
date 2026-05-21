@@ -13,6 +13,7 @@ public class Group : ISoftDeletable
     public string? Description { get; set; }
     public string? Color { get; set; }          // hex: #6366f1
     public string? EducationType { get; set; }   // Canlı, Offline, Kamp, Sınav, Hibrit, Demo
+    public DateTime? ExpirationDate { get; set; } // Grubun son kullanma tarihi
     public Guid TenantId { get; set; }
     public Guid? ParentId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

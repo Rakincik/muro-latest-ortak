@@ -389,6 +389,7 @@ export interface GroupListDto {
     educationType: string | null;
     memberCount: number;
     courseCount: number;
+    expirationDate: string | null;
     createdAt: string;
 }
 
@@ -587,6 +588,7 @@ export interface MediaAssetDto {
     courseId?: string;
     courseName?: string;
     folderId?: string;
+    tags?: string;
     createdAt: string;
 }
 

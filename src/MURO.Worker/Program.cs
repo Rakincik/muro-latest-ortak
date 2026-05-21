@@ -40,12 +40,16 @@ builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
 builder.Services.AddScoped<IBbbService, BbbService>();
 builder.Services.AddScoped<IHlsProcessingService, HlsProcessingService>();
+builder.Services.AddSingleton<IJobQueue, RedisJobQueue>();
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<ISmsSender, SmsPlaceholderSender>();
 
 // --- Background Jobs ---
-builder.Services.AddHostedService<BbbRecordingSyncJob>();
 builder.Services.AddHostedService<UploadProcessingJob>();
 builder.Services.AddHostedService<ExamScoringJob>();
 builder.Services.AddHostedService<SoftDeleteCleanupJob>();
+builder.Services.AddHostedService<NotificationProcessingJob>();
+builder.Services.AddHostedService<GroupExpirationJob>();
 
 var host = builder.Build();
 

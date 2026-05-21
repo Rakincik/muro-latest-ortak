@@ -141,7 +141,7 @@ export default function DashboardPage() {
                     colorClass: s.color.replace('bg-', 'text-'),
                     iconColorClass: s.color.replace('bg-', 'text-')
                 }))}
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5"
+                className="flex xl:grid xl:grid-cols-4 gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar"
             />
 
             {/* ── Quick Links ── */}
@@ -348,23 +348,23 @@ export default function DashboardPage() {
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Gerçek zamanlı veriler</p>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 xl:flex xl:items-center xl:gap-12">
-                    <div className="text-center">
+                <div className="flex md:grid md:grid-cols-4 xl:flex items-center gap-8 xl:gap-12 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar">
+                    <div className="text-center shrink-0 min-w-[100px] snap-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{stats.activeStudents}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Aktif Öğrenci</p>
                     </div>
-                    <div className="hidden xl:block w-px h-10 bg-[#1B3B6F]/30" />
-                    <div className="text-center">
+                    <div className="hidden md:block xl:block w-px h-10 bg-[#1B3B6F]/30" />
+                    <div className="text-center shrink-0 min-w-[100px] snap-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{stats.publishedCourses}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Yayında Ders</p>
                     </div>
-                    <div className="hidden xl:block w-px h-10 bg-[#1B3B6F]/30" />
-                    <div className="text-center">
+                    <div className="hidden md:block xl:block w-px h-10 bg-[#1B3B6F]/30" />
+                    <div className="text-center shrink-0 min-w-[100px] snap-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{dashboard?.totalVideosWatched ?? 0}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Video İzlenme</p>
                     </div>
-                    <div className="hidden xl:block w-px h-10 bg-[#1B3B6F]/30" />
-                    <div className="text-center">
+                    <div className="hidden md:block xl:block w-px h-10 bg-[#1B3B6F]/30" />
+                    <div className="text-center shrink-0 min-w-[100px] snap-center">
                         <p className="text-3xl font-bold text-white tracking-tighter">{stats.totalExams}</p>
                         <p className="text-[10px] text-[#A9A9A9] font-bold uppercase tracking-widest mt-1">Sınav</p>
                     </div>

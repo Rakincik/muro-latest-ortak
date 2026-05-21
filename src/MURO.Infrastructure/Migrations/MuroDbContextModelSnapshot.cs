@@ -719,6 +719,9 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<string>("EducationType")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("ExpirationDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -801,6 +804,9 @@ namespace MURO.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Tags")
                         .HasColumnType("text");
 
                     b.Property<Guid>("TenantId")
@@ -1303,9 +1309,11 @@ namespace MURO.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ExamId");
+
                     b.HasIndex("UserId");
 
-                    b.HasIndex("ExamId", "UserId")
+                    b.HasIndex("TenantId", "ExamId", "UserId")
                         .IsUnique();
 
                     b.ToTable("StudentExamDrafts");

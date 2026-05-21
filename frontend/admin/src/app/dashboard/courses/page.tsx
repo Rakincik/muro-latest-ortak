@@ -680,9 +680,9 @@ export default function CoursesPage() {
 
             {/* Toolbar: Search + Filters + Sort + View Toggle */}
             <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 shadow-sm">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 overflow-x-auto hide-scrollbar pb-1 snap-x snap-mandatory">
                     {/* Search */}
-                    <div className="flex-1 relative">
+                    <div className="w-[160px] sm:flex-1 shrink-0 snap-start relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                         <input type="text" placeholder="Ders ara..." value={search}
                             onChange={e => { setSearch(e.target.value); setCoursePage(0); }}
@@ -690,20 +690,20 @@ export default function CoursesPage() {
                     </div>
                     {/* Status Filter */}
                     <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCoursePage(0); }}
-                        className="px-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none cursor-pointer">
+                        className="shrink-0 snap-start px-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none cursor-pointer">
                         <option value="all">Tüm Durumlar</option>
                         <option value="published">Yayında</option>
                         <option value="draft">Taslak</option>
                     </select>
                     {/* Sort */}
                     <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-                        className="px-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none cursor-pointer">
+                        className="shrink-0 snap-start px-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none cursor-pointer">
                         <option value="date">Tarihe Göre</option>
                         <option value="name">İsme Göre</option>
                         <option value="sessions">Oturum Sayısı</option>
                     </select>
                     {/* View Toggle */}
-                    <div className="flex rounded-xl border border-[#E2E8F0] overflow-hidden">
+                    <div className="shrink-0 snap-start flex rounded-xl border border-[#E2E8F0] overflow-hidden">
                         <button onClick={() => setViewMode("grid")}
                             className={`p-2.5 transition-all ${viewMode === "grid" ? "bg-[#0A1931] text-white" : "bg-white text-[#A0AEC0] hover:bg-[#E2E8F0]/30"}`}>
                             <LayoutGrid size={14} />
@@ -728,13 +728,13 @@ export default function CoursesPage() {
             ) : viewMode === "grid" ? (
                 /* ── GRID VIEW ─────────────────────────────────── */
                 <>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                         {pagedCourses.map(co => {
                             const TI = typeIcons[co.type] ?? Monitor;
                             return (
                                 <div key={co.id} onClick={() => openDetail(co)}
-                                    className="bg-white rounded-[1.25rem] border border-[#E2E8F0]/80 overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-[#A0AEC0]/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer group flex flex-col">
-                                    <div className="aspect-video relative overflow-hidden w-full shrink-0">
+                                    className="bg-white rounded-2xl sm:rounded-[1.25rem] border border-[#E2E8F0]/80 overflow-hidden hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-[#A0AEC0]/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer group flex flex-row sm:flex-col h-[110px] sm:h-auto items-stretch">
+                                    <div className="w-[110px] sm:w-full aspect-square sm:aspect-video relative overflow-hidden shrink-0 border-r sm:border-r-0 border-[#E2E8F0]/80">
                                         {co.thumbnailUrl ? (
                                             <img src={co.thumbnailUrl} alt={co.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                         ) : (
@@ -742,42 +742,49 @@ export default function CoursesPage() {
                                         )}
                                         <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/90 via-black/20 to-transparent" />
                                         
-                                        <div className="absolute top-3 left-3 flex items-center gap-1">
+                                        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-1">
                                             {co.isPublished
-                                                ? <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-sm text-white shadow-sm">Yayında</span>
-                                                : <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-amber-500/90 backdrop-blur-sm text-white shadow-sm">Taslak</span>
+                                                ? <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-emerald-500/90 backdrop-blur-sm text-white shadow-sm">Yayında</span>
+                                                : <span className="text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md sm:rounded-lg bg-amber-500/90 backdrop-blur-sm text-white shadow-sm">Taslak</span>
                                             }
                                         </div>
                                         
-                                        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
+                                        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white hidden sm:flex">
                                             <h3 className="text-base font-black leading-tight truncate flex-1 drop-shadow-md">{co.title}</h3>
                                             <div className="flex items-center gap-2 text-[10px] font-bold drop-shadow-md shrink-0 ml-2 opacity-90">
                                                 <span className="flex items-center gap-1 bg-black/40 px-2.5 py-1 rounded-lg backdrop-blur-md"><Radio size={12} /> {co.sessionCount}</span>
                                             </div>
                                         </div>
+
+                                        <div className="absolute bottom-2 right-2 sm:hidden text-white">
+                                            <span className="flex items-center gap-1 bg-black/60 px-1.5 py-0.5 text-[9px] rounded-md backdrop-blur-md font-bold"><Radio size={10} /> {co.sessionCount}</span>
+                                        </div>
                                     </div>
                                     
-                                    <div className="p-5 flex-1 flex flex-col">
-                                        <p className="text-xs text-[#64748B] line-clamp-2 mb-4 leading-relaxed flex-1 font-medium">{co.description || "Bu ders için henüz bir açıklama eklenmemiş."}</p>
+                                    <div className="p-3 sm:p-5 flex-1 flex flex-col min-w-0 justify-between">
+                                        <div>
+                                            <h3 className="text-sm sm:hidden font-black text-[#0A1931] leading-tight truncate mb-1">{co.title}</h3>
+                                            <p className="text-[10px] sm:text-xs text-[#64748B] line-clamp-2 sm:mb-4 leading-relaxed font-medium">{co.description || "Bu ders için açıklama eklenmemiş."}</p>
+                                        </div>
                                         
-                                        <div className="flex items-center justify-between pt-4 border-t border-[#E2E8F0] mt-auto">
-                                            <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center justify-between pt-2 sm:pt-4 border-t border-[#E2E8F0] mt-auto">
+                                            <div className="flex items-center gap-1 sm:gap-1.5">
                                                 <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }} title="Düzenle"
-                                                    className="p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-xl transition-all">
-                                                    <Settings size={16} />
+                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
+                                                    <Settings size={14} className="sm:w-4 sm:h-4" />
                                                 </button>
                                                 <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }} title="Dokümanlar"
-                                                    className="p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-xl transition-all">
-                                                    <FolderOpen size={16} />
+                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
+                                                    <FolderOpen size={14} className="sm:w-4 sm:h-4" />
                                                 </button>
                                                 <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }} title="Kayıtlar"
-                                                    className="p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-xl transition-all">
-                                                    <Video size={16} />
+                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
+                                                    <Video size={14} className="sm:w-4 sm:h-4" />
                                                 </button>
                                             </div>
                                             <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }} title="Sil"
-                                                className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                                                <Trash2 size={16} />
+                                                className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg sm:rounded-xl transition-all">
+                                                <Trash2 size={14} className="sm:w-4 sm:h-4" />
                                             </button>
                                         </div>
                                     </div>

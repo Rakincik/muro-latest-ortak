@@ -80,7 +80,11 @@ export default function QuestionsPage() {
             setLoading(true);
             const result = await questionApi.list(token, tenantId, { pageSize: 100 });
             setQuestions(result.items.map(mapQuestion));
-            if (result.items.length > 0 && !selectedId) setSelectedId(result.items[0].id);
+            if (result.items.length > 0 && !selectedId) {
+                if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                    setSelectedId(result.items[0].id);
+                }
+            }
         } catch (e) { console.error('Failed to fetch questions:', e); }
         finally { setLoading(false); }
     };
@@ -191,9 +195,9 @@ export default function QuestionsPage() {
                 )}
             </div>
 
-            <div className="grid grid-cols-5 gap-6" style={{ height: 'calc(100vh - 240px)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6" style={{ height: 'calc(100vh - 240px)', minHeight: '500px' }}>
                 {/* List */}
-                <div className="col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
+                <div className={`md:col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex-col overflow-hidden ${selectedId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-[#E2E8F0]/60 space-y-2">
                         <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -234,19 +238,24 @@ export default function QuestionsPage() {
                 </div>
 
                 {/* Detail */}
-                <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden">
+                <div className={`md:col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex-col overflow-hidden ${!selectedId ? 'hidden md:flex' : 'flex'}`}>
                     {selected ? (
                         <>
-                            <div className="px-6 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h2 className="text-base font-bold text-[#0A1931]">{selected.title}</h2>
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg ${(statusStyles[selected.status] || statusStyles.Bekliyor).bg} ${(statusStyles[selected.status] || statusStyles.Bekliyor).text}`}>{selected.status}</span>
+                            <div className="px-4 md:px-6 py-4 border-b border-[#E2E8F0]/60 flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <button onClick={() => setSelectedId(null)} className="md:hidden p-1.5 -ml-1 mt-0.5 rounded-lg bg-[#E2E8F0]/40 text-[#1B3B6F] hover:bg-[#E2E8F0] shrink-0">
+                                        <X size={16} />
+                                    </button>
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                                            <h2 className="text-base font-bold text-[#0A1931]">{selected.title}</h2>
+                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg shrink-0 ${(statusStyles[selected.status] || statusStyles.Bekliyor).bg} ${(statusStyles[selected.status] || statusStyles.Bekliyor).text}`}>{selected.status}</span>
+                                        </div>
+                                        <p className="text-xs text-[#A0AEC0] truncate">{selected.studentName} · {selected.course} · {selected.createdAt}</p>
                                     </div>
-                                    <p className="text-xs text-[#A0AEC0]">{selected.studentName} · {selected.course} · {selected.createdAt}</p>
                                 </div>
                                 <button onClick={handleDeleteQuestion} title="Soruyu Komple Sil"
-                                    className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                    className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0">
                                     <Trash2 size={16} />
                                 </button>
                             </div>

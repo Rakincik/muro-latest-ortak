@@ -40,16 +40,16 @@ export function KpiGrid({ items, className = "" }: KpiGridProps) {
                             style={{ backgroundColor: glowColor }}
                         ></div>
                         
-                        <div className="flex items-center justify-between relative z-10">
-                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[0.8rem] sm:rounded-[1rem] ${s.bgClass || "bg-[#E2E8F0]/50"} flex items-center justify-center ring-1 ring-black/5`}>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between relative z-10 gap-2 sm:gap-0">
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl ${s.bgClass || "bg-[#E2E8F0]/50"} flex items-center justify-center ring-1 ring-black/5`}>
                                 <s.icon size={20} className={`transition-transform group-hover:scale-110 ${s.iconColorClass || s.colorClass || "text-[#A0AEC0]"}`} />
                             </div>
-                            <div className="text-right">
-                                <p className={`text-2xl sm:text-3xl font-black tracking-tight ${s.colorClass || "text-[#0A1931]"}`}>{s.value}</p>
-                                {s.subValue && <p className="text-[10px] sm:text-xs text-[#A0AEC0] font-medium mt-0.5">{s.subValue}</p>}
+                            <div className="text-left sm:text-right mt-1 sm:mt-0 w-full sm:w-auto">
+                                <p className={`text-[1.3rem] sm:text-3xl font-black tracking-tight leading-none ${s.colorClass || "text-[#0A1931]"}`}>{s.value}</p>
+                                {s.subValue && <p className="text-[10px] sm:text-xs text-[#A0AEC0] font-medium mt-1">{s.subValue}</p>}
                             </div>
                         </div>
-                        <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-[#64748B] relative z-10">{s.label}</p>
+                        <p className="text-[9px] sm:text-[11px] font-extrabold uppercase tracking-widest text-[#64748B] relative z-10 mt-auto">{s.label}</p>
                     </div>
                 );
             })}
