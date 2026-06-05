@@ -12,7 +12,7 @@ import {
     CalendarDays, ClipboardList, Bell, MessageCircleQuestion,
     HeadphonesIcon, Mic2, BarChart3, Wallet,
     LogOut, ChevronRight, Trophy, User, CalendarCheck, Package, Shield,
-    PlaySquare, ChevronDown
+    PlaySquare, ChevronDown, Building2
 } from "lucide-react";
 
 const sections = [
@@ -73,8 +73,9 @@ import { Menu, X } from "lucide-react"; // Make sure to import X
 
 export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }) {
     const pathname = usePathname();
-    const { user, logout, currentTenantId } = useAuth();
+    const { user, logout, currentTenantId, switchTenant } = useAuth();
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+    const [tenantDropdownOpen, setTenantDropdownOpen] = useState(false);
 
     const toggleSection = (title: string) => {
         setExpandedSections(prev => ({ ...prev, [title]: prev[title] === undefined ? false : !prev[title] }));
@@ -134,6 +135,65 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose
                         <X size={20} />
                     </button>
                 </div>
+
+            {/* Tenant Switcher — sadece birden fazla kurum varsa göster */}
+            {user && user.tenants.length > 1 && (
+                <div className="px-3 pb-3">
+                    <div className="relative">
+                        <button
+                            onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#1B3B6F]/15 border border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/25 transition-all group"
+                        >
+                            <div className="w-7 h-7 rounded-lg bg-[#1B3B6F]/30 flex items-center justify-center shrink-0">
+                                <Building2 size={14} className="text-[#A0AEC0]" />
+                            </div>
+                            <div className="flex-1 min-w-0 text-left">
+                                <p className="text-[11px] text-[#A0AEC0]/70 font-medium leading-none mb-0.5">Aktif Kurum</p>
+                                <p className="text-[12px] text-white font-semibold truncate">
+                                    {currentTenant?.tenantName || "Kurum Seçilmedi"}
+                                </p>
+                            </div>
+                            <ChevronDown
+                                size={14}
+                                className={`text-[#A0AEC0] transition-transform duration-200 ${tenantDropdownOpen ? "rotate-180" : ""}`}
+                            />
+                        </button>
+
+                        {/* Dropdown */}
+                        {tenantDropdownOpen && (
+                            <div className="absolute left-0 right-0 top-full mt-1 bg-[#0F2847] border border-[#1B3B6F]/30 rounded-xl shadow-2xl shadow-black/40 overflow-hidden z-50">
+                                {user.tenants
+                                    .filter(t => t.status === "active" || t.status === "Active")
+                                    .map((tenant) => (
+                                        <button
+                                            key={tenant.tenantId}
+                                            onClick={() => {
+                                                switchTenant(tenant.tenantId);
+                                                setTenantDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all ${
+                                                tenant.tenantId === currentTenantId
+                                                    ? "bg-[#1B3B6F]/30 text-white"
+                                                    : "text-[#A0AEC0] hover:bg-[#1B3B6F]/15 hover:text-white"
+                                            }`}
+                                        >
+                                            <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                                tenant.tenantId === currentTenantId ? "bg-emerald-400" : "bg-[#A0AEC0]/30"
+                                            }`} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[12px] font-semibold truncate">{tenant.tenantName}</p>
+                                                <p className="text-[10px] text-[#A0AEC0]/60 font-mono uppercase">{tenant.tenantCode}</p>
+                                            </div>
+                                            {tenant.tenantId === currentTenantId && (
+                                                <span className="text-[9px] font-bold text-emerald-400 uppercase">Aktif</span>
+                                            )}
+                                        </button>
+                                    ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5">

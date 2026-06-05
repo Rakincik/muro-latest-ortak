@@ -36,6 +36,7 @@ interface AuthContextType {
     logout: () => void;
     currentTenantId: string | null;
     setCurrentTenantId: (id: string) => void;
+    switchTenant: (tenantId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,14 +47,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [currentTenantId, setCurrentTenantId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const applyAuth = (res: { token: string; refreshToken: string; user: UserDto }) => {
+    const applyAuth = (res: { token: string; refreshToken: string; user: UserDto }, autoSelectTenant = true) => {
         setToken(res.token);
         setUser(res.user);
         localStorage.setItem("muro_token", res.token);
         localStorage.setItem("muro_refresh", res.refreshToken);
-        if (res.user.tenants.length > 0 && !currentTenantId) {
-            setCurrentTenantId(res.user.tenants[0].tenantId);
+        if (autoSelectTenant && res.user.tenants.length > 0 && !currentTenantId) {
+            // Tek kurum varsa otomatik seç, birden fazla varsa seçtirme (select-tenant sayfası gösterilecek)
+            if (res.user.tenants.length === 1) {
+                setCurrentTenantId(res.user.tenants[0].tenantId);
+            }
+            // tenants.length > 1 → currentTenantId null kalır → select-tenant sayfasına yönlendirilir
         }
+    };
+
+    const switchTenant = (tenantId: string) => {
+        clearCache();
+        setCurrentTenantId(tenantId);
     };
 
     // Session kicked dinleyicisi...
@@ -100,7 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .then((u) => {
                     setUser(u);
                     if (u.tenants.length > 0 && !currentTenantId) {
-                        setCurrentTenantId(u.tenants[0].tenantId);
+                        if (u.tenants.length === 1) {
+                            setCurrentTenantId(u.tenants[0].tenantId);
+                        }
+                        // tenants.length > 1 → select-tenant sayfasına yönlendirilecek
                     }
                 })
                 .catch(async () => {
@@ -196,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return (
         <AuthContext.Provider
-            value={{ user, token, isLoading, login, logout, currentTenantId, setCurrentTenantId }}
+            value={{ user, token, isLoading, login, logout, currentTenantId, setCurrentTenantId, switchTenant }}
         >
             {children}
         </AuthContext.Provider>

@@ -46,7 +46,7 @@ export default function DashboardLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, currentTenantId } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -76,13 +76,19 @@ export default function DashboardLayout({
             return;
         }
 
+        // Birden fazla kurumu var ama henüz kurum seçilmemiş → kurum seçim sayfasına yönlendir
+        if (!isLoading && user && user.tenants.length > 1 && !currentTenantId) {
+            router.replace("/select-tenant");
+            return;
+        }
+
         if (user && pathname) {
             if (!checkAccess(pathname, user.role)) {
                 toast("error", "Erişim Reddedildi", "Bu sayfayı görüntüleme yetkiniz yok.");
                 router.push("/dashboard");
             }
         }
-    }, [user, isLoading, router, pathname, toast]);
+    }, [user, isLoading, router, pathname, toast, currentTenantId]);
 
     if (isLoading) {
         return (
