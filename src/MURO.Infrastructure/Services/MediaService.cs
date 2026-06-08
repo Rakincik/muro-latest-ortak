@@ -116,6 +116,7 @@ public class MediaService : IMediaService
         {
             Id = Guid.NewGuid(), TenantId = tenantId,
             Title = request.Title, FilePath = request.FilePath, CourseId = request.CourseId,
+            DurationSeconds = request.DurationSeconds,
             FolderId = request.FolderId, Tags = request.Tags
         };
         _context.MediaAssets.Add(asset);

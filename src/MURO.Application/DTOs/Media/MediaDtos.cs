@@ -7,7 +7,7 @@ public record MediaAssetDto(
 );
 
 public record CreateMediaAssetRequest(
-    string Title, string? FilePath, Guid? CourseId, Guid? FolderId, string? Tags
+    string Title, string? FilePath, int? DurationSeconds, Guid? CourseId, Guid? FolderId, string? Tags
 );
 
 public record UpdateMediaAssetRequest(
