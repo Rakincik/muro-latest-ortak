@@ -147,27 +147,45 @@ public class HlsProcessingService : IHlsProcessingService
             using var reader = process.StandardError;
             var stderrTask = Task.Run(async () =>
             {
-                while (!reader.EndOfStream)
+                var buffer = new char[256];
+                int read;
+                var currentLine = new System.Text.StringBuilder();
+                
+                while ((read = await reader.ReadAsync(buffer, 0, buffer.Length)) > 0)
                 {
-                    var line = await reader.ReadLineAsync(ct);
-                    if (line == null) continue;
-
-                    if (assetId.HasValue && totalDuration.HasValue && totalDuration.Value > 0)
+                    for (int i = 0; i < read; i++)
                     {
-                        var match = System.Text.RegularExpressions.Regex.Match(line, @"time=(\d+):(\d+):(\d+\.\d+)");
-                        if (match.Success)
+                        char c = buffer[i];
+                        if (c == '\r' || c == '\n')
                         {
-                            try
+                            if (currentLine.Length > 0)
                             {
-                                var h = int.Parse(match.Groups[1].Value);
-                                var m = int.Parse(match.Groups[2].Value);
-                                var s = double.Parse(match.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture);
-                                var currentTime = h * 3600 + m * 60 + s;
-                                var percentage = (int)Math.Clamp((currentTime / totalDuration.Value) * 100, 0, 100);
+                                var line = currentLine.ToString();
+                                currentLine.Clear();
                                 
-                                await _cache.SetAsync($"muro:upload:progress:{assetId}", percentage, TimeSpan.FromHours(1));
+                                if (assetId.HasValue && totalDuration.HasValue && totalDuration.Value > 0)
+                                {
+                                    var match = System.Text.RegularExpressions.Regex.Match(line, @"time=(\d+):(\d+):(\d+\.\d+)");
+                                    if (match.Success)
+                                    {
+                                        try
+                                        {
+                                            var h = int.Parse(match.Groups[1].Value);
+                                            var m = int.Parse(match.Groups[2].Value);
+                                            var s = double.Parse(match.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture);
+                                            var currentTime = h * 3600 + m * 60 + s;
+                                            var percentage = (int)Math.Clamp((currentTime / totalDuration.Value) * 100, 0, 100);
+                                            
+                                            await _cache.SetAsync($"muro:upload:progress:{assetId}", percentage, TimeSpan.FromHours(1));
+                                        }
+                                        catch { }
+                                    }
+                                }
                             }
-                            catch { }
+                        }
+                        else
+                        {
+                            currentLine.Append(c);
                         }
                     }
                 }
