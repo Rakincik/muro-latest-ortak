@@ -92,9 +92,12 @@ public class UploadProcessingJob : BackgroundService
         MuroDbContext db,
         IHlsProcessingService hlsService,
         IHttpClientFactory httpClientFactory,
-        Domain.Entities.MediaAsset asset,
+        Domain.Entities.MediaAsset untrackedAsset,
         CancellationToken ct)
     {
+        var asset = await db.MediaAssets.FindAsync(new object[] { untrackedAsset.Id }, ct);
+        if (asset == null) return;
+
         string localMp4Path = asset.FilePath!;
         bool isDownloaded = false;
 
