@@ -77,7 +77,7 @@ public class UploadProcessingJob : BackgroundService
 
         _logger.LogInformation("{Count} video işlenecek.", pending.Count);
 
-        await Parallel.ForEachAsync(pending, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount / 2 > 0 ? Environment.ProcessorCount / 2 : 1, CancellationToken = ct }, async (asset, token) =>
+        await Parallel.ForEachAsync(pending, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = ct }, async (asset, token) =>
         {
             using var innerScope = _scopeFactory.CreateScope();
             var innerDb = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
