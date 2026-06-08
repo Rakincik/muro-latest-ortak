@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Tek kurum varsa otomatik seç, birden fazla varsa seçtirme (select-tenant sayfası gösterilecek)
             if (res.user.tenants.length === 1) {
                 setCurrentTenantId(res.user.tenants[0].tenantId);
+                localStorage.setItem("muro_tenantId", res.user.tenants[0].tenantId);
             }
             // tenants.length > 1 → currentTenantId null kalır → select-tenant sayfasına yönlendirilir
         }
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const switchTenant = (tenantId: string) => {
         clearCache();
         setCurrentTenantId(tenantId);
+        localStorage.setItem("muro_tenantId", tenantId);
     };
 
     // Session kicked dinleyicisi...
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const saved = localStorage.getItem("muro_token");
+        const savedTenantId = localStorage.getItem("muro_tenantId");
         if (saved) {
             if (DEV_MODE) {
                 setToken(saved);
@@ -109,9 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .me(saved)
                 .then((u) => {
                     setUser(u);
-                    if (u.tenants.length > 0 && !currentTenantId) {
+                    if (savedTenantId && u.tenants.some(t => t.tenantId === savedTenantId)) {
+                        setCurrentTenantId(savedTenantId);
+                    } else if (u.tenants.length > 0 && !currentTenantId) {
                         if (u.tenants.length === 1) {
                             setCurrentTenantId(u.tenants[0].tenantId);
+                            localStorage.setItem("muro_tenantId", u.tenants[0].tenantId);
                         }
                         // tenants.length > 1 → select-tenant sayfasına yönlendirilecek
                     }
@@ -197,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCurrentTenantId(null);
         localStorage.removeItem("muro_token");
         localStorage.removeItem("muro_refresh");
+        localStorage.removeItem("muro_tenantId");
         localStorage.removeItem("muro_student_token");
         localStorage.removeItem("muro_student_refresh");
         clearCache();

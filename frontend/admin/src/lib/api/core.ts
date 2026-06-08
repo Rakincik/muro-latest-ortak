@@ -26,8 +26,16 @@ export async function api<T = unknown>(
         ...(customHeaders as Record<string, string>),
     };
 
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    if (tenantId) headers["X-Tenant-Id"] = tenantId;
+    let finalToken = token;
+    let finalTenantId = tenantId;
+
+    if (typeof window !== "undefined") {
+        if (!finalToken) finalToken = localStorage.getItem("muro_token") || undefined;
+        if (!finalTenantId) finalTenantId = localStorage.getItem("muro_tenantId") || undefined;
+    }
+
+    if (finalToken) headers["Authorization"] = `Bearer ${finalToken}`;
+    if (finalTenantId) headers["X-Tenant-Id"] = finalTenantId;
 
     const response = await fetch(`${API_URL}${endpoint}`, {
         cache: "no-store",
@@ -37,17 +45,28 @@ export async function api<T = unknown>(
     });
 
     if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({}));
-        if (response.status === 401 && errorBody?.error === "SESSION_KICKED") {
-            if (typeof window !== "undefined")
-                window.dispatchEvent(new CustomEvent("session:kicked", { detail: errorBody.message }));
+        let errorData;
+        let textContent = "";
+        try {
+            textContent = await response.text();
+            errorData = JSON.parse(textContent);
+            console.error(`API Error: ${response.status} | URL: ${endpoint} | Body:`, errorData);
+        } catch {
+            errorData = { message: textContent };
+            console.error(`API Error: ${response.status} | URL: ${endpoint} | Text:`, textContent);
         }
-        const errMsg = errorBody.error
-            || errorBody.message
-            || (errorBody.errors ? Object.values(errorBody.errors).flat().join(", ") : null)
-            || errorBody.title
+        
+        const errMsg = errorData.error
+            || errorData.message
+            || (errorData.errors ? Object.values(errorData.errors).flat().join(", ") : null)
+            || errorData.title
             || `HTTP ${response.status}`;
-        console.error("API Error:", response.status, errorBody);
+
+        if (response.status === 401 && errorData?.error === "SESSION_KICKED") {
+            if (typeof window !== "undefined")
+                window.dispatchEvent(new CustomEvent("session:kicked", { detail: errMsg }));
+        }
+        
         throw new ApiError(errMsg, response.status);
     }
 
