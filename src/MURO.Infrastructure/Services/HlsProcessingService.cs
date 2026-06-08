@@ -81,41 +81,37 @@ public class HlsProcessingService : IHlsProcessingService
             }
         }
 
-        // ── 2. 480p HLS ───────────────────────────────────────────────────────
-        _logger.LogInformation("480p HLS işleniyor → {AssetId}", assetId);
-        var ok480 = await RunFfmpegAsync(
-            $"-y -i \"{sourceMp4Path}\" " +
-            $"-vf scale=854:480 -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k " +
-            $"-hls_time 10 -hls_list_size 0 -hls_segment_filename \"{segments480}\" " +
-            $"-f hls \"{playlist480}\"",
-            ct);
+        // ── 2. HLS Transcoding (NVENC - 480p & 720p Tek Geçiş) ───────────────────
+        _logger.LogInformation("HLS işleniyor (NVENC ile tek geçişte) → {AssetId}", assetId);
+        
+        // var_stream_map kullandığımız için ffmpeg dinamik klasör oluşturacaktır (%v)
+        var segmentsPattern = Path.Combine(assetDir, "%v", "seg%03d.ts").Replace("\\", "/");
+        var playlistPattern = Path.Combine(assetDir, "%v", "index.m3u8").Replace("\\", "/");
+        
+        var ffmpegArgs = $"-y -hwaccel cuda -i \"{sourceMp4Path}\" " +
+                         $"-filter_complex \"[0:v]split=2[v480][v720];[v480]scale=854:480[v1];[v720]scale=1280:720[v2]\" " +
+                         $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p5 -b:v:0 1.5M -maxrate:v:0 1.6M -bufsize:v:0 3M " +
+                         $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p5 -b:v:1 3M -maxrate:v:1 3.3M -bufsize:v:1 6M " +
+                         $"-map a:0 -c:a:0 aac -b:a:0 96k " +
+                         $"-map a:0 -c:a:1 aac -b:a:1 128k " +
+                         $"-f hls -hls_time 10 -hls_list_size 0 -hls_playlist_type vod -hls_flags independent_segments " +
+                         $"-var_stream_map \"v:0,a:0,name:480p v:1,a:1,name:720p\" " +
+                         $"-hls_segment_filename \"{segmentsPattern}\" " +
+                         $"\"{playlistPattern}\"";
 
-        // ── 3. 720p HLS ───────────────────────────────────────────────────────
-        _logger.LogInformation("720p HLS işleniyor → {AssetId}", assetId);
-        var ok720 = await RunFfmpegAsync(
-            $"-y -i \"{sourceMp4Path}\" " +
-            $"-vf scale=1280:720 -c:v libx264 -preset fast -crf 26 -c:a aac -b:a 128k " +
-            $"-hls_time 10 -hls_list_size 0 -hls_segment_filename \"{segments720}\" " +
-            $"-f hls \"{playlist720}\"",
-            ct);
+        var ok = await RunFfmpegAsync(ffmpegArgs, ct);
 
-        if (!ok480 && !ok720)
-            return new HlsProcessResult("", "", false, null, "FFmpeg işlemi başarısız oldu.");
+        if (!ok)
+            return new HlsProcessResult("", "", false, null, "FFmpeg donanım ivmeli işlemi başarısız oldu.");
 
-        // ── 4. Master Playlist (ABR) ──────────────────────────────────────────
+        // ── 3. Master Playlist (ABR) ──────────────────────────────────────────
         var master = new System.Text.StringBuilder();
         master.AppendLine("#EXTM3U");
-
-        if (ok480)
-        {
-            master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480,NAME=\"480p\"");
-            master.AppendLine("480p/index.m3u8");
-        }
-        if (ok720)
-        {
-            master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=2500000,RESOLUTION=1280x720,NAME=\"720p\"");
-            master.AppendLine("720p/index.m3u8");
-        }
+        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480,NAME=\"480p\"");
+        master.AppendLine("480p/index.m3u8");
+        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=2500000,RESOLUTION=1280x720,NAME=\"720p\"");
+        master.AppendLine("720p/index.m3u8");
+        
         await File.WriteAllTextAsync(masterPath, master.ToString(), ct);
 
         // Web-erişilebilir path'ler (wwwroot relative)
