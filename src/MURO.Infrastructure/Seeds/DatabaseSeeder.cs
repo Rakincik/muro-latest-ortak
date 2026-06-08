@@ -10,14 +10,14 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(MuroDbContext db)
     {
         // ── Tenant ────────────────────────────────────────────────────────────
-        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Code == "demo");
+        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Code == "render");
         if (tenant == null)
         {
             tenant = new Tenant
             {
                 Id           = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                Name         = "MURO Demo Dershanesi",
-                Code         = "demo",
+                Name         = "Render",
+                Code         = "render",
                 PrimaryColor = "#6366f1",
                 IsActive     = true,
                 CreatedAt    = DateTime.UtcNow,
@@ -27,16 +27,16 @@ public static class DatabaseSeeder
         }
 
         // ── Admin user ────────────────────────────────────────────────────────
-        var admin = await db.Users.FirstOrDefaultAsync(u => u.Email == "admin@muro.com");
+        var admin = await db.Users.FirstOrDefaultAsync(u => u.Email == "render@muro.com");
         if (admin == null)
         {
             admin = new User
             {
                 Id           = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                FirstName    = "MURO",
+                FirstName    = "Render",
                 LastName     = "Admin",
-                Email        = "admin@muro.com",
-                PasswordHash = "admin123",
+                Email        = "render@muro.com",
+                PasswordHash = "123465",
                 Role         = UserRole.Admin,
                 IsActive     = true,
                 CreatedAt    = DateTime.UtcNow,
@@ -56,7 +56,7 @@ public static class DatabaseSeeder
         else
         {
             // Force-reset admin password on every dev startup
-            admin.PasswordHash = "admin123";
+            admin.PasswordHash = "123465";
             admin.IsActive     = true;
             db.Users.Update(admin);
         }
