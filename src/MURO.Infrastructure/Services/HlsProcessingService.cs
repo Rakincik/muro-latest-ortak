@@ -165,7 +165,7 @@ public class HlsProcessingService : IHlsProcessingService
                                 var currentTime = h * 3600 + m * 60 + s;
                                 var percentage = (int)Math.Clamp((currentTime / totalDuration.Value) * 100, 0, 100);
                                 
-                                await _cache.SetAsync($"muro:upload:progress:{assetId}", percentage, TimeSpan.FromHours(1), ct);
+                                await _cache.SetAsync($"muro:upload:progress:{assetId}", percentage, TimeSpan.FromHours(1));
                             }
                             catch { }
                         }
