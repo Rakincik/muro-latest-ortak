@@ -9,6 +9,7 @@ import { CourseSelectorModal } from "@/components/ui/CourseSelectorModal";
 import { FolderTree } from "@/components/ui/FolderTree";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { VideoPlayerModal } from "@/components/ui/VideoPlayerModal";
+import { useGlobalUpload } from "@/components/ui/GlobalUploadManager";
 
 import { API_URL } from "@/lib/api";
 
@@ -69,6 +70,31 @@ export default function MediaLibraryPage() {
     // Pagination state
     const [pageSize, setPageSize] = useState<number | "all">(12);
     const [currentPage, setCurrentPage] = useState(1);
+
+    const { uploads } = useGlobalUpload();
+    const completedCountRef = useRef(0);
+    const readyCountRef = useRef(0);
+
+    // Auto-refresh the list when an upload finishes successfully or its processing status changes to Ready
+    useEffect(() => {
+        let shouldReload = false;
+        
+        const currentCompletedCount = uploads.filter(u => u.status === 'success' && u.assetId).length;
+        if (currentCompletedCount > completedCountRef.current) {
+            completedCountRef.current = currentCompletedCount;
+            shouldReload = true;
+        }
+
+        const currentReadyCount = uploads.filter(u => u.status === 'success' && u.assetStatus === 'Ready').length;
+        if (currentReadyCount > readyCountRef.current) {
+            readyCountRef.current = currentReadyCount;
+            shouldReload = true;
+        }
+
+        if (shouldReload) {
+            loadData();
+        }
+    }, [uploads]);
 
     useEffect(() => {
         loadData();
