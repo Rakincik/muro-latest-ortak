@@ -18,6 +18,7 @@ interface UploadTask {
     error?: string;
     assetId?: string;
     assetStatus?: string;
+    transcodeProgress?: number;
 }
 
 interface GlobalUploadContextType {
@@ -50,7 +51,22 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                     console.error("Polling failed for asset", upload.assetId, e);
                 }
             }
-        }, 5000);
+
+            try {
+                const idsToPoll = pollingUploads.map(u => u.assetId!);
+                if (idsToPoll.length > 0) {
+                    const progressDict = await mediaLibraryApi.getTranscodeProgress(idsToPoll);
+                    setUploads(prev => prev.map(t => {
+                        if (t.assetId && progressDict[t.assetId] !== undefined) {
+                            return { ...t, transcodeProgress: progressDict[t.assetId] };
+                        }
+                        return t;
+                    }));
+                }
+            } catch (e) {
+                console.error("Failed to fetch transcode progress", e);
+            }
+        }, 2500);
 
         return () => clearInterval(interval);
     }, [uploads]);
@@ -160,7 +176,21 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                                                 </div>
                                             )}
                                             {upload.status === 'processing' && <p className="text-[11px] text-purple-500 mt-0.5">Sisteme kaydediliyor...</p>}
-                                            {upload.status === 'success' && upload.assetStatus !== 'Ready' && <p className="text-[11px] text-green-600 dark:text-green-400 mt-0.5">Yüklendi • Arka planda işleniyor</p>}
+                                            {upload.status === 'success' && upload.assetStatus !== 'Ready' && (
+                                                <div className="mt-1">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <p className="text-[11px] text-green-600 dark:text-green-400 font-medium">
+                                                            {upload.transcodeProgress ? 'Arka planda işleniyor' : 'Yüklendi • İşleme hazırlanıyor'}
+                                                        </p>
+                                                        {upload.transcodeProgress && <span className="text-[10px] font-bold text-green-600 dark:text-green-400">%{upload.transcodeProgress}</span>}
+                                                    </div>
+                                                    {upload.transcodeProgress && (
+                                                        <div className="h-1 w-full bg-green-100 dark:bg-green-900/30 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-green-500 rounded-full transition-all duration-300" style={{ width: `${upload.transcodeProgress}%` }} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             {upload.status === 'success' && upload.assetStatus === 'Ready' && <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">İşlem tamamlandı, yayına hazır ✨</p>}
                                             {upload.status === 'error' && <p className="text-[11px] text-red-500 mt-0.5 truncate">{upload.error}</p>}
                                         </div>

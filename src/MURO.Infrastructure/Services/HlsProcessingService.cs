@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MURO.Application.Interfaces;
 using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
 using System.Diagnostics;
@@ -28,11 +29,13 @@ public class HlsProcessingService : IHlsProcessingService
 {
     private readonly ILogger<HlsProcessingService> _logger;
     private readonly string _ffmpegPath;
+    private readonly ICacheService _cache;
 
-    public HlsProcessingService(IConfiguration config, ILogger<HlsProcessingService> logger)
+    public HlsProcessingService(IConfiguration config, ILogger<HlsProcessingService> logger, ICacheService cache)
     {
         _logger = logger;
         _ffmpegPath = config["Ffmpeg:Path"] ?? "ffmpeg"; // PATH'te varsa sadece "ffmpeg"
+        _cache = cache;
     }
 
     public async Task<HlsProcessResult> ProcessAsync(
@@ -53,14 +56,14 @@ public class HlsProcessingService : IHlsProcessingService
         _logger.LogInformation("Thumbnail üretiliyor → {AssetId}", assetId);
         var thumbResult = await RunFfmpegAsync(
             $"-y -ss 30 -i \"{sourceMp4Path}\" -vframes 1 -q:v 2 \"{thumbPath}\"",
-            ct);
+            null, null, ct);
 
         if (!thumbResult && !File.Exists(thumbPath))
         {
             // 30. saniye yok ise ilk kareden al
             await RunFfmpegAsync(
                 $"-y -i \"{sourceMp4Path}\" -vframes 1 -q:v 2 \"{thumbPath}\"",
-                ct);
+                null, null, ct);
         }
 
         // ── 1.5. Thumbnail Sprites (VTT) ──────────────────────────────────────
@@ -73,7 +76,7 @@ public class HlsProcessingService : IHlsProcessingService
 
             var spriteResult = await RunFfmpegAsync(
                 $"-y -i \"{sourceMp4Path}\" -vf \"fps=1/10,scale=160:90,tile=10x10\" \"{spritePattern}\"",
-                ct);
+                null, null, ct);
 
             if (spriteResult)
             {
@@ -99,7 +102,7 @@ public class HlsProcessingService : IHlsProcessingService
                          $"-hls_segment_filename \"{segmentsPattern}\" " +
                          $"\"{playlistPattern}\"";
 
-        var ok = await RunFfmpegAsync(ffmpegArgs, ct);
+        var ok = await RunFfmpegAsync(ffmpegArgs, assetId, duration > 0 ? duration : null, ct);
 
         if (!ok)
             return new HlsProcessResult("", "", false, null, "FFmpeg donanım ivmeli işlemi başarısız oldu.");
@@ -123,7 +126,7 @@ public class HlsProcessingService : IHlsProcessingService
         return new HlsProcessResult(webMaster, webThumb ?? "", true, duration > 0 ? (int)duration : null);
     }
 
-    private async Task<bool> RunFfmpegAsync(string arguments, CancellationToken ct)
+    private async Task<bool> RunFfmpegAsync(string arguments, Guid? assetId, double? totalDuration, CancellationToken ct)
     {
         try
         {
@@ -141,9 +144,37 @@ public class HlsProcessingService : IHlsProcessingService
             process.Start();
 
             // FFmpeg progress loglarını arka planda oku (buffer dolmasın)
-            var stderr = process.StandardError.ReadToEndAsync(ct);
+            using var reader = process.StandardError;
+            var stderrTask = Task.Run(async () =>
+            {
+                while (!reader.EndOfStream)
+                {
+                    var line = await reader.ReadLineAsync(ct);
+                    if (line == null) continue;
+
+                    if (assetId.HasValue && totalDuration.HasValue && totalDuration.Value > 0)
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(line, @"time=(\d+):(\d+):(\d+\.\d+)");
+                        if (match.Success)
+                        {
+                            try
+                            {
+                                var h = int.Parse(match.Groups[1].Value);
+                                var m = int.Parse(match.Groups[2].Value);
+                                var s = double.Parse(match.Groups[3].Value, System.Globalization.CultureInfo.InvariantCulture);
+                                var currentTime = h * 3600 + m * 60 + s;
+                                var percentage = (int)Math.Clamp((currentTime / totalDuration.Value) * 100, 0, 100);
+                                
+                                await _cache.SetAsync($"muro:upload:progress:{assetId}", percentage, TimeSpan.FromHours(1), ct);
+                            }
+                            catch { }
+                        }
+                    }
+                }
+            }, ct);
+
             await process.WaitForExitAsync(ct);
-            await stderr; // tamamlanmasını bekle
+            await stderrTask;
 
             return process.ExitCode == 0;
         }

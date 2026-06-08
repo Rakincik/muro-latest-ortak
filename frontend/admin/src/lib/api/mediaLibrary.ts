@@ -47,6 +47,11 @@ export const getAsset = async (id: string): Promise<MediaAssetDto> => {
     return fetchApi(`/media/${id}`);
 };
 
+export const getTranscodeProgress = async (ids: string[]): Promise<Record<string, number>> => {
+    if (!ids || ids.length === 0) return {};
+    return fetchApi(`/media/transcode-progress?ids=${ids.join(',')}`);
+};
+
 export const createAsset = async (data: { title: string; type: string; filePath: string; durationSeconds?: number; folderId?: string | null }): Promise<MediaAssetDto> => {
     return fetchApi('/media/assets', {
         method: 'POST',
@@ -134,5 +139,6 @@ export const mediaLibraryApi = {
     bulkAssignFolderToCourse,
     removeMediaFromCourse,
     removeItemFromCourse,
-    reorderCourseMedias
+    reorderCourseMedias,
+    getTranscodeProgress
 };

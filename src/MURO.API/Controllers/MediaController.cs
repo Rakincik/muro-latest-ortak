@@ -60,8 +60,24 @@ public class MediaController : ControllerBase
     // --- Admin assets (açık URL) ---
     [HttpGet("assets")]
     public async Task<ActionResult<PagedResult<MediaAssetDto>>> GetAssets(
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? courseId = null, [FromQuery] Guid? folderId = null)
         => Ok(await _mediaService.GetAssetsAsync(GetTenantId(), page, pageSize, courseId, null, null, folderId, excludeRecordings: true));
+
+    [HttpGet("transcode-progress")]
+    public async Task<ActionResult<Dictionary<Guid, int>>> GetTranscodeProgress([FromQuery] string ids, [FromServices] ICacheService cache)
+    {
+        if (string.IsNullOrEmpty(ids)) return Ok(new Dictionary<Guid, int>());
+        var idList = ids.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                        .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
+                        .Where(g => g != Guid.Empty).ToList();
+        
+        var dict = new Dictionary<Guid, int>();
+        foreach(var id in idList)
+        {
+            var p = await cache.GetAsync<int>($"muro:upload:progress:{id}");
+            if (p > 0) dict[id] = p;
+        }
+        return Ok(dict);
+    }
 
     [HttpPost("assets")]
     public async Task<ActionResult<MediaAssetDto>> CreateAsset([FromBody] CreateMediaAssetRequest request)
