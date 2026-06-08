@@ -176,7 +176,7 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                                                 </div>
                                             )}
                                             {upload.status === 'processing' && <p className="text-[11px] text-purple-500 mt-0.5">Sisteme kaydediliyor...</p>}
-                                            {upload.status === 'success' && upload.assetStatus !== 'Ready' && (
+                                            {upload.status === 'success' && upload.assetStatus !== 'Ready' && upload.assetStatus !== 'Failed' && (
                                                 <div className="mt-1">
                                                     <div className="flex justify-between items-center mb-1">
                                                         <p className="text-[11px] text-green-600 dark:text-green-400 font-medium">
@@ -192,6 +192,7 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                                                 </div>
                                             )}
                                             {upload.status === 'success' && upload.assetStatus === 'Ready' && <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">İşlem tamamlandı, yayına hazır ✨</p>}
+                                            {upload.status === 'success' && upload.assetStatus === 'Failed' && <p className="text-[11px] text-red-500 mt-0.5">Arka planda video işlenirken bir hata oluştu.</p>}
                                             {upload.status === 'error' && <p className="text-[11px] text-red-500 mt-0.5 truncate">{upload.error}</p>}
                                         </div>
                                     </div>
