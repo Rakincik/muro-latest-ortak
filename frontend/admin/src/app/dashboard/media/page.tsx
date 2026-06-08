@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen } from "lucide-react";
 import { mediaLibraryApi, type MediaFolderDto, type MediaAssetDto } from "@/lib/api";
 import { useToast } from "@/components/toast";
