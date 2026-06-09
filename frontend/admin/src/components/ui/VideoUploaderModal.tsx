@@ -183,10 +183,8 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                 
                 if (sf.relativePath) {
                     const parts = sf.relativePath.split('/');
-                    // parts[0] is the root folder selected/dropped. We ignore it.
-                    // parts[parts.length - 1] is the file name. We ignore it.
-                    if (parts.length > 2) {
-                        const folders = parts.slice(1, parts.length - 1);
+                    if (parts.length > 1) {
+                        const folders = parts.slice(0, parts.length - 1);
                         targetFolderId = await resolveFolderId(folders, folderId || null);
                     }
                 }
