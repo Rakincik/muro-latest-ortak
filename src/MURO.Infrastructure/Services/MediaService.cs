@@ -174,7 +174,29 @@ public class MediaService : IMediaService
             var hlsDir = Path.Combine(_hlsOutputDir, tenantId.ToString(), assetId.ToString());
             if (Directory.Exists(hlsDir))
             {
-                Directory.Delete(hlsDir, recursive: true);
+                try
+                {
+                    Directory.Delete(hlsDir, recursive: true);
+                }
+                catch (IOException)
+                {
+                    // Linux ortamında ffmpeg dosyaya yazarken Directory.Delete başarısız olabilir.
+                    // Zorla silmek için rm -rf kullanıyoruz. Bu aynı zamanda ffmpeg'in hata verip kapanmasını sağlar.
+                    try
+                    {
+                        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "rm",
+                            Arguments = $"-rf \"{hlsDir}\"",
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        });
+                        process?.WaitForExit(2000);
+                    }
+                    catch { /* ignore */ }
+                }
                 _logger.LogInformation("HLS klasörü silindi: {Dir}", hlsDir);
             }
 
