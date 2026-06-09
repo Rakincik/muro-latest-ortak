@@ -121,10 +121,12 @@ public class HlsProcessingService : IHlsProcessingService
         else if (pipelineType == "qsv")
         {
             // ── QSV Pipeline: Intel iGPU Hardware Decode & Encode ──
-            ffmpegArgs = $"-y -hwaccel qsv -hwaccel_output_format qsv -i \"{sourceMp4Path}\" " +
-                         $"-filter_complex \"[0:v]vpp_qsv=w=854:h=480[v1];[0:v]vpp_qsv=w=1280:h=720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 h264_qsv -preset faster -b:v:0 1.2M " +
-                         $"-map \"[v2]\" -c:v:1 h264_qsv -preset faster -b:v:1 2.8M " +
+            ffmpegArgs = $"-y -init_hw_device qsv=hw:/dev/dri/renderD129 -filter_hw_device hw " +
+                         $"-i \"{sourceMp4Path}\" " +
+                         $"-filter_complex \"[0:v]format=nv12,hwupload=extra_hw_frames=64,split=2[s0][s1];" +
+                         $"[s0]scale_qsv=854:480[v1];[s1]scale_qsv=1280:720[v2]\" " +
+                         $"-map \"[v1]\" -c:v:0 h264_qsv -preset medium -b:v:0 1.2M " +
+                         $"-map \"[v2]\" -c:v:1 h264_qsv -preset medium -b:v:1 2.8M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +

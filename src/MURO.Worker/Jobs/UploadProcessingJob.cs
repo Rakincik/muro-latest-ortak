@@ -78,35 +78,68 @@ public class UploadProcessingJob : BackgroundService
         // ── Hibrit NVENC + CPU Pipeline ──────────────────────────────────────
         // 8 video → GPU (NVENC, NVIDIA limit), 10 video → CPU (libx264)
         // QSV iptal edildi (Docker izin sorunları nedeniyle)
-        const int nvencSlots = 8;
-        const int cpuSlots   = 10;
+// ── Tam Dinamik İki-Encoder Dağıtımı: NVENC (3090) + QSV (UHD 770) ────
+        // Her asset, slotu boşalan encoder'a akar. NVENC daha hızlı bitirdiği
+        // için slotunu daha sık boşaltır → otomatik olarak daha çok iş alır.
+        const int nvencSlots = 6;   // RTX 3090 eşzamanlı iş
+        const int qsvSlots   = 2;   // UHD 770 eşzamanlı iş
 
-        var nvencBatch = pending.Take(nvencSlots).ToList();
-        var cpuBatch   = pending.Skip(nvencSlots).Take(cpuSlots).ToList();
+        using var nvencPool = new SemaphoreSlim(nvencSlots, nvencSlots);
+        using var qsvPool   = new SemaphoreSlim(qsvSlots, qsvSlots);
 
-        _logger.LogInformation("Dual-Pipeline devrede: {NvencCount} NVENC, {CpuCount} CPU video işlenecek.", nvencBatch.Count, cpuBatch.Count);
+        _logger.LogInformation(
+            "Dinamik dağıtım: {Total} video | NVENC={Nv} slot, QSV={Qsv} slot",
+            pending.Count, nvencSlots, qsvSlots);
 
-        var nvencTask = Parallel.ForEachAsync(nvencBatch, new ParallelOptions { MaxDegreeOfParallelism = nvencSlots, CancellationToken = ct }, async (asset, token) =>
+        var tasks = pending.Select(async asset =>
         {
-            using var innerScope = _scopeFactory.CreateScope();
-            var innerDb = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
-            var innerHls = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
-            var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+            // Hangi encoder boşsa onu kap. İkisi de doluysa ilk boşalanı bekle.
+            string pipeline;
+            if (await nvencPool.WaitAsync(0, ct))
+            {
+                pipeline = "nvenc";
+            }
+            else if (await qsvPool.WaitAsync(0, ct))
+            {
+                pipeline = "qsv";
+            }
+            else
+            {
+                // İkisi de dolu: ilk boşalan slotu bekle (NVENC'i önceliklendir)
+                var nvWait = nvencPool.WaitAsync(ct);
+                var qsWait = qsvPool.WaitAsync(ct);
+                var winner = await Task.WhenAny(nvWait, qsWait);
 
-            await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, "nvenc", token);
+                if (winner == nvWait)
+                {
+                    pipeline = "nvenc";
+                    // QSV beklemesi hâlâ sürüyorsa onu da tamamlanınca geri bırak
+                    _ = qsWait.ContinueWith(t => { if (t.Status == TaskStatus.RanToCompletion) qsvPool.Release(); }, TaskScheduler.Default);
+                }
+                else
+                {
+                    pipeline = "qsv";
+                    _ = nvWait.ContinueWith(t => { if (t.Status == TaskStatus.RanToCompletion) nvencPool.Release(); }, TaskScheduler.Default);
+                }
+            }
+
+            try
+            {
+                using var innerScope = _scopeFactory.CreateScope();
+                var innerDb   = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
+                var innerHls  = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
+                var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+
+                await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, pipeline, ct);
+            }
+            finally
+            {
+                if (pipeline == "nvenc") nvencPool.Release();
+                else                     qsvPool.Release();
+            }
         });
 
-        var cpuTask = Parallel.ForEachAsync(cpuBatch, new ParallelOptions { MaxDegreeOfParallelism = cpuSlots, CancellationToken = ct }, async (asset, token) =>
-        {
-            using var innerScope = _scopeFactory.CreateScope();
-            var innerDb = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
-            var innerHls = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
-            var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-
-            await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, "cpu", token);
-        });
-
-        await Task.WhenAll(nvencTask, cpuTask);
+        await Task.WhenAll(tasks);
     }
 
     private async Task ProcessSingleUploadAsync(
