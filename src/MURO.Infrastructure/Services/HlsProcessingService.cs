@@ -91,10 +91,10 @@ public class HlsProcessingService : IHlsProcessingService
         var segmentsPattern = Path.Combine(assetDir, "%v", "seg%03d.ts").Replace("\\", "/");
         var playlistPattern = Path.Combine(assetDir, "%v", "index.m3u8").Replace("\\", "/");
         
-        var ffmpegArgs = $"-y -hwaccel cuda -i \"{sourceMp4Path}\" " +
+        var ffmpegArgs = $"-y -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]split=2[v480][v720];[v480]scale=854:480[v1];[v720]scale=1280:720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p5 -b:v:0 1.5M -maxrate:v:0 1.6M -bufsize:v:0 3M " +
-                         $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p5 -b:v:1 3M -maxrate:v:1 3.3M -bufsize:v:1 6M " +
+                         $"-map \"[v1]\" -c:v:0 libx264 -preset fast -b:v:0 1.5M -maxrate:v:0 1.6M -bufsize:v:0 3M " +
+                         $"-map \"[v2]\" -c:v:1 libx264 -preset fast -b:v:1 3M -maxrate:v:1 3.3M -bufsize:v:1 6M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
