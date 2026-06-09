@@ -15,6 +15,7 @@ namespace MURO.Infrastructure.Services;
 public interface IHlsProcessingService
 {
     Task<HlsProcessResult> ProcessAsync(Guid assetId, string sourceMp4Path, string outputBaseDir, CancellationToken ct = default);
+    Task<HlsProcessResult> ProcessAsync(Guid assetId, string sourceMp4Path, string outputBaseDir, bool useGpu, CancellationToken ct = default);
 }
 
 public record HlsProcessResult(
@@ -40,6 +41,10 @@ public class HlsProcessingService : IHlsProcessingService
 
     public async Task<HlsProcessResult> ProcessAsync(
         Guid assetId, string sourceMp4Path, string outputBaseDir, CancellationToken ct = default)
+        => await ProcessAsync(assetId, sourceMp4Path, outputBaseDir, useGpu: true, ct);
+
+    public async Task<HlsProcessResult> ProcessAsync(
+        Guid assetId, string sourceMp4Path, string outputBaseDir, bool useGpu, CancellationToken ct = default)
     {
         var assetDir = Path.Combine(outputBaseDir, assetId.ToString());
         Directory.CreateDirectory(Path.Combine(assetDir, "480p"));
@@ -84,14 +89,20 @@ public class HlsProcessingService : IHlsProcessingService
             }
         }
 
-        // ── 2. HLS Transcoding (NVENC - 480p & 720p Tek Geçiş) ───────────────────
-        _logger.LogInformation("HLS işleniyor (NVENC ile tek geçişte) → {AssetId}", assetId);
+        // ── 2. HLS Transcoding ───────────────────────────────────────────────
+        var pipelineLabel = useGpu ? "GPU/NVENC" : "CPU/libx264";
+        _logger.LogInformation("HLS işleniyor ({Pipeline} ile) → {AssetId}", pipelineLabel, assetId);
         
         // var_stream_map kullandığımız için ffmpeg dinamik klasör oluşturacaktır (%v)
         var segmentsPattern = Path.Combine(assetDir, "%v", "seg%03d.ts").Replace("\\", "/");
         var playlistPattern = Path.Combine(assetDir, "%v", "index.m3u8").Replace("\\", "/");
         
-        var ffmpegArgs = $"-y -hwaccel cuda -hwaccel_output_format cuda -i \"{sourceMp4Path}\" " +
+        string ffmpegArgs;
+        
+        if (useGpu)
+        {
+            // ── GPU Pipeline: CUDA decode → scale_cuda → NVENC encode (zero-copy) ──
+            ffmpegArgs = $"-y -hwaccel cuda -hwaccel_output_format cuda -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]scale_cuda=854:480[v1];[0:v]scale_cuda=1280:720[v2]\" " +
                          $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p4 -tune hq -rc vbr -cq 28 -b:v:0 0 -maxrate:v:0 1.6M -bufsize:v:0 3M " +
                          $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p4 -tune hq -rc vbr -cq 28 -b:v:1 0 -maxrate:v:1 3.3M -bufsize:v:1 6M " +
@@ -101,11 +112,26 @@ public class HlsProcessingService : IHlsProcessingService
                          $"-var_stream_map \"v:0,a:0,name:480p v:1,a:1,name:720p\" " +
                          $"-hls_segment_filename \"{segmentsPattern}\" " +
                          $"\"{playlistPattern}\"";
+        }
+        else
+        {
+            // ── CPU Pipeline: Software decode → scale → libx264 encode (4 threads) ──
+            ffmpegArgs = $"-y -i \"{sourceMp4Path}\" " +
+                         $"-filter_complex \"[0:v]split=2[v480][v720];[v480]scale=854:480[v1];[v720]scale=1280:720[v2]\" " +
+                         $"-map \"[v1]\" -c:v:0 libx264 -preset faster -crf 26 -threads 4 -maxrate:v:0 1.6M -bufsize:v:0 3M " +
+                         $"-map \"[v2]\" -c:v:1 libx264 -preset faster -crf 26 -threads 4 -maxrate:v:1 3.3M -bufsize:v:1 6M " +
+                         $"-map a:0 -c:a:0 aac -b:a:0 96k " +
+                         $"-map a:0 -c:a:1 aac -b:a:1 128k " +
+                         $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
+                         $"-var_stream_map \"v:0,a:0,name:480p v:1,a:1,name:720p\" " +
+                         $"-hls_segment_filename \"{segmentsPattern}\" " +
+                         $"\"{playlistPattern}\"";
+        }
 
         var ok = await RunFfmpegAsync(ffmpegArgs, assetId, duration > 0 ? duration : null, ct);
 
         if (!ok)
-            return new HlsProcessResult("", "", false, null, "FFmpeg donanım ivmeli işlemi başarısız oldu.");
+            return new HlsProcessResult("", "", false, null, $"FFmpeg {pipelineLabel} işlemi başarısız oldu.");
 
         // ── 3. Master Playlist (ABR) ──────────────────────────────────────────
         var master = new System.Text.StringBuilder();

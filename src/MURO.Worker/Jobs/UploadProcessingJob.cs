@@ -77,15 +77,37 @@ public class UploadProcessingJob : BackgroundService
 
         _logger.LogInformation("{Count} video işlenecek.", pending.Count);
 
-        await Parallel.ForEachAsync(pending, new ParallelOptions { MaxDegreeOfParallelism = 8, CancellationToken = ct }, async (asset, token) =>
+        // ── Hibrit GPU + CPU Pipeline ──────────────────────────────────────
+        // İlk 6 video → GPU (NVENC, donanımsal), geri kalanı → CPU (libx264, yazılımsal)
+        const int gpuSlots = 6;
+        const int cpuSlots = 4;
+
+        var gpuBatch = pending.Take(gpuSlots).ToList();
+        var cpuBatch = pending.Skip(gpuSlots).Take(cpuSlots).ToList();
+
+        _logger.LogInformation("Hibrit pipeline: {GpuCount} video GPU'da, {CpuCount} video CPU'da işlenecek.", gpuBatch.Count, cpuBatch.Count);
+
+        var gpuTask = Parallel.ForEachAsync(gpuBatch, new ParallelOptions { MaxDegreeOfParallelism = gpuSlots, CancellationToken = ct }, async (asset, token) =>
         {
             using var innerScope = _scopeFactory.CreateScope();
             var innerDb = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
             var innerHls = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
             var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
 
-            await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, token);
+            await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, useGpu: true, token);
         });
+
+        var cpuTask = Parallel.ForEachAsync(cpuBatch, new ParallelOptions { MaxDegreeOfParallelism = cpuSlots, CancellationToken = ct }, async (asset, token) =>
+        {
+            using var innerScope = _scopeFactory.CreateScope();
+            var innerDb = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
+            var innerHls = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
+            var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+
+            await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, useGpu: false, token);
+        });
+
+        await Task.WhenAll(gpuTask, cpuTask);
     }
 
     private async Task ProcessSingleUploadAsync(
@@ -93,6 +115,7 @@ public class UploadProcessingJob : BackgroundService
         IHlsProcessingService hlsService,
         IHttpClientFactory httpClientFactory,
         Domain.Entities.MediaAsset untrackedAsset,
+        bool useGpu,
         CancellationToken ct)
     {
         var asset = await db.MediaAssets.FindAsync(new object[] { untrackedAsset.Id }, ct);
@@ -155,7 +178,7 @@ public class UploadProcessingJob : BackgroundService
         await db.SaveChangesAsync(ct);
 
         var outDir = Path.Combine(_hlsOutputDir, asset.TenantId.ToString());
-        var result = await hlsService.ProcessAsync(asset.Id, localMp4Path, outDir, ct);
+        var result = await hlsService.ProcessAsync(asset.Id, localMp4Path, outDir, useGpu, ct);
 
         if (!result.Success)
         {
