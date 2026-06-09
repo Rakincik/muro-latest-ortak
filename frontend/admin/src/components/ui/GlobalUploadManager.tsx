@@ -169,10 +169,10 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                             </div>
                             <div>
                                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                                    {activeUploadsCount > 0 ? `${totalUploadsCount} öğeden ${completedUploadsCount}'si yüklendi` : `${completedUploadsCount} öğe yüklendi`}
+                                    {activeUploadsCount > 0 ? `${totalUploadsCount} öğeden ${completedUploadsCount}'si hazır` : `${completedUploadsCount} öğe hazır`}
                                 </h4>
                                 <p className="text-[11px] text-gray-500 dark:text-[#A0AEC0]">
-                                    {activeUploadsCount > 0 ? `Arka planda işleniyor... • Kalan Süre: ${totalEtaSeconds > 0 ? formatEta(totalEtaSeconds) : 'Hesaplanıyor...'}` : 'Tüm yüklemeler tamamlandı'}
+                                    {activeUploadsCount > 0 ? `Arka planda işleniyor... • Kalan Süre: ${totalEtaSeconds > 0 ? formatEta(totalEtaSeconds) : 'Hesaplanıyor...'}` : 'Tüm işlemler tamamlandı'}
                                 </p>
                             </div>
                         </div>
@@ -250,8 +250,8 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                                             )}
                                             {upload.status === 'success' && upload.assetStatus === 'Ready' && (
                                                 <div className="mt-1.5">
-                                                    <p className="text-[11px] text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5">
-                                                        İşlem tamamlandı ve yayına hazır
+                                                    <p className="text-[11px] text-green-600 dark:text-green-400 font-bold flex items-center gap-1.5">
+                                                        İşlem Tamamlandı ve Yayına Hazır ✓
                                                     </p>
                                                 </div>
                                             )}
