@@ -77,7 +77,11 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                     try {
                         const asset = await mediaLibraryApi.getAsset(upload.assetId!);
                         if (asset.status !== upload.assetStatus) {
-                            setUploads(prev => prev.map(t => t.id === upload.id ? { ...t, assetStatus: asset.status } : t));
+                            setUploads(prev => prev.map(t => t.id === upload.id ? { 
+                                ...t, 
+                                assetStatus: asset.status,
+                                status: asset.status === 'Ready' ? 'success' : t.status
+                            } : t));
                         }
                     } catch (e) { /* sessiz */ }
                 }
