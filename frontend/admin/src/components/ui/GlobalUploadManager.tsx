@@ -96,48 +96,70 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
         return () => clearInterval(interval);
     }, [pollingIds]);
 
-    const startUpload = async (courseId: string | null, title: string, file: File, durationSeconds: number, folderId?: string) => {
-        const id = Math.random().toString(36).substring(7);
-        const newTask: UploadTask = { id, file, title, progress: 0, status: 'pending', courseId, folderId };
-        
-        setUploads(prev => [...prev, newTask]);
-        setIsMinimized(false);
+    const processingIds = React.useRef<Set<string>>(new Set());
 
+    const doUpload = async (task: UploadTask) => {
         try {
             if (!token) throw new Error("Oturum süresi dolmuş veya geçersiz.");
 
-            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'uploading' } : t));
+            setUploads(prev => prev.map(t => t.id === task.id ? { ...t, status: 'uploading' } : t));
             
             // 1. Get presigned URL
-            const presigned = await uploadApi.getPresignedUrl(token, currentTenantId ?? "", file.name, file.type);
+            const presigned = await uploadApi.getPresignedUrl(token, currentTenantId ?? "", task.file.name, task.file.type);
 
             // 2. Upload file directly to BunnyCDN
-            await uploadApi.uploadMediaWithProgress(presigned.uploadUrl, file, (progress, etaSeconds) => {
-                setUploads(prev => prev.map(t => t.id === id ? { ...t, progress, etaSeconds } : t));
+            await uploadApi.uploadMediaWithProgress(presigned.uploadUrl, task.file, (progress, etaSeconds) => {
+                setUploads(prev => prev.map(t => t.id === task.id ? { ...t, progress, etaSeconds } : t));
             });
 
-            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'processing', progress: 100 } : t));
+            setUploads(prev => prev.map(t => t.id === task.id ? { ...t, status: 'processing', progress: 100 } : t));
 
             // 3. Create Media Asset in Database
             const asset = await mediaLibraryApi.createAsset({
-                title: title,
+                title: task.title,
                 type: 'Video',
                 filePath: presigned.publicUrl,
-                durationSeconds: durationSeconds,
-                folderId: folderId || null
+                durationSeconds: task.durationSeconds || 0,
+                folderId: task.folderId || null
             });
 
             // 4. Assign to course if courseId is provided
-            if (courseId) {
-                await mediaLibraryApi.assignMediaToCourse(courseId, asset.id);
+            if (task.courseId) {
+                await mediaLibraryApi.assignMediaToCourse(task.courseId, asset.id);
             }
 
-            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'success', assetId: asset.id, assetStatus: asset.status } : t));
+            setUploads(prev => prev.map(t => t.id === task.id ? { ...t, status: 'success', assetId: asset.id, assetStatus: asset.status } : t));
         } catch (error: any) {
             console.error("Upload failed:", error);
             const errorMessage = error instanceof Error ? error.message : "Yükleme başarısız oldu.";
-            setUploads(prev => prev.map(t => t.id === id ? { ...t, status: 'error', error: errorMessage } : t));
+            setUploads(prev => prev.map(t => t.id === task.id ? { ...t, status: 'error', error: errorMessage } : t));
+        } finally {
+            processingIds.current.delete(task.id);
+            // Durum güncellemeleri zaten setUploads'u tetikleyeceği için sıradaki dosyalar otomatik başlayacak
         }
+    };
+
+    React.useEffect(() => {
+        const maxConcurrent = 3; // Aynı anda yüklenecek maksimum dosya sayısı
+        const pendingTasks = uploads.filter(u => u.status === 'pending' && !processingIds.current.has(u.id));
+        
+        const activeCount = processingIds.current.size;
+        if (activeCount >= maxConcurrent || pendingTasks.length === 0) return;
+
+        const toStart = pendingTasks.slice(0, maxConcurrent - activeCount);
+
+        for (const task of toStart) {
+            processingIds.current.add(task.id);
+            doUpload(task);
+        }
+    }, [uploads]);
+
+    const startUpload = (courseId: string | null, title: string, file: File, durationSeconds: number, folderId?: string) => {
+        const id = Math.random().toString(36).substring(7);
+        const newTask: UploadTask = { id, file, title, progress: 0, status: 'pending', courseId, folderId, durationSeconds };
+        
+        setUploads(prev => [...prev, newTask]);
+        setIsMinimized(false);
     };
 
     const removeUpload = (id: string) => setUploads(prev => prev.filter(t => t.id !== id));
