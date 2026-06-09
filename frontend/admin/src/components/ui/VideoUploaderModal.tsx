@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { X, UploadCloud, Film, Trash2 } from 'lucide-react';
+import { X, UploadCloud, Film, Trash2, FolderOpen, Loader2 } from 'lucide-react';
 import { useGlobalUpload } from './GlobalUploadManager';
+import { mediaLibraryApi } from '@/lib/api/mediaLibrary';
 
 interface VideoUploaderModalProps {
     isOpen: boolean;
@@ -17,6 +18,7 @@ interface SelectedFile {
     file: File;
     title: string;
     durationSeconds: number;
+    relativePath?: string;
 }
 
 export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folderId }: VideoUploaderModalProps) {
@@ -24,7 +26,9 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
     const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState('');
+    const [isPreparing, setIsPreparing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const folderInputRef = useRef<HTMLInputElement>(null);
 
     if (!isOpen) return null;
 
@@ -65,12 +69,13 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
         videoFiles.forEach(file => {
             const id = Math.random().toString(36).substring(7);
             const title = file.name.replace(/\.[^/.]+$/, "");
+            const relativePath = file.webkitRelativePath || undefined;
             
             const video = document.createElement('video');
             video.preload = 'metadata';
             video.onloadedmetadata = () => {
                 window.URL.revokeObjectURL(video.src);
-                setSelectedFiles(prev => [...prev, { id, file, title, durationSeconds: Math.round(video.duration) }]);
+                setSelectedFiles(prev => [...prev, { id, file, title, durationSeconds: Math.round(video.duration), relativePath }]);
             };
             video.src = URL.createObjectURL(file);
         });
@@ -84,7 +89,7 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
         setSelectedFiles(prev => prev.map(f => f.id === id ? { ...f, title: newTitle } : f));
     };
 
-    const handleStartUpload = () => {
+    const handleStartUpload = async () => {
         if (selectedFiles.length === 0) {
             setError('Lütfen en az bir video dosyası seçin.');
             return;
@@ -96,13 +101,57 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
             return;
         }
 
-        selectedFiles.forEach(sf => {
-            startUpload(courseId || null, sf.title.trim(), sf.file, sf.durationSeconds, folderId || undefined);
-        });
+        setIsPreparing(true);
+        setError('');
 
-        onSuccess();
-        onClose();
-        setSelectedFiles([]);
+        try {
+            const folderCache: Record<string, string> = {};
+
+            const resolveFolderId = async (folders: string[], baseFolderId: string | null): Promise<string | null> => {
+                let currentParentId = baseFolderId;
+                
+                for (const folderName of folders) {
+                    const cacheKey = `${currentParentId || 'root'}-${folderName}`;
+                    if (folderCache[cacheKey]) {
+                        currentParentId = folderCache[cacheKey];
+                        continue;
+                    }
+
+                    const existingFolders = await mediaLibraryApi.getFolders(currentParentId || undefined);
+                    let found = existingFolders.find(f => f.name === folderName);
+                    
+                    if (!found) {
+                        found = await mediaLibraryApi.createFolder({ name: folderName, parentFolderId: currentParentId || undefined });
+                    }
+                    
+                    folderCache[cacheKey] = found.id;
+                    currentParentId = found.id;
+                }
+                return currentParentId;
+            };
+
+            for (const sf of selectedFiles) {
+                let targetFolderId = folderId || null;
+                
+                if (sf.relativePath) {
+                    const parts = sf.relativePath.split('/');
+                    if (parts.length > 1) {
+                        const folders = parts.slice(0, parts.length - 1);
+                        targetFolderId = await resolveFolderId(folders, folderId || null);
+                    }
+                }
+                
+                startUpload(courseId || null, sf.title.trim(), sf.file, sf.durationSeconds, targetFolderId || undefined);
+            }
+
+            onSuccess();
+            onClose();
+            setSelectedFiles([]);
+        } catch (e: any) {
+            setError('Klasör yapısı oluşturulurken bir hata oluştu: ' + e.message);
+        } finally {
+            setIsPreparing(false);
+        }
     };
 
     return (
@@ -138,9 +187,8 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`relative group border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all
-                            ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-white/10 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-white/5'}
+                        className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all
+                            ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-white/10'}
                         `}
                     >
                         <input 
@@ -151,12 +199,41 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                             multiple
                             className="hidden" 
                         />
+                        <input 
+                            type="file" 
+                            ref={folderInputRef} 
+                            onChange={handleFileChange} 
+                            accept="video/mp4,video/quicktime,video/x-matroska" 
+                            // @ts-ignore - webkitdirectory is non-standard but widely supported
+                            webkitdirectory="true"
+                            directory="true"
+                            multiple
+                            className="hidden" 
+                        />
                         
-                        <div className="p-4 rounded-full mb-4 bg-blue-50 dark:bg-blue-500/10 text-blue-500 group-hover:scale-110 transition-transform">
+                        <div className="p-4 rounded-full mb-4 bg-blue-50 dark:bg-blue-500/10 text-blue-500">
                             <UploadCloud className="w-8 h-8" />
                         </div>
-                        <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white">Videoları buraya sürükleyin</h4>
-                        <p className="text-[13px] text-gray-500 dark:text-[#A0AEC0] mt-1">veya seçmek için tıklayın (Çoklu seçim yapabilirsiniz)</p>
+                        <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-4">Videoları veya Klasörleri Sürükleyin</h4>
+                        
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-4 py-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors flex items-center gap-2"
+                            >
+                                <Film className="w-4 h-4" />
+                                Dosya Seç
+                            </button>
+                            <span className="text-sm text-gray-400">veya</span>
+                            <button 
+                                onClick={() => folderInputRef.current?.click()}
+                                className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors flex items-center gap-2"
+                            >
+                                <FolderOpen className="w-4 h-4" />
+                                Klasör Seç
+                            </button>
+                        </div>
+                        <p className="text-[12px] text-gray-500 mt-4">Alt klasörler otomatik olarak sistemde oluşturulur.</p>
                     </div>
 
                     {/* File List */}
@@ -201,11 +278,20 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                     </button>
                     <button 
                         onClick={handleStartUpload} 
-                        disabled={selectedFiles.length === 0}
+                        disabled={selectedFiles.length === 0 || isPreparing}
                         className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
                     >
-                        <UploadCloud className="w-4 h-4" />
-                        Arka Planda Yükle ({selectedFiles.length})
+                        {isPreparing ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Klasörler Oluşturuluyor...
+                            </>
+                        ) : (
+                            <>
+                                <UploadCloud className="w-4 h-4" />
+                                Arka Planda Yükle ({selectedFiles.length})
+                            </>
+                        )}
                     </button>
                 </div>
                 

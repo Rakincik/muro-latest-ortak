@@ -565,6 +565,7 @@ export default function CoursesPage() {
 
                 {vodModalOpen && detail && (
                     <VideoUploaderModal 
+                        isOpen={vodModalOpen}
                         courseId={detail.id} 
                         onClose={() => setVodModalOpen(false)} 
                         onSuccess={() => {
