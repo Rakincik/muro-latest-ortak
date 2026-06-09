@@ -101,6 +101,8 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_prod};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
       - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
       - Storage__HlsOutputDir=/app/wwwroot/hls
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=video,compute,utility
     volumes:
       - /mnt/storage/muro/hls:/app/wwwroot/hls
       - /mnt/storage/muro/uploads:/app/wwwroot/uploads
@@ -110,6 +112,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, video]
     networks:
       - muro_network
 
