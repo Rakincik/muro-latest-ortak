@@ -42,34 +42,82 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
         setIsDragging(false);
     };
 
-    const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    const traverseFileTree = async (item: any, path: string = ''): Promise<{file: File, customPath: string}[]> => {
+        return new Promise((resolve) => {
+            if (item.isFile) {
+                item.file((file: File) => {
+                    resolve([{ file, customPath: path + file.name }]);
+                });
+            } else if (item.isDirectory) {
+                const dirReader = item.createReader();
+                const entries: any[] = [];
+                const readAllEntries = () => {
+                    dirReader.readEntries(async (results: any[]) => {
+                        if (results.length === 0) {
+                            let allFiles: {file: File, customPath: string}[] = [];
+                            for (const entry of entries) {
+                                const files = await traverseFileTree(entry, path + item.name + '/');
+                                allFiles = [...allFiles, ...files];
+                            }
+                            resolve(allFiles);
+                        } else {
+                            entries.push(...results);
+                            readAllEntries();
+                        }
+                    });
+                };
+                readAllEntries();
+            } else {
+                resolve([]);
+            }
+        });
+    };
+
+    const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         setIsDragging(false);
         setError('');
 
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            handleFilesSelection(Array.from(e.dataTransfer.files));
+        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            setIsPreparing(true);
+            try {
+                let allFiles: {file: File, customPath?: string}[] = [];
+                for (let i = 0; i < e.dataTransfer.items.length; i++) {
+                    const item = e.dataTransfer.items[i].webkitGetAsEntry();
+                    if (item) {
+                        const files = await traverseFileTree(item);
+                        allFiles = [...allFiles, ...files];
+                    }
+                }
+                handleFilesSelection(allFiles);
+            } catch (err) {
+                setError('Klasörler okunurken bir hata oluştu.');
+            } finally {
+                setIsPreparing(false);
+            }
+        } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleFilesSelection(Array.from(e.dataTransfer.files).map(f => ({ file: f })));
         }
     };
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         setError('');
         if (e.target.files && e.target.files.length > 0) {
-            handleFilesSelection(Array.from(e.target.files));
+            handleFilesSelection(Array.from(e.target.files).map(f => ({ file: f })));
         }
     };
 
-    const handleFilesSelection = (files: File[]) => {
-        const videoFiles = files.filter(f => f.type.startsWith('video/'));
+    const handleFilesSelection = (files: {file: File, customPath?: string}[]) => {
+        const videoFiles = files.filter(f => f.file.type.startsWith('video/'));
         if (videoFiles.length === 0) {
             setError('Lütfen geçerli video dosyaları seçin (MP4, MOV).');
             return;
         }
         
-        videoFiles.forEach(file => {
+        videoFiles.forEach(({file, customPath}) => {
             const id = Math.random().toString(36).substring(7);
             const title = file.name.replace(/\.[^/.]+$/, "");
-            const relativePath = file.webkitRelativePath || undefined;
+            const relativePath = customPath || file.webkitRelativePath || undefined;
             
             const video = document.createElement('video');
             video.preload = 'metadata';
