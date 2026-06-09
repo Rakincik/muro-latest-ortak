@@ -25,6 +25,9 @@ public class UploadProcessingJob : BackgroundService
     private const int QsvSlots   = 2;   // UHD 770 iGPU
     private const int CpuSlots   = 6;   // libx264 (CPU'da boş kapasite)
 
+    private int _activeNvencCount = 0;
+    private int _activeQsvCount = 0;
+
     private static readonly TimeSpan IdlePollDelay = TimeSpan.FromSeconds(3);
 
     public UploadProcessingJob(
@@ -65,7 +68,7 @@ public class UploadProcessingJob : BackgroundService
             Guid? claimedId = null;
             try
             {
-                claimedId = await TryClaimNextAsync(ct);
+                claimedId = await TryClaimNextAsync(pipeline, ct);
 
                 if (claimedId == null)
                 {
@@ -73,7 +76,18 @@ public class UploadProcessingJob : BackgroundService
                     continue;
                 }
 
-                await ProcessClaimedAsync(claimedId.Value, pipeline, ct);
+                if (pipeline == "nvenc") Interlocked.Increment(ref _activeNvencCount);
+                else if (pipeline == "qsv") Interlocked.Increment(ref _activeQsvCount);
+
+                try
+                {
+                    await ProcessClaimedAsync(claimedId.Value, pipeline, ct);
+                }
+                finally
+                {
+                    if (pipeline == "nvenc") Interlocked.Decrement(ref _activeNvencCount);
+                    else if (pipeline == "qsv") Interlocked.Decrement(ref _activeQsvCount);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -90,8 +104,14 @@ public class UploadProcessingJob : BackgroundService
         }
     }
 
-    private async Task<Guid?> TryClaimNextAsync(CancellationToken ct)
+    private async Task<Guid?> TryClaimNextAsync(string pipeline, CancellationToken ct)
     {
+        // ÖNCELİKLENDİRME MANTIĞI:
+        // Eğer QSV isek ve NVENC'in hala boş slotu varsa (tam kapasite çalışmıyorsa), videoyu alma, NVENC kapsın.
+        if (pipeline == "qsv" && Volatile.Read(ref _activeNvencCount) < NvencSlots) return null;
+        
+        // Eğer CPU isek ve NVENC veya QSV'nin boş slotu varsa, videoyu alma, güçlü kartlar kapsın.
+        if (pipeline == "cpu" && (Volatile.Read(ref _activeNvencCount) < NvencSlots || Volatile.Read(ref _activeQsvCount) < QsvSlots)) return null;
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MuroDbContext>();
 
