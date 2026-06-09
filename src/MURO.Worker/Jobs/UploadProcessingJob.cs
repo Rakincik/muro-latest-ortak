@@ -76,10 +76,10 @@ public class UploadProcessingJob : BackgroundService
         }
 
         // ── Hibrit NVENC + CPU Pipeline ──────────────────────────────────────
-        // 8 video → GPU (NVENC, Sürücü Yaması Çalışmadı/Limitli), 10 video → CPU (libx264)
+        // 8 video → GPU (NVENC, Sürücü Yaması Çalışmadı/Limitli), 7 video → CPU (libx264)
         // QSV iptal edildi (Docker izin sorunları nedeniyle)
         const int nvencSlots = 8;
-        const int cpuSlots   = 10;
+        const int cpuSlots   = 7;
 
         var nvencBatch = pending.Take(nvencSlots).ToList();
         var cpuBatch   = pending.Skip(nvencSlots).Take(cpuSlots).ToList();
