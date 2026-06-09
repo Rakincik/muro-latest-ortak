@@ -11,17 +11,17 @@ namespace MURO.API.Controllers;
 public class MediaFolderController : ControllerBase
 {
     private readonly IMediaFolderService _folderService;
+    private readonly ITenantService _tenantService;
 
-    public MediaFolderController(IMediaFolderService folderService)
+    public MediaFolderController(IMediaFolderService folderService, ITenantService tenantService)
     {
         _folderService = folderService;
+        _tenantService = tenantService;
     }
 
     private Guid GetTenantId()
     {
-        var tenantIdStr = HttpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault()
-                          ?? User.FindFirst("tenantId")?.Value;
-        return Guid.TryParse(tenantIdStr, out var tid) ? tid : Guid.Empty;
+        return _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
     }
 
     [HttpGet]
