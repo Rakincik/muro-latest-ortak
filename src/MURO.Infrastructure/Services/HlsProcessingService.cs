@@ -18,6 +18,13 @@ public interface IHlsProcessingService
     Task<HlsProcessResult> ProcessAsync(Guid assetId, string sourceMp4Path, string outputBaseDir, string pipelineType, CancellationToken ct = default);
 }
 
+public class TranscodeProgress
+{
+    public int Percentage { get; set; }
+    public double Speed { get; set; }
+    public int EtaSeconds { get; set; }
+}
+
 public record HlsProcessResult(
     string MasterPlaylistPath,   // /hls/{assetId}/master.m3u8
     string ThumbnailPath,        // /hls/{assetId}/thumbnail.jpg
@@ -109,8 +116,8 @@ public class HlsProcessingService : IHlsProcessingService
             // ── GPU Pipeline: CUDA decode → scale_cuda → NVENC encode (zero-copy, MAX SPEED) ──
             ffmpegArgs = $"-y -hwaccel cuda -hwaccel_output_format cuda -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]scale_cuda=854:480[v1];[0:v]scale_cuda=1280:720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p1 -rc cbr -b:v:0 1.2M " +
-                         $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p1 -rc cbr -b:v:1 2.8M " +
+                         $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p1 -rc cbr -b:v:0 0.6M " +
+                         $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p1 -rc cbr -b:v:1 1.0M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
@@ -125,8 +132,8 @@ public class HlsProcessingService : IHlsProcessingService
                          $"-i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]format=nv12,hwupload=extra_hw_frames=64,split=2[s0][s1];" +
                          $"[s0]scale_qsv=854:480[v1];[s1]scale_qsv=1280:720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 h264_qsv -preset medium -b:v:0 1.2M " +
-                         $"-map \"[v2]\" -c:v:1 h264_qsv -preset medium -b:v:1 2.8M " +
+                         $"-map \"[v1]\" -c:v:0 h264_qsv -preset medium -rc cbr -b:v:0 0.6M " +
+                         $"-map \"[v2]\" -c:v:1 h264_qsv -preset medium -rc cbr -b:v:1 1.0M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
@@ -139,8 +146,8 @@ public class HlsProcessingService : IHlsProcessingService
             // ── CPU Pipeline: Software decode → scale → libx264 encode (6 threads, FAST) ──
             ffmpegArgs = $"-y -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]split=2[v480][v720];[v480]scale=854:480[v1];[v720]scale=1280:720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 libx264 -preset veryfast -crf 26 -threads 6 -maxrate:v:0 1.2M -bufsize:v:0 2.4M " +
-                         $"-map \"[v2]\" -c:v:1 libx264 -preset veryfast -crf 26 -threads 6 -maxrate:v:1 2.8M -bufsize:v:1 5.6M " +
+                         $"-map \"[v1]\" -c:v:0 libx264 -preset veryfast -crf 26 -threads 6 -maxrate:v:0 0.8M -bufsize:v:0 1.6M " +
+                         $"-map \"[v2]\" -c:v:1 libx264 -preset veryfast -crf 26 -threads 6 -maxrate:v:1 1.2M -bufsize:v:1 2.4M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
@@ -157,9 +164,9 @@ public class HlsProcessingService : IHlsProcessingService
         // ── 3. Master Playlist (ABR) ──────────────────────────────────────────
         var master = new System.Text.StringBuilder();
         master.AppendLine("#EXTM3U");
-        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=854x480,NAME=\"480p\"");
+        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=700000,RESOLUTION=854x480,NAME=\"480p\"");
         master.AppendLine("480p/index.m3u8");
-        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=2500000,RESOLUTION=1280x720,NAME=\"720p\"");
+        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=1200000,RESOLUTION=1280x720,NAME=\"720p\"");
         master.AppendLine("720p/index.m3u8");
         
         await File.WriteAllTextAsync(masterPath, master.ToString(), ct);
