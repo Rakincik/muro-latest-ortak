@@ -80,15 +80,19 @@ export default function MediaLibraryPage() {
         let shouldReload = false;
         
         const currentCompletedCount = uploads.filter(u => u.status === 'success' && u.assetId).length;
-        if (currentCompletedCount > completedCountRef.current) {
+        if (currentCompletedCount !== completedCountRef.current) {
+            if (currentCompletedCount > completedCountRef.current) {
+                shouldReload = true;
+            }
             completedCountRef.current = currentCompletedCount;
-            shouldReload = true;
         }
 
         const currentReadyCount = uploads.filter(u => u.status === 'success' && u.assetStatus === 'Ready').length;
-        if (currentReadyCount > readyCountRef.current) {
+        if (currentReadyCount !== readyCountRef.current) {
+            if (currentReadyCount > readyCountRef.current) {
+                shouldReload = true;
+            }
             readyCountRef.current = currentReadyCount;
-            shouldReload = true;
         }
 
         // Also reload when an asset starts 'Processing' so the UI updates from 'Uploading' to 'Processing'
