@@ -78,8 +78,8 @@ public class UploadProcessingJob : BackgroundService
         _logger.LogInformation("{Count} video işlenecek.", pending.Count);
 
         // ── Hibrit NVENC + QSV + CPU Pipeline ──────────────────────────────────────
-        // 6 video → GPU (NVENC, NVIDIA), 4 video → iGPU (QSV, Intel), 4 video → CPU (libx264)
-        const int nvencSlots = 6;
+        // 8 video → GPU (NVENC, NVIDIA), 4 video → iGPU (QSV, Intel), 4 video → CPU (libx264)
+        const int nvencSlots = 8;
         const int qsvSlots   = 4;
         const int cpuSlots   = 4;
 
