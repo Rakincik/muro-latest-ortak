@@ -31,9 +31,11 @@ RUN dotnet publish src/MURO.Worker/MURO.Worker.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Install FFmpeg for HLS video transcoding (Since Worker does heavy lifting)
+# Install FFmpeg and Intel QSV Hardware Drivers
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg curl && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg curl \
+    intel-media-va-driver-non-free vainfo libmfx1 && \
     rm -rf /var/lib/apt/lists/*
 
 # Create required directories
