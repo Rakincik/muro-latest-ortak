@@ -69,8 +69,10 @@ services:
       - Bbb__DefaultAttendeePw=attendee123
       - Bbb__DefaultModeratorPw=moderator123
       - Bbb__Defaults__LogoutURL=${SITE_URL:-https://yourdomain.com}/admin/dashboard/courses
-      - Cors__AllowedOrigins__0=${SITE_URL:-https://yourdomain.com}
-      - Tenant__BaseDomain=${BASE_DOMAIN:-yourdomain.com}
+      - Cors__AllowedOrigins__0=${SITE_URL:-http://192.168.1.115:3001}
+      - Cors__AllowedOrigins__1=http://192.168.1.115:3002
+      - Cors__AllowedOrigins__2=http://localhost:3001
+      - Tenant__BaseDomain=${BASE_DOMAIN:-192.168.1.115}
       - Gemini__ApiKey=${GEMINI_API_KEY:-}
       - Webhook__Secret=${WEBHOOK_SECRET:-CHANGE_THIS_IN_PRODUCTION}
     volumes:
