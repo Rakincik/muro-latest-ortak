@@ -21,9 +21,9 @@ public class UploadProcessingJob : BackgroundService
     private readonly ILogger<UploadProcessingJob> _logger;
     private readonly string _hlsOutputDir;
 
-    private const int NvencSlots = 6;   // RTX 3090 (enc bloğu ~%100 tavan)
+    private const int NvencSlots = 3;   // RTX 3090 (enc bloğu ~%100 tavan)
     private const int QsvSlots   = 2;   // UHD 770 iGPU
-    private const int CpuSlots   = 4;   // libx264 (CPU'da boş kapasite)
+    private const int CpuSlots   = 6;   // libx264 (CPU'da boş kapasite)
 
     private static readonly TimeSpan IdlePollDelay = TimeSpan.FromSeconds(3);
 
