@@ -15,7 +15,7 @@ namespace MURO.Infrastructure.Services;
 public interface IHlsProcessingService
 {
     Task<HlsProcessResult> ProcessAsync(Guid assetId, string sourceMp4Path, string outputBaseDir, CancellationToken ct = default);
-    Task<HlsProcessResult> ProcessAsync(Guid assetId, string sourceMp4Path, string outputBaseDir, bool useGpu, CancellationToken ct = default);
+    Task<HlsProcessResult> ProcessAsync(Guid assetId, string sourceMp4Path, string outputBaseDir, string pipelineType, CancellationToken ct = default);
 }
 
 public record HlsProcessResult(
@@ -41,10 +41,10 @@ public class HlsProcessingService : IHlsProcessingService
 
     public async Task<HlsProcessResult> ProcessAsync(
         Guid assetId, string sourceMp4Path, string outputBaseDir, CancellationToken ct = default)
-        => await ProcessAsync(assetId, sourceMp4Path, outputBaseDir, useGpu: true, ct);
+        => await ProcessAsync(assetId, sourceMp4Path, outputBaseDir, pipelineType: "nvenc", ct);
 
     public async Task<HlsProcessResult> ProcessAsync(
-        Guid assetId, string sourceMp4Path, string outputBaseDir, bool useGpu, CancellationToken ct = default)
+        Guid assetId, string sourceMp4Path, string outputBaseDir, string pipelineType, CancellationToken ct = default)
     {
         var assetDir = Path.Combine(outputBaseDir, assetId.ToString());
         Directory.CreateDirectory(Path.Combine(assetDir, "480p"));
@@ -90,7 +90,12 @@ public class HlsProcessingService : IHlsProcessingService
         }
 
         // ── 2. HLS Transcoding ───────────────────────────────────────────────
-        var pipelineLabel = useGpu ? "GPU/NVENC" : "CPU/libx264";
+        var pipelineLabel = pipelineType switch
+        {
+            "nvenc" => "GPU/NVENC",
+            "qsv"   => "GPU/Intel QSV",
+            _       => "CPU/libx264"
+        };
         _logger.LogInformation("HLS işleniyor ({Pipeline} ile) → {AssetId}", pipelineLabel, assetId);
         
         // var_stream_map kullandığımız için ffmpeg dinamik klasör oluşturacaktır (%v)
@@ -99,13 +104,27 @@ public class HlsProcessingService : IHlsProcessingService
         
         string ffmpegArgs;
         
-        if (useGpu)
+        if (pipelineType == "nvenc")
         {
             // ── GPU Pipeline: CUDA decode → scale_cuda → NVENC encode (zero-copy, MAX SPEED) ──
             ffmpegArgs = $"-y -hwaccel cuda -hwaccel_output_format cuda -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]scale_cuda=854:480[v1];[0:v]scale_cuda=1280:720[v2]\" " +
                          $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p1 -rc cbr -b:v:0 1.2M " +
                          $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p1 -rc cbr -b:v:1 2.8M " +
+                         $"-map a:0 -c:a:0 aac -b:a:0 96k " +
+                         $"-map a:0 -c:a:1 aac -b:a:1 128k " +
+                         $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
+                         $"-var_stream_map \"v:0,a:0,name:480p v:1,a:1,name:720p\" " +
+                         $"-hls_segment_filename \"{segmentsPattern}\" " +
+                         $"\"{playlistPattern}\"";
+        }
+        else if (pipelineType == "qsv")
+        {
+            // ── QSV Pipeline: Intel iGPU Hardware Decode & Encode ──
+            ffmpegArgs = $"-y -hwaccel qsv -hwaccel_output_format qsv -i \"{sourceMp4Path}\" " +
+                         $"-filter_complex \"[0:v]vpp_qsv=w=854:h=480[v1];[0:v]vpp_qsv=w=1280:h=720[v2]\" " +
+                         $"-map \"[v1]\" -c:v:0 h264_qsv -preset faster -b:v:0 1.2M " +
+                         $"-map \"[v2]\" -c:v:1 h264_qsv -preset faster -b:v:1 2.8M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
