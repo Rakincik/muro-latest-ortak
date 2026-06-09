@@ -47,7 +47,8 @@ export const getAsset = async (id: string): Promise<MediaAssetDto> => {
     return fetchApi(`/media/${id}`);
 };
 
-export const getTranscodeProgress = async (ids: string[]): Promise<Record<string, number>> => {
+export interface TranscodeProgress { percentage: number; speed: number; etaSeconds: number; }
+export const getTranscodeProgress = async (ids: string[]): Promise<Record<string, TranscodeProgress>> => {
     if (!ids || ids.length === 0) return {};
     return fetchApi(`/media/transcode-progress?ids=${ids.join(',')}`);
 };

@@ -19,6 +19,7 @@ interface UploadTask {
     assetId?: string;
     assetStatus?: string;
     transcodeProgress?: number;
+    speed?: number;
 }
 
 interface GlobalUploadContextType {
@@ -172,23 +173,34 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                                             <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{upload.title}</p>
                                             {upload.status === 'uploading' && (
                                                 <div className="mt-1.5 h-1 w-full bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${upload.progress}%` }} />
+                                                    <div className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${upload.progress}%` }} />
                                                 </div>
                                             )}
                                             {upload.status === 'processing' && <p className="text-[11px] text-purple-500 mt-0.5">Sisteme kaydediliyor...</p>}
                                             {upload.status === 'success' && upload.assetStatus !== 'Ready' && upload.assetStatus !== 'Failed' && (
-                                                <div className="mt-1">
+                                                <div className="mt-1.5">
                                                     <div className="flex justify-between items-center mb-1">
-                                                        <p className="text-[11px] text-green-600 dark:text-green-400 font-medium">
-                                                            {upload.transcodeProgress ? 'Arka planda işleniyor' : 'Yüklendi • İşleme hazırlanıyor'}
+                                                        <p className="text-[11px] text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1">
+                                                            <span className="relative flex h-1.5 w-1.5">
+                                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-500"></span>
+                                                            </span>
+                                                            {(upload.transcodeProgress ?? 0) > 0 ? 'GPU ile işleniyor' : 'Kuyrukta • başlıyor'}
                                                         </p>
-                                                        {upload.transcodeProgress && <span className="text-[10px] font-bold text-green-600 dark:text-green-400">%{upload.transcodeProgress}</span>}
+                                                        {(upload.transcodeProgress ?? 0) > 0 && (
+                                                            <span className="flex items-center gap-1.5 tabular-nums">
+                                                                {upload.speed && upload.speed > 0 && <span className="text-[10px] text-gray-400 dark:text-gray-500">{upload.speed}x</span>}
+                                                                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">%{upload.transcodeProgress}</span>
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    {upload.transcodeProgress && (
-                                                        <div className="h-1 w-full bg-green-100 dark:bg-green-900/30 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-green-500 rounded-full transition-all duration-300" style={{ width: `${upload.transcodeProgress}%` }} />
-                                                        </div>
-                                                    )}
+                                                    <div className="h-1.5 w-full bg-purple-100 dark:bg-purple-900/30 rounded-full overflow-hidden">
+                                                        {(upload.transcodeProgress ?? 0) > 0 ? (
+                                                            <div className="h-full bg-purple-500 rounded-full transition-all duration-700 ease-out" style={{ width: `${upload.transcodeProgress}%` }} />
+                                                        ) : (
+                                                            <div className="h-full w-1/3 bg-purple-500 rounded-full animate-[indeterminate_1.2s_ease-in-out_infinite]" />
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                             {upload.status === 'success' && upload.assetStatus === 'Ready' && <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">İşlem tamamlandı, yayına hazır ✨</p>}
