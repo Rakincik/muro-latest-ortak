@@ -46,50 +46,55 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
     const { currentTenantId, token } = useAuth();
 
     // Poll for asset status if there are any uploads in "success" state but not "Ready"
+    const pollingIds = uploads
+        .filter(u => u.status === 'success' && u.assetId && u.assetStatus !== 'Ready' && u.assetStatus !== 'Failed')
+        .map(u => u.assetId!)
+        .join(',');
+
     React.useEffect(() => {
-        const pollingUploads = uploads.filter(u => u.status === 'success' && u.assetId && u.assetStatus !== 'Ready');
-        if (pollingUploads.length === 0) return;
+        if (!pollingIds) return;
 
         let tick = 0;
         const interval = setInterval(async () => {
             tick++;
-            const idsToPoll = pollingUploads.map(u => u.assetId!);
+            const idsToPoll = pollingIds.split(',');
 
             // Her turda SADECE progress (tek toplu istek)
             try {
-                if (idsToPoll.length > 0) {
-                    const progressDict = await mediaLibraryApi.getTranscodeProgress(idsToPoll);
-                    setUploads(prev => prev.map(t => {
-                        if (t.assetId && progressDict[t.assetId] !== undefined) {
-                            const d: any = progressDict[t.assetId];
-                            return { ...t, transcodeProgress: (d.percentage ?? d.Percentage ?? 0), speed: (d.speed ?? d.Speed ?? 0), etaSeconds: (d.etaSeconds ?? d.EtaSeconds ?? 0) };
-                        }
-                        return t;
-                    }));
-                }
+                const progressDict = await mediaLibraryApi.getTranscodeProgress(idsToPoll);
+                setUploads(prev => prev.map(t => {
+                    if (t.assetId && progressDict[t.assetId] !== undefined) {
+                        const d: any = progressDict[t.assetId];
+                        return { ...t, transcodeProgress: (d.percentage ?? d.Percentage ?? 0), speed: (d.speed ?? d.Speed ?? 0), etaSeconds: (d.etaSeconds ?? d.EtaSeconds ?? 0) };
+                    }
+                    return t;
+                }));
             } catch (e) {
                 console.error("Failed to fetch transcode progress", e);
             }
 
             // Durum kontrolü: Her 10 saniyede bir (2 turda bir), BÜTÜN bekleyen assetlerin durumunu kontrol et
-            if (tick % 2 === 0 && pollingUploads.length > 0) {
-                for (const upload of pollingUploads) {
+            if (tick % 2 === 0) {
+                for (const assetId of idsToPoll) {
                     try {
-                        const asset = await mediaLibraryApi.getAsset(upload.assetId!);
-                        if (asset.status !== upload.assetStatus) {
-                            setUploads(prev => prev.map(t => t.id === upload.id ? { 
-                                ...t, 
-                                assetStatus: asset.status,
-                                status: asset.status === 'Ready' ? 'success' : t.status
-                            } : t));
-                        }
+                        const asset = await mediaLibraryApi.getAsset(assetId);
+                        setUploads(prev => prev.map(t => {
+                            if (t.assetId === assetId && t.assetStatus !== asset.status) {
+                                return { 
+                                    ...t, 
+                                    assetStatus: asset.status,
+                                    status: asset.status === 'Ready' ? 'success' : t.status
+                                };
+                            }
+                            return t;
+                        }));
                     } catch (e) { /* sessiz */ }
                 }
             }
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [uploads]);
+    }, [pollingIds]);
 
     const startUpload = async (courseId: string | null, title: string, file: File, durationSeconds: number, folderId?: string) => {
         const id = Math.random().toString(36).substring(7);
