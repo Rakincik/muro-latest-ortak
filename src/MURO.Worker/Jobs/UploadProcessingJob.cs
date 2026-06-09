@@ -10,18 +10,22 @@ using MURO.Infrastructure.Services;
 namespace MURO.Worker.Jobs;
 
 /// <summary>
-/// Admin panelden yüklenen MP4 videoları işler:
-/// 1. MediaAsset WHERE Status=Uploading AND FilePath!=null tarar
-/// 2. HlsProcessingService ile 480p+720p HLS'e çevirir
-/// 3. Thumbnail üretir
-/// 4. Orijinal MP4'ü siler
-/// 5. MediaAsset.HlsPath doldurur, Status = Ready yapar
+/// Sürekli-akan transcode kuyruğu.
+/// Her encoder slotu bağımsız bir consumer'dır; bir iş bitince
+/// hiç beklemeden kuyruktan yenisini atomik olarak çeker.
+/// NVENC / QSV / CPU hatları birbirini ASLA beklemez.
 /// </summary>
 public class UploadProcessingJob : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<UploadProcessingJob> _logger;
     private readonly string _hlsOutputDir;
+
+    private const int NvencSlots = 6;   // RTX 3090 (enc bloğu ~%100 tavan)
+    private const int QsvSlots   = 2;   // UHD 770 iGPU
+    private const int CpuSlots   = 4;   // libx264 (CPU'da boş kapasite)
+
+    private static readonly TimeSpan IdlePollDelay = TimeSpan.FromSeconds(3);
 
     public UploadProcessingJob(
         IServiceScopeFactory scopeFactory,
@@ -36,121 +40,87 @@ public class UploadProcessingJob : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("UploadProcessingJob başlatıldı.");
+        _logger.LogInformation(
+            "UploadProcessingJob (sürekli akış) başlatıldı. NVENC={Nv} QSV={Qsv} CPU={Cpu} consumer.",
+            NvencSlots, QsvSlots, CpuSlots);
 
-        while (!stoppingToken.IsCancellationRequested)
+        var consumers = new List<Task>();
+
+        for (int i = 0; i < NvencSlots; i++)
+            consumers.Add(RunConsumerLoopAsync("nvenc", i, stoppingToken));
+
+        for (int i = 0; i < QsvSlots; i++)
+            consumers.Add(RunConsumerLoopAsync("qsv", i, stoppingToken));
+
+        for (int i = 0; i < CpuSlots; i++)
+            consumers.Add(RunConsumerLoopAsync("cpu", i, stoppingToken));
+
+        await Task.WhenAll(consumers);
+    }
+
+    private async Task RunConsumerLoopAsync(string pipeline, int slotIndex, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
         {
+            Guid? claimedId = null;
             try
             {
-                await ProcessPendingUploadsAsync(stoppingToken);
+                claimedId = await TryClaimNextAsync(ct);
+
+                if (claimedId == null)
+                {
+                    await Task.Delay(IdlePollDelay, ct);
+                    continue;
+                }
+
+                await ProcessClaimedAsync(claimedId.Value, pipeline, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "UploadProcessingJob döngüsünde beklenmedik hata.");
+                _logger.LogError(ex,
+                    "[{Pipeline}#{Slot}] consumer döngüsünde hata. AssetId: {Id}",
+                    pipeline, slotIndex, claimedId);
+                try { await Task.Delay(TimeSpan.FromSeconds(1), ct); }
+                catch (OperationCanceledException) { break; }
             }
-
-            // Her 15 saniyede bir kontrol et (test için hızlandırıldı, canlıda 2 dk olabilir)
-            await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
         }
     }
 
-    private async Task ProcessPendingUploadsAsync(CancellationToken ct)
+    private async Task<Guid?> TryClaimNextAsync(CancellationToken ct)
     {
-        using var scope  = _scopeFactory.CreateScope();
-        var db           = scope.ServiceProvider.GetRequiredService<MuroDbContext>();
-        var hlsService   = scope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
-        var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<MuroDbContext>();
 
-        // Yüklendi ama henüz HLS'e çevrilmemiş varlıklar
-        var pending = await db.MediaAssets
-            .Where(a =>
-                a.Status == MediaStatus.Uploading &&
-                a.FilePath != null &&
-                a.HlsPath == null)
-            .ToListAsync(ct);
+        var candidateId = await db.MediaAssets
+            .Where(a => a.Status == MediaStatus.Uploading
+                     && a.FilePath != null
+                     && a.HlsPath == null)
+            .OrderBy(a => a.CreatedAt)
+            .Select(a => (Guid?)a.Id)
+            .FirstOrDefaultAsync(ct);
 
-        if (!pending.Any())
-        {
-            _logger.LogDebug("İşlenecek yükleme yok.");
-            return;
-        }
+        if (candidateId == null)
+            return null;
 
-        // ── Hibrit NVENC + CPU Pipeline ──────────────────────────────────────
-        // 8 video → GPU (NVENC, NVIDIA limit), 10 video → CPU (libx264)
-        // QSV iptal edildi (Docker izin sorunları nedeniyle)
-// ── Tam Dinamik İki-Encoder Dağıtımı: NVENC (3090) + QSV (UHD 770) ────
-        // Her asset, slotu boşalan encoder'a akar. NVENC daha hızlı bitirdiği
-        // için slotunu daha sık boşaltır → otomatik olarak daha çok iş alır.
-        const int nvencSlots = 6;   // RTX 3090 eşzamanlı iş
-        const int qsvSlots   = 2;   // UHD 770 eşzamanlı iş
+        var affected = await db.MediaAssets
+            .Where(a => a.Id == candidateId.Value && a.Status == MediaStatus.Uploading)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.Status, MediaStatus.Processing), ct);
 
-        using var nvencPool = new SemaphoreSlim(nvencSlots, nvencSlots);
-        using var qsvPool   = new SemaphoreSlim(qsvSlots, qsvSlots);
-
-        _logger.LogInformation(
-            "Dinamik dağıtım: {Total} video | NVENC={Nv} slot, QSV={Qsv} slot",
-            pending.Count, nvencSlots, qsvSlots);
-
-        var tasks = pending.Select(async asset =>
-        {
-            // Hangi encoder boşsa onu kap. İkisi de doluysa ilk boşalanı bekle.
-            string pipeline;
-            if (await nvencPool.WaitAsync(0, ct))
-            {
-                pipeline = "nvenc";
-            }
-            else if (await qsvPool.WaitAsync(0, ct))
-            {
-                pipeline = "qsv";
-            }
-            else
-            {
-                // İkisi de dolu: ilk boşalan slotu bekle (NVENC'i önceliklendir)
-                var nvWait = nvencPool.WaitAsync(ct);
-                var qsWait = qsvPool.WaitAsync(ct);
-                var winner = await Task.WhenAny(nvWait, qsWait);
-
-                if (winner == nvWait)
-                {
-                    pipeline = "nvenc";
-                    // QSV beklemesi hâlâ sürüyorsa onu da tamamlanınca geri bırak
-                    _ = qsWait.ContinueWith(t => { if (t.Status == TaskStatus.RanToCompletion) qsvPool.Release(); }, TaskScheduler.Default);
-                }
-                else
-                {
-                    pipeline = "qsv";
-                    _ = nvWait.ContinueWith(t => { if (t.Status == TaskStatus.RanToCompletion) nvencPool.Release(); }, TaskScheduler.Default);
-                }
-            }
-
-            try
-            {
-                using var innerScope = _scopeFactory.CreateScope();
-                var innerDb   = innerScope.ServiceProvider.GetRequiredService<MuroDbContext>();
-                var innerHls  = innerScope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
-                var innerHttp = innerScope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-
-                await ProcessSingleUploadAsync(innerDb, innerHls, innerHttp, asset, pipeline, ct);
-            }
-            finally
-            {
-                if (pipeline == "nvenc") nvencPool.Release();
-                else                     qsvPool.Release();
-            }
-        });
-
-        await Task.WhenAll(tasks);
+        return affected == 1 ? candidateId : null;
     }
 
-    private async Task ProcessSingleUploadAsync(
-        MuroDbContext db,
-        IHlsProcessingService hlsService,
-        IHttpClientFactory httpClientFactory,
-        Domain.Entities.MediaAsset untrackedAsset,
-        string pipelineType,
-        CancellationToken ct)
+    private async Task ProcessClaimedAsync(Guid assetId, string pipeline, CancellationToken ct)
     {
-        var asset = await db.MediaAssets.FindAsync(new object[] { untrackedAsset.Id }, ct);
+        using var scope = _scopeFactory.CreateScope();
+        var db          = scope.ServiceProvider.GetRequiredService<MuroDbContext>();
+        var hls         = scope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
+        var httpFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+
+        var asset = await db.MediaAssets.FindAsync(new object[] { assetId }, ct);
         if (asset == null) return;
 
         string localMp4Path = asset.FilePath!;
@@ -161,14 +131,13 @@ public class UploadProcessingJob : BackgroundService
             var uri = new Uri(asset.FilePath);
             var fileName = Path.GetFileName(uri.LocalPath);
             localMp4Path = Path.Combine("wwwroot", "uploads", fileName);
-            _logger.LogInformation("Lokal dosya tespit edildi, indirme atlanıyor: {Path}", localMp4Path);
+            _logger.LogInformation("[{Pipeline}] Lokal dosya: {Path}", pipeline, localMp4Path);
         }
-        else if (asset.FilePath!.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
-            asset.FilePath!.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        else if (asset.FilePath!.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                 asset.FilePath!.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogInformation("URL tespit edildi, video indiriliyor: {Url}", asset.FilePath);
-            var client = httpClientFactory.CreateClient("bbb-download");
-            
+            _logger.LogInformation("[{Pipeline}] Video indiriliyor: {Url}", pipeline, asset.FilePath);
+            var client = httpFactory.CreateClient("bbb-download");
             try
             {
                 var response = await client.GetAsync(asset.FilePath, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -176,90 +145,73 @@ public class UploadProcessingJob : BackgroundService
 
                 var tempDir = Path.Combine(Path.GetTempPath(), "muro_processing");
                 Directory.CreateDirectory(tempDir);
-                
                 localMp4Path = Path.Combine(tempDir, $"{Guid.NewGuid():N}.mp4");
-                
+
                 using var fs = new FileStream(localMp4Path, FileMode.Create, FileAccess.Write, FileShare.None);
                 await response.Content.CopyToAsync(fs, ct);
-                
                 isDownloaded = true;
-                _logger.LogInformation("Video indirildi: {Path}", localMp4Path);
+                _logger.LogInformation("[{Pipeline}] İndirildi: {Path}", pipeline, localMp4Path);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Video indirilirken hata oluştu: {Url}", asset.FilePath);
-                asset.Status = MediaStatus.Failed;
-                await UpdateRecordingStatusAsync(db, asset.Id, MediaStatus.Failed, ct);
-                await db.SaveChangesAsync(ct);
+                _logger.LogError(ex, "[{Pipeline}] İndirme hatası: {Url}", pipeline, asset.FilePath);
+                await MarkFailedAsync(db, asset, ct);
                 return;
             }
         }
         else if (!File.Exists(localMp4Path))
         {
-            _logger.LogWarning("Dosya bulunamadı: {Path} | AssetId: {Id}", localMp4Path, asset.Id);
-            asset.Status = MediaStatus.Failed;
-            await UpdateRecordingStatusAsync(db, asset.Id, MediaStatus.Failed, ct);
-            await db.SaveChangesAsync(ct);
+            _logger.LogWarning("[{Pipeline}] Dosya yok: {Path} | {Id}", pipeline, localMp4Path, asset.Id);
+            await MarkFailedAsync(db, asset, ct);
             return;
         }
 
-        _logger.LogInformation("Video işleniyor → AssetId: {Id} | Kaynak: {Path}", asset.Id, localMp4Path);
-
-        // Processing durumuna al (çift işlem önlemi)
-        asset.Status = MediaStatus.Processing;
-        await db.SaveChangesAsync(ct);
+        _logger.LogInformation("[{Pipeline}] İşleniyor → {Id} | {Path}", pipeline, asset.Id, localMp4Path);
 
         var outDir = Path.Combine(_hlsOutputDir, asset.TenantId.ToString());
-        var result = await hlsService.ProcessAsync(asset.Id, localMp4Path, outDir, pipelineType, ct);
+        var result = await hls.ProcessAsync(asset.Id, localMp4Path, outDir, pipeline, ct);
 
         if (!result.Success)
         {
-            _logger.LogError("HLS dönüşümü başarısız. AssetId: {Id} | Hata: {Err}", asset.Id, result.ErrorMessage);
-            asset.Status = MediaStatus.Failed;
-            await UpdateRecordingStatusAsync(db, asset.Id, MediaStatus.Failed, ct);
-            await db.SaveChangesAsync(ct);
-            if (isDownloaded) File.Delete(localMp4Path);
+            _logger.LogError("[{Pipeline}] HLS başarısız → {Id} | {Err}", pipeline, asset.Id, result.ErrorMessage);
+            await MarkFailedAsync(db, asset, ct);
+            if (isDownloaded && File.Exists(localMp4Path)) File.Delete(localMp4Path);
             return;
         }
 
-        // İndirilen temp dosyasını veya yerel dosyayı sil (storage tasarrufu)
         try
         {
-            File.Delete(localMp4Path);
-            _logger.LogInformation("Orijinal/Temp MP4 silindi: {Path}", localMp4Path);
-            
-            // Eğer yerel dosya ise ve API'ın yüklediği upload klasöründeyse o asıl dosyayı da silelim (API URL'sinden)
-            // Biz indirdik ama orijinal sunucuda duruyor olabilir. 
-            // Şimdilik sadece kullandığımız dosyayı siliyoruz.
+            if (File.Exists(localMp4Path)) File.Delete(localMp4Path);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Orijinal/Temp dosya silinemedi: {Path}", localMp4Path);
+            _logger.LogWarning(ex, "[{Pipeline}] Temp silinemedi: {Path}", pipeline, localMp4Path);
         }
 
-        // MediaAsset güncelle
-        asset.FilePath      = null;                      // Orijinal kaynak bırakılabilir veya null yapılabilir, mevcut kodda null
+        asset.FilePath      = null;
         asset.HlsPath       = $"/hls/{asset.TenantId}/{asset.Id}/master.m3u8";
         asset.ThumbnailPath = string.IsNullOrEmpty(result.ThumbnailPath) ? null : $"/hls/{asset.TenantId}/{asset.Id}/thumbnail.jpg";
         if (result.DurationSeconds.HasValue) asset.DurationSeconds = result.DurationSeconds;
-        asset.Status        = MediaStatus.Ready;
+        asset.Status = MediaStatus.Ready;
 
         await UpdateRecordingStatusAsync(db, asset.Id, MediaStatus.Ready, ct);
         await db.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Video işlendi ✓ AssetId: {Id} | HlsPath: {Path}",
-            asset.Id, result.MasterPlaylistPath);
+        _logger.LogInformation("[{Pipeline}] Tamamlandı ✓ {Id}", pipeline, asset.Id);
+    }
+
+    private async Task MarkFailedAsync(MuroDbContext db, Domain.Entities.MediaAsset asset, CancellationToken ct)
+    {
+        asset.Status = MediaStatus.Failed;
+        await UpdateRecordingStatusAsync(db, asset.Id, MediaStatus.Failed, ct);
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task UpdateRecordingStatusAsync(MuroDbContext db, Guid mediaAssetId, MediaStatus newStatus, CancellationToken ct)
     {
         var recording = await db.SessionRecordings
             .FirstOrDefaultAsync(r => r.MediaAssetId == mediaAssetId, ct);
-            
         if (recording != null)
-        {
             recording.Status = newStatus;
-        }
     }
 }
