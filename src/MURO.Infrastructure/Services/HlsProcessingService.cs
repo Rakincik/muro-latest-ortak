@@ -101,11 +101,11 @@ public class HlsProcessingService : IHlsProcessingService
         
         if (useGpu)
         {
-            // ── GPU Pipeline: CUDA decode → scale_cuda → NVENC encode (zero-copy) ──
+            // ── GPU Pipeline: CUDA decode → scale_cuda → NVENC encode (zero-copy, MAX SPEED) ──
             ffmpegArgs = $"-y -hwaccel cuda -hwaccel_output_format cuda -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]scale_cuda=854:480[v1];[0:v]scale_cuda=1280:720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p4 -tune hq -rc vbr -cq 28 -b:v:0 0 -maxrate:v:0 1.6M -bufsize:v:0 3M " +
-                         $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p4 -tune hq -rc vbr -cq 28 -b:v:1 0 -maxrate:v:1 3.3M -bufsize:v:1 6M " +
+                         $"-map \"[v1]\" -c:v:0 h264_nvenc -preset p1 -rc cbr -b:v:0 1.2M " +
+                         $"-map \"[v2]\" -c:v:1 h264_nvenc -preset p1 -rc cbr -b:v:1 2.8M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
@@ -115,11 +115,11 @@ public class HlsProcessingService : IHlsProcessingService
         }
         else
         {
-            // ── CPU Pipeline: Software decode → scale → libx264 encode (4 threads) ──
+            // ── CPU Pipeline: Software decode → scale → libx264 encode (6 threads, FAST) ──
             ffmpegArgs = $"-y -i \"{sourceMp4Path}\" " +
                          $"-filter_complex \"[0:v]split=2[v480][v720];[v480]scale=854:480[v1];[v720]scale=1280:720[v2]\" " +
-                         $"-map \"[v1]\" -c:v:0 libx264 -preset faster -crf 26 -threads 4 -maxrate:v:0 1.6M -bufsize:v:0 3M " +
-                         $"-map \"[v2]\" -c:v:1 libx264 -preset faster -crf 26 -threads 4 -maxrate:v:1 3.3M -bufsize:v:1 6M " +
+                         $"-map \"[v1]\" -c:v:0 libx264 -preset veryfast -crf 26 -threads 6 -maxrate:v:0 1.2M -bufsize:v:0 2.4M " +
+                         $"-map \"[v2]\" -c:v:1 libx264 -preset veryfast -crf 26 -threads 6 -maxrate:v:1 2.8M -bufsize:v:1 5.6M " +
                          $"-map a:0 -c:a:0 aac -b:a:0 96k " +
                          $"-map a:0 -c:a:1 aac -b:a:1 128k " +
                          $"-f hls -hls_time 6 -hls_playlist_type vod -hls_flags independent_segments " +
