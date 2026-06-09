@@ -230,7 +230,13 @@ public class HlsProcessingService : IHlsProcessingService
                                             var currentTime = h * 3600 + m * 60 + s;
                                             var percentage = (int)Math.Clamp((currentTime / totalDuration.Value) * 100, 0, 100);
                                             
-                                            await _cache.SetAsync($"muro:upload:progress:{assetId}", percentage, TimeSpan.FromHours(1));
+                                            double speed = 0;
+                                            var sm = System.Text.RegularExpressions.Regex.Match(line, @"speed=\s*([\d.]+)x");
+                                            if (sm.Success) double.TryParse(sm.Groups[1].Value, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out speed);
+                                            int etaSeconds = 0;
+                                            if (speed > 0.01) { var rem = totalDuration.Value - currentTime; etaSeconds = (int)Math.Max(0, rem / speed); }
+                                            var payload = new TranscodeProgress { Percentage = percentage, Speed = Math.Round(speed, 1), EtaSeconds = etaSeconds };
+                                            await _cache.SetAsync($"muro:upload:progress:{assetId}", payload, TimeSpan.FromHours(1));
                                         }
                                         catch { }
                                     }

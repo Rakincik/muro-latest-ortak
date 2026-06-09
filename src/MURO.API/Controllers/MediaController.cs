@@ -64,18 +64,17 @@ public class MediaController : ControllerBase
         => Ok(await _mediaService.GetAssetsAsync(GetTenantId(), page, pageSize, courseId, null, null, folderId, excludeRecordings: true));
 
     [HttpGet("transcode-progress")]
-    public async Task<ActionResult<Dictionary<Guid, int>>> GetTranscodeProgress([FromQuery] string ids, [FromServices] ICacheService cache)
+    public async Task<ActionResult<Dictionary<Guid, MURO.Infrastructure.Services.TranscodeProgress>>> GetTranscodeProgress([FromQuery] string ids, [FromServices] ICacheService cache)
     {
-        if (string.IsNullOrEmpty(ids)) return Ok(new Dictionary<Guid, int>());
+        var dict = new Dictionary<Guid, MURO.Infrastructure.Services.TranscodeProgress>();
+        if (string.IsNullOrEmpty(ids)) return Ok(dict);
         var idList = ids.Split(',', StringSplitOptions.RemoveEmptyEntries)
                         .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
                         .Where(g => g != Guid.Empty).ToList();
-        
-        var dict = new Dictionary<Guid, int>();
         foreach(var id in idList)
         {
-            var p = await cache.GetAsync<int>($"muro:upload:progress:{id}");
-            if (p > 0) dict[id] = p;
+            var pr = await cache.GetAsync<MURO.Infrastructure.Services.TranscodeProgress>($"muro:upload:progress:{id}");
+            if (pr != null && pr.Percentage > 0) dict[id] = pr;
         }
         return Ok(dict);
     }

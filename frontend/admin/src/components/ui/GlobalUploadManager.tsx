@@ -41,25 +41,19 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
         const pollingUploads = uploads.filter(u => u.status === 'success' && u.assetId && u.assetStatus !== 'Ready');
         if (pollingUploads.length === 0) return;
 
+        let tick = 0;
         const interval = setInterval(async () => {
-            for (const upload of pollingUploads) {
-                try {
-                    const asset = await mediaLibraryApi.getAsset(upload.assetId!);
-                    if (asset.status !== upload.assetStatus) {
-                        setUploads(prev => prev.map(t => t.id === upload.id ? { ...t, assetStatus: asset.status } : t));
-                    }
-                } catch (e) {
-                    console.error("Polling failed for asset", upload.assetId, e);
-                }
-            }
+            tick++;
+            const idsToPoll = pollingUploads.map(u => u.assetId!);
 
+            // Her turda SADECE progress (tek toplu istek)
             try {
-                const idsToPoll = pollingUploads.map(u => u.assetId!);
                 if (idsToPoll.length > 0) {
                     const progressDict = await mediaLibraryApi.getTranscodeProgress(idsToPoll);
                     setUploads(prev => prev.map(t => {
                         if (t.assetId && progressDict[t.assetId] !== undefined) {
-                            return { ...t, transcodeProgress: progressDict[t.assetId] };
+                            const d: any = progressDict[t.assetId];
+                            return { ...t, transcodeProgress: (d.percentage ?? d.Percentage ?? 0), speed: (d.speed ?? d.Speed ?? 0), etaSeconds: (d.etaSeconds ?? d.EtaSeconds ?? 0) };
                         }
                         return t;
                     }));
@@ -67,7 +61,19 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
             } catch (e) {
                 console.error("Failed to fetch transcode progress", e);
             }
-        }, 2500);
+
+            // Durum kontrolü: her 3 turda bir, sırayla TEK asset (yükü dağıt)
+            if (tick % 3 === 0 && pollingUploads.length > 0) {
+                const idx = Math.floor(tick / 3) % pollingUploads.length;
+                const upload = pollingUploads[idx];
+                try {
+                    const asset = await mediaLibraryApi.getAsset(upload.assetId!);
+                    if (asset.status !== upload.assetStatus) {
+                        setUploads(prev => prev.map(t => t.id === upload.id ? { ...t, assetStatus: asset.status } : t));
+                    }
+                } catch (e) { /* sessiz */ }
+            }
+        }, 5000);
 
         return () => clearInterval(interval);
     }, [uploads]);
