@@ -790,7 +790,7 @@ export default function MediaLibraryPage() {
                     <div className="h-4 w-px bg-gray-700" />
                     <button onClick={() => { setCourseAssignTarget({ id: '', type: 'bulk', bulkIds: selectedAssetIds }); setIsCourseModalOpen(true); }} className="text-sm font-medium hover:text-blue-400 transition-colors">Derse Tanımla</button>
                     <button onClick={() => setIsBulkMoveModalOpen(true)} className="text-sm font-medium hover:text-blue-400 transition-colors">Taşı</button>
-                    <button onClick={handleBulkDelete} className="text-sm font-medium hover:text-red-400 transition-colors">Sil</button>
+                    <button onClick={handleBulkDelete} className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors">Sil</button>
                     <div className="h-4 w-px bg-gray-700" />
                     <button onClick={() => setSelectedAssetIds([])} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">İptal</button>
                 </div>

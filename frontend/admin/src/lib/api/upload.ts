@@ -10,15 +10,26 @@ export const uploadApi = {
         }),
     
     /** XMLHttpRequest ile ilerleme barını destekleyen direkt yükleme metodu */
-    uploadMediaWithProgress: (uploadUrl: string, file: File, onProgress: (progress: number) => void): Promise<void> => {
+    uploadMediaWithProgress: (uploadUrl: string, file: File, onProgress: (progress: number, etaSeconds?: number) => void): Promise<void> => {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('PUT', uploadUrl, true);
             
+            const startTime = Date.now();
+            
             xhr.upload.onprogress = (event) => {
                 if (event.lengthComputable) {
                     const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    onProgress(percentComplete);
+                    
+                    let etaSeconds = 0;
+                    const elapsedMs = Date.now() - startTime;
+                    if (elapsedMs > 500 && event.loaded > 0) {
+                        const bytesPerSec = event.loaded / (elapsedMs / 1000);
+                        const remainingBytes = event.total - event.loaded;
+                        etaSeconds = Math.max(0, Math.round(remainingBytes / bytesPerSec));
+                    }
+                    
+                    onProgress(percentComplete, etaSeconds);
                 }
             };
             
