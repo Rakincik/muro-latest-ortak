@@ -107,6 +107,8 @@ services:
       - /mnt/storage/muro/hls:/app/wwwroot/hls
       - /mnt/storage/muro/uploads:/app/wwwroot/uploads
       - muro_logs:/app/logs
+    devices:
+      - /dev/dri:/dev/dri
     depends_on:
       postgres:
         condition: service_healthy
