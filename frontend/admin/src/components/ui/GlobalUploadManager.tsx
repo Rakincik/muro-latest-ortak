@@ -71,16 +71,16 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
                 console.error("Failed to fetch transcode progress", e);
             }
 
-            // Durum kontrolü: her 3 turda bir, sırayla TEK asset (yükü dağıt)
-            if (tick % 3 === 0 && pollingUploads.length > 0) {
-                const idx = Math.floor(tick / 3) % pollingUploads.length;
-                const upload = pollingUploads[idx];
-                try {
-                    const asset = await mediaLibraryApi.getAsset(upload.assetId!);
-                    if (asset.status !== upload.assetStatus) {
-                        setUploads(prev => prev.map(t => t.id === upload.id ? { ...t, assetStatus: asset.status } : t));
-                    }
-                } catch (e) { /* sessiz */ }
+            // Durum kontrolü: Her 10 saniyede bir (2 turda bir), BÜTÜN bekleyen assetlerin durumunu kontrol et
+            if (tick % 2 === 0 && pollingUploads.length > 0) {
+                for (const upload of pollingUploads) {
+                    try {
+                        const asset = await mediaLibraryApi.getAsset(upload.assetId!);
+                        if (asset.status !== upload.assetStatus) {
+                            setUploads(prev => prev.map(t => t.id === upload.id ? { ...t, assetStatus: asset.status } : t));
+                        }
+                    } catch (e) { /* sessiz */ }
+                }
             }
         }, 5000);
 
