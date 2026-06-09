@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MURO.Application.DTOs;
 using MURO.Application.DTOs.Media;
 using MURO.Application.Interfaces;
@@ -13,11 +15,15 @@ public class MediaService : IMediaService
     private readonly MuroDbContext _context;
     private readonly IGroupAccessService _groupAccess;
     private readonly ICacheService _cache;
+    private readonly string _hlsOutputDir;
+    private readonly ILogger<MediaService> _logger;
 
-    public MediaService(MuroDbContext context, IGroupAccessService groupAccess, ICacheService cache)
+    public MediaService(MuroDbContext context, IGroupAccessService groupAccess, ICacheService cache, IConfiguration config, ILogger<MediaService> logger)
     {
         _context = context;
         _groupAccess = groupAccess;
+        _logger = logger;
+        _hlsOutputDir = config["Storage:HlsOutputDir"] ?? System.IO.Path.Combine("wwwroot", "hls");
         _cache = cache;
     }
 
@@ -162,6 +168,28 @@ public class MediaService : IMediaService
     {
         var a = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == assetId && m.TenantId == tenantId)
             ?? throw new KeyNotFoundException("Medya bulunamadı.");
+
+        try
+        {
+            var hlsDir = Path.Combine(_hlsOutputDir, tenantId.ToString(), assetId.ToString());
+            if (Directory.Exists(hlsDir))
+            {
+                Directory.Delete(hlsDir, recursive: true);
+                _logger.LogInformation("HLS klasörü silindi: {Dir}", hlsDir);
+            }
+
+            if (!string.IsNullOrEmpty(a.FilePath) && a.FilePath.Contains("/uploads/"))
+            {
+                var fileName = Path.GetFileName(a.FilePath);
+                var uploadPath = Path.Combine(_hlsOutputDir, "..", "uploads", fileName);
+                if (File.Exists(uploadPath)) File.Delete(uploadPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Disk dosyalari silinirken hata (DB silme devam edecek): {AssetId}", assetId);
+        }
+
         _context.MediaAssets.Remove(a);
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:media:");

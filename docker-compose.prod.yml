@@ -58,6 +58,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5292
+      - Storage__HlsOutputDir=/app/wwwroot/hls
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_prod};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
       - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
       - Jwt__Secret=${JWT_SECRET:?JWT_SECRET is required}
