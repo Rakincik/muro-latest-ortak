@@ -171,14 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } catch { /* invalid token format */ }
         };
 
-        let interval: ReturnType<typeof setInterval> | null = null;
-        const start = () => { if (!interval) { checkRefresh(); interval = setInterval(checkRefresh, 60_000); } };
-        const stop = () => { if (interval) { clearInterval(interval); interval = null; } };
-        const onVisibility = () => document.hidden ? stop() : start();
-
-        if (!document.hidden) start();
-        document.addEventListener("visibilitychange", onVisibility);
-        return () => { stop(); document.removeEventListener("visibilitychange", onVisibility); };
+        checkRefresh();
+        const interval = setInterval(checkRefresh, 60_000);
+        return () => clearInterval(interval);
     }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const login = async (email: string, password: string) => {

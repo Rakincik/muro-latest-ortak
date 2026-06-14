@@ -14,6 +14,10 @@ using MURO.Infrastructure.Services;
 using FluentValidation;
 using Serilog;
 using StackExchange.Redis;
+using tusdotnet;
+using tusdotnet.Models;
+using tusdotnet.Models.Configuration;
+using tusdotnet.Stores;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -369,6 +373,46 @@ app.Use(async (ctx, next) =>
 {
     ctx.Request.EnableBuffering();
     await next();
+});
+
+// --- TUS Protocol Middleware ---
+var tusUploadsPath = Path.Combine(builder.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
+if (!Directory.Exists(tusUploadsPath)) Directory.CreateDirectory(tusUploadsPath);
+
+app.UseTus(httpContext => new DefaultTusConfiguration
+{
+    Store = new TusDiskStore(tusUploadsPath),
+    UrlPath = "/api/v1/upload/tus",
+    Events = new Events
+    {
+        OnFileCompleteAsync = async eventContext =>
+        {
+            var file = await eventContext.GetFileAsync();
+            var metadata = await file.GetMetadataAsync(eventContext.CancellationToken);
+            
+            string extension = ".mp4"; // Default
+            if (metadata.TryGetValue("filename", out var filenameMeta))
+            {
+                extension = Path.GetExtension(filenameMeta.GetString(System.Text.Encoding.UTF8));
+            }
+
+            var originalPath = Path.Combine(tusUploadsPath, file.Id);
+            var finalPath = Path.Combine(tusUploadsPath, file.Id + extension);
+
+            // TUS dosyayı tamamladığında, uzantısıyla birlikte kopyalayıp asıl dosyayı siliyoruz (veya move yapıyoruz).
+            if (File.Exists(originalPath))
+            {
+                File.Move(originalPath, finalPath, overwrite: true);
+            }
+
+            // Temizlik (isteğe bağlı .info dosyası)
+            var infoPath = Path.Combine(tusUploadsPath, file.Id + ".info");
+            if (File.Exists(infoPath))
+            {
+                File.Delete(infoPath);
+            }
+        }
+    }
 });
 
 app.MapControllers();

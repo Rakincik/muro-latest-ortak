@@ -68,8 +68,12 @@ export default function MediaLibraryPage() {
     const [playingAsset, setPlayingAsset] = useState<MediaAssetDto | null>(null);
 
     // Pagination state
-    const [pageSize, setPageSize] = useState<number | "all">(12);
+    const [pageSize, setPageSize] = useState<number | "all">(24);
     const [currentPage, setCurrentPage] = useState(1);
+
+    // Sorting state
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "longest" | "shortest">("newest");
+
 
     const { uploads } = useGlobalUpload();
     const completedCountRef = useRef(0);
@@ -127,7 +131,7 @@ export default function MediaLibraryPage() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery, currentFolderId, pageSize]);
+    }, [searchQuery, currentFolderId, pageSize, sortBy]);
 
 
 
@@ -405,7 +409,27 @@ export default function MediaLibraryPage() {
     };
 
     const filteredFolders = folders.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    const filteredAssets = assets.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const filteredAssets = [...assets]
+        .filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => {
+            switch (sortBy) {
+                case "newest":
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                case "oldest":
+                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                case "az":
+                    return a.title.localeCompare(b.title);
+                case "za":
+                    return b.title.localeCompare(a.title);
+                case "longest":
+                    return (b.durationSeconds || 0) - (a.durationSeconds || 0);
+                case "shortest":
+                    return (a.durationSeconds || 0) - (b.durationSeconds || 0);
+                default:
+                    return 0;
+            }
+        });
 
     const paginatedAssets = pageSize === "all" 
         ? filteredAssets 
@@ -467,6 +491,30 @@ export default function MediaLibraryPage() {
                                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 transition-all"
                             />
                         </div>
+
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
+                        >
+                            <option value="newest">En Yeni</option>
+                            <option value="oldest">En Eski</option>
+                            <option value="az">A'dan Z'ye</option>
+                            <option value="za">Z'den A'ya</option>
+                            <option value="longest">En Uzun</option>
+                            <option value="shortest">En Kısa</option>
+                        </select>
+
+                        <select
+                            value={pageSize}
+                            onChange={(e) => setPageSize(e.target.value === "all" ? "all" : Number(e.target.value))}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
+                        >
+                            <option value={24}>24 Göster</option>
+                            <option value={36}>36 Göster</option>
+                            <option value={48}>48 Göster</option>
+                            <option value="all">Tümünü Göster</option>
+                        </select>
 
                         <div className="h-9 w-px bg-gray-200 hidden sm:block" />
 

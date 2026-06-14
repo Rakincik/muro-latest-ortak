@@ -94,21 +94,18 @@ export function GlobalUploadProvider({ children }: { children: ReactNode }) {
 
             setUploads(prev => prev.map(t => t.id === task.id ? { ...t, status: 'uploading' } : t));
             
-            // 1. Get presigned URL
-            const presigned = await uploadApi.getPresignedUrl(token, currentTenantId ?? "", task.file.name, task.file.type);
-
-            // 2. Upload file directly to BunnyCDN
-            await uploadApi.uploadMediaWithProgress(presigned.uploadUrl, task.file, (progress, etaSeconds) => {
+            // 1. TUS Protocol ile Chunked/Resumable Yükleme
+            const publicUrl = await uploadApi.uploadMediaWithTus(task.file, token, currentTenantId ?? "", (progress, etaSeconds) => {
                 setUploads(prev => prev.map(t => t.id === task.id ? { ...t, progress, etaSeconds } : t));
             });
 
             setUploads(prev => prev.map(t => t.id === task.id ? { ...t, status: 'processing', progress: 100 } : t));
 
-            // 3. Create Media Asset in Database
+            // 2. Create Media Asset in Database
             const asset = await mediaLibraryApi.createAsset({
                 title: task.title,
                 type: 'Video',
-                filePath: presigned.publicUrl,
+                filePath: publicUrl,
                 durationSeconds: task.durationSeconds || 0,
                 folderId: task.folderId || null
             });
