@@ -20,6 +20,7 @@ public class MuroDbContext : DbContext
     // Courses
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<CourseGroup> CourseGroups => Set<CourseGroup>();
+    public DbSet<CourseStudent> CourseStudents => Set<CourseStudent>();
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<SessionRecording> SessionRecordings => Set<SessionRecording>();
     public DbSet<SessionAttendance> SessionAttendances => Set<SessionAttendance>();
@@ -114,6 +115,14 @@ public class MuroDbContext : DbContext
         {
             entity.HasIndex(cg => new { cg.CourseId, cg.GroupId }).IsUnique();
             entity.Property(cg => cg.Mode).HasConversion<string>();
+        });
+
+        // CourseStudent — composite unique
+        modelBuilder.Entity<CourseStudent>(entity =>
+        {
+            entity.HasIndex(cs => new { cs.CourseId, cs.UserId }).IsUnique();
+            entity.HasOne(cs => cs.Course).WithMany().HasForeignKey(cs => cs.CourseId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(cs => cs.User).WithMany().HasForeignKey(cs => cs.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         // Course

@@ -613,3 +613,12 @@ export interface CourseMediaDto {
     sessionTitle?: string;
     type: string;
 }
+
+export interface CourseStudentListDto {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    assignedAt: string;
+    expiresAt?: string | null;
+}

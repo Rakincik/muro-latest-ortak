@@ -79,6 +79,9 @@ export const userApi = {
             method: 'POST', token, tenantId,
             body: JSON.stringify({ users }),
         }),
+        
+    getDirectCourses: (token: string, tenantId: string, userId: string) =>
+        api<CourseListDto[]>(`/users/${userId}/courses/direct`, { token, tenantId }),
 };
 
 // ── Question (Soru-Cevap) API ─────────────────────────────────────────────

@@ -16,6 +16,7 @@ import { sessionApi, courseApi, recordingApi, userApi, type CourseListDto, type 
 import { API_URL } from "@/lib/api/core";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
 import { CourseMediaTab } from "./CourseMediaTab";
+import { CourseStudentTab } from "./CourseStudentTab";
 import { PremiumTabs } from "@/components/ui/PremiumTabs";
 import { ResponsiveList } from "@/components/ui/ResponsiveList";
 
@@ -63,7 +64,7 @@ interface MappedCourse {
     instructorId: string | null; instructorName: string | null;
 }
 
-type DTab = "overview" | "sessions" | "media" | "recordings" | "docs" | "settings";
+type DTab = "overview" | "sessions" | "media" | "recordings" | "docs" | "settings" | "students";
 
 const typeIcons: Record<string, React.ElementType> = { Online: Monitor, Offline: Video, "Canlı": Radio, Hibrit: Layers };
 
@@ -109,7 +110,8 @@ const mapCourse = (c: CourseListDto, sessions: MappedSession[] = [], detail?: Co
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CoursesPage() {
     const { success, error: toastError } = useToast();
-    const { token, currentTenantId: tenantId } = useAuth();
+    const { user, token, currentTenantId: tenantId } = useAuth();
+    const isInstructor = user?.role === "Instructor" || user?.tenants?.find((t: any) => t.tenantId === tenantId)?.role === "Instructor";
     const [courses, setCourses] = useState<MappedCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -327,6 +329,10 @@ export default function CoursesPage() {
     // ── Quick Start: Create session with topic + immediately start BBB ────────
     const handleQuickStart = useCallback(async (courseId: string, topic: string) => {
         if (!token || !tenantId || !topic.trim()) return;
+        
+        // Tarayıcının pop-up engelleyicisine takılmamak için yeni sekmeyi asenkron işlemden ÖNCE açıyoruz
+        const newTab = window.open("about:blank", "_blank");
+        
         setActionLoading("quickstart");
         try {
             // 1. Create session with topic as title
@@ -340,7 +346,15 @@ export default function CoursesPage() {
             });
             // 2. Start the session immediately
             const result = await sessionApi.start(token, tenantId, courseId, s.id);
-            window.open(result.moderatorJoinUrl, "_blank", "noopener");
+            
+            // Açtığımız sekmeyi şimdi BBB URL'sine yönlendiriyoruz
+            if (newTab) {
+                newTab.location.href = result.moderatorJoinUrl;
+            } else {
+                // Eğer her şeye rağmen engellendiyse (veya newTab null dönerse) mevcut sayfada aç
+                window.location.href = result.moderatorJoinUrl;
+            }
+            
             // 3. Update local state
             const ns = mapSession({ ...s, status: "Live" });
             setCourses(prev => prev.map(c => c.id === courseId ? { ...c, sessionCount: c.sessionCount + 1, sessions: [...c.sessions, ns] } : c));
@@ -348,7 +362,10 @@ export default function CoursesPage() {
             success("Canlı ders başlatıldı! 🔴");
             setLiveStartModal(null);
             setLiveStartTopic("");
-        } catch { toastError("Hata", "Canlı ders başlatılamadı."); }
+        } catch { 
+            if (newTab) newTab.close(); // Hata durumunda boş açılan sekmeyi kapat
+            toastError("Hata", "Canlı ders başlatılamadı."); 
+        }
         finally { setActionLoading(null); }
     }, [token, tenantId, detail]);
 
@@ -452,12 +469,13 @@ export default function CoursesPage() {
                             tabs={[
                                 { id: "overview", label: "Genel Bakış", icon: <BarChart3 size={14} /> },
                                 { id: "recordings", label: "Kayıtlar", icon: <PlayCircle size={14} /> },
+                                !isInstructor ? { id: "students", label: "Bireysel Öğrenciler", icon: <Users size={14} /> } : null,
                                 { id: "docs", label: "Dokümanlar", icon: <FileText size={14} /> },
                                 { id: "settings", label: "Ayarlar", icon: <Settings size={14} /> }
-                            ]} 
+                            ].filter(Boolean) as any} 
                             activeTab={tab} 
                             onChange={(id) => setTab(id as typeof tab)} 
-                            className="flex-1 max-w-2xl"
+                            className="flex-1 min-w-0 pr-4"
                         />
                         {/* Publish toggle in tab bar */}
                         <div className="flex items-center">
@@ -518,6 +536,9 @@ export default function CoursesPage() {
                                 onPlay={(title, url, type) => setPreviewVideo({ title, url, type })}
                             />
                         )}
+
+                        {/* ── STUDENTS ────────────────────────────────────────── */}
+                        {tab === "students" && <CourseStudentTab courseId={detail.id} />}
 
                         {/* ── DOCS ──────────────────────────────────────────────── */}
                         {tab === "docs" && <DocsTab courseId={c.id} />}

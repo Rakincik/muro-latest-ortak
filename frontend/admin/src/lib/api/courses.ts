@@ -1,5 +1,5 @@
 import { api, cachedApi, invalidateCache, invalidateCacheByPrefix, API_URL, PagedResult } from './core';
-import { CourseListDto, SessionDto, CourseDetailDto, CourseMaterialDto, AuthResponse, UserDto, UserTenantDto, ExamListDto, ExamDetailDto, ExamAssignmentDto, ExamResultDto, ExamResultSummaryDto, ExamOverallSummaryDto, ScoreRangeDto, AssignmentListDto, StudentScorecardDto, CourseAttendanceDto, DashboardStatsDto, DeviceSessionDto, ScorecardSummaryDto, NotificationDto, AdminSentNotificationDto, GroupSummaryDto, SessionStartResult, RecordingDto, PlanDto, TransactionDto, MonthlyRevenueDto, PlanRevenueDto, AccountingSummaryDto, PaymentMethodBreakdownDto, CreateTransactionRequest, PodcastDto, GeneratePodcastRequest, GroupListDto, GroupMemberDto, GroupDetailDto, CalendarEventDto, CreateCalendarEventRequest, TicketDto, TicketReplyDto, AdminDashboardDto, PackageGroupDto, PackageDto, UserPackageDto, CreatePackageRequest, WebhookInfo, PagedUsersResult, CreateUserRequest, QuestionDto, CreateQuestionRequest, AuditLogDto, PagedAuditResult, AuditSummaryDto, TenantBrandingDto, SubmissionDto, AssignmentDetailDto } from './types';
+import { CourseListDto, SessionDto, CourseDetailDto, CourseMaterialDto, AuthResponse, UserDto, UserTenantDto, ExamListDto, ExamDetailDto, ExamAssignmentDto, ExamResultDto, ExamResultSummaryDto, ExamOverallSummaryDto, ScoreRangeDto, AssignmentListDto, StudentScorecardDto, CourseAttendanceDto, DashboardStatsDto, DeviceSessionDto, ScorecardSummaryDto, NotificationDto, AdminSentNotificationDto, GroupSummaryDto, SessionStartResult, RecordingDto, PlanDto, TransactionDto, MonthlyRevenueDto, PlanRevenueDto, AccountingSummaryDto, PaymentMethodBreakdownDto, CreateTransactionRequest, PodcastDto, GeneratePodcastRequest, GroupListDto, GroupMemberDto, GroupDetailDto, CalendarEventDto, CreateCalendarEventRequest, TicketDto, TicketReplyDto, AdminDashboardDto, PackageGroupDto, PackageDto, UserPackageDto, CreatePackageRequest, WebhookInfo, PagedUsersResult, CreateUserRequest, QuestionDto, CreateQuestionRequest, AuditLogDto, PagedAuditResult, AuditSummaryDto, TenantBrandingDto, SubmissionDto, AssignmentDetailDto, CourseStudentListDto } from './types';
 
 export const courseApi = {
     list: (token: string, tenantId: string, params?: { page?: number; pageSize?: number; search?: string }) => {
@@ -106,6 +106,23 @@ export const courseApi = {
         api<SessionDto>(`/courses/${courseId}/vod`, {
             method: "POST", token, tenantId, body: JSON.stringify({ title, filePath, durationSeconds })
         }),
+
+    // Direct Students
+    getStudents: (token: string, tenantId: string, courseId: string) =>
+        api<CourseStudentListDto[]>(`/courses/${courseId}/students`, { token, tenantId }),
+        
+    updateStudentExpiration: (token: string, tenantId: string, courseId: string, userId: string, expiresAt: string | null) =>
+        api(`/courses/${courseId}/students/${userId}/expires-at`, { token, tenantId, method: 'PUT', body: JSON.stringify({ expiresAt }) }),
+
+    assignStudent: (token: string, tenantId: string, courseId: string, userId: string) =>
+        api<{ message: string }>(`/courses/${courseId}/students`, {
+            method: "POST", token, tenantId, body: JSON.stringify({ userId })
+        }),
+    
+    removeStudent: (token: string, tenantId: string, courseId: string, userId: string) =>
+        api<void>(`/courses/${courseId}/students/${userId}`, {
+            method: "DELETE", token, tenantId
+        })
 };
 
 

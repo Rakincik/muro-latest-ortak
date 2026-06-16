@@ -49,4 +49,74 @@ public class CourseEnrollmentService : ICourseEnrollmentService
         await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
         await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
     }
+    public async Task AssignToStudentAsync(Guid tenantId, Guid courseId, Guid userId)
+    {
+        var exists = await _context.CourseStudents
+            .AnyAsync(cs => cs.CourseId == courseId && cs.UserId == userId);
+        if (exists) throw new InvalidOperationException("Öğrenci zaten bu derse doğrudan atanmış.");
+
+        _context.CourseStudents.Add(new CourseStudent
+        {
+            Id = Guid.NewGuid(),
+            CourseId = courseId,
+            UserId = userId,
+            AssignedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+    }
+
+    public async Task RemoveFromStudentAsync(Guid tenantId, Guid courseId, Guid userId)
+    {
+        var cs = await _context.CourseStudents
+            .FirstOrDefaultAsync(c => c.CourseId == courseId && c.UserId == userId)
+            ?? throw new KeyNotFoundException("Atama bulunamadı.");
+
+        _context.CourseStudents.Remove(cs);
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+    }
+
+    public async Task<List<MURO.Application.DTOs.Courses.CourseStudentListDto>> GetEnrolledStudentsAsync(Guid tenantId, Guid courseId)
+    {
+        return await _context.CourseStudents
+            .AsNoTracking()
+            .Include(cs => cs.User)
+            .Where(cs => cs.CourseId == courseId && cs.Course.TenantId == tenantId)
+            .Select(cs => new MURO.Application.DTOs.Courses.CourseStudentListDto(
+                cs.UserId,
+                cs.User.FirstName,
+                cs.User.LastName,
+                cs.User.Email,
+                cs.AssignedAt,
+                cs.ExpiresAt
+            ))
+            .ToListAsync();
+    }
+
+    public async Task UpdateStudentExpirationAsync(Guid tenantId, Guid courseId, Guid userId, DateTime? expiresAt)
+    {
+        var cs = await _context.CourseStudents
+            .FirstOrDefaultAsync(c => c.CourseId == courseId && c.UserId == userId && c.Course.TenantId == tenantId)
+            ?? throw new KeyNotFoundException("Atama bulunamadı.");
+
+        cs.ExpiresAt = expiresAt;
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+    }
+
+    public async Task<List<MURO.Application.DTOs.Courses.CourseListDto>> GetDirectCoursesByUserAsync(Guid tenantId, Guid userId)
+    {
+        return await _context.CourseStudents
+            .AsNoTracking()
+            .Include(cs => cs.Course)
+            .Where(cs => cs.UserId == userId && cs.Course.TenantId == tenantId)
+            .Select(cs => new MURO.Application.DTOs.Courses.CourseListDto(
+                cs.Course.Id, cs.Course.Title, cs.Course.Description, cs.Course.ThumbnailUrl,
+                cs.Course.CourseType.ToString(), cs.Course.IsPublished, 0, 0,
+                cs.Course.Order, cs.Course.StartDate, cs.Course.CreatedAt,
+                cs.Course.InstructorId, null
+            ))
+            .ToListAsync();
+    }
 }

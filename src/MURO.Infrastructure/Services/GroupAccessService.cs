@@ -71,6 +71,16 @@ public class GroupAccessService : IGroupAccessService
         return (await cgQuery.Select(cg => cg.CourseId).Distinct().ToListAsync()).ToHashSet();
     }
 
+    // ── Yardımcı: Direkt atanan kurslar ─────────────────────────────────────────
+    private async Task<List<Guid>> GetDirectCourseIdsAsync(Guid tenantId, Guid userId)
+    {
+        var now = DateTime.UtcNow;
+        return await _context.CourseStudents
+            .Where(cs => cs.UserId == userId && cs.Course.TenantId == tenantId && (cs.ExpiresAt == null || cs.ExpiresAt > now))
+            .Select(cs => cs.CourseId)
+            .ToListAsync();
+    }
+
     // ── Tüm erişilebilir kurs ID'leri ────────────────────────────────────────
     public async Task<HashSet<Guid>> GetAccessibleCourseIdsAsync(Guid tenantId, Guid userId)
     {
@@ -82,7 +92,10 @@ public class GroupAccessService : IGroupAccessService
         var dirGroupIds  = await GetDirectGroupIdsAsync(userId);
         var allGroupIds  = pkgGroupIds.Union(dirGroupIds).ToList();
 
-        return await CourseIdsForGroups(tenantId, allGroupIds);
+        var groupCourses = await CourseIdsForGroups(tenantId, allGroupIds);
+        var directCourses = await GetDirectCourseIdsAsync(tenantId, userId);
+
+        return groupCourses.Union(directCourses).ToHashSet();
     }
 
     // ── Video erişimi (ContentMode = Offline veya Both) ──────────────────────
@@ -97,8 +110,9 @@ public class GroupAccessService : IGroupAccessService
         // Paket grupları + direkt grupların video-mode kursları (UNION)
         var viaPackage  = await CourseIdsForGroups(tenantId, pkgGroupIds);
         var viaDirect   = await CourseIdsForGroups(tenantId, dirGroupIds, CourseMode.Offline);
+        var directCourses = await GetDirectCourseIdsAsync(tenantId, userId); // Doğrudan atananlar her şeye erişir
 
-        return viaPackage.Union(viaDirect).ToHashSet();
+        return viaPackage.Union(viaDirect).Union(directCourses).ToHashSet();
     }
 
     // ── Canlı ders erişimi (ContentMode = Online veya Both) ──────────────────
@@ -112,8 +126,9 @@ public class GroupAccessService : IGroupAccessService
 
         var viaPackage  = await CourseIdsForGroups(tenantId, pkgGroupIds);
         var viaDirect   = await CourseIdsForGroups(tenantId, dirGroupIds, CourseMode.Online);
+        var directCourses = await GetDirectCourseIdsAsync(tenantId, userId); // Doğrudan atananlar her şeye erişir
 
-        return viaPackage.Union(viaDirect).ToHashSet();
+        return viaPackage.Union(viaDirect).Union(directCourses).ToHashSet();
     }
 
     // ── Tekil kurs erişim kontrolü ────────────────────────────────────────────

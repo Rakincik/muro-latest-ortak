@@ -38,10 +38,10 @@ export function PremiumTabs({ tabs, activeTab, onChange, className = "" }: Premi
     }, [activeTab, tabs]);
 
     return (
-        <div className={`w-full overflow-hidden ${className}`}>
+        <div className={`w-full min-w-0 overflow-hidden ${className}`}>
             <div 
                 ref={containerRef}
-                className="relative flex items-center p-1.5 bg-[#F0F4F8] rounded-xl overflow-x-auto hide-scrollbar whitespace-nowrap border border-[#E2E8F0]/60"
+                className="relative flex w-fit max-w-full items-center p-1.5 bg-[#F0F4F8] rounded-xl overflow-x-auto hide-scrollbar whitespace-nowrap border border-[#E2E8F0]/60 after:content-[''] after:min-w-[6px] after:h-full"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
                 {/* Active Pill Background */}

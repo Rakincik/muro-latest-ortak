@@ -279,6 +279,40 @@ public class CoursesController : ControllerBase
         return NoContent();
     }
 
+    // --- Direct Student Assignment ---
+
+    [HttpPost("{courseId:guid}/students")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor")]
+    public async Task<IActionResult> AssignToStudent(Guid courseId, [FromBody] AssignCourseToStudentRequest request)
+    {
+        await _enrollmentService.AssignToStudentAsync(GetTenantId(), courseId, request.UserId);
+        return Ok(new { message = "Öğrenci derse doğrudan atandı." });
+    }
+
+    [HttpPut("{courseId:guid}/students/{userId:guid}/expires-at")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor")]
+    public async Task<IActionResult> UpdateStudentExpiration(Guid courseId, Guid userId, [FromBody] UpdateStudentExpirationRequest request)
+    {
+        await _enrollmentService.UpdateStudentExpirationAsync(GetTenantId(), courseId, userId, request.ExpiresAt);
+        return Ok(new { message = "Erişim bitiş tarihi güncellendi." });
+    }
+
+    [HttpDelete("{courseId:guid}/students/{userId:guid}")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor")]
+    public async Task<IActionResult> RemoveFromStudent(Guid courseId, Guid userId)
+    {
+        await _enrollmentService.RemoveFromStudentAsync(GetTenantId(), courseId, userId);
+        return NoContent();
+    }
+
+    [HttpGet("{courseId:guid}/students")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor")]
+    public async Task<ActionResult<List<CourseStudentListDto>>> GetEnrolledStudents(Guid courseId)
+    {
+        var students = await _enrollmentService.GetEnrolledStudentsAsync(GetTenantId(), courseId);
+        return Ok(students);
+    }
+
     // --- Course Materials (Dokümanlar) ---
 
     [HttpGet("{courseId:guid}/materials")]

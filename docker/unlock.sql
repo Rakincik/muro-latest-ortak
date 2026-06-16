@@ -1,1 +1,1 @@
-UPDATE "Users" SET "LockoutUntil" = NULL, "FailedLoginCount" = 0 WHERE "Email" = 'admin@muro.com';
+UPDATE "Users" SET "FailedLoginCount" = 0, "LockoutUntil" = NULL WHERE "Email" = 'admin@muro.com';

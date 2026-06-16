@@ -10,12 +10,13 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(MuroDbContext db)
     {
         // ── Tenant ────────────────────────────────────────────────────────────
-        var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Code == "render");
+        var tenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var tenant = await db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == tenantId);
         if (tenant == null)
         {
             tenant = new Tenant
             {
-                Id           = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                Id           = tenantId,
                 Name         = "Render",
                 Code         = "render",
                 PrimaryColor = "#6366f1",
@@ -27,16 +28,17 @@ public static class DatabaseSeeder
         }
 
         // ── Admin user ────────────────────────────────────────────────────────
-        var admin = await db.Users.FirstOrDefaultAsync(u => u.Email == "render@muro.com");
+        var adminId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var admin = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == adminId);
         if (admin == null)
         {
             admin = new User
             {
-                Id           = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                Id           = adminId,
                 FirstName    = "Render",
                 LastName     = "Admin",
                 Email        = "render@muro.com",
-                PasswordHash = "123465",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 Role         = UserRole.Admin,
                 IsActive     = true,
                 CreatedAt    = DateTime.UtcNow,
@@ -56,18 +58,19 @@ public static class DatabaseSeeder
         else
         {
             // Force-reset admin password on every dev startup
-            admin.PasswordHash = "123465";
+            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
             admin.IsActive     = true;
             db.Users.Update(admin);
         }
 
         // ── Student user ──────────────────────────────────────────────────────
-        var student = await db.Users.FirstOrDefaultAsync(u => u.Email == "ogrenci@demo.com");
+        var studentId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var student = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == studentId);
         if (student == null)
         {
             student = new User
             {
-                Id           = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                Id           = studentId,
                 FirstName    = "Demo",
                 LastName     = "Öğrenci",
                 Email        = "ogrenci@demo.com",

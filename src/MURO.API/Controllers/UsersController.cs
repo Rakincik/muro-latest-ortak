@@ -105,6 +105,15 @@ public class UsersController : ControllerBase
         return Ok(new { message = "Kullanıcı gruba eklendi." });
     }
 
+    [HttpGet("{id:guid}/courses/direct")]
+    public async Task<ActionResult<List<MURO.Application.DTOs.Courses.CourseListDto>>> GetDirectCourses(
+        Guid id, 
+        [FromServices] ICourseEnrollmentService enrollmentService)
+    {
+        var courses = await enrollmentService.GetDirectCoursesByUserAsync(GetTenantId(), id);
+        return Ok(courses);
+    }
+
     [HttpGet("export")]
     public async Task<IActionResult> ExportUsers([FromQuery] string? role = null)
     {

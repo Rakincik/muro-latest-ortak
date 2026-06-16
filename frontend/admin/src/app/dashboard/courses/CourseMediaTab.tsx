@@ -316,12 +316,19 @@ export function CourseMediaTab({
                         </div>
                         
                         {/* Video Area */}
-                        <div className="w-full aspect-video bg-black relative">
-                            {activeVideo.type === "video" ? (
-                                <HlsVideoPlayer src={activeVideo.url} mediaId={activeVideo.id} vttPath={activeVideo.vttPath} />
-                            ) : (
-                                <iframe src={activeVideo.url} className="w-full h-full border-0" allowFullScreen />
-                            )}
+                        <div className="w-full aspect-video bg-black relative flex flex-col">
+                            <div className="text-white text-xs p-2 bg-red-600 font-mono z-50">DEBUG URL: {activeVideo.url}</div>
+                            <div className="flex-1 relative">
+                                {activeVideo.type === "video" ? (
+                                    <HlsVideoPlayer src={activeVideo.url} mediaId={activeVideo.id} vttPath={activeVideo.vttPath} />
+                                ) : (
+                                    <iframe 
+                                        src={activeVideo.url.startsWith("/") ? `${API_URL.replace("/api/v1", "")}${activeVideo.url}` : activeVideo.url} 
+                                        className="w-full h-full border-0 absolute inset-0" 
+                                        allowFullScreen 
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>,

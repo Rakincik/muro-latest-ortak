@@ -143,3 +143,20 @@ public record CreateVodRequest(
     string FilePath,
     int? DurationSeconds
 );
+
+public record CourseStudentListDto(
+    Guid UserId,
+    string FirstName,
+    string LastName,
+    string Email,
+    DateTime AssignedAt,
+    DateTime? ExpiresAt
+);
+
+public record AssignCourseToStudentRequest(
+    Guid UserId
+);
+
+public record UpdateStudentExpirationRequest(
+    DateTime? ExpiresAt
+);

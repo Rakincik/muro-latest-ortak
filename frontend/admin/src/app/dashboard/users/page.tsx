@@ -14,6 +14,7 @@ import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { userApi, groupsApi, type UserDto, type PagedUsersResult, type CreateUserRequest } from "@/lib/api";
+import { UserDirectCoursesTab } from "./UserDirectCoursesTab";
 
 // ── Types ──
 interface User {
@@ -428,6 +429,11 @@ export default function UsersPage() {
                         </div>
                     </div>
                 )}
+
+                {/* ── Özel Atanmış Dersler (Doğrudan Atama) ── */}
+                <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
+                    <UserDirectCoursesTab userId={u.id} />
+                </div>
 
                 {/* Detail view delete confirm */}
                 <ConfirmDialog
