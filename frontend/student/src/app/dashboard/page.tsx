@@ -211,7 +211,6 @@ export default function StudentDashboardPage() {
                             </div>
                         ) : (
                             <div className="p-8 text-center bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0]">
-                                <p className="text-4xl mb-3">📚</p>
                                 <p className="text-[#0A1931] font-semibold">Henüz hiç derse kayıtlı değilsin</p>
                                 <p className="text-sm text-[#A9A9A9] mt-1">Sol menüden tüm derslere göz atabilirsin.</p>
                             </div>
