@@ -251,6 +251,27 @@ export const getFileUrl = (path: string | null | undefined) => {
     return url;
 };
 
+export const getDownloadUrl = (path: string | null | undefined, fileName?: string) => {
+    if (!path) return "";
+    let cleanPath = path.startsWith('/') ? path : `/${path}`;
+    // Sadece /uploads içindeki dosyaları indirilebilir yapalım
+    if (!cleanPath.startsWith('/uploads')) return getFileUrl(path);
+
+    const encodedPath = btoa(cleanPath);
+    let base = API_URL.replace('/api/v1', '');
+    let url = `${base}/api/v1/files/download?path=${encodeURIComponent(encodedPath)}`;
+    
+    if (fileName) {
+        url += `&name=${encodeURIComponent(fileName)}`;
+    }
+    
+    // Ağ üzerinden (192.168.x.x vb) erişildiğinde localhost asset'lerinin kırılmasını önle
+    if (typeof window !== 'undefined' && url.includes('localhost') && window.location.hostname !== 'localhost') {
+        url = url.replace('localhost', window.location.hostname);
+    }
+    return url;
+};
+
 export const authApi = {
     login: (email: string, password: string) =>
         api<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
@@ -306,8 +327,15 @@ export const courseApi = {
             return [];
         }),
     getSessions: async (token: string, tenantId: string, courseId: string): Promise<SessionDto[]> => {
-        const data = await api<SessionDto[] | unknown>(`/courses/${courseId}/sessions`, { token, tenantId });
-        return Array.isArray(data) ? data : [];
+        try {
+            const data = await api<{ sessions?: SessionDto[] } | unknown>(`/courses/${courseId}`, { token, tenantId });
+            if (data && typeof data === "object" && "sessions" in (data as object)) {
+                return (data as { sessions: SessionDto[] }).sessions ?? [];
+            }
+            return [];
+        } catch {
+            return [];
+        }
     },
     // Fix #2b: N+1 sorunu düzeltmesi — tek endpoint
     getUpcomingSessions: (token: string, tenantId: string): Promise<UpcomingSessionDto[]> =>

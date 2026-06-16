@@ -132,10 +132,11 @@ public class AnalyticsService : IAnalyticsService
 
             var sessionSummaries = sessions.Select(s =>
             {
-                var presentCount = s.SessionAttendances.Count(a => a.DurationMinutes > 0);
+                var presentStudents = s.SessionAttendances.Where(a => a.DurationMinutes > 0).Select(a => a.UserId).ToList();
+                var presentCount = presentStudents.Count;
                 var rate = totalEnrolled > 0 ? Math.Round((double)presentCount / totalEnrolled * 100, 1) : 0;
                 return new SessionAttendanceSummaryDto(
-                    s.Id, s.Title, s.ScheduledStart, presentCount, totalEnrolled, rate);
+                    s.Id, s.Title, s.ScheduledStart, presentCount, totalEnrolled, rate, presentStudents);
             }).ToList();
 
             var avgRate = sessionSummaries.Any()
@@ -177,35 +178,26 @@ public class AnalyticsService : IAnalyticsService
                 .FirstOrDefaultAsync(u => u.Id == studentId)
                 ?? throw new KeyNotFoundException("Öğrenci bulunamadı.");
 
-            // Paralel sorgular — Task.WhenAll ile ~4x hızlanma
-            var attendanceTask = _context.SessionAttendances.AsNoTracking()
+            // EF Core aynı anda birden fazla sorguyu aynı context üzerinden desteklemediği için sıralı await yapıyoruz.
+            var attendance = await _context.SessionAttendances.AsNoTracking()
                 .Where(sa => sa.UserId == studentId && sa.TenantId == tenantId)
                 .ToListAsync();
 
-            var videoProgressTask = _context.VideoProgresses.AsNoTracking()
+            var videoProgress = await _context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UserId == studentId && vp.MediaAsset.TenantId == tenantId)
                 .Include(vp => vp.MediaAsset)
                 .ToListAsync();
 
-            var totalVideosTask = _context.MediaAssets
+            var totalVideos = await _context.MediaAssets
                 .CountAsync(m => m.TenantId == tenantId);
 
-            var submittedAssignmentsTask = _context.AssignmentSubmissions
+            var submittedAssignments = await _context.AssignmentSubmissions
                 .CountAsync(s => s.UserId == studentId);
 
-            var examScoresTask = _context.ExamResults.AsNoTracking()
+            var examScores = await _context.ExamResults.AsNoTracking()
                 .Where(r => r.UserId == studentId && r.Exam.TenantId == tenantId)
                 .Select(r => r.Score)
                 .ToListAsync();
-
-            await Task.WhenAll(attendanceTask, videoProgressTask, totalVideosTask,
-                submittedAssignmentsTask, examScoresTask);
-
-            var attendance = attendanceTask.Result;
-            var videoProgress = videoProgressTask.Result;
-            var totalVideos = totalVideosTask.Result;
-            var submittedAssignments = submittedAssignmentsTask.Result;
-            var examScores = examScoresTask.Result;
 
             var attendedCount = attendance.Count(a => a.DurationMinutes > 0);
             var completedVideos = videoProgress.Count(vp => vp.CompletedAt != null);
@@ -222,6 +214,37 @@ public class AnalyticsService : IAnalyticsService
                 attendedCount, attendance.Count, attendanceRate,
                 completedVideos, totalVideos, videoCompletionRate,
                 totalWatchedMinutes, submittedAssignments, avgScore);
+        }, TimeSpan.FromMinutes(2));
+    }
+
+    public async Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid tenantId, Guid studentId)
+    {
+        var cacheKey = $"{tenantId}:analytics:academichistory:{studentId}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
+        {
+            var user = await _context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == studentId)
+                ?? throw new KeyNotFoundException("Öğrenci bulunamadı.");
+
+            var examsTask = _context.ExamResults.AsNoTracking()
+                .Where(r => r.UserId == studentId && r.Exam.TenantId == tenantId)
+                .Include(r => r.Exam)
+                .Select(r => new StudentExamHistoryDto(
+                    r.ExamId, r.Exam.Title, r.Score, 
+                    r.CorrectCount - (r.WrongCount * r.Exam.WrongPenaltyWeight),
+                    r.SubmittedAt))
+                .ToListAsync();
+
+            var assignmentsTask = _context.AssignmentSubmissions.AsNoTracking()
+                .Where(s => s.UserId == studentId && s.Assignment.TenantId == tenantId)
+                .Include(s => s.Assignment)
+                .Select(s => new StudentAssignmentHistoryDto(
+                    s.AssignmentId, s.Assignment.Title, s.Score.HasValue ? "Değerlendirildi" : "Bekliyor", s.Score, s.SubmittedAt))
+                .ToListAsync();
+
+            await Task.WhenAll(examsTask, assignmentsTask);
+
+            return new StudentAcademicHistoryDto(examsTask.Result, assignmentsTask.Result);
         }, TimeSpan.FromMinutes(2));
     }
 

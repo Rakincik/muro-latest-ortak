@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto } from "@/lib/api";
+import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, getDownloadUrl, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -579,7 +579,7 @@ export default function CourseDetailPage() {
                         </div>
                     ) : (
                         materials.map(m => (
-                            <a key={m.id} href={getFileUrl(m.filePath)} target="_blank" rel="noopener noreferrer"
+                            <a key={m.id} href={getDownloadUrl(m.filePath, m.fileName)}
                                 className="glass-card p-4 flex items-center justify-between gap-4 hover:shadow-md transition-all group">
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${m.contentType.includes("pdf") ? "bg-red-50 text-red-500" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50 text-blue-500" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50 text-emerald-500" : "bg-[#E2E8F0]/30 text-[#A0AEC0]"}`}>

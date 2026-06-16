@@ -136,6 +136,7 @@ export interface ExamResultDto {
     startedAt?: string;
     durationSeconds?: number;
     sectionResults?: Record<string, SectionResultDto>;
+    answers?: Record<number, string>;
 }
 
 export interface SectionResultDto {
@@ -153,6 +154,8 @@ export interface ExamResultSummaryDto {
     highestScore: number;
     lowestScore: number;
     results: ExamResultDto[];
+    scoreDistribution?: { range: string; count: number }[];
+    answerKey?: Record<number, string>;
 }
 
 export interface ExamOverallSummaryDto {
@@ -206,9 +209,9 @@ export interface CourseAttendanceDto {
         sessionId: string;
         sessionTitle: string;
         scheduledStart: string | null;
-        presentCount: number;
-        totalEnrolled: number;
+        totalAttendees: number;
         attendanceRate: number;
+        presentStudentIds: string[];
     }[];
 }
 
@@ -246,6 +249,27 @@ export interface ScorecardSummaryDto {
     avgTotalVideos: number;
     avgTotalWatchedMinutes: number;
     avgSubmittedAssignments: number;
+}
+
+export interface StudentExamHistoryDto {
+    examId: string;
+    title: string;
+    score: number;
+    net: number;
+    takenAt: string;
+}
+
+export interface StudentAssignmentHistoryDto {
+    assignmentId: string;
+    title: string;
+    status: string;
+    grade: number | null;
+    submittedAt: string;
+}
+
+export interface StudentAcademicHistoryDto {
+    exams: StudentExamHistoryDto[];
+    assignments: StudentAssignmentHistoryDto[];
 }
 
 export interface NotificationDto {

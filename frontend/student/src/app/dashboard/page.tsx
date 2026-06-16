@@ -3,10 +3,11 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/contexts/AuthContext";
-import { analyticsApi, courseApi, type StudentDashboardDto, type UpcomingSessionDto, type CourseDto } from "@/lib/api";
+import { analyticsApi, courseApi, getFileUrl, type StudentDashboardDto, type UpcomingSessionDto, type CourseDto } from "@/lib/api";
 import Link from "next/link";
 import { openUrl } from "@/lib/openUrl";
 import { useToast } from "@/components/ToastProvider";
+import Image from "next/image";
 import {
     Play, Clock, Flame, BookOpen, Calendar, CheckCircle2, Video,
     ArrowRight, Zap, Trophy, Target, Star
@@ -177,35 +178,45 @@ export default function StudentDashboardPage() {
                 <div className="col-span-12 lg:col-span-8 space-y-6">
 
                     {/* My Courses */}
-                    {
-                        courses?.length > 0 && (
-                            <div className="animate-fade-in animate-fade-in-delay-2">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-[#0A1931] font-bold text-base flex items-center gap-2">
-                                        <BookOpen size={16} className="text-[#1B3B6F]" /> Derslerim
-                                    </h2>
-                                    <Link href="/dashboard/courses" className="text-xs text-[#1B3B6F] font-semibold hover:text-[#0A1931] flex items-center gap-1">
-                                        Tümü <ArrowRight size={12} />
-                                    </Link>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {courses.slice(0, 4).map(c => (
-                                        <Link key={c.id} href={`/dashboard/courses/${c.id}`}
-                                            className="glass-card p-4 flex items-center gap-4 group hover:border-[#1B3B6F]/30">
+                    <div className="animate-fade-in animate-fade-in-delay-2">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-[#0A1931] font-bold text-base flex items-center gap-2">
+                                <BookOpen size={16} className="text-[#1B3B6F]" /> Derslerim
+                            </h2>
+                            <Link href="/dashboard/courses" className="text-xs text-[#1B3B6F] font-semibold hover:text-[#0A1931] flex items-center gap-1">
+                                Tümü <ArrowRight size={12} />
+                            </Link>
+                        </div>
+                        {courses?.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {courses.slice(0, 4).map(c => (
+                                    <Link key={c.id} href={`/dashboard/courses/${c.id}`}
+                                        className="glass-card p-4 flex items-center gap-4 group hover:border-[#1B3B6F]/30">
+                                        {c.thumbnailUrl ? (
+                                            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative">
+                                                <Image src={getFileUrl(c.thumbnailUrl)} alt={c.title} fill className="object-cover" unoptimized />
+                                            </div>
+                                        ) : (
                                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1B3B6F]/10 to-[#0A1931]/10 flex items-center justify-center shrink-0">
                                                 <BookOpen size={18} className="text-[#1B3B6F]" />
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-[#0A1931] truncate group-hover:text-[#1B3B6F] transition-colors">{c.title}</p>
-                                                <p className="text-[11px] font-medium text-[#4A5568] bg-[#F1F5F9] px-2 py-0.5 rounded inline-flex mt-1 border border-[#E2E8F0]">{c.sessionCount} içerik</p>
-                                            </div>
-                                            <ArrowRight size={14} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors shrink-0" />
-                                        </Link>
-                                    ))}
-                                </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-[#0A1931] truncate group-hover:text-[#1B3B6F] transition-colors">{c.title}</p>
+                                            <p className="text-[11px] font-medium text-[#4A5568] bg-[#F1F5F9] px-2 py-0.5 rounded inline-flex mt-1 border border-[#E2E8F0]">{c.sessionCount} video</p>
+                                        </div>
+                                        <ArrowRight size={14} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors shrink-0" />
+                                    </Link>
+                                ))}
                             </div>
-                        )
-                    }
+                        ) : (
+                            <div className="p-8 text-center bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0]">
+                                <p className="text-4xl mb-3">📚</p>
+                                <p className="text-[#0A1931] font-semibold">Henüz hiç derse kayıtlı değilsin</p>
+                                <p className="text-sm text-[#A9A9A9] mt-1">Sol menüden tüm derslere göz atabilirsin.</p>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Weekly Activity */}
                     <div className="glass-card p-5 animate-fade-in animate-fade-in-delay-3">
@@ -307,26 +318,7 @@ export default function StudentDashboardPage() {
                         }
                     </div >
 
-                    {/* Motivasyon Kartı */}
-                    < div className="glass-card p-5 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200/40 animate-fade-in animate-fade-in-delay-3" >
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                                <Trophy size={18} className="text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-[#0A1931]">
-                                    {streak >= 7 ? "Muhteşem! 🏆" : streak >= 3 ? "Harika gidiyorsun! ⚡" : "Başlayalım!"}
-                                </p>
-                                <p className="text-[10px] text-[#A9A9A9]">
-                                    {streak >= 7
-                                        ? `${streak} günlük seri — efsane!`
-                                        : streak >= 3
-                                            ? `${streak} gün üst üste çalıştın`
-                                            : "Her gün biraz çalış, fark yarat"}
-                                </p>
-                            </div>
-                        </div>
-                    </div >
+
                 </div >
             </div >
         </div >

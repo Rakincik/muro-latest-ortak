@@ -123,7 +123,7 @@ export default function DashboardLayout({
                         <NotificationBell />
                     </header>
 
-                    <main className="flex-1 p-4 lg:p-8 overflow-x-hidden">
+                    <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8 overflow-x-hidden">
                         <ErrorBoundary pageName="Dashboard">
                             {children}
                         </ErrorBoundary>

@@ -418,7 +418,7 @@ export default function CoursesPage() {
                 </button>
 
                 {/* Hero */}
-                <div className="relative rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-900/10 bg-[#0A1931]">
+                <div className="relative rounded-3xl md:rounded-[2.5rem] overflow-hidden group shadow-xl sm:shadow-2xl shadow-indigo-900/10 bg-[#0A1931]">
                     {c.thumbnailUrl ? (
                         <>
                             <img src={c.thumbnailUrl} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-80" />
@@ -428,35 +428,35 @@ export default function CoursesPage() {
                         <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F] via-violet-600 to-blue-700" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/90 via-transparent to-white/5" />
-                    <div className="relative p-10 flex flex-col md:flex-row items-center gap-8">
-                        <div className="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
+                    <div className="relative p-6 sm:p-8 md:p-10 flex flex-col md:flex-row items-center gap-5 sm:gap-6 md:gap-8">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl md:rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
                             {c.thumbnailUrl ? (
                                 <img src={c.thumbnailUrl} alt="Cover" className="w-full h-full object-cover" />
                             ) : (
-                                <BookOpen size={40} className="text-white" />
+                                <BookOpen className="text-white w-8 h-8 md:w-10 md:h-10" />
                             )}
                         </div>
                         <div className="flex-1 text-center md:text-left">
-                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-3">
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2 sm:mb-3">
                                 {c.isPublished
-                                    ? <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/20">✓ Yayında</span>
-                                    : <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/20">Taslak</span>
+                                    ? <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 md:px-3 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/20">✓ Yayında</span>
+                                    : <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 md:px-3 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/20">Taslak</span>
                                 }
                             </div>
-                            <h1 className="text-4xl font-black text-white tracking-tight mb-2">{c.title}</h1>
-                            <p className="text-sm font-medium text-white/60 max-w-xl leading-relaxed">{c.description}</p>
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight mb-1 sm:mb-2">{c.title}</h1>
+                            <p className="text-[11px] sm:text-sm font-medium text-white/60 max-w-xl leading-relaxed">{c.description}</p>
                         </div>
-                        <div className="flex flex-col gap-3 shrink-0">
+                        <div className="flex flex-col w-full md:w-auto gap-3 shrink-0">
                             <div className="grid grid-cols-1 gap-3">
-                                <div className="p-4 rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 text-center min-w-[120px]">
-                                    <Users size={16} className="text-white/40 mx-auto mb-2" />
-                                    <p className="text-xl font-black text-white tabular-nums">{c.groupCount}</p>
-                                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Kayıtlı Grup</p>
+                                <div className="p-3 md:p-4 rounded-xl md:rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 text-center min-w-[120px]">
+                                    <Users className="text-white/40 mx-auto mb-1 md:mb-2 w-4 h-4 md:w-5 md:h-5" />
+                                    <p className="text-lg md:text-xl font-black text-white tabular-nums">{c.groupCount}</p>
+                                    <p className="text-[8px] md:text-[9px] font-bold text-white/40 uppercase tracking-widest">Kayıtlı Grup</p>
                                 </div>
                             </div>
                             <button onClick={() => setLiveStartModal({ courseId: c.id, courseName: c.title })} 
-                                className="w-full px-6 py-4 text-sm font-black bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-[1.25rem] hover:from-red-600 hover:to-rose-700 transition-all shadow-[0_8px_25px_rgba(239,68,68,0.35)] flex items-center justify-center gap-2.5 active:scale-95 animate-pulse-slow border border-red-400/30">
-                                <Radio size={18} className="animate-pulse" /> CANLI DERS BAŞLAT
+                                className="w-full px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-black bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl md:rounded-[1.25rem] hover:from-red-600 hover:to-rose-700 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(239,68,68,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 animate-pulse-slow border border-red-400/30">
+                                <Radio size={16} className="animate-pulse" /> CANLI DERS BAŞLAT
                             </button>
                         </div>
                     </div>

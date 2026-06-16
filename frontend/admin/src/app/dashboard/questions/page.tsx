@@ -132,15 +132,6 @@ export default function QuestionsPage() {
                 }
             }
         });
-        return;
-        try {
-            await questionApi.deleteQuestion(token, tenantId, selected.id);
-            setQuestions(prev => prev.filter(q => q.id !== selected.id));
-            setSelectedId(null);
-            success("Soru başarıyla silindi");
-        } catch (e: any) {
-            success("Hata", e.message || "Soru silinemedi");
-        }
     };
 
     const handleDeleteAnswer = async (e: React.MouseEvent) => {
@@ -160,14 +151,6 @@ export default function QuestionsPage() {
                 }
             }
         });
-        return;
-        try {
-            const updated = await questionApi.deleteAnswer(token, tenantId, selected.id);
-            setQuestions(prev => prev.map(q => q.id === selected.id ? mapQuestion(updated) : q));
-            success("Cevap başarıyla silindi");
-        } catch (e: any) {
-            success("Hata", e.message || "Cevap silinemedi");
-        }
     };
 
     return (

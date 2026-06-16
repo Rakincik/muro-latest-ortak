@@ -7,6 +7,7 @@ import {
     Calendar as CalIcon, ChevronLeft, ChevronRight, RefreshCw,
     Clock, Users, Sun, Layers, LayoutGrid, BookOpen, ExternalLink
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const eventColors: Record<string, { bg: string; border: string; text: string; dot: string }> = {
     "Canlı Ders": { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" },
@@ -40,10 +41,14 @@ function evHour(ev: CalendarEventDto) { return new Date(ev.startDate).getHours()
 function evEndHour(ev: CalendarEventDto) { return new Date(ev.endDate).getHours(); }
 
 const EventCard = React.memo(({ ev, compact }: { ev: CalendarEventDto; compact?: boolean }) => {
+    const router = useRouter();
     const c = getColor(ev.eventType);
     const isLive = ev.eventType === "Canlı Ders";
     return (
-        <div className={`${compact ? "p-2" : "p-3"} rounded-xl border ${c.border} ${c.bg} ${isLive ? "cursor-pointer hover:shadow-md hover:scale-[1.01]" : ""} transition-all`}>
+        <div 
+            onClick={() => { if (isLive) router.push('/dashboard/live'); }}
+            className={`${compact ? "p-2" : "p-3"} rounded-xl border ${c.border} ${c.bg} ${isLive ? "cursor-pointer hover:shadow-md hover:scale-[1.01]" : ""} transition-all`}
+        >
             <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
@@ -65,6 +70,7 @@ const EventCard = React.memo(({ ev, compact }: { ev: CalendarEventDto; compact?:
 EventCard.displayName = "EventCard";
 
 export default function StudentCalendarPage() {
+    const router = useRouter();
     const { token, currentTenantId: tenantId } = useAuth();
 
     const [events, setEvents] = useState<CalendarEventDto[]>([]);
@@ -188,6 +194,7 @@ export default function StudentCalendarPage() {
                                                 const isLive = ev.eventType === "Canlı Ders";
                                                 return (
                                                     <div key={ev.id}
+                                                        onClick={(e) => { if (isLive) { e.stopPropagation(); router.push('/dashboard/live'); } }}
                                                         className={`absolute left-1 right-4 rounded-xl p-2.5 border ${col.border} ${col.bg} ${isLive ? "cursor-pointer hover:shadow-lg" : ""} transition-all z-10`}
                                                         style={{ height: `${dur * 64 - 4}px` }}>
                                                         <div className="flex items-start justify-between">
@@ -265,7 +272,8 @@ export default function StudentCalendarPage() {
                                                         const col = getColor(ev.eventType);
                                                         return (
                                                             <div key={ev.id}
-                                                                className={`absolute inset-x-0.5 top-0.5 rounded-lg px-1.5 py-1 border ${col.border} ${col.bg} z-10`}
+                                                                onClick={(e) => { if (ev.eventType === "Canlı Ders") { e.stopPropagation(); router.push('/dashboard/live'); } }}
+                                                                className={`absolute inset-x-0.5 top-0.5 rounded-lg px-1.5 py-1 border ${col.border} ${col.bg} ${ev.eventType === "Canlı Ders" ? "cursor-pointer" : ""} z-10`}
                                                                 style={{ height: `${Math.max(1, evEndHour(ev) - h) * 52 - 4}px` }}>
                                                                 <p className={`text-[9px] font-bold ${col.text} truncate`}>{ev.title}</p>
                                                                 <p className="text-[8px] text-[#A0AEC0] truncate">{evStartTime(ev)}</p>

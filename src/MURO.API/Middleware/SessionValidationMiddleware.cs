@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using MURO.Application.Interfaces;
 using MURO.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +34,14 @@ public class SessionValidationMiddleware
         }
 
         if (!context.User.Identity?.IsAuthenticated ?? true)
+        {
+            await _next(context);
+            return;
+        }
+
+        // Endpoint [AllowAnonymous] içeriyorsa session validation'ı atla
+        var endpoint = context.GetEndpoint();
+        if (endpoint?.Metadata?.GetMetadata<IAllowAnonymous>() != null)
         {
             await _next(context);
             return;

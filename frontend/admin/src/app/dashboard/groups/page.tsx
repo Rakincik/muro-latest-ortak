@@ -72,7 +72,7 @@ function GroupTreeItem({
             <div className="flex-1 min-w-0 py-0.5">
                 <p className="text-sm font-bold tracking-tight truncate text-[#0A1931]">{group.name}</p>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.memberCount} üye</span>
+                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.memberCount} öğrenci</span>
                     <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.courseCount} ders</span>
                     {group.educationType && <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-indigo-100 text-indigo-700 border border-indigo-200" : "bg-indigo-50 text-indigo-700 border border-indigo-100"}`}>{getEducationIcon(group.educationType, 12)} {group.educationType}</span>}
                 </div>
@@ -146,10 +146,11 @@ export default function GroupsPage() {
     const [cloneGroupCourses, setCloneGroupCourses] = useState(true);
 
     // Course assignment
-    const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
     const [assignCourseOpen, setAssignCourseOpen] = useState(false);
-    const [assignCourseId, setAssignCourseId] = useState("");
-    const [assignMode, setAssignMode] = useState("Online");
+    const [assignCourseSearch, setAssignCourseSearch] = useState("");
+    const [assignCourseSelection, setAssignCourseSelection] = useState<Set<string>>(new Set());
+    const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
+    const [loadingCourses, setLoadingCourses] = useState(false);
 
     const loadGroups = useCallback(async () => {
         if (!token || !tenantId) return;
@@ -186,12 +187,19 @@ export default function GroupsPage() {
         }).catch(() => { });
     }, [addMemberOpen, token, tenantId, allUsers.length]);
 
-    // Load courses for assignment
+    // Load all courses for fast local assignment when modal opens
     useEffect(() => {
         if (!assignCourseOpen || !token || !tenantId || allCourses.length > 0) return;
-        courseApi.list(token, tenantId, { pageSize: 200 }).then(res => {
-            setAllCourses(res.items.map((c: CourseListDto) => ({ id: c.id, title: c.title })));
-        }).catch(() => { });
+        setLoadingCourses(true);
+        courseApi.list(token, tenantId, { pageSize: 100 }).then(res => {
+            console.log("FETCHED COURSES RES:", res);
+            setAllCourses((res?.items || []).map(c => ({ id: c.id, title: c.title })));
+        }).catch((err) => { 
+            console.error("Course fetch error:", err);
+            toastError("Hata", "Dersler yüklenirken bir sorun oluştu.");
+        }).finally(() => {
+            setLoadingCourses(false);
+        });
     }, [assignCourseOpen, token, tenantId, allCourses.length]);
 
     const getChildren = (parentId: string | null) => groups.filter(g => g.parentGroupId === parentId);
@@ -256,8 +264,8 @@ export default function GroupsPage() {
         try {
             await groupsApi.removeMember(token, tenantId, selectedId, userId);
             setDetail(prev => prev ? { ...prev, members: prev.members.filter(m => m.userId !== userId), memberCount: prev.memberCount - 1 } : prev);
-            success("Çıkarıldı", "Üye gruptan çıkarıldı.");
-        } catch { toastError("Hata", "Üye çıkarılamadı."); }
+            success("Çıkarıldı", "Öğrenci gruptan çıkarıldı.");
+        } catch { toastError("Hata", "Öğrenci çıkarılamadı."); }
     };
 
     // Bulk add members
@@ -277,9 +285,9 @@ export default function GroupsPage() {
             const d = await groupsApi.get(token, tenantId, selectedId);
             setDetail(d);
             const childCount = childGroups.length;
-            success("Üye Eklendi", `${bulkAddSelection.size} üye gruba eklendi.${childCount > 0 ? ` (${childCount} alt gruba da otomatik eklendi)` : ''}`);
+            success("Öğrenci Eklendi", `${bulkAddSelection.size} öğrenci gruba eklendi.${childCount > 0 ? ` (${childCount} alt gruba da otomatik eklendi)` : ''}`);
             await loadGroups();
-        } catch { toastError("Hata", "Üye eklenemedi."); }
+        } catch { toastError("Hata", "Öğrenci eklenemedi."); }
     };
 
     // Move members
@@ -290,7 +298,7 @@ export default function GroupsPage() {
             setMoveOpen(false); setSelectedMembers(new Set());
             const d = await groupsApi.get(token, tenantId, selectedId);
             setDetail(d);
-            success("Taşındı", `${selectedMembers.size} üye taşındı.`);
+            success("Taşındı", `${selectedMembers.size} öğrenci taşındı.`);
             loadGroups();
         } catch { toastError("Hata", "Taşıma başarısız."); }
     };
@@ -301,7 +309,7 @@ export default function GroupsPage() {
         try {
             await groupsApi.addMembers(token, tenantId, copyTargetGroup, Array.from(selectedMembers));
             setCopyOpen(false); setSelectedMembers(new Set());
-            success("Aktarıldı", `${selectedMembers.size} üye hedefe kopyalandı.`);
+            success("Aktarıldı", `${selectedMembers.size} öğrenci hedefe kopyalandı.`);
             loadGroups();
         } catch { toastError("Hata", "Aktarma başarısız."); }
     };
@@ -314,9 +322,9 @@ export default function GroupsPage() {
             setSelectedMembers(new Set());
             const d = await groupsApi.get(token, tenantId, selectedId);
             setDetail(d);
-            success("Çıkarıldı", "Seçili üyeler gruptan çıkarıldı.");
+            success("Çıkarıldı", "Seçili öğrenciler gruptan çıkarıldı.");
             loadGroups();
-        } catch { toastError("Hata", "Üyeler gruptan çıkarılamadı."); }
+        } catch { toastError("Hata", "Öğrenciler gruptan çıkarılamadı."); }
     };
 
     // Clone Group
@@ -345,17 +353,23 @@ export default function GroupsPage() {
         } catch { toastError("Hata", "Kullanıcılar silinemedi."); }
     };
 
-    // Assign course
-    const handleAssignCourse = async () => {
-        if (!selectedId || !token || !tenantId || !assignCourseId) return;
+    // Assign multiple courses
+    const handleAssignCourses = async () => {
+        if (!selectedId || !token || !tenantId || assignCourseSelection.size === 0) return;
         try {
-            await groupsApi.assignCourse(token, tenantId, selectedId, assignCourseId, assignMode);
-            setAssignCourseOpen(false); setAssignCourseId("");
+            await Promise.all(
+                Array.from(assignCourseSelection).map(courseId => 
+                    groupsApi.assignCourse(token, tenantId, selectedId, courseId, "Online")
+                )
+            );
+            setAssignCourseOpen(false); 
+            setAssignCourseSearch("");
+            setAssignCourseSelection(new Set());
             const d = await groupsApi.get(token, tenantId, selectedId);
             setDetail(d);
-            success("Atandı", "Ders gruba atandı.");
+            success("Atandı", "Seçili dersler gruba atandı.");
             loadGroups();
-        } catch { toastError("Hata", "Ders atanamadı."); }
+        } catch { toastError("Hata", "Dersler atanamadı."); }
     };
 
     // Remove course
@@ -437,14 +451,14 @@ export default function GroupsPage() {
         });
 
     return (
-        <div className="flex flex-col space-y-5 lg:h-[calc(100vh-64px)] pb-24 lg:pb-0">
+        <div className="flex flex-col space-y-3 min-h-[100dvh] lg:min-h-0 lg:h-[calc(100vh-64px)] pb-16 lg:pb-0">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-[#0A1931] flex items-center gap-2">
-                        <FolderTree size={22} className="text-[#1B3B6F]" /> Gruplar
+                    <h1 className="text-xl sm:text-2xl font-bold text-[#0A1931] flex items-center gap-2">
+                        <FolderTree size={20} className="text-[#1B3B6F]" /> Gruplar
                     </h1>
-                    <p className="text-sm text-[#A9A9A9] mt-0.5">Öğrenci gruplarını yönetin</p>
+                    <p className="text-xs sm:text-sm text-[#A9A9A9] mt-0.5">Öğrenci gruplarını yönetin</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={loadGroups} className="p-2.5 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#E2E8F0]/20 text-[#A9A9A9]"><RefreshCw size={18} /></button>
@@ -458,11 +472,11 @@ export default function GroupsPage() {
             <KpiGrid 
                 items={[
                     { label: "Toplam Grup", value: groups.length, icon: FolderTree, colorClass: "text-indigo-600", bgClass: "bg-indigo-50" },
-                    { label: "Toplam Üye", value: totalMembers, icon: Users, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
+                    { label: "Toplam Öğrenci", value: totalMembers, icon: Users, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
                     { label: "Ders Ataması", value: totalCourses, icon: BookOpen, colorClass: "text-emerald-600", bgClass: "bg-emerald-50" },
                     { label: "Boş Grup", value: emptyGroups, icon: AlertTriangle, colorClass: emptyGroups > 0 ? "text-amber-600" : "text-teal-600", bgClass: emptyGroups > 0 ? "bg-amber-50" : "bg-teal-50" },
                 ]}
-                className="flex xl:grid xl:grid-cols-4 gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar"
+                className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0"
             />
 
             {/* Empty Groups Alert */}
@@ -470,14 +484,15 @@ export default function GroupsPage() {
                 <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl shrink-0">
                     <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />
                     <p className="text-xs text-amber-700 font-medium">
-                        <strong>{emptyGroups} grup</strong> henüz üyesi olmayan boş grup. Ağaçta ⚠️ ile işaretlendi.
+                        <strong>{emptyGroups} grup</strong> henüz öğrencisi olmayan boş grup. Ağaçta ⚠️ ile işaretlendi.
                     </p>
                 </div>
             )}
 
-            <div className="flex flex-col lg:grid lg:grid-cols-12 gap-5 flex-1 min-h-[500px]">
-                {/* Tree */}
-                <div className="lg:col-span-4 xl:col-span-3 bg-white rounded-2xl border border-[#E2E8F0] flex flex-col overflow-hidden max-h-[400px] lg:max-h-none">
+            {/* Main Content */}
+            <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
+                {/* Left Panel - Group Tree */}
+                <div className="w-full lg:w-80 h-[350px] lg:h-auto flex flex-col bg-white rounded-2xl sm:rounded-[1.5rem] border border-[#E2E8F0] shadow-sm overflow-hidden shrink-0 lg:shrink-0">
                     <div className="p-3 border-b border-[#E2E8F0] shrink-0">
                         <div className="relative">
                             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -500,8 +515,8 @@ export default function GroupsPage() {
                     </div>
                 </div>
 
-                {/* Detail */}
-                <div className="lg:col-span-8 xl:col-span-9 bg-white rounded-2xl border border-[#E2E8F0] flex flex-col overflow-hidden min-h-[500px]">
+                {/* Right Panel - Group Details */}
+                <div className="flex-1 flex flex-col bg-white rounded-2xl sm:rounded-[1.5rem] border border-[#E2E8F0] shadow-sm overflow-hidden min-h-[500px] lg:min-h-0">
                     {!selectedId ? (
                         <div className="flex-1 flex items-center justify-center text-[#A0AEC0] p-8">
                             <div className="text-center">
@@ -524,7 +539,7 @@ export default function GroupsPage() {
                                         <h2 className="text-lg font-black text-[#0A1931] tracking-tight">{detail.name}</h2>
                                         <div className="hidden sm:block w-px h-4 bg-[#E2E8F0] mx-1" />
                                         <div className="flex items-center flex-wrap gap-2">
-                                            <span className="whitespace-nowrap px-2.5 py-1 bg-white border border-[#E2E8F0] text-[#475569] text-[11px] rounded-lg font-bold shadow-sm flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: detail.color ?? "#6366f1" }} />{detail.memberCount} üye</span>
+                                            <span className="whitespace-nowrap px-2.5 py-1 bg-white border border-[#E2E8F0] text-[#475569] text-[11px] rounded-lg font-bold shadow-sm flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: detail.color ?? "#6366f1" }} />{detail.memberCount} öğrenci</span>
                                             <span className="whitespace-nowrap px-2.5 py-1 bg-white border border-[#E2E8F0] text-[#475569] text-[11px] rounded-lg font-bold shadow-sm">{detail.courseCount} ders</span>
                                             {detail.educationType && <span className="whitespace-nowrap px-2.5 py-1 bg-indigo-50 text-indigo-700 text-[11px] rounded-lg font-bold border border-indigo-200 flex items-center gap-1">{getEducationIcon(detail.educationType, 12)} {detail.educationType}</span>}
                                             {detail.parentGroupName && <span className="whitespace-nowrap px-2.5 py-1 bg-[#F8FAFC] text-[#64748B] text-[11px] rounded-lg border border-[#E2E8F0] font-bold shadow-sm">↑ {detail.parentGroupName}</span>}
@@ -534,7 +549,7 @@ export default function GroupsPage() {
                                         <div className="w-full sm:w-auto overflow-x-auto hide-scrollbar pb-1 sm:pb-0">
                                             <PremiumTabs 
                                                 tabs={[
-                                                    { id: "members", label: "Üyeler", icon: <Users size={12} /> },
+                                                    { id: "members", label: "Öğrenciler", icon: <Users size={12} /> },
                                                     { id: "courses", label: "Dersler", icon: <BookOpen size={12} /> },
                                                     { id: "settings", label: "Ayarlar", icon: <Settings size={12} /> }
                                                 ]} 
@@ -575,7 +590,7 @@ export default function GroupsPage() {
                                                     <input 
                                                         value={memberSearch} 
                                                         onChange={e => { setMemberSearch(e.target.value); setMemberPage(1); }} 
-                                                        placeholder="Üyelerde ara..."
+                                                        placeholder="Öğrencilerde ara..."
                                                         className="w-full pl-8 pr-3 py-1.5 text-xs font-medium bg-white border border-[#E2E8F0] rounded-lg text-[#0A1931] placeholder-[#A0AEC0] focus:outline-none focus:border-[#A0AEC0] shadow-sm"
                                                     />
                                                 </div>
@@ -599,7 +614,7 @@ export default function GroupsPage() {
                                                 )}
                                                 <button onClick={() => { setBulkAddSelection(new Set()); setAddMemberOpen(true); }}
                                                     className="px-3 py-1.5 text-xs bg-[#0A1931] text-white rounded-lg flex items-center gap-1.5 hover:bg-[#1B3B6F] font-bold">
-                                                    <UserPlus size={12} /> Üye Ekle
+                                                    <UserPlus size={12} /> Öğrenci Ekle
                                                 </button>
                                             </div>
                                         </div>
@@ -634,10 +649,10 @@ export default function GroupsPage() {
                                             {filteredDetailMembers.length === 0 && (
                                                 <div className="text-center py-10 text-[#A0AEC0] bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0] border-dashed">
                                                     <Users size={32} className="mx-auto opacity-20 mb-2" />
-                                                    <p className="text-sm font-medium">{memberSearch ? "Aramanıza uygun üye bulunamadı" : "Bu grupta henüz üye yok"}</p>
+                                                    <p className="text-sm font-medium">{memberSearch ? "Aramanıza uygun öğrenci bulunamadı" : "Bu grupta henüz öğrenci yok"}</p>
                                                     {!memberSearch && (
                                                         <button onClick={() => { setBulkAddSelection(new Set()); setAddMemberOpen(true); }}
-                                                            className="mt-3 px-4 py-2 text-xs font-bold text-white bg-[#0A1931] rounded-lg hover:bg-[#1B3B6F] shadow-md transition-colors">+ İlk Üyeyi Ekle</button>
+                                                            className="mt-3 px-4 py-2 text-xs font-bold text-white bg-[#0A1931] rounded-lg hover:bg-[#1B3B6F] shadow-md transition-colors">+ İlk Öğrenciyi Ekle</button>
                                                     )}
                                                 </div>
                                             )}
@@ -694,7 +709,7 @@ export default function GroupsPage() {
                                     <>
                                         <div className="flex items-center justify-between mb-4">
                                             <p className="text-sm font-bold text-[#1B3B6F]">{detail.courses.length} Ders</p>
-                                            <button onClick={() => { setAssignCourseId(""); setAssignCourseOpen(true); }}
+                                            <button onClick={() => { setAssignCourseSearch(""); setAssignCourseOpen(true); }}
                                                 className="px-3 py-1.5 text-xs bg-[#0A1931] text-white rounded-lg flex items-center gap-1.5 hover:bg-[#1B3B6F] font-bold">
                                                 <Plus size={12} /> Ders Ata
                                             </button>
@@ -725,7 +740,7 @@ export default function GroupsPage() {
                                                 <div className="text-center py-10 text-[#A0AEC0]">
                                                     <BookOpen size={32} className="mx-auto opacity-20 mb-2" />
                                                     <p className="text-sm">Bu gruba atanmış ders yok</p>
-                                                    <button onClick={() => { setAssignCourseId(""); setAssignCourseOpen(true); }}
+                                                    <button onClick={() => { setAssignCourseSearch(""); setAssignCourseOpen(true); }}
                                                         className="mt-3 px-4 py-2 text-xs font-bold text-[#1B3B6F] bg-[#E2E8F0]/30 rounded-lg hover:bg-[#E2E8F0]/50">+ Ders Ata</button>
                                                 </div>
                                             )}
@@ -871,7 +886,7 @@ export default function GroupsPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2.5 flex-wrap">
-                                        <span className="px-3.5 py-1.5 bg-white border border-[#E2E8F0] text-[#475569] text-[13px] rounded-xl font-bold shadow-sm flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ background: formColor }} />0 üye</span>
+                                        <span className="px-3.5 py-1.5 bg-white border border-[#E2E8F0] text-[#475569] text-[13px] rounded-xl font-bold shadow-sm flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ background: formColor }} />0 öğrenci</span>
                                         <span className="px-3.5 py-1.5 bg-white border border-[#E2E8F0] text-[#475569] text-[13px] rounded-xl font-bold shadow-sm">0 ders</span>
                                         {formType && <span className="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 text-[13px] rounded-xl font-bold border border-indigo-200 flex items-center gap-1.5">{getEducationIcon(formType, 16)} {formType}</span>}
                                     </div>
@@ -886,7 +901,7 @@ export default function GroupsPage() {
                                 <div className="mt-5 space-y-2">
                                     <p className="text-[11px] font-extrabold text-[#64748B] uppercase tracking-widest mb-3">İpuçları</p>
                                     <div className="text-[11px] text-[#475569] space-y-2.5 font-medium leading-relaxed">
-                                        <p className="flex items-start gap-2"><span className="opacity-70">💡</span> Grup oluşturduktan sonra üye ve ders ekleyebilirsiniz</p>
+                                        <p className="flex items-start gap-2"><span className="opacity-70">💡</span> Grup oluşturduktan sonra öğrenci ve ders ekleyebilirsiniz</p>
                                         <p className="flex items-start gap-2"><span className="opacity-70">🎨</span> Renk, ağaç görünümünde grubu hızlı tanımanızı sağlar</p>
                                         <p className="flex items-start gap-2"><span className="opacity-70">📂</span> Alt gruplarla hiyerarşik yapı oluşturabilirsiniz</p>
                                     </div>
@@ -915,7 +930,7 @@ export default function GroupsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] w-full max-w-md">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]">
-                            <h3 className="text-base font-bold text-[#0A1931]">Üye Ekle</h3>
+                            <h3 className="text-base font-bold text-[#0A1931]">Öğrenci Ekle</h3>
                             <div className="flex items-center gap-2">
                                 {bulkAddSelection.size > 0 && (
                                     <span className="text-xs font-bold text-[#1B3B6F] bg-blue-50 px-2 py-1 rounded-lg">{bulkAddSelection.size} seçili</span>
@@ -966,10 +981,10 @@ export default function GroupsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] w-full max-w-sm p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-bold text-[#0A1931]">{selectedMembers.size} Üyeyi Aktar</h3>
+                            <h3 className="text-base font-bold text-[#0A1931]">{selectedMembers.size} Öğrenciyi Aktar</h3>
                             <button onClick={() => setCopyOpen(false)}><X size={16} className="text-[#A0AEC0]" /></button>
                         </div>
-                        <p className="text-xs text-[#A0AEC0] mb-3">Seçili üyeler bu grupta kalacak ve hedef gruba da kopyalanacak (aktarılacak).</p>
+                        <p className="text-xs text-[#A0AEC0] mb-3">Seçili öğrenciler bu grupta kalacak ve hedef gruba da kopyalanacak (aktarılacak).</p>
                         <select value={copyTargetGroup} onChange={e => setCopyTargetGroup(e.target.value)}
                             className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-xl text-[#1B3B6F] focus:outline-none mb-4">
                             <option value="">Hedef grup seçin</option>
@@ -989,10 +1004,10 @@ export default function GroupsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] w-full max-w-sm p-6">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-bold text-[#0A1931]">{selectedMembers.size} Üyeyi Taşı</h3>
+                            <h3 className="text-base font-bold text-[#0A1931]">{selectedMembers.size} Öğrenciyi Taşı</h3>
                             <button onClick={() => setMoveOpen(false)}><X size={16} className="text-[#A0AEC0]" /></button>
                         </div>
-                        <p className="text-xs text-[#A0AEC0] mb-3">Seçili üyeler bu gruptan çıkarılıp hedef gruba taşınacak.</p>
+                        <p className="text-xs text-[#A0AEC0] mb-3">Seçili öğrenciler bu gruptan çıkarılıp hedef gruba taşınacak.</p>
                         <select value={moveTargetGroup} onChange={e => setMoveTargetGroup(e.target.value)}
                             className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-xl text-[#1B3B6F] focus:outline-none mb-4">
                             <option value="">Hedef grup seçin</option>
@@ -1011,38 +1026,65 @@ export default function GroupsPage() {
 
             {/* ── Assign Course Modal ── */}
             {assignCourseOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] w-full max-w-sm p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-bold text-[#0A1931]">Ders Ata</h3>
-                            <button onClick={() => setAssignCourseOpen(false)}><X size={16} className="text-[#A0AEC0]" /></button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-fade-in-up border border-[#E2E8F0]">
+                        <div className="flex items-center justify-between p-6 border-b border-[#E2E8F0]/60 bg-[#E2E8F0]/15">
+                            <h2 className="text-xl font-black text-[#0A1931]">Ders Ata</h2>
+                            <button onClick={() => { setAssignCourseOpen(false); setAssignCourseSearch(""); }} className="p-2 text-[#A0AEC0] hover:text-[#0A1931] rounded-xl"><X size={20} /></button>
                         </div>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="text-xs font-bold text-[#1B3B6F] mb-1.5 block">Ders Seçin</label>
-                                <select value={assignCourseId} onChange={e => setAssignCourseId(e.target.value)}
-                                    className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-xl text-[#1B3B6F] focus:outline-none">
-                                    <option value="">— Ders seçin —</option>
-                                    {allCourses.filter(c => !detail?.courses.some(dc => dc.courseId === c.id)).map(c => (
-                                        <option key={c.id} value={c.id}>{c.title}</option>
-                                    ))}
-                                </select>
+                        <div className="p-6">
+                            <div className="relative mb-6">
+                                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                <input
+                                    type="text"
+                                    placeholder="Ders adı ara..."
+                                    value={assignCourseSearch}
+                                    onChange={(e) => setAssignCourseSearch(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 bg-[#E2E8F0]/20 border border-[#E2E8F0]/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                                />
                             </div>
-                            <div>
-                                <label className="text-xs font-bold text-[#1B3B6F] mb-1.5 block">Eğitim Modeli</label>
-                                <select value={assignMode} onChange={e => setAssignMode(e.target.value)}
-                                    className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-xl text-[#1B3B6F] focus:outline-none">
-                                    <option value="Online">Online (Sadece Canlı)</option>
-                                    <option value="Offline">Offline (Sadece Video)</option>
-                                </select>
+
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                {loadingCourses ? (
+                                    <div className="flex flex-col items-center justify-center py-10">
+                                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
+                                        <p className="text-sm font-medium text-[#64748B]">Dersler yükleniyor...</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {allCourses
+                                            .filter(c => !detail?.courses.some(dc => dc.courseId === c.id))
+                                            .filter(c => !assignCourseSearch || c.title.toLowerCase().includes(assignCourseSearch.toLowerCase()))
+                                            .map(c => {
+                                                const isSelected = assignCourseSelection.has(c.id);
+                                                return (
+                                                    <div key={c.id} 
+                                                        onClick={() => {
+                                                            const newSel = new Set(assignCourseSelection);
+                                                            if (isSelected) newSel.delete(c.id);
+                                                            else newSel.add(c.id);
+                                                            setAssignCourseSelection(newSel);
+                                                        }}
+                                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? "border-indigo-500 bg-indigo-50/50" : "border-[#E2E8F0]/60 hover:border-indigo-200 hover:bg-indigo-50/30"}`}>
+                                                        <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-[#E2E8F0] text-indigo-600" />
+                                                        <p className="text-sm font-bold text-[#0A1931] flex-1">{c.title}</p>
+                                                    </div>
+                                                );
+                                        })}
+                                        {allCourses.filter(c => !detail?.courses.some(dc => dc.courseId === c.id)).filter(c => !assignCourseSearch || c.title.toLowerCase().includes(assignCourseSearch.toLowerCase())).length === 0 && (
+                                            <p className="text-center text-sm text-[#A0AEC0] py-4">Aramanıza uygun ders bulunamadı.</p>
+                                        )}
+                                    </>
+                                )}
                             </div>
-                            <div className="flex gap-2 mt-5">
-                                <button onClick={() => setAssignCourseOpen(false)} className="flex-1 py-2.5 text-sm font-bold text-[#A9A9A9] border border-[#E2E8F0] rounded-xl">İptal</button>
-                                <button onClick={handleAssignCourse} disabled={!assignCourseId}
-                                    className="flex-1 py-2.5 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] disabled:opacity-40">
-                                    Ata
-                                </button>
-                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-[#E2E8F0]/60 bg-[#E2E8F0]/15 flex justify-end gap-2">
+                            <button onClick={() => { setAssignCourseOpen(false); setAssignCourseSearch(""); setAssignCourseSelection(new Set()); }}
+                                className="px-5 py-2.5 text-sm font-bold text-[#A9A9A9] border border-[#E2E8F0] rounded-xl hover:bg-white transition-colors">İptal</button>
+                            <button onClick={handleAssignCourses} disabled={assignCourseSelection.size === 0}
+                                className="px-5 py-2.5 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] disabled:opacity-40 transition-colors">
+                                {assignCourseSelection.size > 0 ? `${assignCourseSelection.size} Dersi Ata` : "Ders Seçiniz"}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1065,7 +1107,7 @@ export default function GroupsPage() {
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" checked={cloneGroupMembers} onChange={e => setCloneGroupMembers(e.target.checked)} className="w-4 h-4 rounded border-[#E2E8F0] text-[#1B3B6F]" />
-                                    <span className="text-sm font-medium text-[#0A1931]">Üyeleri de kopyala</span>
+                                    <span className="text-sm font-medium text-[#0A1931]">Öğrencileri de kopyala</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" checked={cloneGroupCourses} onChange={e => setCloneGroupCourses(e.target.checked)} className="w-4 h-4 rounded border-[#E2E8F0] text-[#1B3B6F]" />

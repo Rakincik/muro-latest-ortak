@@ -29,7 +29,7 @@ export default function CoursesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-[#0A1931]">📚 Derslerim</h1>
+                    <h1 className="text-2xl font-bold text-[#0A1931]">Derslerim</h1>
                     <p className="text-[#A9A9A9] text-sm mt-1">{courses.length} kurs kayıtlı</p>
                 </div>
                 <input

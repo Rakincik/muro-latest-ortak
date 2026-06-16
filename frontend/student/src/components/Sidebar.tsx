@@ -81,6 +81,7 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
     };
 
     return (
+        <>
         <aside 
             className={`sidebar w-[280px] md:w-[260px] flex flex-col h-screen fixed left-0 top-0 z-[70] md:z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 md:translate-x-0 ${!isOpen ? "-translate-x-full" : ""}`}
             style={isOpen ? { transform: 'translateX(0)' } : undefined}
@@ -200,13 +201,14 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
                     </button>
                 </div>
             </div>
-
-            {showNotifications && (
-                <NotificationsModal 
-                    onClose={() => setShowNotifications(false)} 
-                    onUnreadCountUpdate={setUnreadCount}
-                />
-            )}
         </aside>
+
+        {showNotifications && (
+            <NotificationsModal 
+                onClose={() => setShowNotifications(false)} 
+                onUnreadCountUpdate={setUnreadCount}
+            />
+        )}
+        </>
     );
 }

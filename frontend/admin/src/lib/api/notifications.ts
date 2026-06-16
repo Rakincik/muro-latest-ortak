@@ -18,11 +18,11 @@ export const notificationApi = {
     bulkSend: (
         token: string, tenantId: string,
         userIds: string[], title: string, body: string, type: string,
-        scheduledAt?: string, groupId?: string, sendToAll?: boolean
+        scheduledAt?: string, groupId?: string, sendToAll?: boolean, courseId?: string
     ) =>
         api<number>(`/notifications/bulk`, {
             method: "POST", token, tenantId,
-            body: JSON.stringify({ userIds, title, body, type, scheduledAt, groupId, sendToAll }),
+            body: JSON.stringify({ userIds, title, body, type, scheduledAt, groupId, sendToAll, courseId }),
         }),
 
     /** List groups for targeting */

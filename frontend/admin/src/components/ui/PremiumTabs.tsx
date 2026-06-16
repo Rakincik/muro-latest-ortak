@@ -56,7 +56,7 @@ export function PremiumTabs({ tabs, activeTab, onChange, className = "" }: Premi
                         <button
                             key={tab.id}
                             onClick={() => onChange(tab.id)}
-                            className={`relative z-10 flex items-center gap-2 px-5 py-2 text-xs sm:text-sm font-bold rounded-lg transition-colors justify-center min-w-[100px] flex-1 sm:flex-none ${
+                            className={`relative z-10 flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-bold rounded-lg transition-colors justify-center shrink-0 ${
                                 isActive ? "text-[#0A1931]" : "text-[#64748B] hover:text-[#0A1931]"
                             }`}
                         >

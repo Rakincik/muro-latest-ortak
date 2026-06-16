@@ -148,7 +148,8 @@ public record ExamResultDto(
     DateTime? StartedAt = null,
     int? DurationSeconds = null,
     Dictionary<string, SectionResultDto>? SectionResults = null,
-    bool IsPending = false
+    bool IsPending = false,
+    Dictionary<int, string>? Answers = null
 );
 
 public record ExamResultSummaryDto(
@@ -158,7 +159,8 @@ public record ExamResultSummaryDto(
     double HighestScore,
     double LowestScore,
     List<ExamResultDto> Results,
-    List<ScoreRangeDto>? ScoreDistribution = null
+    List<ScoreRangeDto>? ScoreDistribution = null,
+    Dictionary<int, string>? AnswerKey = null
 );
 
 public record ScoreRangeDto(string Range, int Count);

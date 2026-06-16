@@ -48,7 +48,8 @@ public record SessionAttendanceSummaryDto(
     DateTime? ScheduledStart,
     int PresentCount,
     int TotalEnrolled,
-    double AttendanceRate
+    double AttendanceRate,
+    List<Guid> PresentStudentIds
 );
 
 // ── Admin: Öğrenci skor kartı (tek öğrenci) ──────────────────────────────
@@ -65,6 +66,27 @@ public record StudentScorecardDto(
     int TotalWatchedMinutes,
     int SubmittedAssignments,
     double AvgExamScore
+);
+
+public record StudentAcademicHistoryDto(
+    List<StudentExamHistoryDto> Exams,
+    List<StudentAssignmentHistoryDto> Assignments
+);
+
+public record StudentExamHistoryDto(
+    Guid ExamId,
+    string Title,
+    double Score,
+    double Net,
+    DateTime TakenAt
+);
+
+public record StudentAssignmentHistoryDto(
+    Guid AssignmentId,
+    string Title,
+    string Status,
+    int? Grade,
+    DateTime SubmittedAt
 );
 
 // ── Admin: Tüm öğrencilerin toplu karne ortalaması ───────────────────────

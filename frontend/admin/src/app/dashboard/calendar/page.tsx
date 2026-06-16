@@ -11,7 +11,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { calendarApi, courseApi, type CalendarEventDto, type CreateCalendarEventRequest, type CourseListDto } from "@/lib/api";
+import { calendarApi, courseApi, groupsApi, type CalendarEventDto, type CreateCalendarEventRequest, type CourseListDto, type GroupListDto } from "@/lib/api";
 
 const eventColors: Record<string, { bg: string; border: string; text: string; dot: string }> = {
     "Canlı Ders": { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" },
@@ -63,13 +63,15 @@ export default function CalendarPage() {
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<ViewMode>("month");
     const [defaultTime, setDefaultTime] = useState<string | null>(null);
+    const [quickFormMode, setQuickFormMode] = useState(false);
 
     const [resizingEvent, setResizingEvent] = useState<{ id: string, startY: number, initialHeight: number, mode: "day" | "week" } | null>(null);
     const resizeHeightRef = useRef<number | null>(null);
     const isResizingRef = useRef(false);
 
-    // Courses for drag & drop
+    // Courses and Groups for scheduling & drag & drop
     const [courses, setCourses] = useState<CourseListDto[]>([]);
+    const [groups, setGroups] = useState<GroupListDto[]>([]);
     const [courseSearch, setCourseSearch] = useState("");
     const [dragCourse, setDragCourse] = useState<CourseListDto | null>(null);
     const [dragEvent, setDragEvent] = useState<CalendarEventDto | null>(null);
@@ -149,6 +151,7 @@ export default function CalendarPage() {
     useEffect(() => {
         if (!token || !tenantId) return;
         courseApi.list(token, tenantId, { pageSize: 100 }).then(res => setCourses(res.items ?? [])).catch(() => { });
+        groupsApi.list(token, tenantId, { pageSize: 100 }).then(res => setGroups(res.items ?? [])).catch(() => { });
     }, [token, tenantId]);
 
     const today = toDateStr(new Date());
@@ -220,9 +223,32 @@ export default function CalendarPage() {
         }
 
         if (dragCourse) {
+            if (hour !== undefined) {
+                const startStr = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).toISOString();
+                const endStr = new Date(`${date}T${String(hour + 1).padStart(2, "0")}:00:00`).toISOString();
+                calendarApi.create(token, tenantId, {
+                    title: `${dragCourse.title} — Canlı Ders`,
+                    startDate: startStr,
+                    endDate: endStr,
+                    eventType: "Canlı Ders",
+                    description: `${dragCourse.title} dersi için planlanan canlı oturum`,
+                    courseId: dragCourse.id
+                }).then(c => {
+                    setEvents(prev => [...prev, c]);
+                    success("Etkinlik Oluşturuldu", `${dragCourse.title} için canlı ders eklendi.`);
+                }).catch(err => {
+                    toastError("Hata", err?.message || "Oluşturulamadı.");
+                }).finally(() => {
+                    setDragCourse(null);
+                    setDropTarget(null);
+                });
+                return;
+            }
+
             setSelectedDate(date);
-            setDefaultTime(hour ? `${String(hour).padStart(2, "0")}:00` : "10:00");
+            setDefaultTime("10:00");
             setDroppedCourse(dragCourse);
+            setQuickFormMode(true);
             setShowForm(true);
             setDragCourse(null);
             setDropTarget(null);
@@ -372,6 +398,7 @@ export default function CalendarPage() {
                                     {HOURS.map(h => (
                                         <div key={h} className="absolute w-full flex" style={{ top: `${(h - 7) * 76}px`, height: "76px" }}
                                             onClick={() => { 
+                                                if (isResizingRef.current) return;
                                                 if (dragCourse) { handleDrop(selectedDate, h); } 
                                                 else { setEditEvent(null); setDefaultTime(`${String(h).padStart(2, "0")}:00`); setShowForm(true); }
                                             }}
@@ -502,7 +529,8 @@ export default function CalendarPage() {
                                                 return (
                                                     <div key={ds} className={`relative border-l border-[#E2E8F0]/20 cursor-pointer transition-colors ${isDropHere || dragCourse ? "hover:bg-emerald-50/30" : "hover:bg-[#1B3B6F]/[0.03]"} ${isDropHere ? "bg-emerald-50/50" : ""}`}
                                                         onClick={() => { 
-                                                            if (dragCourse) { handleDrop(ds, h); }
+                                                            if (isResizingRef.current) return;
+                                                            if (dragCourse) { handleDrop(ds, h); } 
                                                             else { setSelectedDate(ds); setEditEvent(null); setDefaultTime(`${String(h).padStart(2, "0")}:00`); setShowForm(true); }
                                                         }}
                                                         onDragOver={e => { e.preventDefault(); setDropTarget({ date: ds, hour: h }); }}
@@ -625,14 +653,14 @@ export default function CalendarPage() {
                 </div>
             </div>
 
-            {showForm && <EventFormModal event={editEvent} defaultDate={selectedDate} defaultTime={defaultTime} droppedCourse={droppedCourse} onClose={() => { setShowForm(false); setEditEvent(null); setDefaultTime(null); setDroppedCourse(null); }} onSave={handleSave} />}
+            {showForm && <EventFormModal event={editEvent} defaultDate={selectedDate} defaultTime={defaultTime} droppedCourse={droppedCourse} courses={courses} groups={groups} isQuickForm={quickFormMode} onClose={() => { setShowForm(false); setEditEvent(null); setDefaultTime(null); setDroppedCourse(null); setQuickFormMode(false); }} onSave={handleSave} />}
             <ConfirmDialog open={deleteTarget !== null} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} title="Etkinliği Sil" message="Bu etkinlik kalıcı olarak silinecek." />
         </div>
     );
 }
 
-function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClose, onSave }: {
-    event: CalendarEventDto | null; defaultDate: string | null; defaultTime: string | null; droppedCourse: CourseListDto | null; onClose: () => void; onSave: (d: CreateCalendarEventRequest) => void;
+function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, courses, groups, isQuickForm, onClose, onSave }: {
+    event: CalendarEventDto | null; defaultDate: string | null; defaultTime: string | null; droppedCourse: CourseListDto | null; courses: CourseListDto[]; groups: GroupListDto[]; isQuickForm?: boolean; onClose: () => void; onSave: (d: CreateCalendarEventRequest) => void;
 }) {
     const [form, setForm] = useState({
         title: event?.title || (droppedCourse ? `${droppedCourse.title} — Canlı Ders` : ""),
@@ -642,7 +670,8 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClos
         endTime: event ? evEndTime(event) : (defaultTime ? `${String(parseInt(defaultTime) + 1).padStart(2, "0")}:00` : "10:00"),
         eventType: event?.eventType || (droppedCourse ? "Canlı Ders" : "Etkinlik"),
         description: event?.description || (droppedCourse ? `${droppedCourse.title} dersi için planlanan canlı oturum` : ""),
-        courseId: event?.courseId || droppedCourse?.id,
+        courseId: event?.courseId || droppedCourse?.id || "",
+        groupId: event?.groupId || "",
     });
 
     const isFullDay = form.eventType === "Tatil" || form.eventType === "Etkinlik";
@@ -654,8 +683,16 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClos
         endDate: isFullDay ? new Date(`${form.endDate}T23:59:59`).toISOString() : new Date(`${form.date}T${form.endTime}:00`).toISOString(),
         eventType: form.eventType,
         description: form.description || undefined,
-        courseId: form.courseId,
+        courseId: form.courseId || undefined,
+        groupId: form.groupId || undefined,
     });
+
+    const isLive = form.eventType === "Canlı Ders";
+    const hasCourse = !!form.courseId;
+    const hasGroup = !!form.groupId;
+    const hasTarget = hasCourse || hasGroup;
+    const isValidLive = isLive ? hasCourse : true;
+    const isFormValid = form.title && form.date && hasTarget && isValidLive;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
@@ -672,54 +709,96 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, onClos
                     </div>
                 </div>
                 <div className="p-6 space-y-5">
-                    <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlık *</label>
-                        <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-                            className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]" placeholder="Etkinlik adı" /></div>
-                    <div className={`grid ${isFullDay ? 'grid-cols-2' : 'grid-cols-3'} gap-4`}>
-                        <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">{isFullDay ? "Başlangıç Tarihi" : "Tarih"}</label>
-                            <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                                className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
-                        {isFullDay ? (
-                            <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş Tarihi</label>
-                            <input type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
-                                className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
-                        ) : (
-                            <>
-                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlangıç</label>
-                                    <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))}
-                                        className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
-                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş</label>
-                                    <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))}
-                                        className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
-                            </>
-                        )}
-                    </div>
-                    <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Tür</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {Object.keys(eventColors).map(t => {
-                                const c = getColor(t);
-                                const Ic = eventIcons[t];
-                                return (<button key={t} type="button" 
-                                    disabled={typeLocked && form.eventType !== t}
-                                    onClick={() => setForm(p => ({ ...p, eventType: t }))}
-                                    className={`py-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 
-                                        ${form.eventType === t ? `${c.bg} ${c.border} ${c.text} ring-2 ring-offset-1` : 
-                                        typeLocked ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50" :
-                                        "bg-white text-[#A9A9A9] border-[#E2E8F0] hover:bg-[#F8FAFC]"}`}>
-                                    {Ic && <Ic size={14} />}{t}</button>);
-                            })}
-                        </div></div>
+                    {!isQuickForm && (
+                        <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlık *</label>
+                            <input type="text" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                                className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]" placeholder="Etkinlik adı" /></div>
+                    )}
+                    {!isQuickForm && (
+                        <div className={`grid ${isFullDay ? 'grid-cols-2' : 'grid-cols-3'} gap-4`}>
+                            <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">{isFullDay ? "Başlangıç Tarihi" : "Tarih"}</label>
+                                <input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                                    className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                            {isFullDay ? (
+                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş Tarihi</label>
+                                <input type="date" value={form.endDate} onChange={e => setForm(p => ({ ...p, endDate: e.target.value }))}
+                                    className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                            ) : (
+                                <>
+                                    <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlangıç</label>
+                                        <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))}
+                                            className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                                    <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş</label>
+                                        <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))}
+                                            className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                    {isQuickForm && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Başlangıç Saati</label>
+                                <input type="time" value={form.startTime} onChange={e => setForm(p => ({ ...p, startTime: e.target.value }))}
+                                    className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                            <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Bitiş Saati</label>
+                                <input type="time" value={form.endTime} onChange={e => setForm(p => ({ ...p, endTime: e.target.value }))}
+                                    className="w-full px-3 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" /></div>
+                        </div>
+                    )}
+                    {!isQuickForm && (
+                        <>
+                            <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Tür</label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {Object.keys(eventColors).map(t => {
+                                        const c = getColor(t);
+                                        const Ic = eventIcons[t];
+                                        return (<button key={t} type="button" 
+                                            disabled={typeLocked && form.eventType !== t}
+                                            onClick={() => setForm(p => ({ ...p, eventType: t }))}
+                                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all text-center flex items-center justify-center gap-1.5 
+                                                ${form.eventType === t ? `${c.bg} ${c.border} ${c.text} ring-2 ring-offset-1` : 
+                                                typeLocked ? "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50" :
+                                                "bg-white text-[#A9A9A9] border-[#E2E8F0] hover:bg-[#F8FAFC]"}`}>
+                                            {Ic && <Ic size={14} />}{t}</button>);
+                                    })}
+                                </div></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Ders</label>
+                                    <select value={form.courseId} onChange={e => setForm(p => ({ ...p, courseId: e.target.value }))}
+                                        className={`w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] ${isLive && !hasCourse ? 'border-red-400 ring-1 ring-red-400/50' : 'border-[#E2E8F0]'}`}>
+                                        <option value="">-- Ders Seç --</option>
+                                        {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                                    </select>
+                                </div>
+                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Grup</label>
+                                    <select value={form.groupId} onChange={e => setForm(p => ({ ...p, groupId: e.target.value }))}
+                                        className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]">
+                                        <option value="">-- Grup Seç --</option>
+                                        {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </>
+                    )}
                     <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Açıklama</label>
                         <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                             className="w-full px-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none resize-none h-20 text-[#0A1931]" placeholder="Etkinlik detayları" /></div>
                 </div>
-                <div className="flex items-center justify-between px-6 py-5 border-t border-[#E2E8F0] bg-[#E2E8F0]/10 rounded-b-2xl">
-                    <p className="text-xs font-medium text-[#A0AEC0]">{form.title && form.date ? "✓ Kaydetmeye Hazır" : "Zorunlu alanları doldurun"}</p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between px-6 py-5 border-t border-[#E2E8F0] bg-[#E2E8F0]/10 rounded-b-2xl gap-3">
+                    <div className="text-[11px] font-bold">
+                        {isFormValid ? (
+                            <span className="text-emerald-600">✓ Kaydetmeye Hazır</span>
+                        ) : (
+                            <span className="text-red-500">
+                                ⚠ {isLive && !hasCourse ? "Canlı ders için 'Ders' seçimi zorunludur." : !hasTarget ? "Grup veya Ders seçimi zorunludur." : "Zorunlu alanları doldurun."}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex gap-3">
                         <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-[#A9A9A9] hover:text-[#0A1931]">İptal</button>
-                        <button disabled={!form.title || !form.date} onClick={() => onSave(buildPayload())}
+                        <button disabled={!isFormValid} onClick={() => onSave(buildPayload())}
                             className="px-6 py-2.5 text-sm font-bold text-white bg-[#0A1931] rounded-xl hover:bg-[#1B3B6F] shadow-lg shadow-black/10 disabled:opacity-40">
-                            {event ? "💾 Güncelle" : "✨ Oluştur"}
+                            {event ? "💾 Güncelle" : "Oluştur"}
                         </button>
                     </div>
                 </div>

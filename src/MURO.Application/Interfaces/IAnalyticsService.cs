@@ -13,6 +13,7 @@ public interface IAnalyticsService
     Task<List<DeviceSessionDto>> GetActiveSessionsAsync(Guid tenantId);
     Task<CourseAttendanceReportDto> GetCourseAttendanceReportAsync(Guid tenantId, Guid courseId);
     Task<StudentScorecardDto> GetStudentScorecardAsync(Guid tenantId, Guid studentId);
+    Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid tenantId, Guid studentId);
     Task<ScorecardSummaryDto> GetScorecardSummaryAsync(Guid tenantId);
     Task<StudentDashboardDto> GetStudentDashboardAsync(Guid tenantId, Guid userId);
 }

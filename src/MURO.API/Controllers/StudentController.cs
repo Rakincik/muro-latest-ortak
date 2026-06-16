@@ -97,19 +97,17 @@ public class StudentController : ControllerBase
             catch { return 0; }
         }
 
-        // Paralel API çağrıları
-        var statsTask = SafeGetStats();
-        var coursesTask = SafeGetCourses();
-        var sessionsTask = SafeGetSessions();
-        var unreadCountTask = SafeGetUnreadCount();
-
-        await Task.WhenAll(statsTask, coursesTask, sessionsTask, unreadCountTask);
+        // Sıralı çağrılar — DbContext thread-safe değildir, paralel kullanılamaz!
+        var stats = await SafeGetStats();
+        var courses = await SafeGetCourses();
+        var sessions = await SafeGetSessions();
+        var unreadCount = await SafeGetUnreadCount();
 
         var dto = new MURO.Application.DTOs.Analytics.StudentDashboardSummaryDto(
-            statsTask.Result,
-            coursesTask.Result,
-            sessionsTask.Result,
-            unreadCountTask.Result
+            stats,
+            courses,
+            sessions,
+            unreadCount
         );
 
         return Ok(dto);

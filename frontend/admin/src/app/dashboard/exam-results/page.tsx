@@ -15,7 +15,8 @@ import {
     PiBookOpenTextDuotone as BookOpen,
     PiClockDuotone as Clock,
     PiEyeDuotone as Eye,
-    PiArrowsClockwiseDuotone as RefreshCw
+    PiArrowsClockwiseDuotone as RefreshCw,
+    PiFileTextDuotone as FileText
 } from "react-icons/pi";
 import { useAuth } from "@/contexts/AuthContext";
 import { examApi, type ExamListDto, type ExamResultSummaryDto, type ExamResultDto } from "@/lib/api";
@@ -76,6 +77,112 @@ function exportCSV(examTitle: string, results: ExamResultDto[]) {
     a.download = `sinav_${examTitle.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
 }
 
+// Student Paper Modal
+function StudentPaperModal({ result, answerKey, onClose }: { result: ExamResultDto; answerKey: Record<number, string>; onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-6 py-4 border-b border-[#E2E8F0] flex items-center justify-between bg-gray-50">
+                    <div>
+                        <h3 className="font-bold text-[#0A1931]">{result.userFullName} - Sınav Kağıdı</h3>
+                        <p className="text-xs text-[#A0AEC0] mt-0.5">Puan: {result.score.toFixed(1)} · Net: {result.net.toFixed(2)}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 rounded-xl bg-white text-[#A0AEC0] hover:text-[#0A1931] shadow-sm"><X size={16} /></button>
+                </div>
+                <div className="p-6 overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {Object.entries(answerKey).map(([qStr, correctAns]) => {
+                            const qNum = parseInt(qStr);
+                            const studentAns = result.answers?.[qNum];
+                            const isCorrect = studentAns === correctAns;
+                            const isEmpty = !studentAns;
+                            return (
+                                <div key={qNum} className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 ${isCorrect ? 'bg-emerald-50 border-emerald-100' : isEmpty ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-100'}`}>
+                                    <span className="text-[10px] font-bold text-[#A0AEC0]">Soru {qNum}</span>
+                                    <div className="flex items-center gap-2 text-sm font-bold">
+                                        <span className={isCorrect ? 'text-emerald-600' : isEmpty ? 'text-gray-400' : 'text-red-500'}>{studentAns || "Boş"}</span>
+                                        {!isCorrect && <span className="text-emerald-600 text-xs opacity-60">({correctAns})</span>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Question Analysis Tab
+function QuestionAnalysis({ exam, summary }: { exam: ExamListDto; summary: ExamResultSummaryDto }) {
+    if (!summary.answerKey) {
+        return <div className="p-12 text-center text-[#A0AEC0]"><FileText size={40} className="mx-auto mb-3 opacity-20" /><p className="text-sm">Cevap anahtarı tanımlanmadığı için soru analizi yapılamıyor.</p></div>;
+    }
+
+    const questionCount = exam.questionCount;
+    // Calculate stats per question
+    const stats = Array.from({ length: questionCount }, (_, i) => {
+        const qNum = i + 1;
+        const correctAns = summary.answerKey![qNum];
+        let correct = 0, wrong = 0, empty = 0;
+        const distribution: Record<string, number> = {};
+        
+        summary.results.forEach(r => {
+            const ans = r.answers?.[qNum];
+            if (!ans) empty++;
+            else {
+                distribution[ans] = (distribution[ans] || 0) + 1;
+                if (ans === correctAns) correct++;
+                else wrong++;
+            }
+        });
+
+        return { qNum, correctAns, correct, wrong, empty, distribution };
+    });
+
+    return (
+        <div className="p-6 space-y-4">
+            <h3 className="text-sm font-bold text-[#0A1931]">Soru Analizi ({questionCount} Soru)</h3>
+            <div className="rounded-xl border border-[#E2E8F0] overflow-x-auto">
+                <table className="w-full text-xs text-left min-w-[500px]">
+                    <thead className="bg-[#E2E8F0]/20 border-b border-[#E2E8F0] text-[10px] text-[#A0AEC0] uppercase tracking-wider">
+                        <tr>
+                            <th className="px-4 py-3 font-bold">Soru</th>
+                            <th className="px-4 py-3 font-bold">Doğru C.</th>
+                            <th className="px-4 py-3 font-bold text-emerald-600">Doğru</th>
+                            <th className="px-4 py-3 font-bold text-red-500">Yanlış</th>
+                            <th className="px-4 py-3 font-bold text-[#A0AEC0]">Boş</th>
+                            <th className="px-4 py-3 font-bold text-[#1B3B6F]">Başarı Oranı</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E2E8F0]/40">
+                        {stats.map(s => {
+                            const successRate = summary.results.length > 0 ? Math.round((s.correct / summary.results.length) * 100) : 0;
+                            return (
+                                <tr key={s.qNum} className="hover:bg-[#E2E8F0]/10">
+                                    <td className="px-4 py-3 font-bold text-[#0A1931]">Soru {s.qNum}</td>
+                                    <td className="px-4 py-3 font-bold">{s.correctAns || "—"}</td>
+                                    <td className="px-4 py-3 text-emerald-600 font-medium">{s.correct}</td>
+                                    <td className="px-4 py-3 text-red-500 font-medium">{s.wrong}</td>
+                                    <td className="px-4 py-3 text-[#A0AEC0] font-medium">{s.empty}</td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full ${successRate >= 50 ? "bg-emerald-500" : "bg-red-500"}`} style={{ width: `${successRate}%` }} />
+                                            </div>
+                                            <span className={`font-bold w-8 text-right ${successRate >= 50 ? "text-emerald-600" : "text-red-500"}`}>{successRate}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 // ─── Exam Detail Panel ─────────────────────────────────────────────────────
 function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => void }) {
     const { token, currentTenantId: tenantId } = useAuth();
@@ -83,6 +190,8 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState<"score" | "net">("score");
     const [sortAsc, setSortAsc] = useState(false);
+    const [activeTab, setActiveTab] = useState<"results" | "analysis">("results");
+    const [selectedStudent, setSelectedStudent] = useState<ExamResultDto | null>(null);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -118,17 +227,26 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
                             <button onClick={onClose} className="p-2 rounded-xl bg-[#E2E8F0]/20 text-[#A0AEC0] hover:text-[#0A1931]"><X size={16} /></button>
                         </div>
                     </div>
+                    {/* Tab bar */}
+                    {!loading && summary && summary.totalParticipants > 0 && (
+                        <div className="flex mt-3 bg-[#E2E8F0]/30 rounded-xl p-0.5">
+                            <button onClick={() => setActiveTab("results")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "results" ? "bg-white text-[#0A1931] shadow-sm" : "text-[#A0AEC0]"}`}>Öğrenci Sonuçları ({summary.results.length})</button>
+                            <button onClick={() => setActiveTab("analysis")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "analysis" ? "bg-white text-[#0A1931] shadow-sm" : "text-[#A0AEC0]"}`}>Soru Analizi</button>
+                        </div>
+                    )}
                 </div>
 
                 {loading ? (
                     <div className="p-6 space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-20 rounded-xl bg-[#E2E8F0]/40 animate-pulse" />)}</div>
                 ) : !summary || summary.totalParticipants === 0 ? (
                     <div className="p-12 text-center"><BarChart3 size={40} className="text-[#A9A9A9] mx-auto mb-3" /><p className="text-[#A0AEC0] text-sm">Henüz sonuç yok</p></div>
+                ) : activeTab === "analysis" ? (
+                    <QuestionAnalysis exam={exam} summary={summary} />
                 ) : (
                     <>
                         {/* KPIs */}
-                        <div className="p-6 border-b border-[#E2E8F0]/60">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                        <div className="bg-[#E2E8F0]/10 p-5 border-b border-[#E2E8F0]">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                                 {[
                                     { label: "Katılımcı", value: String(summary.totalParticipants), icon: Users, color: "text-[#1B3B6F]", bg: "bg-[#1B3B6F]/5" },
                                     { label: "Ortalama", value: summary.averageScore.toFixed(1), icon: Target, color: scoreColor(summary.averageScore), bg: summary.averageScore >= 60 ? "bg-emerald-50" : "bg-amber-50" },
@@ -186,6 +304,7 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
                                                 </span>
                                             </th>
                                             <th className="text-center px-2 py-2.5 text-[10px] font-bold text-[#A9A9A9] uppercase">Durum</th>
+                                            <th className="text-center px-2 py-2.5 text-[10px] font-bold text-[#A9A9A9] uppercase">Kağıt</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -207,6 +326,9 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
                                                     <td className="px-2 py-2.5 text-center">
                                                         <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border ${badge.cls}`}>{badge.label}</span>
                                                     </td>
+                                                    <td className="px-2 py-2.5 text-center">
+                                                        <button onClick={() => setSelectedStudent(r)} className="p-1.5 rounded-lg bg-[#E2E8F0]/30 hover:bg-[#1B3B6F] hover:text-white transition-colors text-[#1B3B6F]" title="Sınav Kağıdı"><FileText size={12} /></button>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
@@ -217,6 +339,9 @@ function ExamResultPanel({ exam, onClose }: { exam: ExamListDto; onClose: () => 
                     </>
                 )}
             </div>
+            {selectedStudent && summary?.answerKey && (
+                <StudentPaperModal result={selectedStudent} answerKey={summary.answerKey} onClose={() => setSelectedStudent(null)} />
+            )}
         </div>
     );
 }

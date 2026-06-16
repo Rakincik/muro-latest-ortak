@@ -49,10 +49,8 @@ export default function CourseAttendancePage() {
     const [courses, setCourses] = useState<CourseSummary[]>([]);
     const [selectedCourseId, setSelectedCourseId] = useState("");
     const [report, setReport] = useState<CourseAttendanceDto | null>(null);
-    const [sessionDetails, setSessionDetails] = useState<SessionAttendees[]>([]);
     const [loadingCourses, setLoadingCourses] = useState(true);
     const [loadingReport, setLoadingReport] = useState(false);
-    const [loadingDetails, setLoadingDetails] = useState(false);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -66,22 +64,8 @@ export default function CourseAttendancePage() {
         if (!token || !tenantId || !selectedCourseId) return;
         setLoadingReport(true);
         setReport(null);
-        setSessionDetails([]);
         analyticsAdminApi.courseAttendance(token, tenantId, selectedCourseId)
-            .then(r => {
-                setReport(r);
-                // Fetch per-session attendee details for heatmap
-                if (r.sessions.length > 0) {
-                    setLoadingDetails(true);
-                    Promise.all(
-                        r.sessions.map(s =>
-                            sessionApi.getAttendance(token, tenantId, s.sessionId)
-                                .then(d => ({ sessionId: s.sessionId, attendees: d.attendees ?? [] }))
-                                .catch(() => ({ sessionId: s.sessionId, attendees: [] as AttendeeRecord[] }))
-                        )
-                    ).then(setSessionDetails).finally(() => setLoadingDetails(false));
-                }
-            })
+            .then(setReport)
             .catch(console.error)
             .finally(() => setLoadingReport(false));
     }, [token, tenantId, selectedCourseId]);
@@ -89,28 +73,27 @@ export default function CourseAttendancePage() {
     // Build student-level attendance data
     const studentMap = useMemo(() => {
         const map = new Map<string, { name: string; sessions: Map<string, boolean> }>();
+        if (!report) return map;
         
-        // Önce kayıtlı tüm öğrencileri map'e ekle (0% olarak başlasınlar)
-        if (report?.enrolledStudents) {
+        report.enrolledStudents.forEach(st => {
+            map.set(st.userId, { name: st.fullName, sessions: new Map() });
+        });
+        
+        report.sessions.forEach(s => {
+            const presentIds = new Set(s.presentStudentIds || []);
             report.enrolledStudents.forEach(st => {
-                map.set(st.userId, { name: st.fullName, sessions: new Map() });
-            });
-        }
-        
-        // Sonra oturum katılımlarını işle
-        sessionDetails.forEach(sd => {
-            sd.attendees.forEach(a => {
-                if (!map.has(a.userId)) map.set(a.userId, { name: a.userFullName, sessions: new Map() });
-                map.get(a.userId)!.sessions.set(sd.sessionId, a.isPresent);
+                if (map.has(st.userId)) {
+                    map.get(st.userId)!.sessions.set(s.sessionId, presentIds.has(st.userId));
+                }
             });
         });
         return map;
-    }, [sessionDetails, report]);
+    }, [report]);
 
     const students = useMemo(() => {
         if (!report) return [];
+        const total = report.sessions.length;
         return Array.from(studentMap.entries()).map(([id, data]) => {
-            const total = report.sessions.length;
             const present = Array.from(data.sessions.values()).filter(Boolean).length;
             const rate = total > 0 ? (present / total) * 100 : 0;
             return { id, name: data.name, present, total, rate, sessions: data.sessions };
@@ -137,7 +120,7 @@ export default function CourseAttendancePage() {
     return (
         <div className="space-y-5">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-bold text-[#0A1931] flex items-center gap-2">
                         <Calendar size={22} className="text-blue-500" /> Devam Raporu
@@ -147,7 +130,6 @@ export default function CourseAttendancePage() {
                 <div className="flex items-center gap-2">
                     {students.length > 0 && (
                         <button onClick={exportCSV} className="px-3 py-2 text-xs font-bold bg-white border border-[#E2E8F0] rounded-xl text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-1.5">
-
                             <Download size={12} /> CSV İndir
                         </button>
                     )}
@@ -156,7 +138,7 @@ export default function CourseAttendancePage() {
 
             {/* Course Picker */}
             <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <label className="text-sm font-medium text-[#1B3B6F] whitespace-nowrap">Kurs Seç:</label>
+                <label className="text-sm font-medium text-[#1B3B6F] whitespace-nowrap">Ders Seç:</label>
                 <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}
                     disabled={loadingCourses}
                     className="w-full sm:flex-1 px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 disabled:opacity-50 text-[#0A1931]">
@@ -202,9 +184,8 @@ export default function CourseAttendancePage() {
                         <div className="col-span-1 lg:col-span-7 bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
                             <div className="px-5 py-3 border-b border-[#E2E8F0]/60 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold text-[#0A1931]">📊 Öğrenci × Oturum Matrisi</h3>
-                                {loadingDetails && <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />}
                             </div>
-                            {students.length === 0 && !loadingDetails ? (
+                            {students.length === 0 ? (
                                 <div className="py-16 text-center text-[#A0AEC0]"><Users size={32} className="mx-auto opacity-20 mb-2" /><p className="text-sm">Devam verisi bulunamadı</p></div>
                             ) : (
                                 <div className="overflow-x-auto hide-scrollbar">

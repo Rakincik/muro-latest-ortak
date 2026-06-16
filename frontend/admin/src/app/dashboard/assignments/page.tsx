@@ -206,55 +206,15 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
         title: assignment?.title ?? "",
         description: "",
         courseId: "",
-        groupId: "",
-        userId: "",
         dueDate: assignment?.dueDate ? new Date(assignment.dueDate).toISOString().slice(0, 16) : "",
         maxScore: "100",
         fileUrl: "",
     });
     const [saving, setSaving] = useState(false);
-    const [assignTarget, setAssignTarget] = useState<"all" | "group" | "person">("all");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [dragOver, setDragOver] = useState(false);
     const [sendNotif, setSendNotif] = useState(true);
     const [notifMsg, setNotifMsg] = useState("");
-
-    // Fetched data for target selection
-    const [groups, setGroups] = useState<GroupListDto[]>([]);
-    const [userSearch, setUserSearch] = useState("");
-    const [users, setUsers] = useState<UserDto[]>([]);
-    const [isSearchingUsers, setIsSearchingUsers] = useState(false);
-    const [userSearchFocused, setUserSearchFocused] = useState(false);
-
-    // Fetch groups dynamically based on selected course
-    useEffect(() => {
-        if (!token || !tenantId || !form.courseId) {
-            setGroups([]);
-            return;
-        }
-        courseApi.get(token, tenantId, form.courseId)
-            .then(res => {
-                setGroups(res.groups?.map(g => ({ id: g.groupId, name: g.groupName } as GroupListDto)) || []);
-            })
-            .catch(() => setGroups([]));
-    }, [form.courseId, token, tenantId]);
-
-    // Search users with debounce
-    useEffect(() => {
-        if (assignTarget !== "person") {
-            setUsers([]);
-            return;
-        }
-        const timer = setTimeout(() => {
-            if (!token || !tenantId) return;
-            setIsSearchingUsers(true);
-            userApi.list(token, tenantId, { search: userSearch, pageSize: 50 })
-                .then(res => setUsers(res.items || []))
-                .catch(() => setUsers([]))
-                .finally(() => setIsSearchingUsers(false));
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [userSearch, assignTarget, token, tenantId]);
 
     // Load detail for edit
     useEffect(() => {
@@ -298,8 +258,6 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                 title: form.title.trim(),
                 description: form.description.trim() || undefined,
                 courseId: form.courseId,
-                groupId: assignTarget === "group" ? form.groupId : undefined,
-                userId: assignTarget === "person" ? form.userId : undefined,
                 dueDate: new Date(form.dueDate).toISOString(),
                 maxScore: 100,
                 fileUrl: finalFileUrl,
@@ -316,7 +274,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                 try {
                     const title = "📝 Yeni Ödev";
                     const body = notifMsg || `"${form.title.trim()}" ödevi yayınlandı. Son teslim: ${new Date(form.dueDate).toLocaleDateString("tr-TR")}`;
-                    await notificationApi.bulkSend(token, tenantId, [], title, body, "assignment", undefined, undefined, true);
+                    await notificationApi.bulkSend(token, tenantId, [], title, body, "assignment", undefined, undefined, false, form.courseId);
                     success("Bildirim gönderildi");
                 } catch { /* notification fail is non-blocking */ }
             }
@@ -361,60 +319,18 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                     {/* Course + Due Date */}
                     <div className="grid grid-cols-2 gap-5">
                         <div>
-                            <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Ders *</label>
+                            <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Ders *</label>
                             <select value={form.courseId} onChange={e => u("courseId", e.target.value)}
-                                className="w-full px-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]">
-                                <option value="">Ders seçin</option>
+                                className={`w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] ${!form.courseId && !isEdit ? 'border-red-400 ring-1 ring-red-400/50' : 'border-[#E2E8F0]'}`}>
+                                <option value="">-- Ders Seç --</option>
                                 {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Son Tarih *</label>
                             <input type="datetime-local" value={form.dueDate} onChange={e => u("dueDate", e.target.value)}
-                                className="w-full px-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]" />
+                                className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]" />
                         </div>
-                    </div>
-
-                    {/* Assignment Target */}
-                    <div>
-                        <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Atama Hedefi</label>
-                        <div className="flex gap-2">
-                            {([["all", "📚 Tüm Ders"], ["group", "👥 Gruba"], ["person", "👤 Kişiye"]] as const).map(([val, lbl]) => (
-                                <button key={val} type="button" onClick={() => setAssignTarget(val)}
-                                    className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${assignTarget === val ? "bg-[#0A1931] text-white border-[#0A1931] shadow-sm" : "bg-white text-[#A9A9A9] border-[#E2E8F0] hover:border-[#A0AEC0] hover:bg-[#F8FAFC]"}`}>
-                                    {lbl}
-                                </button>
-                            ))}
-                        </div>
-                        {assignTarget === "group" && (
-                            <select value={form.groupId} onChange={e => u("groupId", e.target.value)}
-                                className="w-full mt-3 px-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#0A1931]">
-                                <option value="">Grup seçin</option>
-                                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                            </select>
-                        )}
-                        {assignTarget === "person" && (
-                            <div className="mt-3 relative">
-                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
-                                <input value={userSearch} onChange={e => setUserSearch(e.target.value)}
-                                    onFocus={() => setUserSearchFocused(true)}
-                                    onBlur={() => setTimeout(() => setUserSearchFocused(false), 200)}
-                                    placeholder="Listeden seçin veya aramak için yazın..."
-                                    className="w-full pl-10 pr-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] placeholder:text-[#A0AEC0]" />
-                                {isSearchingUsers && <div className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-[#A0AEC0] border-t-transparent rounded-full animate-spin" />}
-                                {userSearchFocused && users.length > 0 && (
-                                    <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-[#E2E8F0] max-h-60 overflow-y-auto">
-                                        {users.map(uItem => (
-                                            <div key={uItem.id} onClick={() => { u("userId", uItem.id); setUserSearch(`${uItem.firstName} ${uItem.lastName}`); setUsers([]); setUserSearchFocused(false); }}
-                                                className={`px-4 py-3 cursor-pointer transition-colors border-b border-[#E2E8F0] last:border-0 ${form.userId === uItem.id ? "bg-emerald-50 hover:bg-emerald-100" : "hover:bg-[#F8FAFC]"}`}>
-                                                <p className="text-sm font-bold text-[#0A1931]">{uItem.firstName} {uItem.lastName}</p>
-                                                <p className="text-xs text-[#A0AEC0]">{uItem.email}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
 
                     {/* Document Upload */}
@@ -500,7 +416,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                         <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-[#A9A9A9] hover:text-[#0A1931]">İptal</button>
                         <button onClick={handleSave} disabled={saving}
                             className="px-8 py-2.5 text-sm font-bold text-white bg-[#0A1931] rounded-xl hover:bg-[#1B3B6F] shadow-lg shadow-black/10 disabled:opacity-50 flex items-center gap-2">
-                            {saving ? "Kaydediliyor..." : isEdit ? "💾 Güncelle" : "✨ Oluştur"}
+                            {saving ? "Kaydediliyor..." : isEdit ? "Güncelle" : "Oluştur"}
                         </button>
                     </div>
                 </div>

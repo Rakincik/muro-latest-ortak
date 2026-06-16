@@ -15,14 +15,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { userApi, groupsApi, type UserDto, type PagedUsersResult, type CreateUserRequest } from "@/lib/api";
 import { UserDirectCoursesTab } from "./UserDirectCoursesTab";
-
-// ── Types ──
-interface User {
-    id: string; firstName: string; lastName: string; email: string; phone: string;
-    role: string;
-    studentType: string | null; isActive: boolean;
-    createdAt: string; lastLoginAt: string | null; groupNames: string[];
-}
+import { UserDetail, type User } from "./UserDetail";
 
 const _default = { bg: "bg-[#E2E8F0]/20 border border-[#E2E8F0]", text: "text-[#1B3B6F]", avatar: "bg-[#A0AEC0]", hero: "bg-[#A0AEC0]" };
 const rc: Record<string, { bg: string; text: string; avatar: string; hero: string }> = {
@@ -273,181 +266,18 @@ export default function UsersPage() {
 
     // ── DETAIL VIEW ──
     if (detailUser) {
-        const u = detailUser; const c = rc[u.role] || rc['Student']; const RI = roleIcons[u.role] || Shield;
-        const phoneClean = u.phone?.replace(/\s/g, '').replace(/^\+?0?/, '+90') || '';
-        const lastLoginText = u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Henüz giriş yok";
-
         return (
-            <div className="space-y-5 animate-fade-in max-w-5xl mx-auto">
-                {/* Back */}
-                <button onClick={() => setDetailUser(null)} className="flex items-center gap-2 text-sm text-[#A9A9A9] hover:text-[#0A1931] transition-colors group">
-                    <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Kullanıcı Listesine Dön
-                </button>
-
-                {/* Hero Header */}
-                <div className="relative rounded-[2rem] bg-white p-8 flex items-center gap-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-[#E2E8F0] mb-6">
-                    {/* Avatar */}
-                    <div className={`w-28 h-28 rounded-3xl ${c.hero} flex items-center justify-center text-white text-4xl font-extrabold shadow-xl shadow-${c.hero.split('-')[1]}-500/30 relative overflow-hidden`}>
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent pointer-events-none" />
-                        <span className="drop-shadow-md uppercase relative z-10">{ini(u)}</span>
-                    </div>
-
-                    <div className="flex-1">
-                        {/* Name */}
-                        <h1 className="text-3xl font-extrabold text-[#0A1931] tracking-tight capitalize mb-3">
-                            {u.firstName.toLowerCase()} {u.lastName.toLowerCase()}
-                        </h1>
-                        
-                        {/* Badges */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-[#F0F4F8] text-[#1B3B6F]">
-                                <RI size={14} className="opacity-70" /> {roleLabel[u.role] || u.role}
-                            </span>
-                            
-                            <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl ${u.isActive ? "bg-emerald-50 text-emerald-600" : "bg-[#F0F4F8] text-[#A0AEC0]"}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} /> {u.isActive ? "AKTİF" : "PASİF"}
-                            </span>
-                            
-                            {u.studentType === "Demo" && (
-                                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl bg-amber-50 text-amber-600">
-                                    <Target size={14} className="opacity-70"/> DEMO
-                                </span>
-                            )}
-                            
-                            {u.groupNames.slice(0, 3).map(g => (
-                                <span key={g} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-white border border-[#E2E8F0] text-[#475569] shadow-sm">
-                                    {g}
-                                </span>
-                            ))}
-                            
-                            {u.groupNames.length > 3 && (
-                                <span title={u.groupNames.slice(3).join(', ')} className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-[#F0F4F8] text-[#64748B] cursor-help">
-                                    +{u.groupNames.length - 3} Diğer
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Stats Box */}
-                    <div className="flex flex-col items-center justify-center px-8 py-5 rounded-[1.5rem] bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm">
-                        <p className="text-3xl font-black text-[#0A1931]">{u.groupNames.length}</p>
-                        <p className="text-[10px] font-extrabold text-[#64748B] mt-1 uppercase tracking-widest">Grup</p>
-                    </div>
-                </div>
-
-                {/* ── Hızlı Aksiyon Barı (Control Bar) ── */}
-                <div className="bg-white/90 backdrop-blur-xl rounded-2xl border border-[#E2E8F0] p-2 flex items-center shadow-sm flex-wrap gap-2">
-                    <div className="flex items-center gap-1 px-2 border-r border-[#E2E8F0]">
-                        {u.phone && (
-                            <a href={`tel:${u.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0A1931] text-white text-xs font-bold hover:bg-[#1B3B6F] transition-all active:scale-[0.97] shadow-md shadow-[#0A1931]/20">
-                                <Phone size={14} /> Ara
-                            </a>
-                        )}
-                        {u.phone && (
-                            <a href={`https://wa.me/${phoneClean}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] text-white text-xs font-bold hover:bg-[#1DA851] transition-all active:scale-[0.97] shadow-md shadow-[#25D366]/20">
-                                <MessageCircle size={14} /> WhatsApp
-                            </a>
-                        )}
-                        <a href={`mailto:${u.email}`} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[#1B3B6F] text-xs font-bold hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97]">
-                            <Mail size={14} /> E-posta
-                        </a>
-                    </div>
-                    
-                    <div className="flex items-center gap-1 px-2 md:border-r border-[#E2E8F0]">
-                        <button onClick={() => handleQuickReset(u)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[#1B3B6F] text-xs font-bold hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97]">
-                            <KeyRound size={14} /> Şifre Sıfırla
-                        </button>
-                        <button onClick={() => toggleActive(u.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97] ${u.isActive ? "text-orange-600 hover:bg-orange-50" : "text-emerald-600 hover:bg-emerald-50"}`}>
-                            {u.isActive ? <><ToggleRight size={14} /> Pasife Al</> : <><ToggleLeft size={14} /> Aktif Et</>}
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 px-4 py-2 hover:bg-[#E2E8F0]/50 rounded-xl transition-colors cursor-pointer mx-1">
-                        <Shield size={14} className="text-[#A0AEC0]" />
-                        <select value={u.role} onChange={e => changeRole(u.id, e.target.value)} className="text-xs font-bold text-[#1B3B6F] bg-transparent border-none outline-none cursor-pointer">
-                            <option value="Student">Öğrenci</option><option value="Instructor">Eğitmen</option><option value="Admin">Admin</option><option value="Accountant">Muhasebe</option><option value="Assistant">Asistan</option>
-                        </select>
-                    </div>
-                    
-                    <div className="flex-1" />
-                    
-                    <button onClick={() => setDeleteTarget(u.id)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-red-600 text-xs font-bold hover:bg-red-50 hover:shadow-sm transition-all active:scale-[0.97] mr-1">
-                        <Trash2 size={14} /> Sil
-                    </button>
-                </div>
-
-                {/* ── İletişim Bilgileri ── */}
-                <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
-                    <h3 className="text-[11px] font-extrabold text-[#A0AEC0] uppercase tracking-widest mb-5">İletişim Bilgileri</h3>
-                    <div className="space-y-1">
-                        {[
-                            { icon: Mail, label: "E-posta", value: u.email, bg: "bg-blue-50 text-blue-600" },
-                            { icon: Phone, label: "Telefon", value: u.phone || "—", bg: "bg-emerald-50 text-emerald-600" },
-                            { icon: KeyRound, label: "Şifre", value: u.password || "Gizli (Lütfen sıfırlayın)", bg: "bg-amber-50 text-amber-600", action: u.password ? () => { navigator.clipboard.writeText(u.password!); success("Şifre kopyalandı"); } : undefined },
-                            { icon: CalendarIcon, label: "Kayıt Tarihi", value: new Date(u.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }), bg: "bg-purple-50 text-purple-600" },
-                            { icon: Clock, label: "Son Giriş", value: lastLoginText, bg: "bg-[#F0F4F8] text-[#A0AEC0]" },
-                        ].map((r, idx) => (
-                            <div key={idx} className="flex items-center gap-4 group/item p-3 hover:bg-[#F8FAFC] rounded-2xl transition-colors">
-                                <div className={`w-10 h-10 rounded-xl ${r.bg} flex items-center justify-center shrink-0`}><r.icon size={18} /></div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] text-[#A0AEC0] uppercase tracking-widest font-bold mb-0.5">{r.label}</p>
-                                    <p className="text-[15px] font-bold text-[#0A1931] truncate">{r.value}</p>
-                                </div>
-                                {r.action && (
-                                    <button onClick={r.action} title="Kopyala" className="p-2.5 rounded-xl opacity-0 group-hover/item:opacity-100 bg-white shadow-sm border border-[#E2E8F0] hover:bg-[#F0F4F8] text-[#1B3B6F] transition-all">
-                                        <Copy size={16} />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* ── Dahil Olduğu Gruplar ── */}
-                {u.groupNames.length > 0 && (
-                    <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
-                        <h3 className="text-[11px] font-extrabold text-[#A0AEC0] uppercase tracking-widest mb-5 flex items-center gap-2">
-                            <Users size={16} className="text-[#A0AEC0]" /> Dahil Olduğu Gruplar
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E2E8F0]/50 text-[#1B3B6F] ml-1">{u.groupNames.length}</span>
-                        </h3>
-                        <div className="flex flex-wrap gap-2.5">
-                            {u.groupNames.map((g, i) => {
-                                const colors = [
-                                    "bg-blue-50 text-blue-700 ring-blue-200",
-                                    "bg-violet-50 text-violet-700 ring-violet-200",
-                                    "bg-emerald-50 text-emerald-700 ring-emerald-200",
-                                    "bg-amber-50 text-amber-700 ring-amber-200",
-                                    "bg-rose-50 text-rose-700 ring-rose-200",
-                                ];
-                                return (
-                                    <span key={g} className={`inline-flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl ring-1 ring-inset ${colors[i % colors.length]}`}>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                                        {g}
-                                    </span>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Özel Atanmış Dersler (Doğrudan Atama) ── */}
-                <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
-                    <UserDirectCoursesTab userId={u.id} />
-                </div>
-
-                {/* Detail view delete confirm */}
-                <ConfirmDialog
-                    open={deleteTarget === u.id}
-                    onClose={() => setDeleteTarget(null)}
-                    onConfirm={async () => {
-                        await del(u.id);
-                        setDetailUser(null);
-                    }}
-                    title="Kullanıcıyı Sil"
-                    message={`"${u.firstName} ${u.lastName}" kullanıcısını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`}
+            <>
+                <UserDetail 
+                    user={detailUser}
+                    onBack={() => setDetailUser(null)}
+                    onToggleActive={toggleActive}
+                    onChangeRole={changeRole}
+                    onDelete={async (id) => { await del(id); setDetailUser(null); }}
+                    onQuickReset={handleQuickReset}
                 />
                 {passwordResetModalNode}
-            </div>
+            </>
         );
     }
 

@@ -59,7 +59,9 @@ public class ExamResultService : IExamResultService
                 r.SubmittedAt,
                 r.StartedAt,
                 r.StartedAt.HasValue ? (int)(r.SubmittedAt - r.StartedAt.Value).TotalSeconds : null,
-                CalculateSectionResults(r.Answers, exam.AnswerKeyJson, exam.SectionsJson, penalty, exam.QuestionWeightsJson)
+                CalculateSectionResults(r.Answers, exam.AnswerKeyJson, exam.SectionsJson, penalty, exam.QuestionWeightsJson),
+                false,
+                !string.IsNullOrEmpty(r.Answers) ? JsonSerializer.Deserialize<Dictionary<int, string>>(r.Answers) : null
             )).ToList();
 
             var ranges = new[] { "0-20", "20-40", "40-60", "60-80", "80-100" };
@@ -71,6 +73,10 @@ public class ExamResultService : IExamResultService
                 return new ScoreRangeDto(range, count);
             }).ToList();
 
+            var answerKey = !string.IsNullOrEmpty(exam.AnswerKeyJson)
+                ? JsonSerializer.Deserialize<Dictionary<int, string>>(exam.AnswerKeyJson)
+                : null;
+
             return new ExamResultSummaryDto(
                 totalCount,
                 avgScore,
@@ -78,7 +84,8 @@ public class ExamResultService : IExamResultService
                 maxScore,
                 minScore,
                 results,
-                scoreDistribution
+                scoreDistribution,
+                answerKey
             );
         }, TimeSpan.FromMinutes(10));
     }

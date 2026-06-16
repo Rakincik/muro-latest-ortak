@@ -12,6 +12,7 @@ import {
     notificationApi,
     type UserDto,
     type StudentScorecardDto,
+    type StudentAcademicHistoryDto,
     type ScorecardSummaryDto,
     type DeviceSessionDto,
 } from "@/lib/api";
@@ -70,7 +71,17 @@ function ScorecardPanel({ user, classAvg, sessions, onClose }: {
     const { token, currentTenantId: tenantId } = useAuth();
     const [card, setCard] = useState<StudentScorecardDto | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<"overview" | "sessions">("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "sessions" | "history">("overview");
+    const [history, setHistory] = useState<StudentAcademicHistoryDto | null>(null);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    useEffect(() => {
+        if (activeTab === "history" && !history && !loadingHistory) {
+            setLoadingHistory(true);
+            analyticsAdminApi.studentAcademicHistory(token, tenantId, user.id)
+                .then(setHistory).catch(console.error).finally(() => setLoadingHistory(false));
+        }
+    }, [activeTab, token, tenantId, user.id]);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -103,7 +114,8 @@ function ScorecardPanel({ user, classAvg, sessions, onClose }: {
                     {/* Tab bar */}
                     <div className="flex mt-3 bg-[#E2E8F0]/30 rounded-xl p-0.5">
                         <button onClick={() => setActiveTab("overview")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "overview" ? "bg-white text-[#0A1931] shadow-sm" : "text-[#A0AEC0]"}`}>📊 Genel Bakış</button>
-                        <button onClick={() => setActiveTab("sessions")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "sessions" ? "bg-white text-[#0A1931] shadow-sm" : "text-[#A0AEC0]"}`}>🔐 Giriş Geçmişi ({userSessions.length})</button>
+                        <button onClick={() => setActiveTab("history")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "history" ? "bg-white text-[#0A1931] shadow-sm" : "text-[#A0AEC0]"}`}>🎓 Akademik Geçmiş</button>
+                        <button onClick={() => setActiveTab("sessions")} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === "sessions" ? "bg-white text-[#0A1931] shadow-sm" : "text-[#A0AEC0]"}`}>🔐 Giriş ({userSessions.length})</button>
                     </div>
                 </div>
 
@@ -191,6 +203,62 @@ function ScorecardPanel({ user, classAvg, sessions, onClose }: {
                                         <p className="text-[10px] text-[#A0AEC0]">IP Adresi</p>
                                         <p className="text-xs font-bold text-[#0A1931]">{userSessions[0].ipAddress || "—"}</p>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : activeTab === "history" ? (
+                    /* History Tab */
+                    <div className="p-6">
+                        {loadingHistory ? (
+                            <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-[#E2E8F0]/40 animate-pulse" />)}</div>
+                        ) : !history ? (
+                            <div className="py-12 text-center text-[#A0AEC0]"><FileText size={32} className="mx-auto opacity-20 mb-2" /><p className="text-sm">Geçmiş verisi yok</p></div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Exams */}
+                                <div>
+                                    <h4 className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-3 flex items-center gap-1.5"><FileText size={12} /> Sınavlar</h4>
+                                    {history.exams.length === 0 ? (
+                                        <p className="text-xs text-[#A0AEC0] italic border border-dashed border-[#E2E8F0] p-4 rounded-xl text-center">Girilen sınav bulunamadı</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {history.exams.map(e => (
+                                                <div key={e.examId} className="bg-[#E2E8F0]/10 border border-[#E2E8F0]/60 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-[#0A1931]">{e.title}</p>
+                                                        <p className="text-[10px] text-[#A0AEC0] mt-0.5">{new Date(e.takenAt).toLocaleDateString("tr-TR")}</p>
+                                                    </div>
+                                                    <div className="text-left sm:text-right flex items-center sm:block gap-3">
+                                                        <p className="text-sm font-bold text-[#0A1931]">{e.score.toFixed(1)} Puan</p>
+                                                        <p className="text-[10px] text-[#A0AEC0]">{e.net.toFixed(2)} Net</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Assignments */}
+                                <div>
+                                    <h4 className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-3 flex items-center gap-1.5"><Clock size={12} /> Ödevler</h4>
+                                    {history.assignments.length === 0 ? (
+                                        <p className="text-xs text-[#A0AEC0] italic border border-dashed border-[#E2E8F0] p-4 rounded-xl text-center">Teslim edilen ödev bulunamadı</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {history.assignments.map(a => (
+                                                <div key={a.assignmentId} className="bg-[#E2E8F0]/10 border border-[#E2E8F0]/60 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-[#0A1931]">{a.title}</p>
+                                                        <p className="text-[10px] text-[#A0AEC0] mt-0.5">{new Date(a.submittedAt).toLocaleDateString("tr-TR")}</p>
+                                                    </div>
+                                                    <div className="text-left sm:text-right flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1">
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">{a.status}</span>
+                                                        {a.grade !== null && <p className="text-xs font-bold text-[#0A1931]">{a.grade} Puan</p>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

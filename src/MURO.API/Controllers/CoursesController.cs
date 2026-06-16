@@ -59,7 +59,6 @@ public class CoursesController : ControllerBase
     // --- Courses ---
 
     [HttpGet]
-    [Microsoft.AspNetCore.OutputCaching.OutputCache(PolicyName = "TenantCourses")]
     public async Task<ActionResult<PagedResult<CourseListDto>>> GetCourses(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null, [FromQuery] string? courseType = null,
