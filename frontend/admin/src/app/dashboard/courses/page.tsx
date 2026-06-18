@@ -1442,21 +1442,21 @@ function LiveStartModal({
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Yayın Tipi</label>
+                        <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Ders Tipi</label>
                         <div className="grid grid-cols-2 gap-3 mt-1">
                             <button
                                 type="button"
                                 onClick={() => setType("bbb")}
                                 className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${type === "bbb" ? "border-indigo-600 bg-indigo-50 text-indigo-600" : "border-[#E2E8F0] hover:bg-gray-50 text-[#1B3B6F]"}`}
                             >
-                                BigBlueButton (Sınıf)
+                                BigBlueButton
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setType("youtube")}
                                 className={`py-3 px-4 text-xs font-bold rounded-xl border transition-all ${type === "youtube" ? "border-indigo-600 bg-indigo-50 text-indigo-600" : "border-[#E2E8F0] hover:bg-gray-50 text-[#1B3B6F]"}`}
                             >
-                                YouTube / Harici Yayın
+                                YouTube
                             </button>
                         </div>
                     </div>
