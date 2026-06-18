@@ -77,7 +77,8 @@ public class UserService : IUserService
                         .Where(gm => gm.Status == "active")
                         .Select(gm => gm.Group.Name)
                         .ToList(),
-                    u.PasswordHash.StartsWith("$2") ? null : u.PasswordHash))
+                    u.PasswordHash.StartsWith("$2") ? null : u.PasswordHash,
+                    u.TcNo))
                 .ToListAsync();
 
             return new PagedResult<UserListDto>(items, totalCount, page, pageSize, totalPages);
@@ -118,7 +119,8 @@ public class UserService : IUserService
             user.Role.ToString(), user.StudentType?.ToString(), user.DemoExpiresAt,
             user.IsActive, user.CreatedAt, user.LastLoginAt,
             groups, courses,
-            user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash);
+            user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
+            user.TcNo);
     }
 
     public async Task<UserListDto> CreateUserAsync(Guid tenantId, CreateUserRequest request)
@@ -148,7 +150,36 @@ public class UserService : IUserService
             }
         }
 
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var isStudent = role == UserRole.Student;
+        var cleanedPhone = CleanPhoneNumber(request.Phone);
+        
+        string email = request.Email;
+        if (isStudent || string.IsNullOrWhiteSpace(email))
+        {
+            var baseUsername = ToEnglishUsername(request.FirstName, request.LastName);
+            email = baseUsername;
+            int suffix = 1;
+            while (await _context.Users.AnyAsync(u => u.Email == email))
+            {
+                email = $"{baseUsername}{suffix}";
+                suffix++;
+            }
+        }
+        else
+        {
+            email = email.Trim();
+        }
+
+        string password = request.Password;
+        if (isStudent)
+        {
+            var lastTwo = cleanedPhone != null && cleanedPhone.Length >= 2 
+                ? cleanedPhone.Substring(cleanedPhone.Length - 2) 
+                : "00";
+            password = $"{request.TcNo}.{lastTwo}";
+        }
+
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
         if (existingUser != null)
         {
@@ -157,17 +188,18 @@ public class UserService : IUserService
                 .FirstOrDefaultAsync(tm => tm.UserId == existingUser.Id && tm.TenantId == tenantId);
 
             if (membership != null && membership.Status == "active")
-                throw new InvalidOperationException("Bu e-posta adresi zaten aktif olarak kayıtlı.");
+                throw new InvalidOperationException("Bu kullanıcı adı zaten aktif olarak kayıtlı.");
 
             // Soft delete edilmiş — bilgileri güncelle ve tekrar aktif et
             existingUser.FirstName = request.FirstName;
             existingUser.LastName = request.LastName;
-            existingUser.Phone = request.Phone;
-            existingUser.PasswordHash = request.Password;
+            existingUser.Phone = cleanedPhone;
+            existingUser.PasswordHash = password;
             existingUser.Role = role;
             existingUser.IsActive = true;
             existingUser.StudentType = Enum.TryParse<StudentType>(request.StudentType, true, out var st2) ? st2 : null;
             existingUser.DemoExpiresAt = request.DemoExpiresAt;
+            existingUser.TcNo = request.TcNo;
 
             if (membership != null)
             {
@@ -191,7 +223,8 @@ public class UserService : IUserService
 
             return new UserListDto(existingUser.Id, existingUser.FirstName, existingUser.LastName, existingUser.Email,
                 existingUser.Phone, existingUser.Role.ToString(), existingUser.StudentType?.ToString(),
-                existingUser.IsActive, existingUser.CreatedAt, existingUser.LastLoginAt, null, existingUser.PasswordHash.StartsWith("$2") ? null : existingUser.PasswordHash);
+                existingUser.IsActive, existingUser.CreatedAt, existingUser.LastLoginAt, null, existingUser.PasswordHash.StartsWith("$2") ? null : existingUser.PasswordHash,
+                existingUser.TcNo);
         }
 
         // Yeni kullanıcı oluştur
@@ -200,12 +233,13 @@ public class UserService : IUserService
             Id = Guid.NewGuid(),
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Email = request.Email,
-            Phone = request.Phone,
-            PasswordHash = request.Password,
+            Email = email,
+            Phone = cleanedPhone,
+            PasswordHash = password,
             Role = role,
             StudentType = Enum.TryParse<StudentType>(request.StudentType, true, out var st) ? st : null,
-            DemoExpiresAt = request.DemoExpiresAt
+            DemoExpiresAt = request.DemoExpiresAt,
+            TcNo = request.TcNo
         };
 
         _context.Users.Add(user);
@@ -223,7 +257,8 @@ public class UserService : IUserService
 
         return new UserListDto(user.Id, user.FirstName, user.LastName, user.Email,
             user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
-            user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash);
+            user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
+            user.TcNo);
     }
 
     // P3 Fix: Tek transaction, batch insert — her kı 100 kullanıcı = 1 DB round-trip
@@ -257,27 +292,60 @@ public class UserService : IUserService
 
         var results = new List<UserListDto>();
         var existingEmails = (await _context.Users
-            .Where(u => requests.Select(r => r.Email).Contains(u.Email))
             .Select(u => u.Email)
             .ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var generatedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var req in requests)
         {
-            if (existingEmails.Contains(req.Email)) continue; // Duplike — sessiz geç
-
             if (!Enum.TryParse<UserRole>(req.Role, true, out var role)) continue;
+            var isStudent = role == UserRole.Student;
+
+            // Clean phone number
+            var cleanedPhone = CleanPhoneNumber(req.Phone);
+
+            string email = req.Email;
+            if (isStudent || string.IsNullOrWhiteSpace(email))
+            {
+                var baseUsername = ToEnglishUsername(req.FirstName, req.LastName);
+                email = baseUsername;
+                int suffix = 1;
+                while (existingEmails.Contains(email) || generatedEmails.Contains(email))
+                {
+                    email = $"{baseUsername}{suffix}";
+                    suffix++;
+                }
+                generatedEmails.Add(email);
+            }
+            else
+            {
+                email = email.Trim();
+                if (existingEmails.Contains(email) || generatedEmails.Contains(email)) continue; // Duplike — sessiz geç
+                generatedEmails.Add(email);
+            }
+
+            string password = req.Password;
+            if (isStudent)
+            {
+                var lastTwo = cleanedPhone != null && cleanedPhone.Length >= 2 
+                    ? cleanedPhone.Substring(cleanedPhone.Length - 2) 
+                    : "00";
+                password = $"{req.TcNo}.{lastTwo}";
+            }
 
             var user = new User
             {
                 Id = Guid.NewGuid(),
                 FirstName = req.FirstName,
                 LastName = req.LastName,
-                Email = req.Email,
-                Phone = req.Phone,
-                PasswordHash = req.Password,
+                Email = email,
+                Phone = cleanedPhone,
+                PasswordHash = password,
                 Role = role,
                 StudentType = Enum.TryParse<StudentType>(req.StudentType, true, out var st) ? st : null,
-                DemoExpiresAt = req.DemoExpiresAt
+                DemoExpiresAt = req.DemoExpiresAt,
+                TcNo = req.TcNo
             };
 
             _context.Users.Add(user);
@@ -293,7 +361,8 @@ public class UserService : IUserService
             results.Add(new UserListDto(
                 user.Id, user.FirstName, user.LastName, user.Email,
                 user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
-                user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash));
+                user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
+                user.TcNo));
         }
 
         if (results.Count > 0)
@@ -319,10 +388,10 @@ public class UserService : IUserService
         if (request.Email != null)
         {
             if (await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId))
-                throw new InvalidOperationException("Bu e-posta adresi zaten kullanılıyor.");
+                throw new InvalidOperationException("Bu kullanıcı adı veya e-posta adresi zaten kullanılıyor.");
             user.Email = request.Email;
         }
-        if (request.Phone != null) user.Phone = request.Phone;
+        if (request.Phone != null) user.Phone = CleanPhoneNumber(request.Phone);
         if (!string.IsNullOrWhiteSpace(request.Password)) user.PasswordHash = request.Password;
         if (request.Role != null && Enum.TryParse<UserRole>(request.Role, true, out var role))
             user.Role = role;
@@ -330,13 +399,15 @@ public class UserService : IUserService
             user.StudentType = st;
         if (request.DemoExpiresAt.HasValue) user.DemoExpiresAt = request.DemoExpiresAt;
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
+        if (request.TcNo != null) user.TcNo = request.TcNo;
 
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
 
         return new UserListDto(user.Id, user.FirstName, user.LastName, user.Email,
             user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
-            user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash);
+            user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
+            user.TcNo);
     }
 
     public async Task DeleteUserAsync(Guid tenantId, Guid userId)
@@ -443,14 +514,62 @@ public class UserService : IUserService
         static string Esc(string? v) => $"\"{(v ?? string.Empty).Replace("\"", "\"\"")}\"";
 
         var sb = new System.Text.StringBuilder();
-        sb.AppendLine("Ad,Soyad,E-posta,Telefon,Rol,Durum,Kayıt Tarihi");
+        sb.AppendLine("Ad,Soyad,Kullanıcı Adı,TC,Telefon,Rol,Durum,Kayıt Tarihi");
         foreach (var u in users)
         {
-            sb.AppendLine($"{Esc(u.FirstName)},{Esc(u.LastName)},{Esc(u.Email)}," +
+            sb.AppendLine($"{Esc(u.FirstName)},{Esc(u.LastName)},{Esc(u.Email)},{Esc(u.TcNo)}," +
                           $"{Esc(u.Phone)},{Esc(u.Role.ToString())}," +
                           $"{Esc(u.IsActive ? "Aktif" : "Pasif")},{Esc(u.CreatedAt.ToString("yyyy-MM-dd"))}");
         }
 
         return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    public static string ToEnglishUsername(string firstName, string lastName)
+    {
+        var combined = $"{firstName}{lastName}".Trim().ToLowerInvariant();
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in combined)
+        {
+            switch (c)
+            {
+                case 'ç': sb.Append('c'); break;
+                case 'ğ': sb.Append('g'); break;
+                case 'ı': sb.Append('i'); break;
+                case 'ö': sb.Append('o'); break;
+                case 'ş': sb.Append('s'); break;
+                case 'ü': sb.Append('u'); break;
+                case ' ': break;
+                default:
+                    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+                        sb.Append(c);
+                    break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    public static string? CleanPhoneNumber(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return null;
+        
+        // Take only the integer part before any decimal point/comma (handles Excel number formatting like "5321234567.0")
+        var mainPart = phone.Split('.', ',')[0];
+        
+        var digits = new string(mainPart.Where(char.IsDigit).ToArray());
+        
+        // Strip all leading zeros
+        while (digits.StartsWith("0"))
+        {
+            digits = digits.Substring(1);
+        }
+        
+        // If it starts with country code "90" and has 12 digits (e.g. 905321234567), strip "90"
+        if (digits.Length == 12 && digits.StartsWith("90"))
+        {
+            digits = digits.Substring(2);
+        }
+        
+        return digits;
     }
 }

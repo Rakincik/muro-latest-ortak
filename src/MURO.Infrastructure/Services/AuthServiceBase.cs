@@ -112,6 +112,7 @@ public abstract class AuthServiceBase
         user.IsActive, user.CreatedAt,
         user.TenantMemberships.Select(tm => new UserTenantDto(
             tm.TenantId, tm.Tenant.Name, tm.Tenant.Code, tm.Role.ToString(), tm.Status, tm.Tenant.Features
-        )).ToList()
+        )).ToList(),
+        user.TcNo
     );
 }

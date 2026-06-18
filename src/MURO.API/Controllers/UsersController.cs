@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using MURO.Application.DTOs;
 using MURO.Application.DTOs.Users;
 using MURO.Application.Interfaces;
+using MURO.Infrastructure.Services;
 
 namespace MURO.API.Controllers;
 
@@ -142,7 +143,8 @@ public class UsersController : ControllerBase
             KayitTarihi = u.CreatedAt.ToString("dd.MM.yyyy"),
             Ad = u.FirstName,
             Soyad = u.LastName ?? "",
-            EPosta = u.Email,
+            KullaniciAdi = u.Email,
+            TC = u.TcNo ?? "",
             Telefon = u.Phone ?? ""
         }).ToList();
 
@@ -179,25 +181,32 @@ public class UsersController : ControllerBase
         var requests = new List<CreateUserRequest>();
         foreach (var u in importedUsers)
         {
-            if (string.IsNullOrWhiteSpace(u.Email) || string.IsNullOrWhiteSpace(u.Ad))
+            if (string.IsNullOrWhiteSpace(u.Ad))
                 continue;
 
-            var phone = u.Telefon?.Trim() ?? "";
-            var password = phone.Length >= 6 ? phone.Substring(phone.Length - 6) : new Random().Next(100000, 999999).ToString();
+            var rawPhone = u.Telefon?.Trim() ?? "";
+            var phone = UserService.CleanPhoneNumber(rawPhone) ?? "";
             
             var fixedRole = FixEncoding(u.Rol?.Trim() ?? "");
             var role = fixedRole.ToLower() == "admin" ? "Admin" : 
                        fixedRole.ToLower() == "öğretmen" ? "Instructor" : "Student";
 
+            var tc = u.TC?.Trim() ?? "";
+
+            // Calculated password: tc + . + last 2 digits of phone
+            var lastTwo = phone.Length >= 2 ? phone.Substring(phone.Length - 2) : "00";
+            var password = $"{tc}.{lastTwo}";
+
             requests.Add(new CreateUserRequest(
                 FixEncoding(u.Ad.Trim()),
                 FixEncoding(u.Soyad?.Trim() ?? ""),
-                u.Email.Trim(),
+                "", // Email is empty, backend UserService will generate username
                 password,
                 phone,
                 role,
                 role == "Student" ? "Aktif" : null,
-                null
+                null,
+                tc
             ));
         }
 
@@ -211,8 +220,8 @@ public class UserImportDto
 {
     public string? Ad { get; set; }
     public string? Soyad { get; set; }
+    public string? TC { get; set; }
     public string? Telefon { get; set; }
-    public string? Email { get; set; }
     public string? Rol { get; set; }
 }
 
@@ -220,8 +229,8 @@ public class UserTemplateDto
 {
     public string Ad { get; set; } = "Ahmet";
     public string Soyad { get; set; } = "Yılmaz";
+    public string TC { get; set; } = "12345678901";
     public string Telefon { get; set; } = "5321234567";
-    public string Email { get; set; } = "ahmet@ornek.com";
     public string Rol { get; set; } = "Öğrenci";
 }
 
@@ -230,7 +239,8 @@ public class UserExportDto
     public string KayitTarihi { get; set; } = string.Empty;
     public string Ad { get; set; } = string.Empty;
     public string Soyad { get; set; } = string.Empty;
-    public string EPosta { get; set; } = string.Empty;
+    public string KullaniciAdi { get; set; } = string.Empty;
+    public string TC { get; set; } = string.Empty;
     public string Telefon { get; set; } = string.Empty;
 }
 

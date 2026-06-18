@@ -12,7 +12,8 @@ public record UserListDto(
     DateTime CreatedAt,
     DateTime? LastLoginAt,
     List<string>? GroupNames = null,
-    string? Password = null
+    string? Password = null,
+    string? TcNo = null
 );
 
 public record UserDetailDto(
@@ -29,7 +30,8 @@ public record UserDetailDto(
     DateTime? LastLoginAt,
     List<UserGroupDto> Groups,
     List<UserCourseDto> Courses,
-    string? Password = null
+    string? Password = null,
+    string? TcNo = null
 );
 
 public record UserGroupDto(Guid GroupId, string GroupName);
@@ -43,7 +45,8 @@ public record CreateUserRequest(
     string? Phone,
     string Role,
     string? StudentType,
-    DateTime? DemoExpiresAt
+    DateTime? DemoExpiresAt,
+    string? TcNo = null
 );
 
 public record UpdateUserRequest(
@@ -55,7 +58,8 @@ public record UpdateUserRequest(
     string? Role,
     string? StudentType,
     DateTime? DemoExpiresAt,
-    bool? IsActive
+    bool? IsActive,
+    string? TcNo = null
 );
 
 public record BulkCreateUserRequest(List<CreateUserRequest> Users);

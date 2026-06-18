@@ -37,8 +37,20 @@ const roleLabel: Record<string, string> = { Student: "Öğrenci", Instructor: "E
 const PER_PAGE_OPTIONS = [10, 50, 100];
 type SortField = "name" | "role" | "group" | "status" | "lastLogin"; type SortDir = "asc" | "desc";
 
+function formatPhoneForDisplay(phone?: string): string {
+    if (!phone) return "";
+    let digits = phone.replace(/\D/g, "");
+    while (digits.startsWith("0")) {
+        digits = digits.substring(1);
+    }
+    if (digits.length === 12 && digits.startsWith("90")) {
+        digits = digits.substring(2);
+    }
+    return digits.substring(0, 10);
+}
+
 function mapApiUser(u: UserDto): User {
-    return { ...u, phone: u.phone || "", groupNames: u.groupNames || [] };
+    return { ...u, phone: formatPhoneForDisplay(u.phone), groupNames: u.groupNames || [], tcNo: (u as any).tcNo || "" };
 }
 
 export default function UsersPage() {
@@ -128,8 +140,9 @@ export default function UsersPage() {
                     email: d.email, 
                     role: d.role, 
                     phone: d.phone,
-                    studentType: apiStudentType
-                });
+                    studentType: apiStudentType,
+                    tcNo: d.tcNo
+                } as any);
                 setUsers(p => p.map(u => u.id === editUser.id ? { ...u, ...d, studentType: apiStudentType as any } : u)); 
                 success("Güncellendi"); 
                 setEditUser(null);
@@ -141,8 +154,9 @@ export default function UsersPage() {
                     password: d.password || "123456", 
                     role: d.role || "Student", 
                     studentType: apiStudentType || undefined, 
-                    phone: d.phone 
-                });
+                    phone: d.phone,
+                    tcNo: d.tcNo
+                } as any);
                 setUsers(p => [mapApiUser(created), ...p]); 
                 success("Kullanıcı Eklendi"); 
                 setShowAddModal(false);
@@ -311,7 +325,7 @@ export default function UsersPage() {
             <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
                 <div className="w-full lg:flex-1 relative">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
-                    <input type="text" placeholder="İsim, e-posta veya telefon ile ara..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-9 pr-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
+                    <input type="text" placeholder="İsim, kullanıcı adı veya telefon ile ara..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-9 pr-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
                 </div>
                 <div className="grid grid-cols-2 gap-3 w-full lg:w-auto lg:flex">
                     <select value={roleFilter} onChange={e => { setRoleFilter(e.target.value); setPage(1); }} className="w-full lg:w-auto px-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all">
@@ -465,10 +479,13 @@ export default function UsersPage() {
                                 <input type="file" accept=".xlsx" className="hidden" id="bulk-file"
                                     onChange={e => { if (e.target.files?.[0]) handleBulkFile(e.target.files[0]); }} />
                                 <label htmlFor="bulk-file" className="cursor-pointer">
-                                    <Upload size={32} className="mx-auto text-[#A0AEC0] mb-3" />
-                                    <p className="text-sm font-medium text-[#0A1931]">{bulkFile?.name ?? 'Excel dosyası (.xlsx) seçin'}</p>
-                                    <p className="text-[10px] text-[#A9A9A9] mt-1">Sütunlar: Ad, Soyad, Telefon, Email, Rol</p>
-                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">Şifreler otomatik olarak telefon numarasının son 6 hanesi olarak atanır.</p>
+                                    <Upload size={32} className={`mx-auto mb-3 transition-colors ${bulkFile ? 'text-emerald-500' : 'text-[#A0AEC0]'}`} />
+                                    <p className="text-sm font-bold mb-3 truncate max-w-[300px] mx-auto text-[#0A1931]">
+                                        {bulkFile ? bulkFile.name : 'Excel dosyası (.xlsx) seçin'}
+                                    </p>
+                                    <p className="text-[10px] text-[#A9A9A9] mt-1">Sütunlar: Ad, Soyad, TC, Telefon, Rol</p>
+                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">Şifreler otomatik olarak TC + . + telefon numarasının son 2 hanesi olarak atanır.</p>
+                                    <p className="text-[10px] text-red-500 mt-1 font-bold">⚠️ Telefon numaralarını başında 0 olmadan giriniz!</p>
                                 </label>
                             </div>
 
@@ -538,12 +555,38 @@ export default function UsersPage() {
     }
 
     function UserFormModal({ user, onClose, onSave }: { user: User | null; onClose: () => void; onSave: (d: Partial<User> & { password?: string }) => void }) {
-        const [f, sF] = useState({ firstName: user?.firstName || "", lastName: user?.lastName || "", email: user?.email || "", phone: user?.phone || "", role: user?.role || "Student", groupNames: user?.groupNames || [] as string[], studentType: user?.studentType || "Aktif" });
+        const [f, sF] = useState({ firstName: user?.firstName || "", lastName: user?.lastName || "", email: user?.email || "", phone: user?.phone || "", role: user?.role || "Student", groupNames: user?.groupNames || [] as string[], studentType: user?.studentType || "Aktif", tcNo: user?.tcNo || "" });
         const u = (k: string, v: string) => sF(p => ({ ...p, [k]: v }));
         const toggleGroup = (g: string) => sF(p => ({ ...p, groupNames: p.groupNames.includes(g) ? p.groupNames.filter(x => x !== g) : [...p.groupNames, g] }));
 
         const [manualPw, setManualPw] = useState('');
         const currentPassword = manualPw || undefined;
+
+        const cleanPhone = (val: string) => {
+            let digits = val.replace(/\D/g, "");
+            if (digits.startsWith("0")) {
+                digits = digits.substring(1);
+            }
+            return digits.substring(0, 10);
+        };
+
+        const ToEnglishUsernameSlug = (first: string, last: string) => {
+            const combined = `${first}${last}`.trim().toLowerCase();
+            const trMap: Record<string, string> = { 'ç':'c', 'ğ':'g', 'ı':'i', 'ö':'o', 'ş':'s', 'ü':'u' };
+            return combined.split('').map(c => trMap[c] || c).join('').replace(/[^a-z0-9]/g, '');
+        };
+
+        const handleSave = () => {
+            if ((f.role === "Student" || f.role === "Öğrenci") && (!f.tcNo || f.tcNo.length !== 11)) {
+                alert("Öğrenci eklemek için 11 haneli TC Kimlik Numarası zorunludur.");
+                return;
+            }
+            if (!f.firstName || !f.lastName) {
+                alert("Ad ve Soyad zorunludur.");
+                return;
+            }
+            onSave({ ...f, role: f.role as User["role"], groupNames: f.groupNames, studentType: (f.role === "Student" || f.role === "Öğrenci") ? f.studentType as User["studentType"] : null, ...(currentPassword && { password: currentPassword }) });
+        };
 
         return (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -554,18 +597,41 @@ export default function UsersPage() {
                             <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Ad</label><input type="text" value={f.firstName} onChange={e => u("firstName", e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Ad" /></div>
                             <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Soyad</label><input type="text" value={f.lastName} onChange={e => u("lastName", e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Soyad" /></div>
                         </div>
-                        <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">E-posta</label><div className="relative"><Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" /><input type="email" value={f.email} onChange={e => u("email", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="email@sirket.com" /></div></div>
-                        <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Telefon</label><div className="relative"><Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" /><input type="tel" value={f.phone} onChange={e => u("phone", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="0532 000 0000" /></div></div>
+                        
+                        {(f.role === "Student" || f.role === "Öğrenci") ? (
+                            <div>
+                                <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Oluşturulacak Kullanıcı Adı</label>
+                                <div className="w-full px-3.5 py-2.5 text-sm bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center gap-2">
+                                    <Zap size={14} className="text-emerald-500 animate-pulse shrink-0" />
+                                    {ToEnglishUsernameSlug(f.firstName, f.lastName) || "(Ad ve Soyad girin)"}
+                                </div>
+                            </div>
+                        ) : (
+                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Kullanıcı Adı / E-posta</label><div className="relative"><Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" /><input type="text" value={f.email} onChange={e => u("email", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="kullaniciadi veya email@sirket.com" /></div></div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">TC Kimlik No {(f.role === "Student" || f.role === "Öğrenci") && "*"}</label><input type="text" value={f.tcNo} onChange={e => u("tcNo", e.target.value.replace(/\D/g, "").substring(0, 11))} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="11 haneli TC No" /></div>
+                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Telefon</label><div className="relative"><Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" /><input type="tel" value={f.phone} onChange={e => u("phone", cleanPhone(e.target.value))} maxLength={10} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="532 000 0000" /></div></div>
+                        </div>
 
                         {/* Şifre Alanı */}
-                        <div className="pt-2 border-t border-[#E2E8F0]/60">
-                            <label className="block text-xs font-medium text-[#1B3B6F] mb-2">{user ? "Şifre Sıfırla (Opsiyonel)" : "Şifre"}</label>
+                        <div className="pt-2 border-t border-[#E2E8F0]/60 space-y-2">
+                            <label className="block text-xs font-medium text-[#1B3B6F]">{user ? "Şifre Sıfırla (Opsiyonel)" : "Şifre"}</label>
                             <div className="relative">
                                 <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                                 <input type="text" value={manualPw} onChange={e => setManualPw(e.target.value)}
                                     className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]"
-                                    placeholder="Manuel Şifre Girin..." />
+                                    placeholder="Manuel şifre belirlemek için girin..." />
                             </div>
+                            {!user && (f.role === "Student" || f.role === "Öğrenci") && !manualPw && (
+                                <div className="text-xs bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-800 font-semibold flex items-center justify-between">
+                                    <span>Varsayılan Öğrenci Şifresi:</span>
+                                    <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-300 select-all tracking-wider text-sm font-bold">
+                                        {f.tcNo ? `${f.tcNo}.${f.phone.length >= 2 ? f.phone.substring(f.phone.length - 2) : ""}` : "(TC ve Telefon girin)"}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
@@ -597,7 +663,7 @@ export default function UsersPage() {
                     </div>
                     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#E2E8F0]/60 bg-[#E2E8F0]/15 rounded-b-2xl shrink-0">
                         <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-[#A9A9A9] hover:text-[#0A1931] transition-colors">İptal</button>
-                        <button onClick={() => onSave({ ...f, role: f.role as User["role"], groupNames: f.groupNames, studentType: (f.role === "Student" || f.role === "Öğrenci") ? f.studentType as User["studentType"] : null, ...(currentPassword && { password: currentPassword }) })} className="px-6 py-3 text-sm font-bold text-white bg-[#0A1931] rounded-xl hover:bg-[#1B3B6F] shadow-lg shadow-black/10 transition-all active:scale-[0.98]">{user ? "Güncelle" : "Oluştur"}</button>
+                        <button onClick={handleSave} className="px-6 py-3 text-sm font-bold text-white bg-[#0A1931] rounded-xl hover:bg-[#1B3B6F] shadow-lg shadow-black/10 transition-all active:scale-[0.98]">{user ? "Güncelle" : "Oluştur"}</button>
                     </div>
                 </div>
             </div>

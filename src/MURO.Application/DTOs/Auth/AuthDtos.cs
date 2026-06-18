@@ -31,7 +31,8 @@ public record UserDto(
     DateTime? DemoExpiresAt,
     bool IsActive,
     DateTime CreatedAt,
-    List<UserTenantDto> Tenants
+    List<UserTenantDto> Tenants,
+    string? TcNo = null
 );
 
 public record UserTenantDto(

@@ -15,8 +15,7 @@ public class LoginRequestValidator : AbstractValidator<LoginRequest>
     public LoginRequestValidator()
     {
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("E-posta adresi gereklidir.")
-            .EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
+            .NotEmpty().WithMessage("Kullanıcı adı veya e-posta adresi gereklidir.");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Şifre gereklidir.")
@@ -117,8 +116,7 @@ public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
     public CreateUserRequestValidator()
     {
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("E-posta gereklidir.")
-            .EmailAddress().WithMessage("Geçerli bir e-posta adresi giriniz.");
+            .NotEmpty().Unless(x => x.Role == "Student" || x.Role == "Öğrenci").WithMessage("Kullanıcı adı veya e-posta gereklidir.");
 
         RuleFor(x => x.FirstName)
             .NotEmpty().WithMessage("Ad gereklidir.")

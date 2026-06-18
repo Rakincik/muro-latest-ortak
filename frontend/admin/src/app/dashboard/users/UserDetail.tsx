@@ -11,6 +11,7 @@ export interface User {
     studentType: string | null; isActive: boolean;
     createdAt: string; lastLoginAt: string | null; groupNames: string[];
     password?: string;
+    tcNo?: string;
 }
 
 const rc: Record<string, { bg: string; text: string; avatar: string; hero: string }> = {
@@ -130,9 +131,11 @@ export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDe
                             <MessageCircle size={14} /> WhatsApp
                         </a>
                     )}
-                    <a href={`mailto:${u.email}`} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#1B3B6F] text-xs font-bold hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97] border border-transparent hover:border-[#E2E8F0]">
-                        <Mail size={14} /> E-posta
-                    </a>
+                    {u.email.includes("@") && (
+                        <a href={`mailto:${u.email}`} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#1B3B6F] text-xs font-bold hover:bg-[#E2E8F0]/50 transition-all active:scale-[0.97] border border-transparent hover:border-[#E2E8F0]">
+                            <Mail size={14} /> E-posta
+                        </a>
+                    )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -159,7 +162,8 @@ export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDe
                 <h3 className="text-[11px] font-extrabold text-[#A0AEC0] uppercase tracking-widest mb-5">İletişim & Güvenlik Bilgileri</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
-                        { icon: Mail, label: "E-posta", value: u.email, bg: "bg-blue-50 text-blue-600" },
+                        { icon: Mail, label: "Kullanıcı Adı", value: u.email, bg: "bg-blue-50 text-blue-600" },
+                        { icon: Shield, label: "TC Kimlik No", value: u.tcNo || "—", bg: "bg-indigo-50 text-indigo-600" },
                         { icon: Phone, label: "Telefon", value: u.phone || "—", bg: "bg-emerald-50 text-emerald-600" },
                         { icon: KeyRound, label: "Şifre", value: u.password || "******** (Gizli)", bg: "bg-amber-50 text-amber-600", action: () => onQuickReset(u), actionIcon: <KeyRound size={16} />, actionTooltip: "Şifre Sıfırla" },
                         { icon: CalendarIcon, label: "Kayıt Tarihi", value: new Date(u.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }), bg: "bg-purple-50 text-purple-600" },

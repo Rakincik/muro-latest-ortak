@@ -46,8 +46,10 @@ public class ExcelService : IExcelService
         var headerRow = worksheet.Row(1);
         var headers = new Dictionary<string, int>();
 
-        // Map column headers to their 1-based index
-        for (int i = 1; i <= properties.Length; i++)
+        // Map column headers to their 1-based index (scan all used columns or at least properties length)
+        var lastColumn = worksheet.LastColumnUsed();
+        var lastCol = Math.Max(properties.Length, lastColumn != null ? lastColumn.ColumnNumber() : 10);
+        for (int i = 1; i <= lastCol; i++)
         {
             var cellValue = headerRow.Cell(i).GetString()?.Trim();
             if (!string.IsNullOrEmpty(cellValue))
@@ -64,10 +66,49 @@ public class ExcelService : IExcelService
 
             foreach (var property in properties)
             {
-                if (headers.TryGetValue(property.Name.ToLower(), out int colIndex))
+                var pName = property.Name.ToLower();
+                int colIndex = -1;
+
+                // 1. Try exact match
+                if (headers.TryGetValue(pName, out int idx))
+                {
+                    colIndex = idx;
+                }
+                else
+                {
+                    // 2. Try cleaned match (strip spaces, dots, dashes, underscores)
+                    var cleanedProp = pName.Replace(".", "").Replace(" ", "").Replace("-", "").Replace("_", "");
+                    var matchedKey = headers.Keys.FirstOrDefault(k => k.Replace(".", "").Replace(" ", "").Replace("-", "").Replace("_", "") == cleanedProp);
+                    if (matchedKey != null)
+                    {
+                        colIndex = headers[matchedKey];
+                    }
+                    else
+                    {
+                        // 3. Turkish synonyms fallback for known properties
+                        string? fallbackKey = null;
+                        if (cleanedProp == "ad")
+                            fallbackKey = headers.Keys.FirstOrDefault(k => k == "adi" || k == "adı");
+                        else if (cleanedProp == "soyad")
+                            fallbackKey = headers.Keys.FirstOrDefault(k => k == "soyadi" || k == "soyadı");
+                        else if (cleanedProp == "telefon")
+                            fallbackKey = headers.Keys.FirstOrDefault(k => k == "telefonu" || k == "tel" || k == "telno" || k == "telefonno" || k == "telefonnumarası" || k == "telefonnumarasi");
+                        else if (cleanedProp == "tc")
+                            fallbackKey = headers.Keys.FirstOrDefault(k => k == "tckimlik" || k == "tckimlikno" || k == "tckimliknumarası" || k == "tckimliknumarasi" || k == "tcno" || k == "tckimlikno");
+                        else if (cleanedProp == "rol")
+                            fallbackKey = headers.Keys.FirstOrDefault(k => k == "rolü" || k == "rolu");
+
+                        if (fallbackKey != null)
+                        {
+                            colIndex = headers[fallbackKey];
+                        }
+                    }
+                }
+
+                if (colIndex != -1)
                 {
                     var cell = row.Cell(colIndex);
-                    var cellValue = cell.GetString();
+                    var cellValue = cell.GetString()?.Trim();
                     
                     if (!string.IsNullOrEmpty(cellValue))
                     {
