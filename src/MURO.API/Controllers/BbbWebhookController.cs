@@ -107,7 +107,7 @@ public class BbbWebhookController : ControllerBase
                                     {
                                         EventType = "recording-ready",
                                         MeetingId = extMeetingId,
-                                        RecordingUrl = $"https://bbb.gikart.com.tr/presentation/{recordId}/presentation/"
+                                        RecordingUrl = $"https://bbb.gikart.com.tr/playback/presentation/2.3/{recordId}"
                                     });
                                 }
                             }
@@ -180,8 +180,8 @@ public class BbbWebhookController : ControllerBase
             return true;
         }
 
-        var receivedChecksum = Request.Query["checksum"].ToString();
-        if (string.IsNullOrEmpty(receivedChecksum))
+        var checksum = Request.Query["checksum"].ToString();
+        if (string.IsNullOrEmpty(checksum))
         {
             _logger.LogWarning("BBB Webhook: checksum query parametresi eksik.");
             return false;
