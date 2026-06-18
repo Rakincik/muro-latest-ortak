@@ -180,12 +180,23 @@ public class WebhookHandlerService : IWebhookHandlerService
 
     public async Task HandleBbbRecordingReadyAsync(BbbEvent evt)
     {
-        if (evt.SessionId == Guid.Empty) return;
+        if (evt.SessionId == Guid.Empty && string.IsNullOrEmpty(evt.MeetingId)) 
+            return;
 
-        var session = await _context.Sessions
+        var sessionQuery = _context.Sessions
             .Include(s => s.Course)
             .Include(s => s.Recording)
-            .FirstOrDefaultAsync(s => s.Id == evt.SessionId);
+            .AsQueryable();
+
+        var session = evt.SessionId != Guid.Empty
+            ? await sessionQuery.FirstOrDefaultAsync(s => s.Id == evt.SessionId)
+            : await sessionQuery.FirstOrDefaultAsync(s => s.BbbMeetingId == evt.MeetingId);
+
+        if (session != null && evt.SessionId == Guid.Empty)
+        {
+            evt.SessionId = session.Id;
+            evt.TenantId = session.Course.TenantId;
+        }
 
         if (session == null)
         {

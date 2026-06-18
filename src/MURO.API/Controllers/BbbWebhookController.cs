@@ -55,11 +55,72 @@ public class BbbWebhookController : ControllerBase
         using var reader = new StreamReader(Request.Body);
         var rawBody = await reader.ReadToEndAsync();
 
-        BbbWebhookPayload? payload;
+        BbbWebhookPayload? payload = null;
         try
         {
-            payload = JsonSerializer.Deserialize<BbbWebhookPayload>(rawBody,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var rawTrimmed = rawBody.TrimStart();
+            if (rawTrimmed.StartsWith("["))
+            {
+                // Standart BBB 3.0 Webhook Payload (Array)
+                var bbbArray = JsonDocument.Parse(rawBody).RootElement;
+                payload = new BbbWebhookPayload();
+                
+                foreach (var item in bbbArray.EnumerateArray())
+                {
+                    if (item.TryGetProperty("event", out var eventStrProp))
+                    {
+                        var eventStr = eventStrProp.GetString();
+                        if (!string.IsNullOrEmpty(eventStr))
+                        {
+                            JsonElement eventDoc;
+                            if (eventStr.TrimStart().StartsWith("["))
+                            {
+                                var innerArr = JsonDocument.Parse(eventStr).RootElement;
+                                if (innerArr.GetArrayLength() > 0)
+                                    eventDoc = innerArr[0];
+                                else
+                                    continue;
+                            }
+                            else
+                            {
+                                eventDoc = JsonDocument.Parse(eventStr).RootElement;
+                            }
+
+                            if (eventDoc.TryGetProperty("data", out var dataNode) && dataNode.TryGetProperty("id", out var idNode))
+                            {
+                                var id = idNode.GetString();
+                                if (id == "rap-publish-ended")
+                                {
+                                    string extMeetingId = "";
+                                    string recordId = "";
+
+                                    if (dataNode.TryGetProperty("attributes", out var attrNode))
+                                    {
+                                        if (attrNode.TryGetProperty("meeting", out var meetingNode) && meetingNode.TryGetProperty("externalMeetingId", out var extNode))
+                                            extMeetingId = extNode.GetString() ?? "";
+
+                                        if (attrNode.TryGetProperty("recordId", out var recIdNode))
+                                            recordId = recIdNode.GetString() ?? "";
+                                    }
+
+                                    payload.Events.Add(new BbbEvent
+                                    {
+                                        EventType = "recording-ready",
+                                        MeetingId = extMeetingId,
+                                        RecordingUrl = $"https://bbb.gikart.com.tr/presentation/{recordId}/presentation/"
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Eski Özel MURO Payload
+                payload = JsonSerializer.Deserialize<BbbWebhookPayload>(rawBody,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
         }
         catch (JsonException ex)
         {
