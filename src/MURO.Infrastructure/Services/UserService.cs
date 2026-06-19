@@ -263,8 +263,10 @@ public class UserService : IUserService
 
     // P3 Fix: Tek transaction, batch insert — her kı 100 kullanıcı = 1 DB round-trip
     // P4 Fix: Sadece InvalidOperationException (duplike e-posta) sessizce geçilir
-    public async Task<List<UserListDto>> BulkCreateUsersAsync(Guid tenantId, List<CreateUserRequest> requests)
+    public async Task<BulkImportResultDto> BulkCreateUsersAsync(Guid tenantId, List<CreateUserRequest> requests)
     {
+        var importResult = new BulkImportResultDto { TotalAttempted = requests.Count };
+
         // Quota Enforcement (Bulk)
         var studentRequests = requests.Where(r => Enum.TryParse<UserRole>(r.Role, true, out var ro) && ro == UserRole.Student).ToList();
         if (studentRequests.Any())
@@ -311,7 +313,12 @@ public class UserService : IUserService
 
         foreach (var req in requests)
         {
-            if (!Enum.TryParse<UserRole>(req.Role, true, out var role)) continue;
+            if (!Enum.TryParse<UserRole>(req.Role, true, out var role)) 
+            {
+                importResult.FailedCount++;
+                importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = req.Email ?? "", Status = "Başarısız", Reason = "Geçersiz Rol" });
+                continue;
+            }
             var isStudent = role == UserRole.Student;
 
             // TC No duplicate check
@@ -319,7 +326,11 @@ public class UserService : IUserService
             if (!string.IsNullOrEmpty(tc))
             {
                 if (existingTcs.Contains(tc) || generatedTcs.Contains(tc))
+                {
+                    importResult.FailedCount++;
+                    importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = req.Email ?? "", Status = "Başarısız", Reason = "TC Kimlik numarası zaten kayıtlı" });
                     continue; // Skip duplicate TC
+                }
                 generatedTcs.Add(tc);
             }
 
@@ -328,7 +339,11 @@ public class UserService : IUserService
             if (!string.IsNullOrEmpty(cleanedPhone))
             {
                 if (existingPhones.Contains(cleanedPhone) || generatedPhones.Contains(cleanedPhone))
+                {
+                    importResult.FailedCount++;
+                    importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = req.Email ?? "", Status = "Başarısız", Reason = "Telefon numarası zaten kayıtlı" });
                     continue; // Skip duplicate Phone
+                }
                 generatedPhones.Add(cleanedPhone);
             }
 
@@ -348,7 +363,12 @@ public class UserService : IUserService
             else
             {
                 email = email.Trim();
-                if (existingEmails.Contains(email) || generatedEmails.Contains(email)) continue; // Duplike — sessiz geç
+                if (existingEmails.Contains(email) || generatedEmails.Contains(email)) 
+                {
+                    importResult.FailedCount++;
+                    importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = email, Status = "Başarısız", Reason = "E-posta veya kullanıcı adı zaten kullanımda" });
+                    continue; // Duplike
+                }
                 generatedEmails.Add(email);
             }
 
@@ -385,6 +405,9 @@ public class UserService : IUserService
                 Status = "active"
             });
 
+            importResult.ImportedCount++;
+            importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = email, Status = "Başarılı", Reason = "Başarıyla eklendi" });
+
             results.Add(new UserListDto(
                 user.Id, user.FirstName, user.LastName, user.Email,
                 user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
@@ -398,7 +421,7 @@ public class UserService : IUserService
             await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
         }
 
-        return results;
+        return importResult;
     }
 
     public async Task<UserListDto> UpdateUserAsync(Guid tenantId, Guid userId, UpdateUserRequest request)

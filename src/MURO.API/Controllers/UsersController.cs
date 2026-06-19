@@ -58,13 +58,13 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("bulk")]
-    public async Task<ActionResult<List<UserListDto>>> BulkCreateUsers([FromBody] BulkCreateUserRequest request)
+    public async Task<ActionResult<BulkImportResultDto>> BulkCreateUsers([FromBody] BulkCreateUserRequest request)
     {
-        var users = await _userService.BulkCreateUsersAsync(GetTenantId(), request.Users);
+        var result = await _userService.BulkCreateUsersAsync(GetTenantId(), request.Users);
         var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "BulkCreate", "User", null, null, $"{users.Count} kullanıcı oluşturuldu", ip);
-        return Ok(users);
+        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "BulkCreate", "User", null, null, $"{result.ImportedCount} kullanıcı oluşturuldu", ip);
+        return Ok(result);
     }
 
     [HttpPut("{id:guid}")]
@@ -196,13 +196,13 @@ public class UsersController : ControllerBase
             ));
         }
 
-        var results = await _userService.BulkCreateUsersAsync(GetTenantId(), requests);
-        var skipped = requests.Count - results.Count;
+        var importResult = await _userService.BulkCreateUsersAsync(GetTenantId(), requests);
 
         return Ok(new { 
-            message = $"{results.Count} kullanıcı başarıyla eklendi, {skipped} kişi es geçildi.", 
-            importedCount = results.Count,
-            skippedCount = skipped
+            message = $"{importResult.ImportedCount} kullanıcı başarıyla eklendi, {importResult.FailedCount} kişi başarısız oldu.", 
+            importedCount = importResult.ImportedCount,
+            skippedCount = importResult.FailedCount,
+            details = importResult.Details
         });
     }
 }

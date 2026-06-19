@@ -66,3 +66,20 @@ public record BulkCreateUserRequest(List<CreateUserRequest> Users);
 
 public record AssignUserGroupRequest(Guid GroupId);
 public record AssignUserCourseRequest(Guid CourseId, string Mode);
+
+public class BulkImportResultDto
+{
+    public int TotalAttempted { get; set; }
+    public int ImportedCount { get; set; }
+    public int FailedCount { get; set; }
+    public List<BulkImportItemResultDto> Details { get; set; } = new();
+}
+
+public class BulkImportItemResultDto
+{
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty; // "Başarılı" or "Başarısız"
+    public string Reason { get; set; } = string.Empty;
+}

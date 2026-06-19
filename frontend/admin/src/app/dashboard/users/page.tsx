@@ -195,7 +195,7 @@ export default function UsersPage() {
     const [bulkModalOpen, setBulkModalOpen] = useState(false);
     const [bulkFile, setBulkFile] = useState<File | null>(null);
     const [bulkLoading, setBulkLoading] = useState(false);
-    const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number } | null>(null);
+    const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number; details?: { firstName: string, lastName: string, email: string, status: string, reason: string }[] } | null>(null);
 
     // ── Quick Password Reset ──
     const [resetPwModalOpen, setResetPwModalOpen] = useState<{id: string, name: string} | null>(null);
@@ -234,10 +234,10 @@ export default function UsersPage() {
         setBulkLoading(true);
         try {
             const result = await userApi.importExcel(token, tenantId, bulkFile);
-            setBulkResult({ ok: result.importedCount, fail: result.skippedCount || 0 });
+            setBulkResult({ ok: result.importedCount, fail: result.skippedCount || 0, details: result.details });
             success('Toplu Yükleme Tamamlandı', result.message);
         } catch (e: any) {
-            setBulkResult({ ok: 0, fail: 1 });
+            setBulkResult({ ok: 0, fail: 1, details: [] });
         } finally { setBulkLoading(false); }
     };
 
@@ -505,8 +505,62 @@ export default function UsersPage() {
                     </div>
                 </div>
             )}
+            {bulkResult && <ImportResultsModal result={bulkResult} onClose={() => { setBulkResult(null); fetchUsers(); setBulkModalOpen(false); setBulkFile(null); }} />}
         </div>
     );
+
+    function ImportResultsModal({ result, onClose }: { result: { ok: number; fail: number; details?: { firstName: string, lastName: string, email: string, status: string, reason: string }[] }; onClose: () => void }) {
+        return (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+                <div className="relative w-full max-w-4xl max-h-[85vh] flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
+                    <div className="flex items-center justify-between p-6 border-b border-[#E2E8F0]/60 bg-[#F8FAFC]">
+                        <div>
+                            <h2 className="text-xl font-bold text-[#0A1931]">Yükleme Sonuçları</h2>
+                            <p className="text-sm text-[#64748B] mt-1">{result.ok} Başarılı, {result.fail} Başarısız/Atlanan</p>
+                        </div>
+                        <button onClick={onClose} className="p-2 bg-white border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/50 text-[#A0AEC0] transition-colors"><X size={20} /></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                            <thead>
+                                <tr className="text-[#64748B] font-medium border-b border-[#E2E8F0]">
+                                    <th className="pb-3 pr-4 font-bold">Ad Soyad</th>
+                                    <th className="pb-3 px-4 font-bold">E-posta / Kullanıcı Adı</th>
+                                    <th className="pb-3 px-4 font-bold">Durum</th>
+                                    <th className="pb-3 pl-4 font-bold w-full">Açıklama</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#E2E8F0]/60">
+                                {result.details?.map((d, i) => (
+                                    <tr key={i} className="hover:bg-[#F8FAFC]/50">
+                                        <td className="py-3 pr-4 font-medium text-[#0A1931]">{d.firstName} {d.lastName}</td>
+                                        <td className="py-3 px-4 text-[#64748B]">{d.email}</td>
+                                        <td className="py-3 px-4">
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold ${d.status === 'Başarılı' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                                {d.status}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 pl-4 text-xs text-[#64748B] whitespace-normal">{d.reason}</td>
+                                    </tr>
+                                ))}
+                                {(!result.details || result.details.length === 0) && (
+                                    <tr>
+                                        <td colSpan={4} className="py-8 text-center text-[#64748B]">Detay bilgisi bulunamadı.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="p-4 border-t border-[#E2E8F0]/60 bg-[#F8FAFC] flex justify-end">
+                        <button onClick={onClose} className="px-6 py-2.5 bg-[#0A1931] text-white text-sm font-bold rounded-xl hover:bg-[#1B3B6F] shadow-lg transition-all">
+                            Kapat
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     function GroupDropdown({ groups, selected, onToggle }: { groups: string[]; selected: string[]; onToggle: (g: string) => void }) {
         const [open, setOpen] = useState(false);

@@ -62,7 +62,7 @@ export const userApi = {
         a.click(); URL.revokeObjectURL(url);
     },
 
-    importExcel: async (token: string, tenantId: string, file: File): Promise<{ message: string; importedCount: number }> => {
+    importExcel: async (token: string, tenantId: string, file: File): Promise<{ message: string; importedCount: number; skippedCount: number; details: { firstName: string, lastName: string, email: string, status: string, reason: string }[] }> => {
         const formData = new FormData();
         formData.append('file', file);
         const res = await fetch(`${API_URL}/users/import-excel`, {
