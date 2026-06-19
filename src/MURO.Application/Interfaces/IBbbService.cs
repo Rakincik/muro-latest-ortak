@@ -74,7 +74,8 @@ public record BbbJoinOptions(
     string FullName,           // Kullanıcının görünen adı
     string Password,           // AttendeePw veya ModeratorPw
     Guid UserId,
-    bool IsModerator
+    bool IsModerator,
+    string? LogoutUrl = null
 );
 
 public record BbbRecordingInfo(

@@ -131,6 +131,11 @@ public class BbbService : IBbbService
             ["redirect"]  = "true",
         };
 
+        if (!string.IsNullOrEmpty(options.LogoutUrl))
+        {
+            parameters["userdata-bbb_custom_logoutURL"] = options.LogoutUrl;
+        }
+
         // Moderatör ekstra yetkiler alır
         if (options.IsModerator)
             parameters["joinViaHtml5"] = "true";

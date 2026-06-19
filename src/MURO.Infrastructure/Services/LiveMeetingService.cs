@@ -213,12 +213,17 @@ public class LiveMeetingService : ILiveMeetingService
             ? (_config["Bbb:DefaultModeratorPw"] ?? "mp")
             : (_config["Bbb:DefaultAttendeePw"] ?? "ap");
 
+        var defaultLogoutUrl = _config["Bbb:Defaults:LogoutURL"];
+        var studentLogoutUrl = defaultLogoutUrl?.Replace("/admin/", "/");
+        var logoutUrl = isModerator2 ? defaultLogoutUrl : studentLogoutUrl;
+
         var joinUrl = await _bbbService.GetJoinUrlAsync(new BbbJoinOptions(
             MeetingId: session.BbbMeetingId,
             FullName: fullName,
             Password: password,
             UserId: userId,
-            IsModerator: isModerator2
+            IsModerator: isModerator2,
+            LogoutUrl: logoutUrl
         ));
 
         // Performans Optimizasyonu: Yoklama kayıtları artık Join butonunda değil, 
