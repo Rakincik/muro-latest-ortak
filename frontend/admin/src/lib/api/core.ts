@@ -63,8 +63,9 @@ export async function api<T = unknown>(
             || `HTTP ${response.status}`;
 
         if (response.status === 401 && errorData?.error === "SESSION_KICKED") {
+            const displayMsg = errorData.message || errMsg;
             if (typeof window !== "undefined")
-                window.dispatchEvent(new CustomEvent("session:kicked", { detail: errMsg }));
+                window.dispatchEvent(new CustomEvent("session:kicked", { detail: { message: displayMsg, token: finalToken } }));
         }
         
         throw new ApiError(errMsg, response.status);

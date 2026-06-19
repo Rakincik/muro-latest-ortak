@@ -26,7 +26,7 @@ export async function api<T = unknown>(endpoint: string, options: FetchOptions =
         // SESSION_KICKED: başka cihazdan giriş yapıldı — global event at
         if (response.status === 401 && body?.error === "SESSION_KICKED") {
             if (typeof window !== "undefined")
-                window.dispatchEvent(new CustomEvent("session:kicked", { detail: body.message }));
+                window.dispatchEvent(new CustomEvent("session:kicked", { detail: { message: body.message, token: token } }));
         }
         throw new ApiError(body.error || `HTTP ${response.status}`, response.status);
     }

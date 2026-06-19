@@ -44,8 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // session:kicked: başka cihazdan giriş yapıldığında api.ts buraya event atar
     useEffect(() => {
         const handler = (e: Event) => {
-            const msg = (e as CustomEvent).detail
-                ?? "Hesabınıza başka bir cihazdan giriş yapıldı. Oturumunuz kapatıldı.";
+            const detail = (e as CustomEvent).detail;
+            const msg = typeof detail === 'string' ? detail : (detail?.message ?? "Hesabınıza başka bir cihazdan giriş yapıldı. Oturumunuz kapatıldı.");
+            const failedToken = typeof detail === 'object' ? detail?.token : null;
+            
+            const currentToken = localStorage.getItem("muro_student_token");
+            if (failedToken && currentToken && failedToken !== currentToken) {
+                // Biz başka sekmede YENİ bir giriş yapmışız, bu sekme eski token yüzünden patlamış!
+                window.location.reload();
+                return;
+            }
+
             logout();
             window.dispatchEvent(new CustomEvent("toast:show", { detail: { message: msg as string, type: "warning", title: "🔐 Güvenlik Uyarısı" } }));
         };
