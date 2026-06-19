@@ -479,7 +479,7 @@ export function CourseMediaTab({
                                             className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-inner transition-all ${canPlay ? (activeVideo?.id === media.id ? 'bg-[#0A1931] text-white shadow-lg' : 'hover:scale-105 active:scale-95 cursor-pointer bg-blue-50 text-blue-600 hover:bg-blue-100') : 'bg-red-50 text-red-500/50 cursor-not-allowed'}`}
                                             title={canPlay ? (activeVideo?.id === media.id ? "Kapat" : "Oynat") : "Canlı Ders (Kayıt Yok)"}
                                         >
-                                            {activeVideo?.id === media.id ? <X size={24} /> : <Video size={24} />}
+                                            {activeVideo?.id === media.id ? <X size={24} /> : <Play size={24} />}
                                         </button>
                                     );
                                 })() : (
@@ -503,7 +503,7 @@ export function CourseMediaTab({
                                         className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-inner transition-all hover:scale-105 active:scale-95 cursor-pointer ${activeVideo?.id === media.id ? 'bg-[#0A1931] text-white shadow-lg' : isRecording ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}
                                         title={activeVideo?.id === media.id ? "Kapat" : "Oynat"}
                                     >
-                                        {activeVideo?.id === media.id ? <X size={24} /> : isRecording ? <Video size={24} /> : <Play size={24} />}
+                                        {activeVideo?.id === media.id ? <X size={24} /> : <Play size={24} />}
                                     </button>
                                 )}
                                 
