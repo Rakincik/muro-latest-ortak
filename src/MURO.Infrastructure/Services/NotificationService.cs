@@ -70,9 +70,9 @@ public class NotificationService : INotificationService
         {
             TenantId = tenantId,
             UserIds = new List<Guid> { request.UserId },
-            Title = request.Title,
-            Body = request.Body,
-            Type = request.Type,
+            Title = request.Title ?? string.Empty,
+            Body = request.Body ?? string.Empty,
+            Type = request.Type ?? string.Empty,
             Channel = channel.ToString()
         };
 
@@ -80,7 +80,7 @@ public class NotificationService : INotificationService
         await _jobQueue.EnqueueAsync("notifications", jsonPayload);
 
         // API'nin beklemesini engellemek için anında DTO dönüyoruz. (Id arka planda oluşacak)
-        return new NotificationDto(Guid.NewGuid(), request.Title, request.Body, request.Type, false, channel.ToString(), DateTime.UtcNow);
+        return new NotificationDto(Guid.NewGuid(), request.Title ?? string.Empty, request.Body ?? string.Empty, request.Type, false, channel.ToString(), DateTime.UtcNow);
     }
 
     // ─── Admin: Toplu Gönderim ───────────────────────────────────────────────
@@ -127,9 +127,9 @@ public class NotificationService : INotificationService
         {
             TenantId = tenantId,
             UserIds = userIds,
-            Title = request.Title,
-            Body = request.Body,
-            Type = request.Type,
+            Title = request.Title ?? string.Empty,
+            Body = request.Body ?? string.Empty,
+            Type = request.Type ?? string.Empty,
             Channel = NotificationChannel.System.ToString()
         };
 

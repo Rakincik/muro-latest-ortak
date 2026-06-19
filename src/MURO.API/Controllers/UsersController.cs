@@ -144,6 +144,7 @@ public class UsersController : ControllerBase
             Ad = u.FirstName,
             Soyad = u.LastName ?? "",
             KullaniciAdi = u.Email,
+            Eposta = u.Email,
             TC = u.TcNo ?? "",
             Telefon = u.Phone ?? ""
         }).ToList();
@@ -163,21 +164,6 @@ public class UsersController : ControllerBase
         using var stream = file.OpenReadStream();
         var importedUsers = excelService.ImportFromExcel<UserImportDto>(stream);
 
-        string FixEncoding(string? value)
-        {
-            if (string.IsNullOrEmpty(value)) return "";
-            if (value.Contains('Ä') || value.Contains('Ã') || value.Contains('Å') || value.Contains('Ð') || value.Contains('Ý') || value.Contains('Þ') || value.Contains('Ö') || value.Contains('Ü') || value.Contains('Ç') || value.Contains('±'))
-            {
-                try
-                {
-                    var bytes = System.Text.Encoding.GetEncoding("iso-8859-1").GetBytes(value);
-                    return System.Text.Encoding.UTF8.GetString(bytes);
-                }
-                catch { }
-            }
-            return value;
-        }
-
         var requests = new List<CreateUserRequest>();
         foreach (var u in importedUsers)
         {
@@ -187,7 +173,7 @@ public class UsersController : ControllerBase
             var rawPhone = u.Telefon?.Trim() ?? "";
             var phone = UserService.CleanPhoneNumber(rawPhone) ?? "";
             
-            var fixedRole = FixEncoding(u.Rol?.Trim() ?? "");
+            var fixedRole = u.Rol?.Trim() ?? "";
             var role = fixedRole.ToLower() == "admin" ? "Admin" : 
                        fixedRole.ToLower() == "öğretmen" ? "Instructor" : "Student";
 
@@ -198,9 +184,9 @@ public class UsersController : ControllerBase
             var password = $"{tc}.{lastTwo}";
 
             requests.Add(new CreateUserRequest(
-                FixEncoding(u.Ad.Trim()),
-                FixEncoding(u.Soyad?.Trim() ?? ""),
-                "", // Email is empty, backend UserService will generate username
+                u.Ad.Trim(),
+                u.Soyad?.Trim() ?? "",
+                u.Eposta?.Trim() ?? "", // Use the Eposta from Excel or empty
                 password,
                 phone,
                 role,
@@ -222,6 +208,7 @@ public class UserImportDto
     public string? Soyad { get; set; }
     public string? TC { get; set; }
     public string? Telefon { get; set; }
+    public string? Eposta { get; set; }
     public string? Rol { get; set; }
 }
 
@@ -231,6 +218,7 @@ public class UserTemplateDto
     public string Soyad { get; set; } = "Yılmaz";
     public string TC { get; set; } = "12345678901";
     public string Telefon { get; set; } = "5321234567";
+    public string Eposta { get; set; } = "ahmet.yilmaz@ornek.com";
     public string Rol { get; set; } = "Öğrenci";
 }
 
@@ -240,6 +228,7 @@ public class UserExportDto
     public string Ad { get; set; } = string.Empty;
     public string Soyad { get; set; } = string.Empty;
     public string KullaniciAdi { get; set; } = string.Empty;
+    public string Eposta { get; set; } = string.Empty;
     public string TC { get; set; } = string.Empty;
     public string Telefon { get; set; } = string.Empty;
 }

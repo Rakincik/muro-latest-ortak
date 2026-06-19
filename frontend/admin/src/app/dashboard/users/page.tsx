@@ -87,7 +87,7 @@ export default function UsersPage() {
 
     const filtered = useMemo(() => {
         let r = users.filter(u => {
-            const ms = !search || `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()) || (u.phone && u.phone.includes(search));
+            const ms = !search || `${u.firstName} ${u.lastName}`.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) || u.email.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) || (u.phone && u.phone.includes(search));
             const mr = roleFilter === "all" || u.role === roleFilter || roleLabel[u.role] === roleLabel[roleFilter];
             const md = statusFilter === "all" || (statusFilter === "active" && u.isActive) || (statusFilter === "inactive" && !u.isActive) || (statusFilter === "demo" && u.studentType === "Demo");
             return ms && mr && md;
@@ -599,11 +599,20 @@ export default function UsersPage() {
                         </div>
                         
                         {(f.role === "Student" || f.role === "Öğrenci") ? (
-                            <div>
-                                <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Oluşturulacak Kullanıcı Adı</label>
-                                <div className="w-full px-3.5 py-2.5 text-sm bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center gap-2">
-                                    <Zap size={14} className="text-emerald-500 animate-pulse shrink-0" />
-                                    {ToEnglishUsernameSlug(f.firstName, f.lastName) || "(Ad ve Soyad girin)"}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Oluşturulacak Kullanıcı Adı</label>
+                                    <div className="w-full px-3.5 py-2.5 text-sm bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center gap-2">
+                                        <Zap size={14} className="text-emerald-500 animate-pulse shrink-0" />
+                                        {ToEnglishUsernameSlug(f.firstName, f.lastName) || "(Ad ve Soyad girin)"}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">E-posta</label>
+                                    <div className="relative">
+                                        <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                        <input type="email" value={f.email} onChange={e => u("email", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Örn: kullanici@mail.com" />
+                                    </div>
                                 </div>
                             </div>
                         ) : (

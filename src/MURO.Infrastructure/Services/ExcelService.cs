@@ -97,6 +97,8 @@ public class ExcelService : IExcelService
                             fallbackKey = headers.Keys.FirstOrDefault(k => k == "tckimlik" || k == "tckimlikno" || k == "tckimliknumarası" || k == "tckimliknumarasi" || k == "tcno" || k == "tckimlikno");
                         else if (cleanedProp == "rol")
                             fallbackKey = headers.Keys.FirstOrDefault(k => k == "rolü" || k == "rolu");
+                        else if (cleanedProp == "eposta")
+                            fallbackKey = headers.Keys.FirstOrDefault(k => k == "email" || k == "mail" || k == "e-posta");
 
                         if (fallbackKey != null)
                         {

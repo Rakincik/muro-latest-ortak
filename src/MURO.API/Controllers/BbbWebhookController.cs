@@ -200,11 +200,11 @@ public class BbbWebhookController : ControllerBase
         var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(dataToHash));
         var expectedChecksum = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
-        var isValid = string.Equals(receivedChecksum, expectedChecksum, StringComparison.OrdinalIgnoreCase);
+        var isValid = string.Equals(checksum, expectedChecksum, StringComparison.OrdinalIgnoreCase);
 
         if (!isValid)
             _logger.LogWarning("BBB Webhook: Checksum eşleşmedi. Beklenen: {Expected}, Gelen: {Received}",
-                expectedChecksum, receivedChecksum);
+                expectedChecksum, checksum);
 
         return isValid;
     }
