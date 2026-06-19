@@ -475,17 +475,39 @@ export default function UsersPage() {
                             <button onClick={() => setBulkModalOpen(false)} className="p-1.5 rounded-lg hover:bg-[#E2E8F0]/40 text-[#A0AEC0]"><X size={18} /></button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="border-2 border-dashed border-[#E2E8F0] rounded-xl p-8 text-center hover:border-[#1B3B6F]/40 transition-colors">
+                            <div className={`border-2 rounded-xl p-8 text-center transition-colors ${bulkFile ? 'border-emerald-500 bg-emerald-50/50 border-solid' : 'border-dashed border-[#E2E8F0] hover:border-[#1B3B6F]/40'}`}>
                                 <input type="file" accept=".xlsx" className="hidden" id="bulk-file"
                                     onChange={e => { if (e.target.files?.[0]) handleBulkFile(e.target.files[0]); }} />
-                                <label htmlFor="bulk-file" className="cursor-pointer">
-                                    <Upload size={32} className={`mx-auto mb-3 transition-colors ${bulkFile ? 'text-emerald-500' : 'text-[#A0AEC0]'}`} />
-                                    <p className="text-sm font-bold mb-3 truncate max-w-[300px] mx-auto text-[#0A1931]">
-                                        {bulkFile ? bulkFile.name : 'Excel dosyası (.xlsx) seçin'}
-                                    </p>
-                                    <p className="text-[10px] text-[#A9A9A9] mt-1">Sütunlar: Ad, Soyad, TC, Telefon, Rol</p>
-                                    <p className="text-[10px] text-emerald-600 mt-1 font-medium">Şifreler otomatik olarak TC + . + telefon numarasının son 2 hanesi olarak atanır.</p>
-                                    <p className="text-[10px] text-red-500 mt-1 font-bold">⚠️ Telefon numaralarını başında 0 olmadan giriniz!</p>
+                                <label htmlFor="bulk-file" className="cursor-pointer block">
+                                    {bulkFile ? (
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 ring-4 ring-emerald-50 shadow-sm animate-fade-in">
+                                                <Check size={32} strokeWidth={3} />
+                                            </div>
+                                            <p className="text-lg font-extrabold text-emerald-700 mb-1">Dosya Hazır!</p>
+                                            <p className="text-sm font-semibold mb-2 truncate max-w-[300px] mx-auto text-[#0A1931]">
+                                                {bulkFile.name}
+                                            </p>
+                                            <p className="text-xs text-emerald-600 font-medium mb-4">{(bulkFile.size / 1024).toFixed(1)} KB</p>
+                                            <div className="inline-flex px-4 py-1.5 rounded-full bg-white border border-emerald-200 text-xs text-emerald-700 font-bold hover:bg-emerald-50 transition-colors">
+                                                Değiştir
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="w-14 h-14 bg-[#F8FAFC] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#E2E8F0]/60 shadow-sm">
+                                                <Upload size={24} className="text-[#A0AEC0]" />
+                                            </div>
+                                            <p className="text-base font-bold mb-2 text-[#0A1931]">
+                                                Excel dosyası (.xlsx) seçin
+                                            </p>
+                                            <p className="text-xs text-[#64748B] mb-5">Sütunlar: Ad, Soyad, TC, Telefon, Rol</p>
+                                            <div className="bg-[#F8FAFC] p-3.5 rounded-xl text-left border border-[#E2E8F0]/60 space-y-2">
+                                                <p className="text-[11px] text-emerald-600 font-semibold flex items-start gap-2 leading-relaxed"><div className="mt-0.5 w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check size={10} strokeWidth={3} /></div> Şifreler otomatik olarak TC + . + telefon numarasının son 2 hanesi olarak atanır.</p>
+                                                <p className="text-[11px] text-rose-500 font-semibold flex items-start gap-2 leading-relaxed"><div className="mt-0.5 w-4 h-4 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><AlertTriangle size={10} strokeWidth={3} /></div> Telefon numaralarını başında 0 olmadan giriniz!</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </label>
                             </div>
 
