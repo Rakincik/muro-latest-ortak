@@ -64,8 +64,8 @@ services:
       - Jwt__Secret=${JWT_SECRET:?JWT_SECRET is required}
       - Jwt__Issuer=MURO
       - Jwt__Audience=MURO
-      - Bbb__Url=${BBB_URL:-https://bbb.gikart.com.tr/bigbluebutton/api}
-      - Bbb__Secret=${BBB_SECRET}
+      - Bbb__Url=${BBB_URL:-https://canli.monopoluzem.com.tr/bigbluebutton/api}
+      - Bbb__Secret=${BBB_SECRET:-DJcEz4jbbLaA4WeBdGQ3tva0n8UXCrdm0ZVU42Ubc}
       - Bbb__WebhookSharedSecret=${BBB_WEBHOOK_SECRET:-muro-webhook-secret-2024}
       - Bbb__DefaultAttendeePw=attendee123
       - Bbb__DefaultModeratorPw=moderator123
