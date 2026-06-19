@@ -258,7 +258,7 @@ export default function GroupsPage() {
             setGroups(prev => prev.filter(g => g.id !== deleteTarget && g.parentGroupId !== deleteTarget));
             if (selectedId === deleteTarget) { setSelectedId(null); setDetail(null); }
             success("Silindi", "Grup silindi.");
-        } catch { toastError("Hata", "Silinemedi."); }
+        } catch (err: any) { toastError("Hata", err.message || "Silinemedi."); }
         finally { setDeleteTarget(null); }
     };
 
@@ -353,7 +353,7 @@ export default function GroupsPage() {
             setDetail(d);
             success("İmha Edildi", "Seçili kullanıcılar sistemden kalıcı olarak silindi.");
             loadGroups();
-        } catch { toastError("Hata", "Kullanıcılar silinemedi."); }
+        } catch (err: any) { toastError("Hata", err.message || "Kullanıcılar silinemedi."); }
     };
 
     // Assign multiple courses
