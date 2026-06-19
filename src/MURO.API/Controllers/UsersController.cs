@@ -192,7 +192,7 @@ public class UsersController : ControllerBase
                 password,
                 phone,
                 role,
-                role == "Student" ? "Aktif" : null,
+                role == "Student" ? "Active" : null,
                 null,
                 tc
             ));
