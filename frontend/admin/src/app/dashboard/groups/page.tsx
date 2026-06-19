@@ -545,7 +545,7 @@ export default function GroupsPage() {
                             {/* Detail Header - Ultra Compact */}
                             <div className="p-3 px-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                                 <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-                                    <div className="flex items-center flex-wrap gap-2.5">
+                                    <div className="flex items-center flex-wrap gap-2.5 flex-1 min-w-0 pr-4">
                                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm border border-[#E2E8F0] bg-white relative overflow-hidden shrink-0">
                                             <div className="absolute inset-0 opacity-10" style={{ background: detail.color ?? "#6366f1" }} />
                                             <FolderTree size={14} style={{ color: detail.color ?? "#6366f1" }} />
@@ -568,7 +568,7 @@ export default function GroupsPage() {
                                             {detail.parentGroupName && <span className="whitespace-nowrap px-2 py-0.5 bg-[#F8FAFC] text-[#64748B] text-[10px] rounded-md border border-[#E2E8F0] font-bold shadow-sm">↑ {detail.parentGroupName}</span>}
                                         </div>
                                     </div>
-                                    <div className="w-full xl:w-auto overflow-x-auto hide-scrollbar">
+                                    <div className="w-full xl:w-auto overflow-x-auto hide-scrollbar shrink-0">
                                         <PremiumTabs 
                                             tabs={[
                                                 { id: "members", label: "Öğrenciler", icon: <Users size={12} /> },
