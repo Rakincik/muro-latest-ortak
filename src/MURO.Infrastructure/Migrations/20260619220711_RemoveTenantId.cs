@@ -85,121 +85,63 @@ namespace MURO.Infrastructure.Migrations
             migrationBuilder.DropTable(
                 name: "Tenants");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Transactions_TenantId_TransactionDate",
-                table: "Transactions");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Transactions_TenantId_TransactionDate\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_SupportTickets_TenantId_Status",
-                table: "SupportTickets");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_SupportTickets_TenantId_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_StudentExamDrafts_ExamId",
-                table: "StudentExamDrafts");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_StudentExamDrafts_ExamId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_StudentExamDrafts_TenantId_ExamId_UserId",
-                table: "StudentExamDrafts");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_StudentExamDrafts_TenantId_ExamId_UserId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_SessionAttendances_TenantId_UserId",
-                table: "SessionAttendances");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_SessionAttendances_TenantId_UserId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Questions_TenantId_InstructorId",
-                table: "Questions");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Questions_TenantId_InstructorId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Questions_TenantId_Status",
-                table: "Questions");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Questions_TenantId_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Podcasts_TenantId",
-                table: "Podcasts");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Podcasts_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Plans_TenantId",
-                table: "Plans");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Plans_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Packages_TenantId",
-                table: "Packages");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Packages_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Notifications_TenantId_CreatedAt",
-                table: "Notifications");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Notifications_TenantId_CreatedAt\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Notifications_UserId_TenantId_IsRead",
-                table: "Notifications");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Notifications_UserId_TenantId_IsRead\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_MediaFolders_TenantId",
-                table: "MediaFolders");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_MediaFolders_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_MediaAssets_TenantId_CourseId",
-                table: "MediaAssets");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_MediaAssets_TenantId_CourseId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_MediaAssets_TenantId_Status",
-                table: "MediaAssets");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_MediaAssets_TenantId_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Groups_TenantId",
-                table: "Groups");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Groups_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Faqs_TenantId",
-                table: "Faqs");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Faqs_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_ExamSubmissionQueues_TenantId_Status",
-                table: "ExamSubmissionQueues");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_ExamSubmissionQueues_TenantId_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Exams_TenantId_CreatedAt",
-                table: "Exams");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Exams_TenantId_CreatedAt\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Exams_TenantId_Status",
-                table: "Exams");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Exams_TenantId_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_DeviceSessions_TenantId",
-                table: "DeviceSessions");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_DeviceSessions_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Courses_TenantId",
-                table: "Courses");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Courses_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_CourseMaterials_TenantId",
-                table: "CourseMaterials");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_CourseMaterials_TenantId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_CalendarEvents_TenantId_GroupId",
-                table: "CalendarEvents");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_CalendarEvents_TenantId_GroupId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_CalendarEvents_TenantId_StartDate_EndDate",
-                table: "CalendarEvents");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_CalendarEvents_TenantId_StartDate_EndDate\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_TenantId_Action",
-                table: "AuditLogs");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_AuditLogs_TenantId_Action\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_TenantId_CreatedAt",
-                table: "AuditLogs");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_AuditLogs_TenantId_CreatedAt\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Assignments_TenantId_CourseId",
-                table: "Assignments");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Assignments_TenantId_CourseId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Assignments_TenantId_DueDate",
-                table: "Assignments");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Assignments_TenantId_DueDate\";");
 
             migrationBuilder.DropColumn(
                 name: "TenantId",
@@ -356,61 +298,33 @@ namespace MURO.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_Transactions_TransactionDate",
-                table: "Transactions");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Transactions_TransactionDate\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_SupportTickets_Status",
-                table: "SupportTickets");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_SupportTickets_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_StudentExamDrafts_ExamId_UserId",
-                table: "StudentExamDrafts");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_StudentExamDrafts_ExamId_UserId\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Questions_Status",
-                table: "Questions");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Questions_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Notifications_CreatedAt",
-                table: "Notifications");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Notifications_CreatedAt\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Notifications_UserId_IsRead",
-                table: "Notifications");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Notifications_UserId_IsRead\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_MediaAssets_Status",
-                table: "MediaAssets");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_MediaAssets_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_ExamSubmissionQueues_Status",
-                table: "ExamSubmissionQueues");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_ExamSubmissionQueues_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Exams_CreatedAt",
-                table: "Exams");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Exams_CreatedAt\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Exams_Status",
-                table: "Exams");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Exams_Status\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_CalendarEvents_StartDate_EndDate",
-                table: "CalendarEvents");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_CalendarEvents_StartDate_EndDate\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_Action",
-                table: "AuditLogs");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_AuditLogs_Action\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_AuditLogs_CreatedAt",
-                table: "AuditLogs");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_AuditLogs_CreatedAt\";");
 
-            migrationBuilder.DropIndex(
-                name: "IX_Assignments_DueDate",
-                table: "Assignments");
+            migrationBuilder.Sql("DROP INDEX IF EXISTS \"IX_Assignments_DueDate\";");
 
             migrationBuilder.AddColumn<Guid>(
                 name: "TenantId",
