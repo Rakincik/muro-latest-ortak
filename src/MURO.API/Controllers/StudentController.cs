@@ -93,7 +93,7 @@ public class StudentController : ControllerBase
         }
 
         async Task<int> SafeGetUnreadCount() {
-            try { return await _notificationService.GetUnreadCountAsync(userId); }
+            try { return await _notificationService.GetUnreadCountAsync(tenantId, userId); }
             catch { return 0; }
         }
 
