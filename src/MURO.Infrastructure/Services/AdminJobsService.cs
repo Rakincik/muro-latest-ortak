@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MURO.Application.Interfaces;
@@ -83,7 +83,7 @@ public class AdminJobsService : IAdminJobsService
                 type = "MediaAsset",
                 pipeline = "UploadProcessingJob",
                 title = a.Title,
-                tenantId = a.TenantId,
+                tenantId = Guid.Empty, // Default since tenant concept is removed
                 createdAt = a.CreatedAt,
                 filePath = a.FilePath,
             })
@@ -101,7 +101,7 @@ public class AdminJobsService : IAdminJobsService
                 type = "SessionRecording",
                 pipeline = "BbbRecordingSyncJob",
                 title = r.Session.Title,
-                tenantId = r.Session.Course.TenantId,
+                tenantId = Guid.Empty, // Default since tenant concept is removed
                 createdAt = r.CreatedAt,
                 filePath = (string?)null,
             })

@@ -14,12 +14,10 @@ public class Question
     public DateTime? AnsweredAt { get; set; }
     public string Status { get; set; } = "pending"; // pending, answered
     public Guid? CourseId { get; set; }
-    public Guid TenantId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public User User { get; set; } = null!;
     public User Instructor { get; set; } = null!;
     public Course? Course { get; set; }
-    public Tenant Tenant { get; set; } = null!;
 }

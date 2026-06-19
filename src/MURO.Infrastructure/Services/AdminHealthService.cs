@@ -161,47 +161,21 @@ public class AdminHealthService : IAdminHealthService
         var mainConnStr = _config.GetConnectionString("DefaultConnection") ?? "";
         var mainHost = ExtractHost(mainConnStr);
 
-        var tenantConns = await _db.Tenants
-            .AsNoTracking()
-            .Select(t => new { t.Id, t.Name, t.Code, t.ConnectionString, t.ServerGroup })
-            .ToListAsync();
-
         var pools = new List<object>();
-        var mainTenants = tenantConns.Where(t => string.IsNullOrEmpty(t.ConnectionString)).ToList();
         
         pools.Add(new
         {
             id = "main",
             host = mainHost,
-            label = "Ana Sunucu (Shared)",
+            label = "Ana Sunucu (Single Tenant)",
             type = "shared",
-            tenantCount = mainTenants.Count,
-            tenants = mainTenants.Select(t => new { t.Id, t.Name, t.Code }),
+            tenantCount = 1,
+            tenants = new List<object> { new { Name = "Monopol", Code = "monopol" } },
             connectionHint = MaskConnectionString(mainConnStr),
             status = "online",
         });
 
-        var dedicatedGroups = tenantConns
-            .Where(t => !string.IsNullOrEmpty(t.ConnectionString))
-            .GroupBy(t => ExtractHost(t.ConnectionString!))
-            .ToList();
-
-        foreach (var group in dedicatedGroups)
-        {
-            pools.Add(new
-            {
-                id = group.Key?.Replace(".", "-") ?? "unknown",
-                host = group.Key,
-                label = $"Dedicated ({group.Key})",
-                type = "dedicated",
-                tenantCount = group.Count(),
-                tenants = group.Select(t => new { t.Id, t.Name, t.Code }),
-                connectionHint = MaskConnectionString(group.First().ConnectionString ?? ""),
-                status = "unknown",
-            });
-        }
-
-        return (200, new { pools, totalServers = pools.Count, totalTenants = tenantConns.Count });
+        return (200, new { pools, totalServers = pools.Count, totalTenants = 1 });
     }
 
     public async Task<(int, object?)> TestDbConnection(DbTestRequest request)

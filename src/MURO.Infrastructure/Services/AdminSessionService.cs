@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MURO.Application.Interfaces;
@@ -37,7 +37,6 @@ public class AdminSessionService : IAdminSessionService
         var activeSessions = await _db.Sessions
             .AsNoTracking()
             .Include(s => s.Course)
-                .ThenInclude(c => c.Tenant)
             .Include(s => s.SessionAttendances)
             .Where(s => s.Status == SessionStatus.Live)
             .Select(s => new
@@ -45,8 +44,8 @@ public class AdminSessionService : IAdminSessionService
                 s.Id,
                 s.Title,
                 CourseName = s.Course.Title,
-                TenantName = s.Course.Tenant!.Name,
-                TenantSlug = s.Course.Tenant!.Subdomain ?? s.Course.Tenant!.Code,
+                TenantName = "Monopol",
+                TenantSlug = "monopol",
                 s.BbbMeetingId,
                 s.ScheduledStart,
                 DurationMinutes = s.DurationMinutes ?? 0,
@@ -81,14 +80,13 @@ public class AdminSessionService : IAdminSessionService
         var sessions = await _db.Sessions
             .AsNoTracking()
             .Include(s => s.Course)
-                .ThenInclude(c => c.Tenant)
             .Where(s => s.ScheduledStart >= today && s.ScheduledStart < tomorrow)
             .Select(s => new
             {
                 s.Id,
                 s.Title,
                 CourseName = s.Course.Title,
-                TenantName = s.Course.Tenant!.Name,
+                TenantName = "Monopol",
                 s.ScheduledStart,
                 s.ScheduledEnd,
                 s.DurationMinutes,
@@ -120,7 +118,6 @@ public class AdminSessionService : IAdminSessionService
         var session = await _db.Sessions
             .AsNoTracking()
             .Include(s => s.Course)
-                .ThenInclude(c => c.Tenant)
             .Include(s => s.SessionAttendances)
             .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -140,8 +137,8 @@ public class AdminSessionService : IAdminSessionService
             session.Title,
             session.Description,
             CourseName = session.Course.Title,
-            TenantName = session.Course.Tenant?.Name,
-            TenantSlug = session.Course.Tenant?.Subdomain ?? session.Course.Tenant?.Code,
+            TenantName = "Monopol",
+            TenantSlug = "monopol",
             session.BbbMeetingId,
             session.ScheduledStart,
             session.ScheduledEnd,
@@ -213,8 +210,7 @@ public class AdminSessionService : IAdminSessionService
     public async Task<(int, object?)> GetRecordings(
         int page = 1,
         int pageSize = 20,
-        string? status = null,
-        Guid? tenantId = null)
+        string? status = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 5, 50);
@@ -222,15 +218,13 @@ public class AdminSessionService : IAdminSessionService
         var query = _db.SessionRecordings.AsNoTracking()
             .Include(r => r.Session)
                 .ThenInclude(s => s.Course)
-                    .ThenInclude(c => c.Tenant)
             .Include(r => r.MediaAsset)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<MediaStatus>(status, out var statusEnum))
             query = query.Where(r => r.Status == statusEnum);
 
-        if (tenantId.HasValue)
-            query = query.Where(r => r.Session.Course.TenantId == tenantId.Value);
+
 
         var totalCount = await query.CountAsync();
 
@@ -244,8 +238,8 @@ public class AdminSessionService : IAdminSessionService
                 r.SessionId,
                 SessionTitle = r.Session.Title,
                 CourseTitle = r.Session.Course.Title,
-                TenantName = r.Session.Course.Tenant != null ? r.Session.Course.Tenant.Name : "â€”",
-                TenantSlug = r.Session.Course.Tenant != null ? (r.Session.Course.Tenant.Subdomain ?? r.Session.Course.Tenant.Code) : "",
+                TenantName = "Monopol",
+                TenantSlug = "monopol",
                 Status = r.Status.ToString(),
                 PlaybackUrl = r.MediaAsset != null ? r.MediaAsset.FilePath : null,
                 HlsPath = r.MediaAsset != null ? r.MediaAsset.HlsPath : null,

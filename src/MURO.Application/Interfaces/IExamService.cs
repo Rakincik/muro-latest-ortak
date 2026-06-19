@@ -6,20 +6,20 @@ namespace MURO.Application.Interfaces;
 public interface IExamService
 {
     // CRUD
-    Task<PagedResult<ExamListDto>> GetExamsAsync(Guid tenantId, int page, int pageSize, string? search, string? examType, string? status);
-    Task<ExamDetailDto> GetExamByIdAsync(Guid tenantId, Guid examId);
-    Task<string?> GetExamDigitalQuestionsAsync(Guid tenantId, Guid examId);
-    Task<ExamListDto> CreateExamAsync(Guid tenantId, CreateExamRequest request);
-    Task<ExamListDto> UpdateExamAsync(Guid tenantId, Guid examId, UpdateExamRequest request);
-    Task DeleteExamAsync(Guid tenantId, Guid examId);
+    Task<PagedResult<ExamListDto>> GetExamsAsync(int page, int pageSize, string? search, string? examType, string? status);
+    Task<ExamDetailDto> GetExamByIdAsync(Guid examId);
+    Task<string?> GetExamDigitalQuestionsAsync(Guid examId);
+    Task<ExamListDto> CreateExamAsync(CreateExamRequest request);
+    Task<ExamListDto> UpdateExamAsync(Guid examId, UpdateExamRequest request);
+    Task DeleteExamAsync(Guid examId);
 
     // Cevap Anahtarı
-    Task<ExamDetailDto> UpdateAnswerKeyAsync(Guid tenantId, Guid examId, UpdateAnswerKeyRequest request);
+    Task<ExamDetailDto> UpdateAnswerKeyAsync(Guid examId, UpdateAnswerKeyRequest request);
 
     // Durum
-    Task<ExamListDto> UpdateStatusAsync(Guid tenantId, Guid examId, UpdateExamStatusRequest request);
+    Task<ExamListDto> UpdateStatusAsync(Guid examId, UpdateExamStatusRequest request);
 
     // PDF
-    Task<ExamDetailDto> UpdatePdfAsync(Guid tenantId, Guid examId, UpdateExamPdfRequest request);
+    Task<ExamDetailDto> UpdatePdfAsync(Guid examId, UpdateExamPdfRequest request);
 
 }

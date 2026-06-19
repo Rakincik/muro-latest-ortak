@@ -127,7 +127,7 @@ public class ExamScoringJob : BackgroundService
                 resultsToAdd.Add(result);
                 item.Status = "Processed";
                 queuesToRemove.Add(item);
-                cacheKeysToRemove.TryAdd($"{item.TenantId}:exams:", 1);
+                cacheKeysToRemove.TryAdd($"exams:", 1);
             }
             catch (Exception ex)
             {

@@ -5,11 +5,11 @@ namespace MURO.Application.Interfaces;
 
 public interface IQuestionService
 {
-    Task<PagedResult<QuestionDto>> GetQuestionsAsync(Guid tenantId, int page, int pageSize, string? status, Guid? instructorId);
-    Task<QuestionDto> GetByIdAsync(Guid tenantId, Guid questionId);
-    Task<QuestionDto> AskAsync(Guid tenantId, Guid userId, CreateQuestionRequest request);
-    Task<QuestionDto> AnswerAsync(Guid tenantId, Guid questionId, AnswerQuestionRequest request);
-    Task<QuestionDto> DeleteAnswerAsync(Guid tenantId, Guid questionId);
-    Task<QuestionDto> UpdateNoteAsync(Guid tenantId, Guid questionId, Guid userId, UpdateNoteRequest request);
-    Task DeleteAsync(Guid tenantId, Guid questionId, Guid? userId = null);
+    Task<PagedResult<QuestionDto>> GetQuestionsAsync(int page, int pageSize, string? status, Guid? instructorId);
+    Task<QuestionDto> GetByIdAsync(Guid questionId);
+    Task<QuestionDto> AskAsync(Guid userId, CreateQuestionRequest request);
+    Task<QuestionDto> AnswerAsync(Guid questionId, AnswerQuestionRequest request);
+    Task<QuestionDto> DeleteAnswerAsync(Guid questionId);
+    Task<QuestionDto> UpdateNoteAsync(Guid questionId, Guid userId, UpdateNoteRequest request);
+    Task DeleteAsync(Guid questionId, Guid? userId = null);
 }

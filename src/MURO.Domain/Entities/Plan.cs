@@ -4,7 +4,6 @@ namespace MURO.Domain.Entities;
 public class Plan
 {
     public Guid   Id          { get; set; }
-    public Guid   TenantId    { get; set; }
     public string Name        { get; set; } = string.Empty;   // "Aylık", "Yıllık"
     public string? Description { get; set; }
     public decimal Price      { get; set; }
@@ -15,6 +14,5 @@ public class Plan
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
 }

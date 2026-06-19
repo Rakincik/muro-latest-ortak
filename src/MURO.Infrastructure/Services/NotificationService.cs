@@ -37,13 +37,13 @@ public class NotificationService : INotificationService
     // ─── Kullanıcı: Bildirim Listesi ────────────────────────────────────────
 
     public async Task<PagedResult<NotificationDto>> GetUserNotificationsAsync(
-        Guid tenantId, Guid userId, int page, int pageSize, bool? unreadOnly)
+        Guid userId, int page, int pageSize, bool? unreadOnly)
     {
-        var cacheKey = $"{tenantId}:notifications:user:{userId}:{page}:{pageSize}:{unreadOnly}";
+        var cacheKey = $"notifications:user:{userId}:{page}:{pageSize}:{unreadOnly}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Notifications.AsNoTracking()
-                .Where(n => n.UserId == userId && n.TenantId == tenantId);
+                .Where(n => n.UserId == userId );
 
             if (unreadOnly == true) query = query.Where(n => !n.IsRead);
 
@@ -61,14 +61,13 @@ public class NotificationService : INotificationService
 
     // ─── Admin: Tekil Gönderim ───────────────────────────────────────────────
 
-    public async Task<NotificationDto> CreateAsync(Guid tenantId, CreateNotificationRequest request)
+    public async Task<NotificationDto> CreateAsync(CreateNotificationRequest request)
     {
         var channel = Enum.TryParse<NotificationChannel>(request.Channel, true, out var ch)
             ? ch : NotificationChannel.System;
 
         var payload = new NotificationJobPayload
         {
-            TenantId = tenantId,
             UserIds = new List<Guid> { request.UserId },
             Title = request.Title ?? string.Empty,
             Body = request.Body ?? string.Empty,
@@ -85,15 +84,15 @@ public class NotificationService : INotificationService
 
     // ─── Admin: Toplu Gönderim ───────────────────────────────────────────────
 
-    public async Task<int> BulkSendAsync(Guid tenantId, BulkNotificationRequest request)
+    public async Task<int> BulkSendAsync(BulkNotificationRequest request)
     {
         List<Guid> userIds;
 
         if (request.SendToAll)
         {
-            userIds = await _context.TenantMemberships.AsNoTracking()
-                .Where(tm => tm.TenantId == tenantId && tm.Status == "active")
-                .Select(tm => tm.UserId)
+            userIds = await _context.Users.AsNoTracking()
+                .Where(tm => tm.IsActive)
+                .Select(tm => tm.Id)
                 .ToListAsync();
         }
         else if (request.GroupId.HasValue)
@@ -125,7 +124,6 @@ public class NotificationService : INotificationService
 
         var payload = new NotificationJobPayload
         {
-            TenantId = tenantId,
             UserIds = userIds,
             Title = request.Title ?? string.Empty,
             Body = request.Body ?? string.Empty,
@@ -148,33 +146,33 @@ public class NotificationService : INotificationService
         {
             n.IsRead = true;
             await _context.SaveChangesAsync();
-            await _cache.RemoveByPrefixAsync($"{n.TenantId}:notifications:");
+            await _cache.RemoveByPrefixAsync($"notifications:");
         }
     }
 
-    public async Task MarkAllReadAsync(Guid tenantId, Guid userId)
+    public async Task MarkAllReadAsync(Guid userId)
     {
-        await _context.Notifications.Where(n => n.TenantId == tenantId && n.UserId == userId && !n.IsRead)
+        await _context.Notifications.Where(n => n.UserId == userId && !n.IsRead)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
 
-        await _cache.RemoveByPrefixAsync($"{tenantId}:notifications:");
+        await _cache.RemoveByPrefixAsync($"notifications:");
     }
 
-    public async Task<int> GetUnreadCountAsync(Guid tenantId, Guid userId)
+    public async Task<int> GetUnreadCountAsync(Guid userId)
     {
-        var cacheKey = $"{tenantId}:notifications:unread:{userId}";
+        var cacheKey = $"notifications:unread:{userId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            return await _context.Notifications.CountAsync(n => n.TenantId == tenantId && n.UserId == userId && !n.IsRead);
+            return await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
         }, TimeSpan.FromMinutes(1));
     }
 
     // ─── Admin: Gönderim Geçmişi ─────────────────────────────────────────────
 
-    public async Task<List<NotificationAdminDto>> GetTenantSentAsync(Guid tenantId)
+    public async Task<List<NotificationAdminDto>> GetTenantSentAsync()
     {
         var rows = await _context.Notifications.AsNoTracking()
-            .Where(n => n.TenantId == tenantId)
+            .Where(n => true)
             .GroupBy(n => new { n.Title, n.Body, n.Type, Day = n.CreatedAt.Date })
             .Select(g => new NotificationAdminDto(
                 g.Min(n => n.Id),

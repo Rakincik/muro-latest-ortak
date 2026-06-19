@@ -13,13 +13,11 @@ public class MediaAsset
     public string? Tags { get; set; }
     public MediaStatus Status { get; set; } = MediaStatus.Uploading;
     public Guid? CourseId { get; set; }
-    public Guid TenantId { get; set; }
     public Guid? FolderId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Course? Course { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public MediaFolder? Folder { get; set; }
     public ICollection<CourseMedia> CourseMedias { get; set; } = new List<CourseMedia>();
     public ICollection<VideoProgress> VideoProgresses { get; set; } = new List<VideoProgress>();

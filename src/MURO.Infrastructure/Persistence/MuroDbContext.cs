@@ -8,10 +8,7 @@ public class MuroDbContext : DbContext
     public MuroDbContext(DbContextOptions<MuroDbContext> options) : base(options) { }
 
     // Core
-    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
-    public DbSet<TenantMembership> TenantMemberships => Set<TenantMembership>();
-
     // Groups
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
@@ -81,21 +78,7 @@ public class MuroDbContext : DbContext
             entity.Property(u => u.Role).HasConversion<string>();
             entity.Property(u => u.StudentType).HasConversion<string>();
         });
-
-        // Tenant — unique code
-        modelBuilder.Entity<Tenant>(entity =>
-        {
-            entity.HasIndex(t => t.Code).IsUnique();
-        });
-
-        // TenantMembership — composite unique
-        modelBuilder.Entity<TenantMembership>(entity =>
-        {
-            entity.HasIndex(tm => new { tm.UserId, tm.TenantId }).IsUnique();
-            entity.Property(tm => tm.Role).HasConversion<string>();
-        });
-
-        // Group — self-referencing tree
+// Group — self-referencing tree
         modelBuilder.Entity<Group>(entity =>
         {
             entity.HasOne(g => g.Parent)
@@ -168,7 +151,6 @@ public class MuroDbContext : DbContext
                   .WithMany(mf => mf.SubFolders)
                   .HasForeignKey(mf => mf.ParentFolderId)
                   .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(mf => mf.TenantId);
         });
 
         // CourseMedia
@@ -228,16 +210,15 @@ public class MuroDbContext : DbContext
         {
             entity.Property(n => n.Channel).HasConversion<string>();
             // Bildirim listesi sorgusu (userId + tenantId filtreleme)
-            entity.HasIndex(n => new { n.UserId, n.TenantId, n.IsRead });
+            entity.HasIndex(n => new { n.UserId,  n.IsRead });
             // Admin: tenant bazlı gönderilmiş bildirimler (sıralama)
-            entity.HasIndex(n => new { n.TenantId, n.CreatedAt });
+            entity.HasIndex(n => new { n.CreatedAt  });
         });
 
         // Podcast
         modelBuilder.Entity<Podcast>(entity =>
         {
             entity.Property(p => p.Status).HasConversion<string>();
-            entity.HasIndex(p => p.TenantId);
         });
 
         // SessionAttendance — composite unique per user per session
@@ -245,7 +226,7 @@ public class MuroDbContext : DbContext
         {
             entity.HasIndex(sa => new { sa.SessionId, sa.UserId }).IsUnique();
             // Öğrenci katılım geçmişi sorgusu
-            entity.HasIndex(sa => new { sa.TenantId, sa.UserId });
+            entity.HasIndex(sa => new { sa.UserId  });
             entity.HasOne(sa => sa.Session).WithMany().HasForeignKey(sa => sa.SessionId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(sa => sa.User).WithMany().HasForeignKey(sa => sa.UserId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -274,7 +255,6 @@ public class MuroDbContext : DbContext
         modelBuilder.Entity<Package>(entity =>
         {
             entity.Property(p => p.Price).HasPrecision(18, 2);
-            entity.HasIndex(p => p.TenantId);
         });
 
         modelBuilder.Entity<PackageGroup>(entity =>
@@ -293,7 +273,7 @@ public class MuroDbContext : DbContext
         // AuditLog
         modelBuilder.Entity<AuditLog>(entity =>
         {
-            entity.HasIndex(a => new { a.TenantId, a.CreatedAt });
+            entity.HasIndex(a => new { a.CreatedAt  });
             entity.HasIndex(a => a.UserId);
             entity.HasIndex(a => a.EntityType);
             entity.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId)
@@ -303,8 +283,8 @@ public class MuroDbContext : DbContext
         // Exam — 🔧 tenant bazlı listeleme indexi
         modelBuilder.Entity<Exam>(entity =>
         {
-            entity.HasIndex(e => new { e.TenantId, e.Status });
-            entity.HasIndex(e => new { e.TenantId, e.CreatedAt });
+            entity.HasIndex(e => new { e.Status  });
+            entity.HasIndex(e => new { e.CreatedAt  });
         });
 
         // ExamResult — 🔧 öğrenci sonuçları sorgusu
@@ -317,25 +297,24 @@ public class MuroDbContext : DbContext
         // ExamSubmissionQueue
         modelBuilder.Entity<ExamSubmissionQueue>(entity =>
         {
-            entity.HasIndex(q => new { q.TenantId, q.Status });
+            entity.HasIndex(q => new { q.Status  });
         });
 
         // StudentExamDraft
         modelBuilder.Entity<StudentExamDraft>(entity =>
         {
-            entity.HasIndex(d => new { d.TenantId, d.ExamId, d.UserId }).IsUnique();
+            entity.HasIndex(d => new { d.ExamId, d.UserId  }).IsUnique();
         });
 
         // Course — 🔧 tenant bazlı listeleme
         modelBuilder.Entity<Course>(entity =>
         {
-            entity.HasIndex(c => c.TenantId);
         });
 
         // SupportTicket — 🔧 tenant + status filtreleme
         modelBuilder.Entity<SupportTicket>(entity =>
         {
-            entity.HasIndex(st => new { st.TenantId, st.Status });
+            entity.HasIndex(st => new { st.Status  });
         });
 
         // DeviceSession — 🔧 kullanıcı oturum sorgusu
@@ -347,7 +326,6 @@ public class MuroDbContext : DbContext
         // Group — 🔧 tenant bazlı listeleme
         modelBuilder.Entity<Group>(entity =>
         {
-            entity.HasIndex(g => g.TenantId);
         });
 
         // ─── Phase 2: Genişletilmiş Composite Index'ler ─────────────────────
@@ -355,8 +333,8 @@ public class MuroDbContext : DbContext
         // Assignment — 🔧 tenant bazlı kurs filtreli listeleme + tarih sıralama
         modelBuilder.Entity<Assignment>(entity =>
         {
-            entity.HasIndex(a => new { a.TenantId, a.CourseId });
-            entity.HasIndex(a => new { a.TenantId, a.DueDate });
+            entity.HasIndex(a => new { a.CourseId  });
+            entity.HasIndex(a => new { a.DueDate  });
         });
 
         // AssignmentSubmission — 🔧 öğrenci teslim kontrolü (duplicate check)
@@ -368,29 +346,29 @@ public class MuroDbContext : DbContext
         // Question — 🔧 soru filtreleme (status, eğitmen)
         modelBuilder.Entity<Question>(entity =>
         {
-            entity.HasIndex(q => new { q.TenantId, q.Status });
-            entity.HasIndex(q => new { q.TenantId, q.InstructorId });
+            entity.HasIndex(q => new { q.Status  });
+            entity.HasIndex(q => new { q.InstructorId  });
         });
 
         // CalendarEvent — 🔧 takvim tarih aralığı + grup filtresi
         modelBuilder.Entity<CalendarEvent>(entity =>
         {
-            entity.HasIndex(e => new { e.TenantId, e.StartDate, e.EndDate });
-            entity.HasIndex(e => new { e.TenantId, e.GroupId });
+            entity.HasIndex(e => new { e.StartDate, e.EndDate  });
+            entity.HasIndex(e => new { e.GroupId  });
         });
 
         // AuditLog — 🔧 denetim log sıralama + aksiyon filtresi
         modelBuilder.Entity<AuditLog>(entity =>
         {
-            entity.HasIndex(a => new { a.TenantId, a.CreatedAt });
-            entity.HasIndex(a => new { a.TenantId, a.Action });
+            entity.HasIndex(a => new { a.CreatedAt  });
+            entity.HasIndex(a => new { a.Action  });
         });
 
         // MediaAsset — 🔧 medya listeleme + durum filtresi
         modelBuilder.Entity<MediaAsset>(entity =>
         {
-            entity.HasIndex(m => new { m.TenantId, m.Status });
-            entity.HasIndex(m => new { m.TenantId, m.CourseId });
+            entity.HasIndex(m => new { m.Status  });
+            entity.HasIndex(m => new { m.CourseId  });
         });
 
         // VideoProgress — 🔧 kullanıcı video ilerleme sorgusu
@@ -405,16 +383,11 @@ public class MuroDbContext : DbContext
             entity.HasIndex(s => new { s.CourseId, s.ScheduledStart });
         });
 
-        // TenantMembership — 🔧 aktif üye sayısı + listeleme
-        modelBuilder.Entity<TenantMembership>(entity =>
-        {
-            entity.HasIndex(tm => new { tm.TenantId, tm.Status });
-        });
 
         // Transaction — 🔧 mali rapor sıralaması
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.HasIndex(t => new { t.TenantId, t.TransactionDate });
+            entity.HasIndex(t => t.TransactionDate);
         });
 
         // GroupMember — 🔧 grup üyeleri listeleme
@@ -472,7 +445,6 @@ public class MuroDbContext : DbContext
         modelBuilder.Entity<Exam>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Course>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Group>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Session>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Assignment>().HasQueryFilter(e => !e.IsDeleted);

@@ -63,7 +63,7 @@ public sealed class BackgroundJobProcessor : BackgroundService
             case AuditLogJob audit:
                 var auditService = scope.ServiceProvider.GetRequiredService<IAuditService>();
                 await auditService.LogAsync(
-                    audit.TenantId, audit.UserId, audit.UserName,
+                     audit.UserId, audit.UserName,
                     audit.Action, audit.EntityType, audit.EntityId,
                     audit.EntityName, audit.Details, audit.IpAddress);
                 break;

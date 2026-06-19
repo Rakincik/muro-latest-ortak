@@ -25,11 +25,11 @@ public class CourseSessionService : ICourseSessionService
         _cache = cache;
     }
 
-    public async Task<SessionDto> CreateSessionAsync(Guid tenantId, Guid courseId, CreateSessionRequest request)
+    public async Task<SessionDto> CreateSessionAsync(Guid courseId, CreateSessionRequest request)
     {
         var course = await _context.Courses
             .Include(c => c.Sessions)
-            .FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
+            .FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Ders bulunamadı.");
 
         var maxOrder = course.Sessions.Any() ? course.Sessions.Max(s => s.Order) : 0;
@@ -38,7 +38,7 @@ public class CourseSessionService : ICourseSessionService
         {
             var start = request.ScheduledStart.Value;
             var end = request.ScheduledEnd ?? start.AddMinutes(request.DurationMinutes ?? 60);
-            await CheckSessionConflictAsync(tenantId, courseId, null, start, end);
+            await CheckSessionConflictAsync(courseId, null, start, end);
         }
 
         var session = new Session
@@ -71,16 +71,16 @@ public class CourseSessionService : ICourseSessionService
         });
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return MapSessionDto(session);
     }
 
-    public async Task<SessionDto> UpdateSessionAsync(Guid tenantId, Guid courseId, Guid sessionId, UpdateSessionRequest request)
+    public async Task<SessionDto> UpdateSessionAsync(Guid courseId, Guid sessionId, UpdateSessionRequest request)
     {
         var session = await _context.Sessions
             .Include(s => s.Course)
-            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId && s.Course.TenantId == tenantId)
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId )
             ?? throw new KeyNotFoundException("Oturum bulunamadı.");
 
         if (request.ScheduledStart.HasValue || request.DurationMinutes.HasValue || request.ScheduledEnd.HasValue)
@@ -90,7 +90,7 @@ public class CourseSessionService : ICourseSessionService
             {
                 var dur = request.DurationMinutes ?? session.DurationMinutes ?? 60;
                 var end = request.ScheduledEnd ?? session.ScheduledEnd ?? start.Value.AddMinutes(dur);
-                await CheckSessionConflictAsync(tenantId, courseId, session.Id, start.Value, end);
+                await CheckSessionConflictAsync(courseId, session.Id, start.Value, end);
             }
         }
 
@@ -105,12 +105,12 @@ public class CourseSessionService : ICourseSessionService
         if (request.RecordingEnabled.HasValue) session.RecordingEnabled = request.RecordingEnabled.Value;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return MapSessionDto(session);
     }
 
-    private async Task CheckSessionConflictAsync(Guid tenantId, Guid courseId, Guid? sessionId, DateTime startT, DateTime endT)
+    private async Task CheckSessionConflictAsync(Guid courseId, Guid? sessionId, DateTime startT, DateTime endT)
     {
         var potentialConflicts = await _context.Sessions
             .Include(s => s.Course)
@@ -130,7 +130,7 @@ public class CourseSessionService : ICourseSessionService
             throw new InvalidOperationException($"Oturum çakışması: Bu saatlerde '{conflict.Title}' (Ders: {conflict.Course.Title}) adlı oturum çakışmaktadır.");
     }
 
-    public async Task DeleteSessionAsync(Guid tenantId, Guid courseId, Guid sessionId)
+    public async Task DeleteSessionAsync(Guid courseId, Guid sessionId)
     {
         var session = await _context.Sessions
             .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId)
@@ -145,10 +145,10 @@ public class CourseSessionService : ICourseSessionService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task ReorderSessionsAsync(Guid tenantId, Guid courseId, List<Guid> sessionIds)
+    public async Task ReorderSessionsAsync(Guid courseId, List<Guid> sessionIds)
     {
         var sessions = await _context.Sessions
             .Where(s => s.CourseId == courseId)
@@ -161,14 +161,14 @@ public class CourseSessionService : ICourseSessionService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsAsync(Guid tenantId)
+    public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsAsync()
     {
         return await _context.Sessions
             .AsNoTracking()
-            .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
+            .Where(s => s.Course.IsPublished && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
             .Include(s => s.Course)
             .OrderBy(s => s.Status == SessionStatus.Live ? 0 : 1).ThenBy(s => s.ScheduledStart)
             .Select(s => new UpcomingSessionDto(
@@ -181,13 +181,13 @@ public class CourseSessionService : ICourseSessionService
             .ToListAsync();
     }
 
-    public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsByUserAsync(Guid tenantId, Guid userId)
+    public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsByUserAsync(Guid userId)
     {
-        var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
+        var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
 
         return await _context.Sessions
             .AsNoTracking()
-            .Where(s => s.Course.TenantId == tenantId && s.Course.IsPublished
+            .Where(s => s.Course.IsPublished
                         && accessibleIds.Contains(s.CourseId)
                         && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
             .Include(s => s.Course)
@@ -202,11 +202,11 @@ public class CourseSessionService : ICourseSessionService
             .ToListAsync();
     }
 
-    public async Task<SessionDto> CreateVodSessionAsync(Guid tenantId, Guid courseId, string title, string filePath, int? durationSeconds = null)
+    public async Task<SessionDto> CreateVodSessionAsync(Guid courseId, string title, string filePath, int? durationSeconds = null)
     {
         var course = await _context.Courses
             .Include(c => c.Sessions)
-            .FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
+            .FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Ders bulunamadı.");
 
         var maxOrder = course.Sessions.Any() ? course.Sessions.Max(s => s.Order) : 0;
@@ -228,7 +228,6 @@ public class CourseSessionService : ICourseSessionService
         var mediaAsset = new MediaAsset
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             Title = title,
             FilePath = filePath,
             Status = MediaStatus.Uploading,
@@ -262,7 +261,7 @@ public class CourseSessionService : ICourseSessionService
         });
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return MapSessionDto(session);
     }

@@ -9,7 +9,7 @@ namespace MURO.API.Middleware;
 /// 3. API    → 200 istek/dakika/kullanıcı (abuse koruması)
 /// 
 /// Not: Dashboard açılışta ~15-20 paralel istek atar (groups, users, notifications,
-/// branding, calendar, packages vb.). Eski 60/dakika limiti normal kullanımı engelliyordu.
+/// branding, calendar, packages ). Eski 60/dakika limiti normal kullanımı engelliyordu.
 /// </summary>
 public static class RateLimitingConfig
 {

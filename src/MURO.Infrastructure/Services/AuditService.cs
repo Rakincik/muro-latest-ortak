@@ -17,13 +17,12 @@ public class AuditService : IAuditService
         _cache = cache;
     }
 
-    public async Task LogAsync(Guid? tenantId, Guid? userId, string? userName, string action,
+    public async Task LogAsync(Guid? userId, string? userName, string action,
                                string entityType, string? entityId, string? entityName,
                                string? details = null, string? ipAddress = null)
     {
         _context.AuditLogs.Add(new AuditLog
         {
-            TenantId = tenantId,
             UserId = userId,
             UserName = userName,
             Action = action,
@@ -34,19 +33,18 @@ public class AuditService : IAuditService
             IpAddress = ipAddress,
         });
         await _context.SaveChangesAsync();
-        if (tenantId.HasValue)
-            await _cache.RemoveByPrefixAsync($"{tenantId}:audit:");
+        await _cache.RemoveByPrefixAsync($"audit:");
     }
 
-    public async Task<PagedResult<AuditLogDto>> GetLogsAsync(Guid tenantId, int page, int pageSize,
+    public async Task<PagedResult<AuditLogDto>> GetLogsAsync(int page, int pageSize,
                                                               string? action = null, string? entityType = null,
                                                               string? search = null, DateTime? from = null, DateTime? to = null)
     {
-        var cacheKey = $"{tenantId}:audit:logs:{page}:{pageSize}:{action}:{entityType}:{search}:{from:yyyyMMddHHmm}:{to:yyyyMMddHHmm}";
+        var cacheKey = $"audit:logs:{page}:{pageSize}:{action}:{entityType}:{search}:{from:yyyyMMddHHmm}:{to:yyyyMMddHHmm}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var q = _context.AuditLogs.AsNoTracking()
-                .Where(a => a.TenantId == tenantId);
+                .Where(a => true);
 
             if (!string.IsNullOrEmpty(action))
                 q = q.Where(a => a.Action == action);
@@ -89,13 +87,13 @@ public class AuditService : IAuditService
         }, TimeSpan.FromMinutes(1));
     }
 
-    public async Task<AuditSummaryDto> GetSummaryAsync(Guid tenantId, DateTime from, DateTime to)
+    public async Task<AuditSummaryDto> GetSummaryAsync(DateTime from, DateTime to)
     {
-        var cacheKey = $"{tenantId}:audit:summary:{from:yyyyMMdd}:{to:yyyyMMdd}";
+        var cacheKey = $"audit:summary:{from:yyyyMMdd}:{to:yyyyMMdd}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var logs = await _context.AuditLogs.AsNoTracking()
-                .Where(a => a.TenantId == tenantId && a.CreatedAt >= from && a.CreatedAt <= to)
+                .Where(a => a.CreatedAt >= from && a.CreatedAt <= to)
                 .ToListAsync();
 
             var createCount = logs.Count(l => l.Action == "Create");
@@ -115,10 +113,10 @@ public class AuditService : IAuditService
         }, TimeSpan.FromMinutes(2));
     }
 
-    public async Task<PagedResult<UserAuditSummaryDto>> GetUserAuditSummariesAsync(Guid tenantId, int page, int pageSize, string? search = null)
+    public async Task<PagedResult<UserAuditSummaryDto>> GetUserAuditSummariesAsync(int page, int pageSize, string? search = null)
     {
         var q = _context.AuditLogs.AsNoTracking()
-            .Where(a => a.TenantId == tenantId); // Sadece tenantId filtrele, null olanları da getir.
+            .Where(a => true); // Sadece tenantId filtrele, null olanları da getir.
 
         if (!string.IsNullOrEmpty(search))
         {
@@ -148,14 +146,13 @@ public class AuditService : IAuditService
         return new PagedResult<UserAuditSummaryDto>(result, total, page, pageSize, (int)Math.Ceiling(total / (double)pageSize));
     }
 
-    public async Task<List<SuspiciousUserDto>> GetSuspiciousUsersAsync(Guid tenantId)
+    public async Task<List<SuspiciousUserDto>> GetSuspiciousUsersAsync()
     {
         // Get suspicious security events within the last 7 days
         var thresholdDate = DateTime.UtcNow.AddDays(-7);
         var suspiciousEvents = await _context.SecurityEvents.AsNoTracking()
             .Include(e => e.User)
-            .Where(e => e.TenantId == tenantId && 
-                        e.CreatedAt >= thresholdDate && 
+            .Where(e => e.CreatedAt >= thresholdDate && 
                         e.UserId != null &&
                         (e.EventType == "SESSION_KICKED" || e.EventType == "BRUTE_FORCE_DETECTED" || e.EventType == "LOGIN_FAILED"))
             .ToListAsync();

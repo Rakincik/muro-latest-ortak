@@ -16,17 +16,15 @@ namespace MURO.API.Controllers;
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _notificationService;
-    private readonly Application.Interfaces.ITenantService _tenantService;
-    private readonly IBackgroundJobQueue _jobQueue;
+        private readonly IBackgroundJobQueue _jobQueue;
 
-    public NotificationsController(INotificationService notificationService, Application.Interfaces.ITenantService tenantService, IBackgroundJobQueue jobQueue)
+    public NotificationsController(INotificationService notificationService, Application.Interfaces.IBackgroundJobQueue jobQueue)
     {
         _notificationService = notificationService;
-        _tenantService = tenantService;
-        _jobQueue = jobQueue;
+                _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId() => _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException();
+    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -35,7 +33,7 @@ public class NotificationsController : ControllerBase
     {
         try
         {
-            return Ok(await _notificationService.GetTenantSentAsync(GetTenantId()));
+            return Ok(await _notificationService.GetTenantSentAsync());
         }
         catch
         {
@@ -46,25 +44,25 @@ public class NotificationsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedResult<NotificationDto>>> GetMyNotifications(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool? unreadOnly = null)
-        => Ok(await _notificationService.GetUserNotificationsAsync(GetTenantId(), GetUserId(), page, pageSize, unreadOnly));
+        => Ok(await _notificationService.GetUserNotificationsAsync(GetUserId(), page, pageSize, unreadOnly));
 
     [HttpGet("unread-count")]
     public async Task<ActionResult<int>> GetUnreadCount()
-        => Ok(await _notificationService.GetUnreadCountAsync(GetTenantId(), GetUserId()));
+        => Ok(await _notificationService.GetUnreadCountAsync(GetUserId()));
 
     [HttpPost]
     public async Task<ActionResult<NotificationDto>> Create([FromBody] CreateNotificationRequest request)
     {
-        var n = await _notificationService.CreateAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "Notification", null, request.Title, null, GetIp()));
+        var n = await _notificationService.CreateAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "Notification", null, request.Title, null, GetIp()));
         return Ok(n);
     }
 
     [HttpPost("bulk")]
     public async Task<ActionResult<int>> BulkSend([FromBody] BulkNotificationRequest request)
     {
-        var count = await _notificationService.BulkSendAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "BulkSend", "Notification", null, request.Title, $"{count} bildirim gönderildi", GetIp()));
+        var count = await _notificationService.BulkSendAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "BulkSend", "Notification", null, request.Title, $"{count} bildirim gönderildi", GetIp()));
         return Ok(count);
     }
 
@@ -74,5 +72,5 @@ public class NotificationsController : ControllerBase
 
     [HttpPut("read-all")]
     public async Task<IActionResult> MarkAllRead()
-    { await _notificationService.MarkAllReadAsync(GetTenantId(), GetUserId()); return NoContent(); }
+    { await _notificationService.MarkAllReadAsync(GetUserId()); return NoContent(); }
 }

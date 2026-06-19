@@ -30,8 +30,7 @@ public record CreateMeetingRequest(
     bool RecordingEnabled = false,
     string? WelcomeMessage = null,
     int? DurationMinutes = null,
-    string? LogoutUrl = null,
-    string? TenantId = null
+    string? LogoutUrl = null
 );
 
 public record JoinMeetingRequest(

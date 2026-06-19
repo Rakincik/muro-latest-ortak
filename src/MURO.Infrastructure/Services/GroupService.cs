@@ -18,13 +18,13 @@ public class GroupService : IGroupService
         _cache = cache;
     }
 
-    public async Task<PagedResult<GroupListDto>> GetGroupsAsync(Guid tenantId, int page, int pageSize, string? search)
+    public async Task<PagedResult<GroupListDto>> GetGroupsAsync(int page, int pageSize, string? search)
     {
-        var cacheKey = $"{tenantId}:groups:list:{page}:{pageSize}:{search}";
+        var cacheKey = $"groups:list:{page}:{pageSize}:{search}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Groups.AsNoTracking()
-                .Where(g => g.TenantId == tenantId)
+                .Where(g => true)
                 .Include(g => g.Members)
                 .Include(g => g.Parent)
                 .Include(g => g.CourseGroups)
@@ -56,13 +56,13 @@ public class GroupService : IGroupService
         }, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<List<GroupTreeDto>> GetGroupTreeAsync(Guid tenantId)
+    public async Task<List<GroupTreeDto>> GetGroupTreeAsync()
     {
-        var cacheKey = $"{tenantId}:groups:tree";
+        var cacheKey = $"groups:tree";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var allGroups = await _context.Groups.AsNoTracking()
-                .Where(g => g.TenantId == tenantId)
+                .Where(g => true)
                 .Include(g => g.Members)
                 .Select(g => new { g.Id, g.Name, g.ParentId, MemberCount = g.Members.Count(m => m.Status == "active") })
                 .ToListAsync();
@@ -77,13 +77,13 @@ public class GroupService : IGroupService
         }, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<GroupDetailDto> GetGroupByIdAsync(Guid tenantId, Guid groupId)
+    public async Task<GroupDetailDto> GetGroupByIdAsync(Guid groupId)
     {
-        var cacheKey = $"{tenantId}:groups:detail:{groupId}";
+        var cacheKey = $"groups:detail:{groupId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var group = await _context.Groups.AsNoTracking()
-                .Where(g => g.Id == groupId && g.TenantId == tenantId)
+                .Where(g => g.Id == groupId )
                 .Include(g => g.Parent)
                 .Include(g => g.Members).ThenInclude(m => m.User)
                 .Include(g => g.CourseGroups).ThenInclude(cg => cg.Course)
@@ -114,18 +114,17 @@ public class GroupService : IGroupService
         }, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<GroupListDto> CreateGroupAsync(Guid tenantId, CreateGroupRequest request)
+    public async Task<GroupListDto> CreateGroupAsync(CreateGroupRequest request)
     {
         if (request.ParentGroupId.HasValue)
         {
-            var parentExists = await _context.Groups.AnyAsync(g => g.Id == request.ParentGroupId && g.TenantId == tenantId);
+            var parentExists = await _context.Groups.AnyAsync(g => g.Id == request.ParentGroupId );
             if (!parentExists) throw new KeyNotFoundException("Üst grup bulunamadı.");
         }
 
         var group = new Group
         {
-            Id = Guid.NewGuid(), TenantId = tenantId,
-            Name = request.Name, Description = request.Description,
+            Id = Guid.NewGuid(), Name = request.Name, Description = request.Description,
             Color = request.Color, EducationType = request.EducationType,
             ExpirationDate = request.ExpirationDate,
             ParentId = request.ParentGroupId
@@ -133,17 +132,17 @@ public class GroupService : IGroupService
 
         _context.Groups.Add(group);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
+        await _cache.RemoveByPrefixAsync($"groups:");
 
         return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType, 0, 0, group.ExpirationDate, group.CreatedAt);
     }
 
-    public async Task<GroupListDto> UpdateGroupAsync(Guid tenantId, Guid groupId, UpdateGroupRequest request)
+    public async Task<GroupListDto> UpdateGroupAsync(Guid groupId, UpdateGroupRequest request)
     {
         var group = await _context.Groups
             .Include(g => g.Members)
             .Include(g => g.CourseGroups)
-            .FirstOrDefaultAsync(g => g.Id == groupId && g.TenantId == tenantId)
+            .FirstOrDefaultAsync(g => g.Id == groupId )
             ?? throw new KeyNotFoundException("Grup bulunamadı.");
 
         if (request.Name != null) group.Name = request.Name;
@@ -159,16 +158,16 @@ public class GroupService : IGroupService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
+        await _cache.RemoveByPrefixAsync($"groups:");
 
         return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType,
             group.Members.Count(m => m.Status == "active"), group.CourseGroups.Count, group.ExpirationDate, group.CreatedAt);
     }
 
-    public async Task DeleteGroupAsync(Guid tenantId, Guid groupId)
+    public async Task DeleteGroupAsync(Guid groupId)
     {
         var group = await _context.Groups.Include(g => g.Children)
-            .FirstOrDefaultAsync(g => g.Id == groupId && g.TenantId == tenantId)
+            .FirstOrDefaultAsync(g => g.Id == groupId )
             ?? throw new KeyNotFoundException("Grup bulunamadı.");
 
         if (group.Children.Any())
@@ -176,14 +175,14 @@ public class GroupService : IGroupService
 
         _context.Groups.Remove(group);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
+        await _cache.RemoveByPrefixAsync($"groups:");
     }
 
-    public async Task ForceDeleteGroupAsync(Guid tenantId, Guid groupId)
+    public async Task ForceDeleteGroupAsync(Guid groupId)
     {
         var group = await _context.Groups
             .Include(g => g.Children)
-            .FirstOrDefaultAsync(g => g.Id == groupId && g.TenantId == tenantId)
+            .FirstOrDefaultAsync(g => g.Id == groupId )
             ?? throw new KeyNotFoundException("Grup bulunamadı.");
 
         // Recursive delete children helper
@@ -201,22 +200,21 @@ public class GroupService : IGroupService
         _context.Groups.Remove(group);
         await _context.SaveChangesAsync();
         
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
     }
 
-    public async Task<GroupListDto> CloneGroupAsync(Guid tenantId, Guid groupId, string newName, bool copyMembers, bool copyCourses)
+    public async Task<GroupListDto> CloneGroupAsync(Guid groupId, string newName, bool copyMembers, bool copyCourses)
     {
         var group = await _context.Groups
             .Include(g => g.Members)
             .Include(g => g.CourseGroups)
-            .FirstOrDefaultAsync(g => g.Id == groupId && g.TenantId == tenantId)
+            .FirstOrDefaultAsync(g => g.Id == groupId )
             ?? throw new KeyNotFoundException("Klonlanacak grup bulunamadı.");
 
         var newGroup = new Group
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             Name = newName,
             Description = group.Description,
             Color = group.Color,
@@ -258,8 +256,8 @@ public class GroupService : IGroupService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
 
         var finalMemberCount = copyMembers ? group.Members.Count(m => m.Status == "active") : 0;
         var finalCourseCount = copyCourses ? group.CourseGroups.Count : 0;
@@ -267,9 +265,9 @@ public class GroupService : IGroupService
         return new GroupListDto(newGroup.Id, newGroup.Name, newGroup.Description, newGroup.ParentId, null, newGroup.Color, newGroup.EducationType, finalMemberCount, finalCourseCount, newGroup.ExpirationDate, newGroup.CreatedAt);
     }
 
-    public async Task AddMembersAsync(Guid tenantId, Guid groupId, List<Guid> userIds)
+    public async Task AddMembersAsync(Guid groupId, List<Guid> userIds)
     {
-        var groupExists = await _context.Groups.AnyAsync(g => g.Id == groupId && g.TenantId == tenantId);
+        var groupExists = await _context.Groups.AnyAsync(g => g.Id == groupId );
         if (!groupExists) throw new KeyNotFoundException("Grup bulunamadı.");
 
         var existingMemberRecords = await _context.GroupMembers
@@ -295,11 +293,11 @@ public class GroupService : IGroupService
 
         _context.GroupMembers.AddRange(newMembers);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
     }
 
-    public async Task RemoveMemberAsync(Guid tenantId, Guid groupId, Guid userId)
+    public async Task RemoveMemberAsync(Guid groupId, Guid userId)
     {
         var member = await _context.GroupMembers
             .FirstOrDefaultAsync(gm => gm.GroupId == groupId && gm.UserId == userId)
@@ -307,13 +305,13 @@ public class GroupService : IGroupService
 
         member.Status = "removed";
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
     }
 
-    public async Task MoveMembersAsync(Guid tenantId, Guid fromGroupId, Guid toGroupId, List<Guid> userIds)
+    public async Task MoveMembersAsync(Guid fromGroupId, Guid toGroupId, List<Guid> userIds)
     {
-        var toGroupExists = await _context.Groups.AnyAsync(g => g.Id == toGroupId && g.TenantId == tenantId);
+        var toGroupExists = await _context.Groups.AnyAsync(g => g.Id == toGroupId );
         if (!toGroupExists) throw new KeyNotFoundException("Hedef grup bulunamadı.");
 
         var membersToMove = await _context.GroupMembers
@@ -350,7 +348,7 @@ public class GroupService : IGroupService
 
         _context.GroupMembers.AddRange(toAdd);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
     }
 }

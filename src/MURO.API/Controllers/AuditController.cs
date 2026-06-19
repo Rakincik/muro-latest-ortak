@@ -14,16 +14,13 @@ namespace MURO.API.Controllers;
 public class AuditController : ControllerBase
 {
     private readonly IAuditService _auditService;
-    private readonly ITenantService _tenantService;
-
-    public AuditController(IAuditService auditService, ITenantService tenantService)
+    
+    public AuditController(IAuditService auditService)
     {
         _auditService = auditService;
-        _tenantService = tenantService;
-    }
+            }
 
-    private Guid GetTenantId() =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+    
 
     [HttpGet]
     public async Task<ActionResult<PagedResult<AuditLogDto>>> GetLogs(
@@ -35,7 +32,7 @@ public class AuditController : ControllerBase
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null)
     {
-        var result = await _auditService.GetLogsAsync(GetTenantId(), page, pageSize, action, entityType, search, from, to);
+        var result = await _auditService.GetLogsAsync(page, pageSize, action, entityType, search, from, to);
         return Ok(result);
     }
 
@@ -45,7 +42,7 @@ public class AuditController : ControllerBase
     {
         var f = from ?? DateTime.UtcNow.AddDays(-30);
         var t = to ?? DateTime.UtcNow;
-        return Ok(await _auditService.GetSummaryAsync(GetTenantId(), f, t));
+        return Ok(await _auditService.GetSummaryAsync(f, t));
     }
 
     [HttpGet("users")]
@@ -54,14 +51,14 @@ public class AuditController : ControllerBase
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null)
     {
-        var result = await _auditService.GetUserAuditSummariesAsync(GetTenantId(), page, pageSize, search);
+        var result = await _auditService.GetUserAuditSummariesAsync(page, pageSize, search);
         return Ok(result);
     }
 
     [HttpGet("suspicious")]
     public async Task<ActionResult<List<SuspiciousUserDto>>> GetSuspiciousUsers()
     {
-        var result = await _auditService.GetSuspiciousUsersAsync(GetTenantId());
+        var result = await _auditService.GetSuspiciousUsersAsync();
         return Ok(result);
     }
 }

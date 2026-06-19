@@ -4,7 +4,7 @@ namespace MURO.Application.Interfaces;
 
 public interface ISecurityService
 {
-    Task<SecurityEventPageDto> GetEventsAsync(Guid tenantId, DateTime? from, DateTime? to, Guid? userId, string? eventType, int page, int pageSize);
-    Task<List<SecuritySummaryDto>> GetSummaryAsync(Guid tenantId);
-    Task<List<SecurityEventDto>> GetSuspiciousActivityAsync(Guid tenantId);
+    Task<SecurityEventPageDto> GetEventsAsync(DateTime? from, DateTime? to, Guid? userId, string? eventType, int page, int pageSize);
+    Task<List<SecuritySummaryDto>> GetSummaryAsync();
+    Task<List<SecurityEventDto>> GetSuspiciousActivityAsync();
 }

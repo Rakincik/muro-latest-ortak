@@ -36,13 +36,12 @@ public class PodcastService : IPodcastService
 
     // ─── AI Generate ──────────────────────────────────────────────────────────
 
-    public async Task<PodcastDto> GenerateAsync(Guid tenantId, GeneratePodcastRequest request)
+    public async Task<PodcastDto> GenerateAsync(GeneratePodcastRequest request)
     {
         // 1. DB kaydı oluştur (Processing)
         var podcast = new Podcast
         {
             Id          = Guid.NewGuid(),
-            TenantId    = tenantId,
             CourseId    = request.CourseId,
             Title       = request.Title,
             TextContent = request.RawText,
@@ -72,7 +71,7 @@ public class PodcastService : IPodcastService
         finally
         {
             await _context.SaveChangesAsync();
-            await _cache.RemoveByPrefixAsync($"{tenantId}:podcasts:");
+            await _cache.RemoveByPrefixAsync($"podcasts:");
         }
 
         string? courseTitle = null;
@@ -99,14 +98,14 @@ public class PodcastService : IPodcastService
 
     // ─── CRUD ─────────────────────────────────────────────────────────────────
 
-    public async Task<PagedResult<PodcastDto>> GetPodcastsAsync(Guid tenantId, int page, int pageSize, Guid? courseId)
+    public async Task<PagedResult<PodcastDto>> GetPodcastsAsync(int page, int pageSize, Guid? courseId)
     {
-        var cacheKey = $"{tenantId}:podcasts:list:{page}:{pageSize}:{courseId}";
+        var cacheKey = $"podcasts:list:{page}:{pageSize}:{courseId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Podcasts
                 .AsNoTracking()
-                .Where(p => p.TenantId == tenantId);
+                .Where(p => true);
 
             if (courseId.HasValue)
                 query = query.Where(p => p.CourseId == courseId);
@@ -127,23 +126,22 @@ public class PodcastService : IPodcastService
         }, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<PodcastDto> GetByIdAsync(Guid tenantId, Guid podcastId)
+    public async Task<PodcastDto> GetByIdAsync(Guid podcastId)
     {
         var podcast = await _context.Podcasts
             .AsNoTracking()
             .Include(p => p.Course)
-            .FirstOrDefaultAsync(p => p.Id == podcastId && p.TenantId == tenantId)
+            .FirstOrDefaultAsync(p => p.Id == podcastId )
             ?? throw new KeyNotFoundException("Podcast bulunamadı.");
 
         return MapToDto(podcast, podcast.Course?.Title);
     }
 
-    public async Task<PodcastDto> CreateAsync(Guid tenantId, CreatePodcastRequest request)
+    public async Task<PodcastDto> CreateAsync(CreatePodcastRequest request)
     {
         var podcast = new Podcast
         {
             Id            = Guid.NewGuid(),
-            TenantId      = tenantId,
             CourseId      = request.CourseId,
             Title         = request.Title,
             TextContent   = request.TextContent,
@@ -154,7 +152,7 @@ public class PodcastService : IPodcastService
 
         _context.Podcasts.Add(podcast);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:podcasts:");
+        await _cache.RemoveByPrefixAsync($"podcasts:");
 
         string? courseTitle = null;
         if (request.CourseId.HasValue)
@@ -166,25 +164,25 @@ public class PodcastService : IPodcastService
         return MapToDto(podcast, courseTitle);
     }
 
-    public async Task<PodcastDto> UpdateStatusAsync(Guid tenantId, Guid podcastId, string status)
+    public async Task<PodcastDto> UpdateStatusAsync(Guid podcastId, string status)
     {
         var podcast = await _context.Podcasts
             .Include(p => p.Course)
-            .FirstOrDefaultAsync(p => p.Id == podcastId && p.TenantId == tenantId)
+            .FirstOrDefaultAsync(p => p.Id == podcastId )
             ?? throw new KeyNotFoundException("Podcast bulunamadı.");
 
         if (Enum.TryParse<MediaStatus>(status, true, out var mediaStatus))
             podcast.Status = mediaStatus;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:podcasts:");
+        await _cache.RemoveByPrefixAsync($"podcasts:");
         return MapToDto(podcast, podcast.Course?.Title);
     }
 
-    public async Task DeleteAsync(Guid tenantId, Guid podcastId)
+    public async Task DeleteAsync(Guid podcastId)
     {
         var podcast = await _context.Podcasts
-            .FirstOrDefaultAsync(p => p.Id == podcastId && p.TenantId == tenantId)
+            .FirstOrDefaultAsync(p => p.Id == podcastId )
             ?? throw new KeyNotFoundException("Podcast bulunamadı.");
 
         // Ses dosyasını da sil
@@ -196,7 +194,7 @@ public class PodcastService : IPodcastService
 
         _context.Podcasts.Remove(podcast);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:podcasts:");
+        await _cache.RemoveByPrefixAsync($"podcasts:");
     }
 
     // ─── Helper ───────────────────────────────────────────────────────────────

@@ -23,12 +23,11 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
     public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
     {
         var user = await _context.Users
-            .Include(u => u.TenantMemberships).ThenInclude(tm => tm.Tenant)
             .FirstOrDefaultAsync(u => u.Email == request.Email);
 
         if (user?.LockoutUntil.HasValue == true && user.LockoutUntil > DateTime.UtcNow)
         {
-            await LogSecurityEventAsync(user.Id, null, "ACCOUNT_LOCKED", ipAddress, userAgent,
+            await LogSecurityEventAsync(user.Id, "ACCOUNT_LOCKED", ipAddress, userAgent,
                 JsonSerializer.Serialize(new { until = user.LockoutUntil }));
             throw new UnauthorizedAccessException(
                 $"Hesabınız geçici olarak kilitlendi. {user.LockoutUntil:HH:mm} sonra tekrar deneyin.");
@@ -58,19 +57,19 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
                     user.FailedLoginCount = 0;
                     await _context.SaveChangesAsync();
 
-                    await LogSecurityEventAsync(user.Id, null, "BRUTE_FORCE_DETECTED", ipAddress, userAgent,
+                    await LogSecurityEventAsync(user.Id, "BRUTE_FORCE_DETECTED", ipAddress, userAgent,
                         JsonSerializer.Serialize(new { lockoutUntil = user.LockoutUntil }));
                 }
                 else
                 {
                     await _context.SaveChangesAsync();
-                    await LogSecurityEventAsync(user.Id, null, "LOGIN_FAILED", ipAddress, userAgent,
+                    await LogSecurityEventAsync(user.Id, "LOGIN_FAILED", ipAddress, userAgent,
                         JsonSerializer.Serialize(new { attempt = user.FailedLoginCount }));
                 }
             }
             else
             {
-                await LogSecurityEventAsync(null, null, "LOGIN_FAILED", ipAddress, userAgent,
+                await LogSecurityEventAsync(null, "LOGIN_FAILED", ipAddress, userAgent,
                     JsonSerializer.Serialize(new { email = request.Email }));
             }
 
@@ -91,13 +90,13 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
             .Where(s => s.UserId == user.Id && s.IsActive)
             .ToListAsync();
 
-        var tenantId = user.TenantMemberships.FirstOrDefault(m => m.Status == "active")?.TenantId;
+
 
         foreach (var old in existingSessions)
         {
             old.IsActive = false;
             old.LogoutAt = DateTime.UtcNow;
-            await LogSecurityEventAsync(user.Id, tenantId, "SESSION_KICKED", ipAddress, userAgent,
+            await LogSecurityEventAsync(user.Id,  "SESSION_KICKED", ipAddress, userAgent,
                 JsonSerializer.Serialize(new
                 {
                     kickedSessionId = old.Id,
@@ -111,7 +110,6 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            TenantId = tenantId,
             IpAddress = ipAddress,
             UserAgent = userAgent,
             DeviceInfo = ParseDeviceInfo(userAgent),
@@ -124,11 +122,11 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
         var lastKnownIp = existingSessions.FirstOrDefault()?.IpAddress;
         if (!string.IsNullOrEmpty(lastKnownIp) && lastKnownIp != ipAddress)
         {
-            await LogSecurityEventAsync(user.Id, tenantId, "NEW_IP_LOGIN", ipAddress, userAgent,
+            await LogSecurityEventAsync(user.Id,  "NEW_IP_LOGIN", ipAddress, userAgent,
                 JsonSerializer.Serialize(new { previousIp = lastKnownIp, newIp = ipAddress }));
         }
 
-        await LogSecurityEventAsync(user.Id, tenantId, "LOGIN_SUCCESS", ipAddress, userAgent,
+        await LogSecurityEventAsync(user.Id,  "LOGIN_SUCCESS", ipAddress, userAgent,
             JsonSerializer.Serialize(new { deviceInfo = deviceSession.DeviceInfo, sessionId = deviceSession.Id }));
 
         var token = GenerateJwtToken(user, deviceSession.Id);
@@ -158,33 +156,15 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
 
         _context.Users.Add(user);
 
-        if (request.TenantId.HasValue)
-        {
-            var tenant = await _context.Tenants.FindAsync(request.TenantId.Value);
-            if (tenant != null)
-            {
-                _context.TenantMemberships.Add(new TenantMembership
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = user.Id,
-                    TenantId = tenant.Id,
-                    Role = UserRole.Student,
-                    Status = "active"
-                });
-            }
-        }
-
         await _context.SaveChangesAsync();
 
         user = await _context.Users
-            .Include(u => u.TenantMemberships).ThenInclude(tm => tm.Tenant)
             .FirstAsync(u => u.Id == user.Id);
 
         var deviceSession = new DeviceSession
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            TenantId = user.TenantMemberships.FirstOrDefault()?.TenantId,
             LoginAt = DateTime.UtcNow,
             IsActive = true
         };
@@ -202,7 +182,6 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
     {
         var user = await _context.Users
             .AsNoTracking()
-            .Include(u => u.TenantMemberships).ThenInclude(tm => tm.Tenant)
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 

@@ -31,7 +31,6 @@ public class AuthTokenService : AuthServiceBase, IAuthTokenService
             throw new UnauthorizedAccessException("Geçersiz refresh token verisi.");
 
         var user = await _context.Users
-            .Include(u => u.TenantMemberships).ThenInclude(tm => tm.Tenant)
             .FirstOrDefaultAsync(u => u.Id == tokenData.UserId)
             ?? throw new UnauthorizedAccessException("Kullanıcı bulunamadı.");
 

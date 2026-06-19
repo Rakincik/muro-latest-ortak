@@ -16,17 +16,15 @@ namespace MURO.API.Controllers;
 public class QuestionsController : ControllerBase
 {
     private readonly IQuestionService _questionService;
-    private readonly Application.Interfaces.ITenantService _tenantService;
-    private readonly IBackgroundJobQueue _jobQueue;
+        private readonly IBackgroundJobQueue _jobQueue;
 
-    public QuestionsController(IQuestionService questionService, Application.Interfaces.ITenantService tenantService, IBackgroundJobQueue jobQueue)
+    public QuestionsController(IQuestionService questionService, Application.Interfaces.IBackgroundJobQueue jobQueue)
     {
         _questionService = questionService;
-        _tenantService = tenantService;
-        _jobQueue = jobQueue;
+                _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId() => _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException();
+    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -41,39 +39,39 @@ public class QuestionsController : ControllerBase
             instructorId = GetUserId();
         }
 
-        return Ok(await _questionService.GetQuestionsAsync(GetTenantId(), page, pageSize, status, instructorId));
+        return Ok(await _questionService.GetQuestionsAsync(page, pageSize, status, instructorId));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<QuestionDto>> GetQuestion(Guid id)
-        => Ok(await _questionService.GetByIdAsync(GetTenantId(), id));
+        => Ok(await _questionService.GetByIdAsync(id));
 
     [HttpPost]
     public async Task<ActionResult<QuestionDto>> Ask([FromBody] CreateQuestionRequest request)
     {
-        var q = await _questionService.AskAsync(GetTenantId(), GetUserId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Ask", "Question", q.Id.ToString(), request.Subject, null, GetIp()));
+        var q = await _questionService.AskAsync(GetUserId(), request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Ask", "Question", q.Id.ToString(), request.Subject, null, GetIp()));
         return Created($"/api/v1/questions/{q.Id}", q);
     }
 
     [HttpPut("{id:guid}/answer")]
     public async Task<ActionResult<QuestionDto>> Answer(Guid id, [FromBody] AnswerQuestionRequest request)
     {
-        var q = await _questionService.AnswerAsync(GetTenantId(), id, request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Answer", "Question", id.ToString(), null, null, GetIp()));
+        var q = await _questionService.AnswerAsync(id, request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Answer", "Question", id.ToString(), null, null, GetIp()));
         return Ok(q);
     }
 
     [HttpPatch("{id:guid}/note")]
     public async Task<ActionResult<QuestionDto>> UpdateNote(Guid id, [FromBody] UpdateNoteRequest request)
-        => Ok(await _questionService.UpdateNoteAsync(GetTenantId(), id, GetUserId(), request));
+        => Ok(await _questionService.UpdateNoteAsync(id, GetUserId(), request));
 
     [HttpDelete("{id:guid}/answer")]
     [Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
     public async Task<ActionResult<QuestionDto>> DeleteAnswer(Guid id)
     {
-        var q = await _questionService.DeleteAnswerAsync(GetTenantId(), id);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "DeleteAnswer", "Question", id.ToString(), null, null, GetIp()));
+        var q = await _questionService.DeleteAnswerAsync(id);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "DeleteAnswer", "Question", id.ToString(), null, null, GetIp()));
         return Ok(q);
     }
 
@@ -82,8 +80,8 @@ public class QuestionsController : ControllerBase
     {
         var role = User.FindFirstValue(ClaimTypes.Role);
         Guid? userId = role == "Student" ? GetUserId() : null;
-        await _questionService.DeleteAsync(GetTenantId(), id, userId);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "Question", id.ToString(), null, null, GetIp()));
+        await _questionService.DeleteAsync(id, userId);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "Question", id.ToString(), null, null, GetIp()));
         return NoContent();
     }
 }

@@ -100,7 +100,7 @@ public class PackageExpiryService : BackgroundService
             }
 
             // Öğrenciye bildirim
-            await notifications.CreateAsync(up.Package.TenantId,
+            await notifications.CreateAsync(
                 new Application.DTOs.Notifications.CreateNotificationRequest(
                     up.UserId,
                     "Paket Süreniz Doldu",

@@ -66,11 +66,8 @@ public class SoftDeleteCleanupJob : BackgroundService
             .ExecuteDeleteAsync(stoppingToken);
         totalDeleted += usersDeleted;
 
-        int tenantsDeleted = await context.Tenants
-            .IgnoreQueryFilters()
-            .Where(x => x.IsDeleted && x.DeletedAt <= thresholdDate)
-            .ExecuteDeleteAsync(stoppingToken);
-        totalDeleted += tenantsDeleted;
+        
+        
 
         int groupsDeleted = await context.Groups
             .IgnoreQueryFilters()

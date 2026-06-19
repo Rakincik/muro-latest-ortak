@@ -23,12 +23,7 @@ public class AccountingController : ControllerBase
         _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId()
-    {
-        var tenantIdStr = HttpContext.Request.Headers["X-Tenant-Id"].FirstOrDefault()
-                          ?? User.FindFirst("tenantId")?.Value;
-        return Guid.TryParse(tenantIdStr, out var tid) ? tid : Guid.Empty;
-    }
+
 
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -39,8 +34,7 @@ public class AccountingController : ControllerBase
     public async Task<ActionResult<AccountingSummaryDto>> GetSummary(
         [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.GetSummaryAsync(tid, from, to);
+        var result = await _accountingService.GetSummaryAsync(from, to);
         return Ok(result);
     }
 
@@ -52,24 +46,21 @@ public class AccountingController : ControllerBase
         [FromQuery] DateTime? from, [FromQuery] DateTime? to,
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.GetTransactionsAsync(tid, type, status, planId, from, to, page, pageSize);
+        var result = await _accountingService.GetTransactionsAsync(type, status, planId, from, to, page, pageSize);
         return Ok(result);
     }
 
     [HttpPost("transactions")]
     public async Task<ActionResult> CreateTransaction([FromBody] CreateTransactionRequest req)
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.CreateTransactionAsync(tid, GetUserId(), req, GetIp());
+        var result = await _accountingService.CreateTransactionAsync(GetUserId(), req, GetIp());
         return Ok(result);
     }
 
     [HttpDelete("transactions/{id}")]
     public async Task<ActionResult> DeleteTransaction(Guid id)
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.DeleteTransactionAsync(tid, GetUserId(), id, GetIp());
+        var result = await _accountingService.DeleteTransactionAsync(GetUserId(), id, GetIp());
         if (!result) return NotFound(new { message = "İşlem bulunamadı." });
         return Ok(new { message = "İşlem iptal edildi." });
     }
@@ -79,24 +70,21 @@ public class AccountingController : ControllerBase
     [HttpGet("plans")]
     public async Task<ActionResult> GetPlans()
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.GetPlansAsync(tid);
+        var result = await _accountingService.GetPlansAsync();
         return Ok(result);
     }
 
     [HttpPost("plans")]
     public async Task<ActionResult> CreatePlan([FromBody] CreatePlanRequest req)
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.CreatePlanAsync(tid, GetUserId(), req, GetIp());
+        var result = await _accountingService.CreatePlanAsync(GetUserId(), req, GetIp());
         return Ok(result);
     }
 
     [HttpDelete("plans/{id}")]
     public async Task<ActionResult> DeletePlan(Guid id)
     {
-        var tid = GetTenantId();
-        var result = await _accountingService.DeletePlanAsync(tid, GetUserId(), id, GetIp());
+        var result = await _accountingService.DeletePlanAsync(GetUserId(), id, GetIp());
         if (!result) return NotFound(new { message = "Plan bulunamadı veya kullanılıyor." });
         return Ok(new { message = "Plan silindi." });
     }

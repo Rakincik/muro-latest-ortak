@@ -19,7 +19,7 @@ public class RequestTimingMiddleware
     private const int WarnThresholdMs = 500;
     private const int ErrorThresholdMs = 2000;
 
-    // Loglama dışı tutulacak path'ler (static dosyalar, swagger vs.)
+    // Loglama dışı tutulacak path'ler (static dosyalar, swagger )
     private static readonly string[] SkipPrefixes =
         ["/swagger", "/favicon", "/health/live", "/_framework"];
     private static readonly string[] SkipSuffixes = [".js", ".css", ".map", ".woff2", ".png", ".ico"];
@@ -115,41 +115,10 @@ public class RequestTimingMiddleware
         return "Anonim";
     }
 
-    /// <summary>Tenant adını header'dan alıp DB'den çöz, cache'le.</summary>
-    private async Task<string> GetTenantDisplayAsync(HttpContext context)
+    /// <summary>Tenant adını dön.</summary>
+    private Task<string> GetTenantDisplayAsync(HttpContext context)
     {
-        var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault()
-                    ?? context.User.FindFirst("tenantId")?.Value;
-
-        if (string.IsNullOrEmpty(tenantId))
-            return "-";
-
-        // Cache'te varsa direkt dön
-        if (TenantNameCache.TryGetValue(tenantId, out var cached))
-            return cached;
-
-        // DB'den çek
-        try
-        {
-            var db = context.RequestServices.GetService<MuroDbContext>();
-            if (db != null && Guid.TryParse(tenantId, out var tid))
-            {
-                var tenantName = await db.Tenants
-                    .AsNoTracking()
-                    .Where(t => t.Id == tid)
-                    .Select(t => t.Name)
-                    .FirstOrDefaultAsync();
-
-                var display = tenantName ?? tenantId[..8];
-                TenantNameCache.TryAdd(tenantId, display);
-                return display;
-            }
-        }
-        catch { /* fallback to ID */ }
-
-        var fallback = tenantId.Length > 8 ? tenantId[..8] + "…" : tenantId;
-        TenantNameCache.TryAdd(tenantId, fallback);
-        return fallback;
+        return Task.FromResult("Monopol");
     }
 
     private static bool ShouldSkip(string path)

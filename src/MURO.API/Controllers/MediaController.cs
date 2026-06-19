@@ -16,17 +16,15 @@ namespace MURO.API.Controllers;
 public class MediaController : ControllerBase
 {
     private readonly IMediaService _mediaService;
-    private readonly Application.Interfaces.ITenantService _tenantService;
-    private readonly IBackgroundJobQueue _jobQueue;
+        private readonly IBackgroundJobQueue _jobQueue;
 
-    public MediaController(IMediaService mediaService, Application.Interfaces.ITenantService tenantService, IBackgroundJobQueue jobQueue)
+    public MediaController(IMediaService mediaService, Application.Interfaces.IBackgroundJobQueue jobQueue)
     {
         _mediaService = mediaService;
-        _tenantService = tenantService;
-        _jobQueue = jobQueue;
+                _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId() => _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException();
+    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
     private bool IsStudent() => User.IsInRole("Student") || 
@@ -40,7 +38,7 @@ public class MediaController : ControllerBase
     {
         // Student: grup filtreli — Admin/Instructor: tüm tenant medyaları
         Guid? userId = IsStudent() ? GetUserId() : null;
-        return Ok(await _mediaService.GetAssetsAsync(GetTenantId(), page, pageSize, courseId, search, userId, folderId));
+        return Ok(await _mediaService.GetAssetsAsync(page, pageSize, courseId, search, userId, folderId));
     }
 
     [HttpGet("{id:guid}")]
@@ -48,20 +46,20 @@ public class MediaController : ControllerBase
     {
         // Student: kursuna erişim hakkı kontrolü — diğerleri bypass
         Guid? userId = IsStudent() ? GetUserId() : null;
-        return Ok(await _mediaService.GetAssetByIdAsync(GetTenantId(), id, userId));
+        return Ok(await _mediaService.GetAssetByIdAsync(id, userId));
     }
 
     [HttpGet("{id:guid}/courses")]
     public async Task<ActionResult<List<Guid>>> GetMediaCourses(Guid id)
     {
-        return Ok(await _mediaService.GetAssignedCourseIdsAsync(GetTenantId(), id));
+        return Ok(await _mediaService.GetAssignedCourseIdsAsync(id));
     }
 
     [HttpGet("assets")]
     public async Task<ActionResult<PagedResult<MediaAssetDto>>> GetAssets(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 50,
         [FromQuery] Guid? courseId = null, [FromQuery] Guid? folderId = null)
-        => Ok(await _mediaService.GetAssetsAsync(GetTenantId(), page, pageSize, courseId, null, null, folderId, excludeRecordings: true));
+        => Ok(await _mediaService.GetAssetsAsync(page, pageSize, courseId, null, null, folderId, excludeRecordings: true));
 
     [HttpGet("transcode-progress")]
     public async Task<ActionResult<Dictionary<Guid, object>>> GetTranscodeProgress([FromQuery] string ids, [FromServices] ICacheService cache, [FromServices] MURO.Infrastructure.Persistence.MuroDbContext dbContext)
@@ -95,20 +93,20 @@ public class MediaController : ControllerBase
     [HttpPost("assets")]
     public async Task<ActionResult<MediaAssetDto>> CreateAsset([FromBody] CreateMediaAssetRequest request)
     {
-        var a = await _mediaService.CreateAssetAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "MediaAsset", a.Id.ToString(), request.Title, null, GetIp()));
+        var a = await _mediaService.CreateAssetAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "MediaAsset", a.Id.ToString(), request.Title, null, GetIp()));
         return Created($"/api/v1/media/assets/{a.Id}", a);
     }
 
     [HttpPut("assets/{id:guid}")]
     public async Task<ActionResult<MediaAssetDto>> UpdateAsset(Guid id, [FromBody] UpdateMediaAssetRequest request)
-        => Ok(await _mediaService.UpdateAssetAsync(GetTenantId(), id, request));
+        => Ok(await _mediaService.UpdateAssetAsync(id, request));
 
     [HttpDelete("assets/{id:guid}")]
     public async Task<IActionResult> DeleteAsset(Guid id)
     {
-        await _mediaService.DeleteAssetAsync(GetTenantId(), id);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "MediaAsset", id.ToString(), null, null, GetIp()));
+        await _mediaService.DeleteAssetAsync(id);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "MediaAsset", id.ToString(), null, null, GetIp()));
         return NoContent();
     }
 
@@ -125,13 +123,13 @@ public class MediaController : ControllerBase
     [HttpGet("podcasts")]
     public async Task<ActionResult<PagedResult<PodcastDto>>> GetPodcasts(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
-        => Ok(await _mediaService.GetPodcastsAsync(GetTenantId(), page, pageSize));
+        => Ok(await _mediaService.GetPodcastsAsync(page, pageSize));
 
     [HttpPost("podcasts")]
     public async Task<ActionResult<PodcastDto>> CreatePodcast([FromBody] CreatePodcastRequest request)
     {
-        var p = await _mediaService.CreatePodcastAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "Podcast", p.Id.ToString(), request.Title, null, GetIp()));
+        var p = await _mediaService.CreatePodcastAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "Podcast", p.Id.ToString(), request.Title, null, GetIp()));
         return Created($"/api/v1/media/podcasts/{p.Id}", p);
     }
 }

@@ -13,16 +13,14 @@ namespace MURO.API.Controllers;
 public class RecordingsController : ControllerBase
 {
     private readonly IRecordingService _recordingService;
-    private readonly ITenantService _tenantService;
-
-    public RecordingsController(IRecordingService recordingService, ITenantService tenantService)
+    
+    public RecordingsController(IRecordingService recordingService)
     {
         _recordingService = recordingService;
-        _tenantService = tenantService;
-    }
+            }
 
     private Guid TenantId =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+        Guid.Empty;
 
     // ── GET /api/v1/recordings ────────────────────────────────────────────────
     /// <summary>
@@ -35,7 +33,7 @@ public class RecordingsController : ControllerBase
         var userId = Guid.TryParse(User.FindFirst("sub")?.Value ?? User.FindFirst("nameid")?.Value, out var uid) ? uid : Guid.Empty;
         var role = User.FindFirst("role")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
 
-        var recordings = await _recordingService.GetRecordingsAsync(tenantId, userId, role);
+        var recordings = await _recordingService.GetRecordingsAsync(userId, role);
 
         return Ok(recordings);
     }
@@ -51,7 +49,7 @@ public class RecordingsController : ControllerBase
 
         try
         {
-            await _recordingService.DeleteRecordingAsync(tenantId, id);
+            await _recordingService.DeleteRecordingAsync(id);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

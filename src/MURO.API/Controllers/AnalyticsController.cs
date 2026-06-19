@@ -15,15 +15,13 @@ namespace MURO.API.Controllers;
 public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analyticsService;
-    private readonly ITenantService _tenantService;
-
-    public AnalyticsController(IAnalyticsService analyticsService, ITenantService tenantService)
+    
+    public AnalyticsController(IAnalyticsService analyticsService)
     {
         _analyticsService = analyticsService;
-        _tenantService = tenantService;
-    }
+            }
 
-    private Guid GetTenantId() => _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException();
+    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     // ── Admin Endpoints ──────────────────────────────────────────────────────
@@ -33,7 +31,7 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            return Ok(await _analyticsService.GetDashboardStatsAsync(GetTenantId()));
+            return Ok(await _analyticsService.GetDashboardStatsAsync());
         }
         catch
         {
@@ -46,7 +44,7 @@ public class AnalyticsController : ControllerBase
     {
         try
         {
-            return Ok(await _analyticsService.GetVideoStatsAsync(GetTenantId()));
+            return Ok(await _analyticsService.GetVideoStatsAsync());
         }
         catch
         {
@@ -57,34 +55,34 @@ public class AnalyticsController : ControllerBase
     [HttpGet("transactions")]
     public async Task<ActionResult<List<TransactionDto>>> GetTransactions(
         [FromQuery] DateTime from, [FromQuery] DateTime to)
-        => Ok(await _analyticsService.GetTransactionsAsync(GetTenantId(), from, to));
+        => Ok(await _analyticsService.GetTransactionsAsync(from, to));
 
     [HttpGet("sessions")]
     public async Task<ActionResult<List<DeviceSessionDto>>> GetActiveSessions()
-        => Ok(await _analyticsService.GetActiveSessionsAsync(GetTenantId()));
+        => Ok(await _analyticsService.GetActiveSessionsAsync());
 
     /// GET /api/v1/analytics/courses/{courseId}/attendance — Kurs devam raporu
     [HttpGet("courses/{courseId:guid}/attendance")]
     public async Task<ActionResult<CourseAttendanceReportDto>> GetCourseAttendance(Guid courseId)
-        => Ok(await _analyticsService.GetCourseAttendanceReportAsync(GetTenantId(), courseId));
+        => Ok(await _analyticsService.GetCourseAttendanceReportAsync(courseId));
 
     /// GET /api/v1/analytics/students/{studentId}/scorecard — Öğrenci skor kartı
     [HttpGet("students/{studentId:guid}/scorecard")]
     public async Task<ActionResult<StudentScorecardDto>> GetStudentScorecard(Guid studentId)
-        => Ok(await _analyticsService.GetStudentScorecardAsync(GetTenantId(), studentId));
+        => Ok(await _analyticsService.GetStudentScorecardAsync(studentId));
 
     /// GET /api/v1/analytics/students/{studentId}/academic-history — Öğrenci akademik geçmiş
     [HttpGet("students/{studentId:guid}/academic-history")]
     public async Task<ActionResult<StudentAcademicHistoryDto>> GetStudentAcademicHistory(Guid studentId)
-        => Ok(await _analyticsService.GetStudentAcademicHistoryAsync(GetTenantId(), studentId));
+        => Ok(await _analyticsService.GetStudentAcademicHistoryAsync(studentId));
 
     /// GET /api/v1/analytics/students/summary — Tüm öğrencilerin toplu karne ortalaması
     [HttpGet("students/summary")]
     public async Task<ActionResult<ScorecardSummaryDto>> GetScorecardSummary()
-        => Ok(await _analyticsService.GetScorecardSummaryAsync(GetTenantId()));    // ── Öğrenci Endpoint ─────────────────────────────────────────────────────
+        => Ok(await _analyticsService.GetScorecardSummaryAsync());    // ── Öğrenci Endpoint ─────────────────────────────────────────────────────
 
     /// GET /api/v1/analytics/me/dashboard — Öğrenci kendi dashboard istatistikleri
     [HttpGet("me/dashboard")]
     public async Task<ActionResult<StudentDashboardDto>> GetMyDashboard()
-        => Ok(await _analyticsService.GetStudentDashboardAsync(GetTenantId(), GetUserId()));
+        => Ok(await _analyticsService.GetStudentDashboardAsync(GetUserId()));
 }

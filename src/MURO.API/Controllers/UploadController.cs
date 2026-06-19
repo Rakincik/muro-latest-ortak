@@ -19,20 +19,6 @@ public class UploadController : ControllerBase
     public ActionResult<PresignedUrlResponse> GetPresignedUrl([FromBody] PresignedUrlRequest request)
     {
         // Quota Enforcement: StorageLimitGb (Şu an dosya boyutları DB'de tutulmadığı için sadece limit=0 kontrolü yapılabilir)
-        var tenantId = User.FindFirst("TenantId")?.Value;
-        if (!string.IsNullOrEmpty(tenantId))
-        {
-            var _db = HttpContext.RequestServices.GetService<MURO.Infrastructure.Persistence.MuroDbContext>();
-            if (_db != null)
-            {
-                var tenant = _db.Tenants.FirstOrDefault(t => t.Id == Guid.Parse(tenantId));
-                if (tenant != null && tenant.StorageLimitGb.HasValue && tenant.StorageLimitGb.Value <= 0)
-                {
-                    throw new MURO.Application.Exceptions.QuotaExceededException("Depolama kotanız doldu. Dosya yükleyemezsiniz.");
-                }
-                // TODO: İleride MediaAsset tablosuna FileSizeBytes eklenince gerçek kullanım hesaplanıp StorageLimitGb ile karşılaştırılacak.
-            }
-        }
         // For demonstration/demo environments, we generate a mock URL
         // In a real scenario, this would use BunnyCDN or AWS S3 SDK to generate a signed URL
         var fileId = Guid.NewGuid().ToString("N");

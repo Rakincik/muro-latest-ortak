@@ -43,11 +43,9 @@ public class Exam : ISoftDeletable
     public DateTime? EndDate { get; set; }
 
     // Multi-tenant
-    public Guid TenantId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<ExamAssignment> ExamAssignments { get; set; } = new List<ExamAssignment>();
     public ICollection<ExamResult> Results { get; set; } = new List<ExamResult>();
 }

@@ -10,24 +10,22 @@ namespace MURO.API.Controllers;
 
 [ApiController]
 [Route("api/v1/users")]
-[Authorize]
+[Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
-    private readonly ITenantService _tenantService;
-    private readonly IAuditService _auditService;
+        private readonly IAuditService _auditService;
 
-    public UsersController(IUserService userService, ITenantService tenantService, IAuditService auditService)
+    public UsersController(IUserService userService, IAuditService auditService)
     {
         _userService = userService;
-        _tenantService = tenantService;
-        _auditService = auditService;
+                _auditService = auditService;
     }
 
-    private Guid GetTenantId() =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+    
 
     [HttpGet]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
     public async Task<ActionResult<PagedResult<UserListDto>>> GetUsers(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -36,44 +34,52 @@ public class UsersController : ControllerBase
         [FromQuery] string? sortBy = null,
         [FromQuery] string? sortDir = null)
     {
-        var result = await _userService.GetUsersAsync(GetTenantId(), page, pageSize, search, role, sortBy, sortDir);
+        var result = await _userService.GetUsersAsync(page, pageSize, search, role, sortBy, sortDir);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
     public async Task<ActionResult<UserDetailDto>> GetUser(Guid id)
     {
-        var user = await _userService.GetUserByIdAsync(GetTenantId(), id);
+        var user = await _userService.GetUserByIdAsync(id);
         return Ok(user);
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
     public async Task<ActionResult<UserListDto>> CreateUser([FromBody] CreateUserRequest request)
     {
-        var user = await _userService.CreateUserAsync(GetTenantId(), request);
+        var user = await _userService.CreateUserAsync(request);
         var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "Create", "User", user.Id.ToString(), $"{request.FirstName} {request.LastName}", $"Rol: {request.Role}", ip);
+        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "Create", "User", user.Id.ToString(), $"{request.FirstName} {request.LastName}", $"Rol: {request.Role}", ip);
         return Created($"/api/v1/users/{user.Id}", user);
     }
 
     [HttpPost("bulk")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor,Assistant")]
     public async Task<ActionResult<BulkImportResultDto>> BulkCreateUsers([FromBody] BulkCreateUserRequest request)
     {
-        var result = await _userService.BulkCreateUsersAsync(GetTenantId(), request.Users);
+        var result = await _userService.BulkCreateUsersAsync(request.Users);
         var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "BulkCreate", "User", null, null, $"{result.ImportedCount} kullanıcı oluşturuldu", ip);
+        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "BulkCreate", "User", null, null, $"{result.ImportedCount} kullanıcı oluşturuldu", ip);
         return Ok(result);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<UserListDto>> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
     {
-        var user = await _userService.UpdateUserAsync(GetTenantId(), id, request);
+        var actorRole = User.FindFirst(ClaimTypes.Role)?.Value;
         var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        if (actorRole == "Student" && actorId != id.ToString())
+            return Forbid();
+
+        var user = await _userService.UpdateUserAsync(id, request, actorRole);
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "Update", "User", id.ToString(), $"{user.FirstName} {user.LastName}", null, ip);
+        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "Update", "User", id.ToString(), $"{user.FirstName} {user.LastName}", null, ip);
         return Ok(user);
     }
 
@@ -83,8 +89,8 @@ public class UsersController : ControllerBase
     {
         var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _userService.DeleteUserAsync(GetTenantId(), id);
-        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "Delete", "User", id.ToString(), null, null, ip);
+        await _userService.DeleteUserAsync(id);
+        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "Delete", "User", id.ToString(), null, null, ip);
         return NoContent();
     }
 
@@ -94,15 +100,15 @@ public class UsersController : ControllerBase
     {
         var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _userService.BulkDeleteUsersAsync(GetTenantId(), userIds);
-        await _auditService.LogAsync(GetTenantId(), actorId != null ? Guid.Parse(actorId) : null, null, "BulkDelete", "User", null, null, $"{userIds.Count} kullanıcı silindi", ip);
+        await _userService.BulkDeleteUsersAsync(userIds);
+        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "BulkDelete", "User", null, null, $"{userIds.Count} kullanıcı silindi", ip);
         return NoContent();
     }
 
     [HttpPost("{id:guid}/groups")]
     public async Task<IActionResult> AssignToGroup(Guid id, [FromBody] AssignUserGroupRequest request)
     {
-        await _userService.AssignToGroupAsync(GetTenantId(), id, request.GroupId);
+        await _userService.AssignToGroupAsync(id, request.GroupId);
         return Ok(new { message = "Kullanıcı gruba eklendi." });
     }
 
@@ -111,14 +117,14 @@ public class UsersController : ControllerBase
         Guid id, 
         [FromServices] ICourseEnrollmentService enrollmentService)
     {
-        var courses = await enrollmentService.GetDirectCoursesByUserAsync(GetTenantId(), id);
+        var courses = await enrollmentService.GetDirectCoursesByUserAsync(id);
         return Ok(courses);
     }
 
     [HttpGet("export")]
     public async Task<IActionResult> ExportUsers([FromQuery] string? role = null)
     {
-        var csvBytes = await _userService.ExportUsersAsync(GetTenantId(), role);
+        var csvBytes = await _userService.ExportUsersAsync(role);
         return File(csvBytes, "text/csv", $"kullanicilar_{DateTime.UtcNow:yyyyMMdd}.csv");
     }
 
@@ -135,7 +141,7 @@ public class UsersController : ControllerBase
         [FromBody] ExportExcelRequest request,
         [FromServices] IExcelService excelService)
     {
-        var result = await _userService.GetUsersAsync(GetTenantId(), 1, 1000, null, null, null, null);
+        var result = await _userService.GetUsersAsync(1, 1000, null, null, null, null);
         var users = result.Items.Where(u => request.UserIds == null || request.UserIds.Contains(u.Id)).ToList();
         
         var exportData = users.Select(u => new UserExportDto
@@ -198,7 +204,7 @@ public class UsersController : ControllerBase
             ));
         }
 
-        var importResult = await _userService.BulkCreateUsersAsync(GetTenantId(), requests);
+        var importResult = await _userService.BulkCreateUsersAsync(requests);
 
         if (groupId.HasValue && importResult.ImportedCount > 0)
         {
@@ -209,7 +215,7 @@ public class UsersController : ControllerBase
 
             if (newMemberIds.Any())
             {
-                await groupService.AddMembersAsync(GetTenantId(), groupId.Value, newMemberIds);
+                await groupService.AddMembersAsync(groupId.Value, newMemberIds);
             }
         }
 

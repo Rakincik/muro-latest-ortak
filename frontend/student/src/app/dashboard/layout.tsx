@@ -61,6 +61,51 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
     }, [user, isLoading, router]);
 
+    // Anti-DevTools Koruması (Sadece Öğrenci Paneli için)
+    useEffect(() => {
+        // Eğer kullanıcı öğrenci ise ve sayfaya eriştiginde çalışır
+        if (user && user.role?.toLowerCase() === "student") {
+            const handleContextMenu = (e: MouseEvent) => {
+                e.preventDefault();
+            };
+
+            const handleKeyDown = (e: KeyboardEvent) => {
+                // F12 tuşu
+                if (e.key === "F12") {
+                    e.preventDefault();
+                }
+                // Ctrl+Shift+I (Windows) veya Cmd+Option+I (Mac)
+                if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") || 
+                    (e.metaKey && e.altKey && e.key.toLowerCase() === "i")) {
+                    e.preventDefault();
+                }
+                // Ctrl+Shift+J (Windows) veya Cmd+Option+J (Mac)
+                if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") || 
+                    (e.metaKey && e.altKey && e.key.toLowerCase() === "j")) {
+                    e.preventDefault();
+                }
+                // Ctrl+Shift+C (Windows) veya Cmd+Option+C (Mac) - Inspector
+                if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") || 
+                    (e.metaKey && e.altKey && e.key.toLowerCase() === "c")) {
+                    e.preventDefault();
+                }
+                // Ctrl+U (Windows) veya Cmd+Option+U (Mac) - Kaynak Kodu
+                if ((e.ctrlKey && e.key.toLowerCase() === "u") || 
+                    (e.metaKey && e.altKey && e.key.toLowerCase() === "u")) {
+                    e.preventDefault();
+                }
+            };
+
+            document.addEventListener("contextmenu", handleContextMenu);
+            document.addEventListener("keydown", handleKeyDown);
+
+            return () => {
+                document.removeEventListener("contextmenu", handleContextMenu);
+                document.removeEventListener("keydown", handleKeyDown);
+            };
+        }
+    }, [user]);
+
     // Sayfa değiştiğinde sidebar'ı kapat (mobil)
     useEffect(() => {
         setSidebarOpen(false);

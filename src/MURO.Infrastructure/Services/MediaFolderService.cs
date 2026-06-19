@@ -17,10 +17,10 @@ public class MediaFolderService : IMediaFolderService
         _mediaService = mediaService;
     }
 
-    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid tenantId, Guid? parentFolderId = null)
+    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null)
     {
         var folders = await _context.MediaFolders
-            .Where(f => f.TenantId == tenantId && f.ParentFolderId == parentFolderId)
+            .Where(f => f.ParentFolderId == parentFolderId)
             .OrderBy(f => f.Name)
             .Select(f => new MediaFolderDto(
                 f.Id,
@@ -35,12 +35,12 @@ public class MediaFolderService : IMediaFolderService
         return folders;
     }
 
-    public async Task<MediaFolderDto> GetFolderByIdAsync(Guid tenantId, Guid folderId)
+    public async Task<MediaFolderDto> GetFolderByIdAsync(Guid folderId)
     {
         var folder = await _context.MediaFolders
             .Include(f => f.SubFolders)
             .Include(f => f.MediaAssets)
-            .FirstOrDefaultAsync(f => f.TenantId == tenantId && f.Id == folderId);
+            .FirstOrDefaultAsync(f => f.Id == folderId);
 
         if (folder == null)
             throw new Exception("Folder not found");
@@ -55,13 +55,12 @@ public class MediaFolderService : IMediaFolderService
         );
     }
 
-    public async Task<MediaFolderDto> CreateFolderAsync(Guid tenantId, CreateMediaFolderRequest request)
+    public async Task<MediaFolderDto> CreateFolderAsync(CreateMediaFolderRequest request)
     {
         var folder = new MediaFolder
         {
             Name = request.Name,
-            ParentFolderId = request.ParentFolderId,
-            TenantId = tenantId
+            ParentFolderId = request.ParentFolderId
         };
 
         _context.MediaFolders.Add(folder);
@@ -77,9 +76,9 @@ public class MediaFolderService : IMediaFolderService
         );
     }
 
-    public async Task<MediaFolderDto> UpdateFolderAsync(Guid tenantId, Guid folderId, UpdateMediaFolderRequest request)
+    public async Task<MediaFolderDto> UpdateFolderAsync(Guid folderId, UpdateMediaFolderRequest request)
     {
-        var folder = await _context.MediaFolders.FirstOrDefaultAsync(f => f.TenantId == tenantId && f.Id == folderId);
+        var folder = await _context.MediaFolders.FirstOrDefaultAsync(f => f.Id == folderId);
         
         if (folder == null)
             throw new Exception("Folder not found");
@@ -99,12 +98,12 @@ public class MediaFolderService : IMediaFolderService
         );
     }
 
-    public async Task DeleteFolderAsync(Guid tenantId, Guid folderId, bool force = false)
+    public async Task DeleteFolderAsync(Guid folderId, bool force = false)
     {
         var folder = await _context.MediaFolders
             .Include(f => f.SubFolders)
             .Include(f => f.MediaAssets)
-            .FirstOrDefaultAsync(f => f.TenantId == tenantId && f.Id == folderId);
+            .FirstOrDefaultAsync(f => f.Id == folderId);
 
         if (folder == null)
             throw new Exception("Folder not found");
@@ -114,7 +113,7 @@ public class MediaFolderService : IMediaFolderService
 
         if (force)
         {
-            await DeleteFolderRecursiveAsync(tenantId, folder);
+            await DeleteFolderRecursiveAsync(folder);
         }
         else
         {
@@ -123,27 +122,27 @@ public class MediaFolderService : IMediaFolderService
         }
     }
 
-    private async Task DeleteFolderRecursiveAsync(Guid tenantId, MediaFolder folder)
+    private async Task DeleteFolderRecursiveAsync(MediaFolder folder)
     {
         // First delete all media assets via IMediaService to ensure files are deleted from storage
         var assets = await _context.MediaAssets
-            .Where(a => a.FolderId == folder.Id && a.TenantId == tenantId)
+            .Where(a => a.FolderId == folder.Id )
             .ToListAsync();
             
         foreach (var asset in assets)
         {
-            await _mediaService.DeleteAssetAsync(tenantId, asset.Id);
+            await _mediaService.DeleteAssetAsync(asset.Id);
         }
 
         // Then recursively delete subfolders
         var subFolders = await _context.MediaFolders
             .Include(f => f.SubFolders)
-            .Where(f => f.ParentFolderId == folder.Id && f.TenantId == tenantId)
+            .Where(f => f.ParentFolderId == folder.Id )
             .ToListAsync();
 
         foreach (var subFolder in subFolders)
         {
-            await DeleteFolderRecursiveAsync(tenantId, subFolder);
+            await DeleteFolderRecursiveAsync(subFolder);
         }
 
         _context.MediaFolders.Remove(folder);

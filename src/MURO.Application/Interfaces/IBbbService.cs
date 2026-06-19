@@ -65,8 +65,7 @@ public record BbbMeetingOptions(
     int? DurationMinutes = null,
     string? LogoutURL = null,
     string? SessionId = null,
-    string? CourseId = null,
-    string? TenantId = null
+    string? CourseId = null
 );
 
 public record BbbJoinOptions(

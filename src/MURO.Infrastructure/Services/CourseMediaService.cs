@@ -17,7 +17,7 @@ public class CourseMediaService : ICourseMediaService
         _cache = cache;
     }
 
-    public async Task<List<CourseMediaDto>> GetCourseMediasAsync(Guid tenantId, Guid courseId)
+    public async Task<List<CourseMediaDto>> GetCourseMediasAsync(Guid courseId)
     {
         // CourseMedias only fetch actual assigned videos from the media library.
         // Live session recordings (SessionRecordings) remain purely within the Session hierarchy
@@ -28,7 +28,7 @@ public class CourseMediaService : ICourseMediaService
             .Include(cm => cm.MediaAsset)
             .Include(cm => cm.Exam)
             .Include(cm => cm.Session)
-            .Where(cm => cm.CourseId == courseId && cm.Course.TenantId == tenantId)
+            .Where(cm => cm.CourseId == courseId )
             .OrderBy(cm => cm.OrderIndex)
             .Select(cm => new CourseMediaDto(
                 cm.Id,
@@ -60,14 +60,14 @@ public class CourseMediaService : ICourseMediaService
         return courseMedias;
     }
 
-    public async Task<CourseMediaDto> AssignMediaAsync(Guid tenantId, Guid courseId, AssignMediaToCourseRequest request)
+    public async Task<CourseMediaDto> AssignMediaAsync(Guid courseId, AssignMediaToCourseRequest request)
     {
         // Verify media belongs to tenant
-        var media = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == request.MediaAssetId && m.TenantId == tenantId);
+        var media = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == request.MediaAssetId );
         if (media == null) throw new Exception("Media not found");
 
         // Verify course belongs to tenant
-        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId);
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId );
         if (course == null) throw new Exception("Course not found");
 
         // Prevent duplicates
@@ -88,7 +88,7 @@ public class CourseMediaService : ICourseMediaService
 
         _context.CourseMedias.Add(courseMedia);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseMediaDto(
             courseMedia.Id,
@@ -103,12 +103,12 @@ public class CourseMediaService : ICourseMediaService
         );
     }
 
-    public async Task<CourseMediaDto> AssignExamAsync(Guid tenantId, Guid courseId, AssignExamToCourseRequest request)
+    public async Task<CourseMediaDto> AssignExamAsync(Guid courseId, AssignExamToCourseRequest request)
     {
-        var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == request.ExamId && e.TenantId == tenantId);
+        var exam = await _context.Exams.FirstOrDefaultAsync(e => e.Id == request.ExamId );
         if (exam == null) throw new Exception("Exam not found");
 
-        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId);
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId );
         if (course == null) throw new Exception("Course not found");
 
         var exists = await _context.CourseMedias.AnyAsync(cm => cm.CourseId == courseId && cm.ExamId == request.ExamId);
@@ -127,7 +127,7 @@ public class CourseMediaService : ICourseMediaService
 
         _context.CourseMedias.Add(courseMedia);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseMediaDto(
             courseMedia.Id,
@@ -143,17 +143,17 @@ public class CourseMediaService : ICourseMediaService
         );
     }
 
-    public async Task BulkAssignFolderAsync(Guid tenantId, Guid courseId, BulkAssignFolderToCourseRequest request)
+    public async Task BulkAssignFolderAsync(Guid courseId, BulkAssignFolderToCourseRequest request)
     {
         // Verify folder and course
-        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId);
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId );
         if (course == null) throw new Exception("Course not found");
 
-        var folder = await _context.MediaFolders.FirstOrDefaultAsync(f => f.Id == request.FolderId && f.TenantId == tenantId);
+        var folder = await _context.MediaFolders.FirstOrDefaultAsync(f => f.Id == request.FolderId );
         if (folder == null) throw new Exception("Folder not found");
 
         var assets = await _context.MediaAssets
-            .Where(ma => ma.FolderId == request.FolderId && ma.TenantId == tenantId)
+            .Where(ma => ma.FolderId == request.FolderId )
             .OrderBy(ma => ma.Title)
             .ToListAsync();
 
@@ -177,39 +177,39 @@ public class CourseMediaService : ICourseMediaService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task RemoveMediaAsync(Guid tenantId, Guid courseId, Guid mediaAssetId)
+    public async Task RemoveMediaAsync(Guid courseId, Guid mediaAssetId)
     {
         var courseMedia = await _context.CourseMedias
-            .FirstOrDefaultAsync(cm => cm.CourseId == courseId && cm.MediaAssetId == mediaAssetId && cm.Course.TenantId == tenantId);
+            .FirstOrDefaultAsync(cm => cm.CourseId == courseId && cm.MediaAssetId == mediaAssetId );
 
         if (courseMedia != null)
         {
             _context.CourseMedias.Remove(courseMedia);
             await _context.SaveChangesAsync();
-            await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+            await _cache.RemoveByPrefixAsync($"courses:");
         }
     }
 
-    public async Task RemoveItemAsync(Guid tenantId, Guid courseId, Guid courseMediaId)
+    public async Task RemoveItemAsync(Guid courseId, Guid courseMediaId)
     {
         var courseMedia = await _context.CourseMedias
-            .FirstOrDefaultAsync(cm => cm.CourseId == courseId && cm.Id == courseMediaId && cm.Course.TenantId == tenantId);
+            .FirstOrDefaultAsync(cm => cm.CourseId == courseId && cm.Id == courseMediaId );
 
         if (courseMedia != null)
         {
             _context.CourseMedias.Remove(courseMedia);
             await _context.SaveChangesAsync();
-            await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+            await _cache.RemoveByPrefixAsync($"courses:");
         }
     }
 
-    public async Task ReorderMediasAsync(Guid tenantId, Guid courseId, ReorderCourseMediaRequest request)
+    public async Task ReorderMediasAsync(Guid courseId, ReorderCourseMediaRequest request)
     {
         var courseMedias = await _context.CourseMedias
-            .Where(cm => cm.CourseId == courseId && cm.Course.TenantId == tenantId)
+            .Where(cm => cm.CourseId == courseId )
             .ToListAsync();
 
         for (int i = 0; i < request.CourseMediaIds.Count; i++)
@@ -222,6 +222,6 @@ public class CourseMediaService : ICourseMediaService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 }

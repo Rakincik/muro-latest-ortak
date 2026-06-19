@@ -25,12 +25,12 @@ public class QuestionService : IQuestionService
             q.CourseId, courseTitle,
             q.Answer, q.AnsweredAt, q.Status, q.CreatedAt, q.Note);
 
-    public async Task<PagedResult<QuestionDto>> GetQuestionsAsync(Guid tenantId, int page, int pageSize, string? status, Guid? instructorId)
+    public async Task<PagedResult<QuestionDto>> GetQuestionsAsync(int page, int pageSize, string? status, Guid? instructorId)
     {
-        var cacheKey = $"{tenantId}:questions:list:{page}:{pageSize}:{status}:{instructorId}";
+        var cacheKey = $"questions:list:{page}:{pageSize}:{status}:{instructorId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var query = _context.Questions.AsNoTracking().Where(q => q.TenantId == tenantId);
+            var query = _context.Questions.AsNoTracking().Where(q => true);
 
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(q => q.Status == status);
             if (instructorId.HasValue) query = query.Where(q => q.InstructorId == instructorId);
@@ -53,10 +53,10 @@ public class QuestionService : IQuestionService
         }, TimeSpan.FromMinutes(3));
     }
 
-    public async Task<QuestionDto> GetByIdAsync(Guid tenantId, Guid questionId)
+    public async Task<QuestionDto> GetByIdAsync(Guid questionId)
     {
         return await _context.Questions.AsNoTracking()
-            .Where(q => q.Id == questionId && q.TenantId == tenantId)
+            .Where(q => q.Id == questionId )
             .Include(q => q.User).Include(q => q.Instructor).Include(q => q.Course)
             .Select(q => new QuestionDto(
                 q.Id, q.UserId, q.User.FirstName + " " + q.User.LastName,
@@ -68,11 +68,11 @@ public class QuestionService : IQuestionService
             ?? throw new KeyNotFoundException("Soru bulunamadı.");
     }
 
-    public async Task<QuestionDto> AskAsync(Guid tenantId, Guid userId, CreateQuestionRequest request)
+    public async Task<QuestionDto> AskAsync(Guid userId, CreateQuestionRequest request)
     {
         var q = new Question
         {
-            Id = Guid.NewGuid(), TenantId = tenantId, UserId = userId,
+            Id = Guid.NewGuid(), UserId = userId,
             InstructorId = request.InstructorId, Subject = request.Subject,
             Body = request.Body, ImageUrl = request.ImageUrl,
             AudioUrl = request.AudioUrl, Note = request.Note,
@@ -80,7 +80,7 @@ public class QuestionService : IQuestionService
         };
         _context.Questions.Add(q);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
+        await _cache.RemoveByPrefixAsync($"questions:");
 
         var user = await _context.Users.FindAsync(userId);
         var instructor = await _context.Users.FindAsync(request.InstructorId);
@@ -91,52 +91,52 @@ public class QuestionService : IQuestionService
         return ToDto(q, $"{user?.FirstName} {user?.LastName}", $"{instructor?.FirstName} {instructor?.LastName}", courseTitle);
     }
 
-    public async Task<QuestionDto> AnswerAsync(Guid tenantId, Guid questionId, AnswerQuestionRequest request)
+    public async Task<QuestionDto> AnswerAsync(Guid questionId, AnswerQuestionRequest request)
     {
         var q = await _context.Questions.Include(q => q.User).Include(q => q.Instructor)
-            .FirstOrDefaultAsync(q => q.Id == questionId && q.TenantId == tenantId)
+            .FirstOrDefaultAsync(q => q.Id == questionId )
             ?? throw new KeyNotFoundException("Soru bulunamadı.");
 
         q.Answer = request.Answer;
         q.AnsweredAt = DateTime.UtcNow;
         q.Status = "answered";
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
+        await _cache.RemoveByPrefixAsync($"questions:");
 
         return ToDto(q, $"{q.User.FirstName} {q.User.LastName}", $"{q.Instructor.FirstName} {q.Instructor.LastName}", q.Course?.Title);
     }
 
-    public async Task<QuestionDto> DeleteAnswerAsync(Guid tenantId, Guid questionId)
+    public async Task<QuestionDto> DeleteAnswerAsync(Guid questionId)
     {
         var q = await _context.Questions.Include(q => q.User).Include(q => q.Instructor)
-            .FirstOrDefaultAsync(q => q.Id == questionId && q.TenantId == tenantId)
+            .FirstOrDefaultAsync(q => q.Id == questionId )
             ?? throw new KeyNotFoundException("Soru bulunamadı.");
 
         q.Answer = null;
         q.AnsweredAt = null;
         q.Status = "pending";
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
+        await _cache.RemoveByPrefixAsync($"questions:");
 
         return ToDto(q, $"{q.User.FirstName} {q.User.LastName}", $"{q.Instructor.FirstName} {q.Instructor.LastName}", q.Course?.Title);
     }
 
-    public async Task<QuestionDto> UpdateNoteAsync(Guid tenantId, Guid questionId, Guid userId, UpdateNoteRequest request)
+    public async Task<QuestionDto> UpdateNoteAsync(Guid questionId, Guid userId, UpdateNoteRequest request)
     {
         var q = await _context.Questions.Include(q => q.User).Include(q => q.Instructor)
-            .FirstOrDefaultAsync(q => q.Id == questionId && q.TenantId == tenantId && q.UserId == userId)
+            .FirstOrDefaultAsync(q => q.Id == questionId && q.UserId == userId)
             ?? throw new KeyNotFoundException("Soru bulunamadı.");
 
         q.Note = request.Note;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
+        await _cache.RemoveByPrefixAsync($"questions:");
 
         return ToDto(q, $"{q.User.FirstName} {q.User.LastName}", $"{q.Instructor.FirstName} {q.Instructor.LastName}", q.Course?.Title);
     }
 
-    public async Task DeleteAsync(Guid tenantId, Guid questionId, Guid? userId = null)
+    public async Task DeleteAsync(Guid questionId, Guid? userId = null)
     {
-        var query = _context.Questions.Where(q => q.Id == questionId && q.TenantId == tenantId);
+        var query = _context.Questions.Where(q => q.Id == questionId );
         if (userId.HasValue) query = query.Where(q => q.UserId == userId.Value);
 
         var q = await query.FirstOrDefaultAsync() ?? throw new KeyNotFoundException("Soru bulunamadı veya silme yetkiniz yok.");
@@ -146,6 +146,6 @@ public class QuestionService : IQuestionService
 
         _context.Questions.Remove(q);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:questions:");
+        await _cache.RemoveByPrefixAsync($"questions:");
     }
 }

@@ -37,11 +37,6 @@ public class WebhookHandlerService : IWebhookHandlerService
 
     public async Task<PurchaseWebhookResponse> HandlePurchaseAsync(PurchaseWebhookRequest request)
     {
-        var tenant = await _context.Tenants
-            .FirstOrDefaultAsync(t => t.Code == request.TenantCode);
-        if (tenant is null)
-            throw new KeyNotFoundException("Kurum bulunamadı.");
-
         if (!string.IsNullOrEmpty(request.OrderId))
         {
             var duplicate = await _context.UserPackages
@@ -51,12 +46,11 @@ public class WebhookHandlerService : IWebhookHandlerService
         }
 
         var package = await _context.Packages
-            .FirstOrDefaultAsync(p => p.Id == request.PackageId && p.TenantId == tenant.Id && p.IsActive);
+            .FirstOrDefaultAsync(p => p.Id == request.PackageId && p.IsActive);
         if (package is null)
             throw new KeyNotFoundException("Paket bulunamadı veya aktif değil.");
 
         var user = await _context.Users
-            .Include(u => u.TenantMemberships)
             .FirstOrDefaultAsync(u => u.Email == request.UserEmail);
 
         if (user is null)
@@ -65,24 +59,11 @@ public class WebhookHandlerService : IWebhookHandlerService
             var registerRequest = new RegisterRequest(
                 request.UserFirstName, request.UserLastName,
                 request.UserEmail, tempPassword,
-                request.UserPhone, tenant.Id);
+                request.UserPhone);
 
             await _auth.RegisterAsync(registerRequest);
             user = await _context.Users
-                .Include(u => u.TenantMemberships)
                 .FirstAsync(u => u.Email == request.UserEmail);
-        }
-        else if (!user.TenantMemberships.Any(tm => tm.TenantId == tenant.Id && tm.Status == "active"))
-        {
-            _context.TenantMemberships.Add(new TenantMembership
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                TenantId = tenant.Id,
-                Role = UserRole.Student,
-                Status = "active"
-            });
-            await _context.SaveChangesAsync();
         }
 
         var userPackage = await _packages.ActivateUserPackageAsync(
@@ -161,7 +142,7 @@ public class WebhookHandlerService : IWebhookHandlerService
 
             if (enrolledUserIds.Any())
             {
-                await _notificationService.BulkSendAsync(session.Course.TenantId, new BulkNotificationRequest(
+                await _notificationService.BulkSendAsync(new BulkNotificationRequest(
                     enrolledUserIds,
                     "📚 Ders Sona Erdi",
                     $"\"{session.Title}\" dersi sona erdi." + (session.RecordingEnabled ? " Kayıt kısa süre içinde hazır olacak." : ""),
@@ -195,7 +176,6 @@ public class WebhookHandlerService : IWebhookHandlerService
         if (session != null && evt.SessionId == Guid.Empty)
         {
             evt.SessionId = session.Id;
-            evt.TenantId = session.Course.TenantId;
         }
 
         if (session == null)
@@ -240,7 +220,6 @@ public class WebhookHandlerService : IWebhookHandlerService
                 asset = new MediaAsset
                 {
                     Id = Guid.NewGuid(),
-                    TenantId = evt.TenantId != Guid.Empty ? evt.TenantId : session.Course.TenantId,
                     CourseId = session.CourseId,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -262,9 +241,9 @@ public class WebhookHandlerService : IWebhookHandlerService
         _logger.LogInformation("recording-ready işlendi ✓ SessionId: {SessionId} | RecordingUrl: {Url}",
             evt.SessionId, evt.RecordingUrl);
 
-        if (evt.TenantId != Guid.Empty && evt.EnrolledUserIds?.Any() == true)
+        if (evt.EnrolledUserIds?.Any() == true)
         {
-            await _notificationService.BulkSendAsync(evt.TenantId, new BulkNotificationRequest(
+            await _notificationService.BulkSendAsync( new BulkNotificationRequest(
                 evt.EnrolledUserIds,
                 "📹 Ders Kaydı Hazır",
                 $"\"{evt.SessionTitle ?? session.Title}\" dersinin kaydı izlemeye hazır.",

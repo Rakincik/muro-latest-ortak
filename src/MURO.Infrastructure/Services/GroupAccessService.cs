@@ -50,12 +50,12 @@ public class GroupAccessService : IGroupAccessService
             .ToListAsync();
 
     // ── Gruplara ait kurs ID'lerini döner (tenant filtresi ile) ──────────────
-    private async Task<HashSet<Guid>> CourseIdsForGroups(Guid tenantId, List<Guid> groupIds, CourseMode? modeFilter = null)
+    private async Task<HashSet<Guid>> CourseIdsForGroups(List<Guid> groupIds, CourseMode? modeFilter = null)
     {
         if (groupIds.Count == 0) return new HashSet<Guid>();
 
         var tenantGroupIds = await _context.Groups
-            .Where(g => groupIds.Contains(g.Id) && g.TenantId == tenantId)
+            .Where(g => groupIds.Contains(g.Id) )
             .Select(g => g.Id)
             .ToListAsync();
 
@@ -72,70 +72,70 @@ public class GroupAccessService : IGroupAccessService
     }
 
     // ── Yardımcı: Direkt atanan kurslar ─────────────────────────────────────────
-    private async Task<List<Guid>> GetDirectCourseIdsAsync(Guid tenantId, Guid userId)
+    private async Task<List<Guid>> GetDirectCourseIdsAsync(Guid userId)
     {
         var now = DateTime.UtcNow;
         return await _context.CourseStudents
-            .Where(cs => cs.UserId == userId && cs.Course.TenantId == tenantId && (cs.ExpiresAt == null || cs.ExpiresAt > now))
+            .Where(cs => cs.UserId == userId && (cs.ExpiresAt == null || cs.ExpiresAt > now))
             .Select(cs => cs.CourseId)
             .ToListAsync();
     }
 
     // ── Tüm erişilebilir kurs ID'leri ────────────────────────────────────────
-    public async Task<HashSet<Guid>> GetAccessibleCourseIdsAsync(Guid tenantId, Guid userId)
+    public async Task<HashSet<Guid>> GetAccessibleCourseIdsAsync(Guid userId)
     {
         if (await IsStaffAsync(userId))
-            return (await _context.Courses.Where(c => c.TenantId == tenantId)
+            return (await _context.Courses.Where(c => true)
                 .Select(c => c.Id).ToListAsync()).ToHashSet();
 
         var pkgGroupIds  = await GetPkgGroupIdsAsync(userId);
         var dirGroupIds  = await GetDirectGroupIdsAsync(userId);
         var allGroupIds  = pkgGroupIds.Union(dirGroupIds).ToList();
 
-        var groupCourses = await CourseIdsForGroups(tenantId, allGroupIds);
-        var directCourses = await GetDirectCourseIdsAsync(tenantId, userId);
+        var groupCourses = await CourseIdsForGroups(allGroupIds);
+        var directCourses = await GetDirectCourseIdsAsync(userId);
 
         return groupCourses.Union(directCourses).ToHashSet();
     }
 
     // ── Video erişimi (ContentMode = Offline veya Both) ──────────────────────
-    public async Task<HashSet<Guid>> GetVideoAccessibleCourseIdsAsync(Guid tenantId, Guid userId)
+    public async Task<HashSet<Guid>> GetVideoAccessibleCourseIdsAsync(Guid userId)
     {
         if (await IsStaffAsync(userId))
-            return await GetAccessibleCourseIdsAsync(tenantId, userId);
+            return await GetAccessibleCourseIdsAsync(userId);
 
         var pkgGroupIds = await GetPkgGroupIdsAsync(userId, CourseMode.Offline);
         var dirGroupIds = await GetDirectGroupIdsAsync(userId);
 
         // Paket grupları + direkt grupların video-mode kursları (UNION)
-        var viaPackage  = await CourseIdsForGroups(tenantId, pkgGroupIds);
-        var viaDirect   = await CourseIdsForGroups(tenantId, dirGroupIds, CourseMode.Offline);
-        var directCourses = await GetDirectCourseIdsAsync(tenantId, userId); // Doğrudan atananlar her şeye erişir
+        var viaPackage  = await CourseIdsForGroups(pkgGroupIds);
+        var viaDirect   = await CourseIdsForGroups(dirGroupIds, CourseMode.Offline);
+        var directCourses = await GetDirectCourseIdsAsync(userId); // Doğrudan atananlar her şeye erişir
 
         return viaPackage.Union(viaDirect).Union(directCourses).ToHashSet();
     }
 
     // ── Canlı ders erişimi (ContentMode = Online veya Both) ──────────────────
-    public async Task<HashSet<Guid>> GetLiveAccessibleCourseIdsAsync(Guid tenantId, Guid userId)
+    public async Task<HashSet<Guid>> GetLiveAccessibleCourseIdsAsync(Guid userId)
     {
         if (await IsStaffAsync(userId))
-            return await GetAccessibleCourseIdsAsync(tenantId, userId);
+            return await GetAccessibleCourseIdsAsync(userId);
 
         var pkgGroupIds = await GetPkgGroupIdsAsync(userId, CourseMode.Online);
         var dirGroupIds = await GetDirectGroupIdsAsync(userId);
 
-        var viaPackage  = await CourseIdsForGroups(tenantId, pkgGroupIds);
-        var viaDirect   = await CourseIdsForGroups(tenantId, dirGroupIds, CourseMode.Online);
-        var directCourses = await GetDirectCourseIdsAsync(tenantId, userId); // Doğrudan atananlar her şeye erişir
+        var viaPackage  = await CourseIdsForGroups(pkgGroupIds);
+        var viaDirect   = await CourseIdsForGroups(dirGroupIds, CourseMode.Online);
+        var directCourses = await GetDirectCourseIdsAsync(userId); // Doğrudan atananlar her şeye erişir
 
         return viaPackage.Union(viaDirect).Union(directCourses).ToHashSet();
     }
 
     // ── Tekil kurs erişim kontrolü ────────────────────────────────────────────
-    public async Task<bool> CanAccessCourseAsync(Guid tenantId, Guid userId, Guid courseId)
+    public async Task<bool> CanAccessCourseAsync(Guid userId, Guid courseId)
     {
         if (await IsStaffAsync(userId)) return true;
-        var ids = await GetAccessibleCourseIdsAsync(tenantId, userId);
+        var ids = await GetAccessibleCourseIdsAsync(userId);
         return ids.Contains(courseId);
     }
 

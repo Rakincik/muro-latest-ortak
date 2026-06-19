@@ -142,12 +142,12 @@ public class BbbWebhookController : ControllerBase
                 {
                     case "user-joined":
                         if (evt.SessionId != Guid.Empty && evt.UserId != Guid.Empty)
-                            await _attendanceService.RecordJoinAsync(evt.TenantId, evt.SessionId, evt.UserId);
+                            await _attendanceService.RecordJoinAsync( evt.SessionId, evt.UserId);
                         break;
 
                     case "user-left":
                         if (evt.SessionId != Guid.Empty && evt.UserId != Guid.Empty)
-                            await _attendanceService.RecordLeaveAsync(evt.TenantId, evt.SessionId, evt.UserId);
+                            await _attendanceService.RecordLeaveAsync( evt.SessionId, evt.UserId);
                         break;
 
                     case "meeting-ended":

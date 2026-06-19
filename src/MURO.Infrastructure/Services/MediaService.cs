@@ -28,14 +28,14 @@ public class MediaService : IMediaService
     }
 
     public async Task<PagedResult<MediaAssetDto>> GetAssetsAsync(
-        Guid tenantId, int page, int pageSize, Guid? courseId, string? search = null, Guid? userId = null, Guid? folderId = null, bool excludeRecordings = false)
+        int page, int pageSize, Guid? courseId, string? search = null, Guid? userId = null, Guid? folderId = null, bool excludeRecordings = false)
     {
-        var query = _context.MediaAssets.AsNoTracking().Where(m => m.TenantId == tenantId);
+        var query = _context.MediaAssets.AsNoTracking().Where(m => true);
 
         // Student grup filtresi: userId verilmişse erişilebilir kurslarla sınırla
         if (userId.HasValue)
         {
-            var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId.Value);
+            var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId.Value);
             query = query.Where(m => (m.CourseId.HasValue && accessibleIds.Contains(m.CourseId.Value)) 
                                   || m.CourseMedias.Any(cm => accessibleIds.Contains(cm.CourseId)));
         }
@@ -84,11 +84,11 @@ public class MediaService : IMediaService
         return new PagedResult<MediaAssetDto>(items, totalCount, page, pageSize, totalPages);
     }
 
-    public async Task<MediaAssetDto> GetAssetByIdAsync(Guid tenantId, Guid assetId, Guid? userId = null)
+    public async Task<MediaAssetDto> GetAssetByIdAsync(Guid assetId, Guid? userId = null)
     {
         var a = await _context.MediaAssets.AsNoTracking()
             .Include(m => m.Course)
-            .FirstOrDefaultAsync(m => m.Id == assetId && m.TenantId == tenantId)
+            .FirstOrDefaultAsync(m => m.Id == assetId )
             ?? throw new KeyNotFoundException("Medya bulunamad\u0131.");
 
         // Student erişim kontrolü: kursa grubu üzerinden erişim hakkı var mı?
@@ -102,7 +102,7 @@ public class MediaService : IMediaService
 
             bool hasAccess = false;
             foreach(var cid in courseIds) {
-                if (await _groupAccess.CanAccessCourseAsync(tenantId, userId.Value, cid)) {
+                if (await _groupAccess.CanAccessCourseAsync(userId.Value, cid)) {
                     hasAccess = true;
                     break;
                 }
@@ -116,12 +116,11 @@ public class MediaService : IMediaService
             a.Course != null ? a.Course.Title : null, a.FolderId, a.CreatedAt, a.Tags);
     }
 
-    public async Task<MediaAssetDto> CreateAssetAsync(Guid tenantId, CreateMediaAssetRequest request)
+    public async Task<MediaAssetDto> CreateAssetAsync(CreateMediaAssetRequest request)
     {
         var asset = new MediaAsset
         {
-            Id = Guid.NewGuid(), TenantId = tenantId,
-            Title = request.Title, FilePath = request.FilePath, CourseId = request.CourseId,
+            Id = Guid.NewGuid(), Title = request.Title, FilePath = request.FilePath, CourseId = request.CourseId,
             DurationSeconds = request.DurationSeconds,
             FolderId = request.FolderId, Tags = request.Tags
         };
@@ -142,14 +141,14 @@ public class MediaService : IMediaService
         }
         
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:media:");
+        await _cache.RemoveByPrefixAsync($"media:");
         return new MediaAssetDto(asset.Id, asset.Title, asset.FilePath, null, null, null,
             asset.Status.ToString(), asset.CourseId, null, asset.FolderId, asset.CreatedAt, asset.Tags);
     }
 
-    public async Task<MediaAssetDto> UpdateAssetAsync(Guid tenantId, Guid assetId, UpdateMediaAssetRequest request)
+    public async Task<MediaAssetDto> UpdateAssetAsync(Guid assetId, UpdateMediaAssetRequest request)
     {
-        var a = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == assetId && m.TenantId == tenantId)
+        var a = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == assetId )
             ?? throw new KeyNotFoundException("Medya bulunamadı.");
         if (request.Title != null) a.Title = request.Title;
         if (request.HlsPath != null) a.HlsPath = request.HlsPath;
@@ -159,19 +158,19 @@ public class MediaService : IMediaService
         if (request.FolderId.HasValue) a.FolderId = request.FolderId;
         if (request.Tags != null) a.Tags = request.Tags;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:media:");
+        await _cache.RemoveByPrefixAsync($"media:");
         return new MediaAssetDto(a.Id, a.Title, a.FilePath, a.HlsPath, a.ThumbnailPath,
             a.DurationSeconds, a.Status.ToString(), a.CourseId, null, a.FolderId, a.CreatedAt, a.Tags);
     }
 
-    public async Task DeleteAssetAsync(Guid tenantId, Guid assetId)
+    public async Task DeleteAssetAsync(Guid assetId)
     {
-        var a = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == assetId && m.TenantId == tenantId)
+        var a = await _context.MediaAssets.FirstOrDefaultAsync(m => m.Id == assetId )
             ?? throw new KeyNotFoundException("Medya bulunamadı.");
 
         try
         {
-            var hlsDir = Path.Combine(_hlsOutputDir, tenantId.ToString(), assetId.ToString());
+            var hlsDir = Path.Combine(_hlsOutputDir, Guid.Empty.ToString(), assetId.ToString());
             if (Directory.Exists(hlsDir))
             {
                 try
@@ -214,13 +213,13 @@ public class MediaService : IMediaService
 
         _context.MediaAssets.Remove(a);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:media:");
+        await _cache.RemoveByPrefixAsync($"media:");
     }
 
-    public async Task<List<Guid>> GetAssignedCourseIdsAsync(Guid tenantId, Guid mediaAssetId)
+    public async Task<List<Guid>> GetAssignedCourseIdsAsync(Guid mediaAssetId)
     {
         return await _context.CourseMedias
-            .Where(cm => cm.MediaAssetId == mediaAssetId && cm.Course.TenantId == tenantId)
+            .Where(cm => cm.MediaAssetId == mediaAssetId )
             .Select(cm => cm.CourseId)
             .ToListAsync();
     }
@@ -273,9 +272,9 @@ public class MediaService : IMediaService
             p.LastPosition, pct, p.CompletedAt, p.UpdatedAt);
     }
 
-    public async Task<PagedResult<PodcastDto>> GetPodcastsAsync(Guid tenantId, int page, int pageSize)
+    public async Task<PagedResult<PodcastDto>> GetPodcastsAsync(int page, int pageSize)
     {
-        var query = _context.Podcasts.AsNoTracking().Where(p => p.TenantId == tenantId);
+        var query = _context.Podcasts.AsNoTracking().Where(p => true);
         var totalCount = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
@@ -289,16 +288,15 @@ public class MediaService : IMediaService
         return new PagedResult<PodcastDto>(items, totalCount, page, pageSize, totalPages);
     }
 
-    public async Task<PodcastDto> CreatePodcastAsync(Guid tenantId, CreatePodcastRequest request)
+    public async Task<PodcastDto> CreatePodcastAsync(CreatePodcastRequest request)
     {
         var pod = new Podcast
         {
-            Id = Guid.NewGuid(), TenantId = tenantId,
-            Title = request.Title, AudioFilePath = request.AudioUrl, CourseId = request.CourseId
+            Id = Guid.NewGuid(), Title = request.Title, AudioFilePath = request.AudioUrl, CourseId = request.CourseId
         };
         _context.Podcasts.Add(pod);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:podcasts:");
+        await _cache.RemoveByPrefixAsync($"podcasts:");
         return new PodcastDto(pod.Id, pod.Title, pod.AudioFilePath, null, pod.Status.ToString(),
             pod.CourseId, null, pod.CreatedAt);
     }

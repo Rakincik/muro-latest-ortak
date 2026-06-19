@@ -8,5 +8,5 @@ public interface IAdminSessionService
     Task<(int, object?)> GetTodaySessions();
     Task<(int, object?)> GetSessionDetail(Guid id);
     Task<(int, object?)> ForceEndSession(Guid id);
-    Task<(int, object?)> GetRecordings(int page = 1, int pageSize = 20, string? status = null, Guid? tenantId = null);
+    Task<(int, object?)> GetRecordings(int page = 1, int pageSize = 20, string? status = null);
 }

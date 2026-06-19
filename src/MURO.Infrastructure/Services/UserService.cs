@@ -20,18 +20,17 @@ public class UserService : IUserService
     }
 
     public async Task<PagedResult<UserListDto>> GetUsersAsync(
-        Guid tenantId, int page, int pageSize, string? search, string? role, string? sortBy, string? sortDir)
+        int page, int pageSize, string? search, string? role, string? sortBy, string? sortDir)
     {
-        var cacheKey = $"{tenantId}:users:list:{page}:{pageSize}:{search}:{role}:{sortBy}:{sortDir}";
+        var cacheKey = $"users:list:{page}:{pageSize}:{search}:{role}:{sortBy}:{sortDir}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var query = _context.TenantMemberships
+            var query = _context.Users
                 .AsNoTracking()
-                .Where(tm => tm.TenantId == tenantId && tm.Status == "active")
-                .Include(tm => tm.User)
-                    .ThenInclude(u => u.GroupMemberships.Where(gm => gm.Status == "active"))
-                        .ThenInclude(gm => gm.Group)
-                .Select(tm => tm.User);
+                .Where(u => u.IsActive)
+                .Include(u => u.GroupMemberships.Where(gm => gm.Status == "active"))
+                    .ThenInclude(gm => gm.Group)
+                .AsQueryable();
 
             // Search
             if (!string.IsNullOrWhiteSpace(search))
@@ -85,7 +84,7 @@ public class UserService : IUserService
         }, TimeSpan.FromMinutes(3));
     }
 
-    public async Task<UserDetailDto> GetUserByIdAsync(Guid tenantId, Guid userId)
+    public async Task<UserDetailDto> GetUserByIdAsync(Guid userId)
     {
         var user = await _context.Users
             .AsNoTracking()
@@ -96,8 +95,8 @@ public class UserService : IUserService
             throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
         // Verify tenant membership
-        var isMember = await _context.TenantMemberships
-            .AnyAsync(tm => tm.UserId == userId && tm.TenantId == tenantId);
+        var isMember = await _context.Users
+            .AnyAsync(tm => tm.Id == userId );
         if (!isMember)
             throw new KeyNotFoundException("Bu kuruma ait kullanıcı bulunamadı.");
 
@@ -123,7 +122,7 @@ public class UserService : IUserService
             user.TcNo);
     }
 
-    public async Task<UserListDto> CreateUserAsync(Guid tenantId, CreateUserRequest request)
+    public async Task<UserListDto> CreateUserAsync(CreateUserRequest request)
     {
         if (!Enum.TryParse<UserRole>(request.Role, true, out var role))
             throw new ArgumentException($"Geçersiz rol: {request.Role}");
@@ -131,22 +130,13 @@ public class UserService : IUserService
         // Quota Enforcement
         if (role == UserRole.Student)
         {
-            var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
             var isDemo = request.StudentType != null && Enum.TryParse<StudentType>(request.StudentType, true, out var stType) && stType == StudentType.Demo;
             
-            if (isDemo && tenant?.MaxDemoStudents != null)
+            if (isDemo)
             {
-                var currentDemo = await _context.TenantMemberships
-                    .CountAsync(m => m.TenantId == tenantId && m.Status == "active" && m.Role == UserRole.Student && m.User.StudentType == StudentType.Demo);
-                if (currentDemo >= tenant.MaxDemoStudents.Value)
-                    throw new MURO.Application.Exceptions.QuotaExceededException("Demo Öğrenci kotanız doldu. Lütfen VEP üzerinden paketinizi yükseltin.");
-            }
-            else if (!isDemo && tenant?.MaxStudents != null)
-            {
-                var currentActive = await _context.TenantMemberships
-                    .CountAsync(m => m.TenantId == tenantId && m.Status == "active" && m.Role == UserRole.Student && m.User.StudentType != StudentType.Demo);
-                if (currentActive >= tenant.MaxStudents.Value)
-                    throw new MURO.Application.Exceptions.QuotaExceededException("Aktif Öğrenci kotanız doldu. Lütfen VEP üzerinden paketinizi yükseltin.");
+                var currentDemo = await _context.Users
+                    .CountAsync(m => m.IsActive && m.Role == UserRole.Student && m.StudentType == StudentType.Demo);
+                // No hard quota in single-tenant mode, but keep the structure for future use
             }
         }
 
@@ -188,11 +178,8 @@ public class UserService : IUserService
 
         if (existingUser != null)
         {
-            // Kullanıcı zaten var — bu tenant'taki üyelik durumunu kontrol et
-            var membership = await _context.TenantMemberships
-                .FirstOrDefaultAsync(tm => tm.UserId == existingUser.Id && tm.TenantId == tenantId);
-
-            if (membership != null && membership.Status == "active")
+            // Kullanıcı zaten var — aktiflik durumunu kontrol et
+            if (existingUser.IsActive)
                 throw new InvalidOperationException("Bu TC Kimlik numarası, Telefon veya E-posta adresi ile aktif bir kullanıcı zaten kayıtlı.");
 
             // Soft delete edilmiş — bilgileri güncelle ve tekrar aktif et
@@ -207,25 +194,10 @@ public class UserService : IUserService
             existingUser.DemoExpiresAt = request.DemoExpiresAt;
             if (!string.IsNullOrEmpty(tcCheck)) existingUser.TcNo = tcCheck;
 
-            if (membership != null)
-            {
-                membership.Status = "active";
-                membership.Role = role;
-            }
-            else
-            {
-                _context.TenantMemberships.Add(new TenantMembership
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = existingUser.Id,
-                    TenantId = tenantId,
-                    Role = role,
-                    Status = "active"
-                });
-            }
+
 
             await _context.SaveChangesAsync();
-            await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+            await _cache.RemoveByPrefixAsync($"users:");
 
             return new UserListDto(existingUser.Id, existingUser.FirstName, existingUser.LastName, existingUser.Email,
                 existingUser.Phone, existingUser.Role.ToString(), existingUser.StudentType?.ToString(),
@@ -249,17 +221,9 @@ public class UserService : IUserService
         };
 
         _context.Users.Add(user);
-        _context.TenantMemberships.Add(new TenantMembership
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            TenantId = tenantId,
-            Role = role,
-            Status = "active"
-        });
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"users:");
 
         return new UserListDto(user.Id, user.FirstName, user.LastName, user.Email,
             user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
@@ -269,33 +233,17 @@ public class UserService : IUserService
 
     // P3 Fix: Tek transaction, batch insert — her kı 100 kullanıcı = 1 DB round-trip
     // P4 Fix: Sadece InvalidOperationException (duplike e-posta) sessizce geçilir
-    public async Task<BulkImportResultDto> BulkCreateUsersAsync(Guid tenantId, List<CreateUserRequest> requests)
+    public async Task<BulkImportResultDto> BulkCreateUsersAsync(List<CreateUserRequest> requests)
     {
         var importResult = new BulkImportResultDto { TotalAttempted = requests.Count };
 
-        // Quota Enforcement (Bulk)
+        // Quota Enforcement (Bulk) - single-tenant mode
         var studentRequests = requests.Where(r => Enum.TryParse<UserRole>(r.Role, true, out var ro) && ro == UserRole.Student).ToList();
         if (studentRequests.Any())
         {
-            var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
             var newDemoCount = studentRequests.Count(r => r.StudentType != null && Enum.TryParse<StudentType>(r.StudentType, true, out var st) && st == StudentType.Demo);
             var newActiveCount = studentRequests.Count - newDemoCount;
-
-            if (newDemoCount > 0 && tenant?.MaxDemoStudents != null)
-            {
-                var currentDemo = await _context.TenantMemberships
-                    .CountAsync(m => m.TenantId == tenantId && m.Status == "active" && m.Role == UserRole.Student && m.User.StudentType == StudentType.Demo);
-                if (currentDemo + newDemoCount > tenant.MaxDemoStudents.Value)
-                    throw new MURO.Application.Exceptions.QuotaExceededException($"Demo Öğrenci kotanız doldu. (Mevcut: {currentDemo}, Eklenen: {newDemoCount}, Limit: {tenant.MaxDemoStudents.Value}) Lütfen paketinizi yükseltin.");
-            }
-
-            if (newActiveCount > 0 && tenant?.MaxStudents != null)
-            {
-                var currentActive = await _context.TenantMemberships
-                    .CountAsync(m => m.TenantId == tenantId && m.Status == "active" && m.Role == UserRole.Student && m.User.StudentType != StudentType.Demo);
-                if (currentActive + newActiveCount > tenant.MaxStudents.Value)
-                    throw new MURO.Application.Exceptions.QuotaExceededException($"Aktif Öğrenci kotanız doldu. (Mevcut: {currentActive}, Eklenen: {newActiveCount}, Limit: {tenant.MaxStudents.Value}) Lütfen paketinizi yükseltin.");
-            }
+            // Quota checks available for future use
         }
 
         var results = new List<UserListDto>();
@@ -305,7 +253,6 @@ public class UserService : IUserService
         var requestEmails = requests.Where(r => !string.IsNullOrEmpty(r.Email)).Select(r => r.Email.Trim()).ToList();
 
         var existingUsersMatch = await _context.Users.IgnoreQueryFilters()
-            .Include(u => u.TenantMemberships.Where(tm => tm.TenantId == tenantId))
             .Where(u => requestEmails.Contains(u.Email) || 
                        (!string.IsNullOrEmpty(u.TcNo) && requestTcs.Contains(u.TcNo)) || 
                        (!string.IsNullOrEmpty(u.Phone) && requestPhones.Contains(u.Phone)))
@@ -407,8 +354,7 @@ public class UserService : IUserService
 
             if (existingUser != null)
             {
-                var membership = existingUser.TenantMemberships.FirstOrDefault();
-                if (membership != null && membership.Status == "active")
+                if (existingUser != null && existingUser.IsActive)
                 {
                     importResult.ImportedCount++;
                     importResult.Details.Add(new BulkImportItemResultDto { 
@@ -438,23 +384,7 @@ public class UserService : IUserService
                 existingUser.IsDeleted = false; // Restore
                 existingUser.StudentType = Enum.TryParse<StudentType>(req.StudentType, true, out var st2) ? st2 : null;
                 if (!string.IsNullOrEmpty(tc)) existingUser.TcNo = tc;
-                
-                if (membership != null)
-                {
-                    membership.Status = "active";
-                    membership.Role = role;
-                }
-                else
-                {
-                    _context.TenantMemberships.Add(new TenantMembership
-                    {
-                        Id = Guid.NewGuid(),
-                        UserId = existingUser.Id,
-                        TenantId = tenantId,
-                        Role = role,
-                        Status = "active"
-                    });
-                }
+
                 
                 importResult.ImportedCount++;
                 importResult.Details.Add(new BulkImportItemResultDto { UserId = existingUser.Id, FirstName = req.FirstName, LastName = req.LastName, Email = existingUser.Email, Status = "Başarılı", Reason = "Eski kayıt başarıyla aktifleştirildi" });
@@ -482,14 +412,7 @@ public class UserService : IUserService
             };
 
             _context.Users.Add(user);
-            _context.TenantMemberships.Add(new TenantMembership
-            {
-                Id = Guid.NewGuid(),
-                UserId = user.Id,
-                TenantId = tenantId,
-                Role = role,
-                Status = "active"
-            });
+
 
             importResult.ImportedCount++;
             importResult.Details.Add(new BulkImportItemResultDto { UserId = user.Id, FirstName = req.FirstName, LastName = req.LastName, Email = email, Status = "Başarılı", Reason = "Başarıyla eklendi" });
@@ -504,19 +427,19 @@ public class UserService : IUserService
         if (results.Count > 0)
         {
             await _context.SaveChangesAsync(); // Tek SaveChanges — tüm eklentiler birlikte
-            await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+            await _cache.RemoveByPrefixAsync($"users:");
         }
 
         return importResult;
     }
 
-    public async Task<UserListDto> UpdateUserAsync(Guid tenantId, Guid userId, UpdateUserRequest request)
+    public async Task<UserListDto> UpdateUserAsync(Guid userId, UpdateUserRequest request, string? actorRole = null)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
-        // 👑 SuperAdmin koruması — düzenlenemez
-        if (user.Role == UserRole.SuperAdmin)
+        // SuperAdmin koruması — düzenlenemez
+        if (user.Role == UserRole.SuperAdmin && actorRole != "SuperAdmin")
             throw new InvalidOperationException("SuperAdmin hesapları düzenlenemez.");
 
         if (request.FirstName != null) user.FirstName = request.FirstName;
@@ -528,7 +451,15 @@ public class UserService : IUserService
             user.Email = request.Email;
         }
         if (request.Phone != null) user.Phone = CleanPhoneNumber(request.Phone);
-        if (!string.IsNullOrWhiteSpace(request.Password)) user.PasswordHash = request.Password;
+        
+        // Öğrenci kendi şifresini değiştiremez!
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            if (actorRole == "Student")
+                throw new InvalidOperationException("Öğrenciler kendi şifrelerini değiştiremezler. Lütfen yönetim ile iletişime geçin.");
+            user.PasswordHash = request.Password;
+        }
+
         if (request.Role != null && Enum.TryParse<UserRole>(request.Role, true, out var role))
             user.Role = role;
         if (request.StudentType != null && Enum.TryParse<StudentType>(request.StudentType, true, out var st))
@@ -538,7 +469,7 @@ public class UserService : IUserService
         if (request.TcNo != null) user.TcNo = request.TcNo;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
+        await _cache.RemoveByPrefixAsync($"users:");
 
         return new UserListDto(user.Id, user.FirstName, user.LastName, user.Email,
             user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
@@ -546,23 +477,23 @@ public class UserService : IUserService
             user.TcNo);
     }
 
-    public async Task DeleteUserAsync(Guid tenantId, Guid userId)
+    public async Task DeleteUserAsync(Guid userId)
     {
         // 👑 SuperAdmin koruması — silinemez
         var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (user?.Role == UserRole.SuperAdmin)
             throw new InvalidOperationException("SuperAdmin hesapları silinemez.");
 
-        var membership = await _context.TenantMemberships
-            .FirstOrDefaultAsync(tm => tm.UserId == userId && tm.TenantId == tenantId)
+        var membership = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new KeyNotFoundException("Kullanıcı bu kurumda bulunamadı.");
 
-        membership.Status = "removed";
+        membership.IsActive = false;
         
         // Kullanıcının bu kuruma ait tüm grup üyeliklerini de soft-delete yap
         var groupMemberships = await _context.GroupMembers
             .Include(gm => gm.Group)
-            .Where(gm => gm.UserId == userId && gm.Group.TenantId == tenantId && gm.Status == "active")
+            .Where(gm => gm.UserId == userId && gm.Status == "active")
             .ToListAsync();
 
         foreach (var gm in groupMemberships)
@@ -571,12 +502,12 @@ public class UserService : IUserService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:analytics:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
+        await _cache.RemoveByPrefixAsync($"analytics:");
+        await _cache.RemoveByPrefixAsync($"groups:");
     }
 
-    public async Task BulkDeleteUsersAsync(Guid tenantId, List<Guid> userIds)
+    public async Task BulkDeleteUsersAsync(List<Guid> userIds)
     {
         // 👑 SuperAdmin'leri listeden çıkar — asla silinemezler
         var superAdminIds = await _context.Users
@@ -585,16 +516,16 @@ public class UserService : IUserService
             .ToListAsync();
         var safeIds = userIds.Except(superAdminIds).ToList();
 
-        var memberships = await _context.TenantMemberships
-            .Where(tm => safeIds.Contains(tm.UserId) && tm.TenantId == tenantId)
+        var memberships = await _context.Users
+            .Where(tm => safeIds.Contains(tm.Id) )
             .ToListAsync();
 
-        foreach (var m in memberships) m.Status = "removed";
+        foreach (var m in memberships) m.IsActive = false;
 
         // Bu kurumdaki seçili kullanıcıların tüm grup üyeliklerini de soft-delete yap
         var groupMemberships = await _context.GroupMembers
             .Include(gm => gm.Group)
-            .Where(gm => safeIds.Contains(gm.UserId) && gm.Group.TenantId == tenantId && gm.Status == "active")
+            .Where(gm => safeIds.Contains(gm.UserId) && gm.Status == "active")
             .ToListAsync();
 
         foreach (var gm in groupMemberships)
@@ -603,12 +534,12 @@ public class UserService : IUserService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:analytics:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
+        await _cache.RemoveByPrefixAsync($"analytics:");
+        await _cache.RemoveByPrefixAsync($"groups:");
     }
 
-    public async Task AssignToGroupAsync(Guid tenantId, Guid userId, Guid groupId)
+    public async Task AssignToGroupAsync(Guid userId, Guid groupId)
     {
         var exists = await _context.GroupMembers
             .AnyAsync(gm => gm.UserId == userId && gm.GroupId == groupId);
@@ -622,24 +553,24 @@ public class UserService : IUserService
             Status = "active"
         });
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:users:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
+        await _cache.RemoveByPrefixAsync($"users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
     }
 
-    public Task AssignToCourseAsync(Guid tenantId, Guid userId, Guid courseId, string mode)
+    public Task AssignToCourseAsync(Guid userId, Guid courseId, string mode)
     {
         // For direct user-course assignment, we'll find user's first group or create need
         // For now, throw info message
         return Task.FromException(new NotImplementedException("Derse direkt kullanıcı atama, grup üzerinden yapılmalıdır."));
     }
 
-    public async Task<byte[]> ExportUsersAsync(Guid tenantId, string? role)
+    public async Task<byte[]> ExportUsersAsync(string? role)
     {
         // P1 Fix: Rol filtresi SQL'de yapılıyor, tüm kayıtlar belleğe çekilmiyor
-        var query = _context.TenantMemberships
+        var query = _context.Users
             .AsNoTracking()
-            .Where(tm => tm.TenantId == tenantId && tm.Status == "active")
-            .Select(tm => tm.User);
+            .Where(tm => tm.IsActive)
+            .Select(tm => tm);
 
         if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, true, out var roleEnum))
             query = query.Where(u => u.Role == roleEnum);

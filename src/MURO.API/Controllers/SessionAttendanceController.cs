@@ -15,21 +15,18 @@ namespace MURO.API.Controllers;
 public class SessionAttendanceController : ControllerBase
 {
     private readonly ISessionAttendanceService _attendanceService;
-    private readonly ITenantService _tenantService;
-
-    public SessionAttendanceController(ISessionAttendanceService attendanceService, ITenantService tenantService)
+    
+    public SessionAttendanceController(ISessionAttendanceService attendanceService)
     {
         _attendanceService = attendanceService;
-        _tenantService = tenantService;
-    }
+            }
 
     // Eğitmen / Admin: Bir sınıf yoklamasının tüm özeti
     [HttpGet("sessions/{sessionId}")]
     public async Task<ActionResult<AttendanceSummaryDto>> GetSessionAttendance(Guid sessionId)
     {
-        var tenantId = _tenantService.CurrentTenantId
-            ?? throw new UnauthorizedAccessException("Tenant bulunamadı.");
-        var result = await _attendanceService.GetAttendanceBySessionAsync(tenantId, sessionId);
+
+        var result = await _attendanceService.GetAttendanceBySessionAsync(sessionId);
         return Ok(result);
     }
 
@@ -37,10 +34,9 @@ public class SessionAttendanceController : ControllerBase
     [HttpGet("my")]
     public async Task<ActionResult<List<MyAttendanceDto>>> GetMyAttendance()
     {
-        var tenantId = _tenantService.CurrentTenantId
-            ?? throw new UnauthorizedAccessException("Tenant bulunamadı.");
+
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _attendanceService.GetMyAttendanceHistoryAsync(tenantId, userId);
+        var result = await _attendanceService.GetMyAttendanceHistoryAsync(userId);
         return Ok(result);
     }
 }

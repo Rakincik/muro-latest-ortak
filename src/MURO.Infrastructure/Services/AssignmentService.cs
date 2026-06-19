@@ -20,14 +20,14 @@ public class AssignmentService : IAssignmentService
         _cache = cache;
     }
 
-    public async Task<PagedResult<AssignmentListDto>> GetAssignmentsAsync(Guid tenantId, int page, int pageSize, Guid? courseId)
+    public async Task<PagedResult<AssignmentListDto>> GetAssignmentsAsync(int page, int pageSize, Guid? courseId)
     {
-        var cacheKey = $"{tenantId}:assignments:list:{page}:{pageSize}:{courseId}";
+        var cacheKey = $"assignments:list:{page}:{pageSize}:{courseId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Assignments
                 .AsNoTracking()
-                .Where(a => a.TenantId == tenantId);
+                .Where(a => true);
 
             if (courseId.HasValue)
                 query = query.Where(a => a.CourseId == courseId);
@@ -53,11 +53,11 @@ public class AssignmentService : IAssignmentService
         }, TimeSpan.FromMinutes(3));
     }
 
-    public async Task<AssignmentDetailDto> GetAssignmentByIdAsync(Guid tenantId, Guid assignmentId)
+    public async Task<AssignmentDetailDto> GetAssignmentByIdAsync(Guid assignmentId)
     {
         var assignment = await _context.Assignments
             .AsNoTracking()
-            .Where(a => a.Id == assignmentId && a.TenantId == tenantId)
+            .Where(a => a.Id == assignmentId )
             .Include(a => a.Course)
             .Include(a => a.Submissions).ThenInclude(s => s.User)
             .FirstOrDefaultAsync()
@@ -73,15 +73,14 @@ public class AssignmentService : IAssignmentService
                 s.FileUrl, s.Comment, s.Score, s.Feedback, s.SubmittedAt)).ToList());
     }
 
-    public async Task<AssignmentListDto> CreateAssignmentAsync(Guid tenantId, CreateAssignmentRequest request)
+    public async Task<AssignmentListDto> CreateAssignmentAsync(CreateAssignmentRequest request)
     {
-        var courseExists = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.TenantId == tenantId);
+        var courseExists = await _context.Courses.AnyAsync(c => c.Id == request.CourseId );
         if (!courseExists) throw new KeyNotFoundException("Ders bulunamadı.");
 
         var assignment = new Assignment
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             CourseId = request.CourseId,
             Title = request.Title,
             Description = request.Description,
@@ -92,7 +91,7 @@ public class AssignmentService : IAssignmentService
 
         _context.Assignments.Add(assignment);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:assignments:");
+        await _cache.RemoveByPrefixAsync($"assignments:");
 
         var courseName = await _context.Courses.Where(c => c.Id == request.CourseId).Select(c => c.Title).FirstAsync();
         return new AssignmentListDto(assignment.Id, assignment.Title, assignment.Description,
@@ -100,12 +99,12 @@ public class AssignmentService : IAssignmentService
             assignment.MaxScore, assignment.FileUrl, 0, null);
     }
 
-    public async Task<AssignmentListDto> UpdateAssignmentAsync(Guid tenantId, Guid assignmentId, UpdateAssignmentRequest request)
+    public async Task<AssignmentListDto> UpdateAssignmentAsync(Guid assignmentId, UpdateAssignmentRequest request)
     {
         var assignment = await _context.Assignments
             .Include(a => a.Course)
             .Include(a => a.Submissions)
-            .FirstOrDefaultAsync(a => a.Id == assignmentId && a.TenantId == tenantId)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId )
             ?? throw new KeyNotFoundException("Ödev bulunamadı.");
 
         if (request.Title != null) assignment.Title = request.Title;
@@ -115,7 +114,7 @@ public class AssignmentService : IAssignmentService
         if (request.MaxScore.HasValue) assignment.MaxScore = request.MaxScore.Value;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:assignments:");
+        await _cache.RemoveByPrefixAsync($"assignments:");
 
         return new AssignmentListDto(assignment.Id, assignment.Title, assignment.Description,
             assignment.CourseId, assignment.Course.Title, assignment.DueDate,
@@ -125,22 +124,22 @@ public class AssignmentService : IAssignmentService
             assignment.Submissions.Count(s => s.Score != null) > 0 ? assignment.Submissions.Where(s => s.Score != null).Average(s => s.Score) : null);
     }
 
-    public async Task DeleteAssignmentAsync(Guid tenantId, Guid assignmentId)
+    public async Task DeleteAssignmentAsync(Guid assignmentId)
     {
         var assignment = await _context.Assignments
-            .FirstOrDefaultAsync(a => a.Id == assignmentId && a.TenantId == tenantId)
+            .FirstOrDefaultAsync(a => a.Id == assignmentId )
             ?? throw new KeyNotFoundException("Ödev bulunamadı.");
 
         _context.Assignments.Remove(assignment);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:assignments:");
+        await _cache.RemoveByPrefixAsync($"assignments:");
     }
 
     // --- Submissions ---
 
-    public async Task<SubmissionDto> SubmitAsync(Guid tenantId, Guid assignmentId, Guid userId, SubmitAssignmentRequest request)
+    public async Task<SubmissionDto> SubmitAsync(Guid assignmentId, Guid userId, SubmitAssignmentRequest request)
     {
-        var assignment = await _context.Assignments.FirstOrDefaultAsync(a => a.Id == assignmentId && a.TenantId == tenantId)
+        var assignment = await _context.Assignments.FirstOrDefaultAsync(a => a.Id == assignmentId )
             ?? throw new KeyNotFoundException("Ödev bulunamadı.");
 
         if (assignment.DueDate < DateTime.UtcNow)
@@ -161,14 +160,14 @@ public class AssignmentService : IAssignmentService
 
         _context.AssignmentSubmissions.Add(submission);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:assignments:");
+        await _cache.RemoveByPrefixAsync($"assignments:");
 
         var user = await _context.Users.FindAsync(userId);
         return new SubmissionDto(submission.Id, userId, $"{user?.FirstName} {user?.LastName}",
             submission.FileUrl, submission.Comment, null, null, submission.SubmittedAt);
     }
 
-    public async Task<SubmissionDto> GradeSubmissionAsync(Guid tenantId, Guid assignmentId, Guid submissionId, GradeSubmissionRequest request)
+    public async Task<SubmissionDto> GradeSubmissionAsync(Guid assignmentId, Guid submissionId, GradeSubmissionRequest request)
     {
         var submission = await _context.AssignmentSubmissions
             .Include(s => s.User)
@@ -178,7 +177,7 @@ public class AssignmentService : IAssignmentService
         submission.Score = request.Score;
         submission.Feedback = request.Feedback;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:assignments:");
+        await _cache.RemoveByPrefixAsync($"assignments:");
 
         return new SubmissionDto(submission.Id, submission.UserId,
             $"{submission.User.FirstName} {submission.User.LastName}",
@@ -187,13 +186,13 @@ public class AssignmentService : IAssignmentService
     }
 
     // ── Öğrenci: Kendi ödevleri (sadece grubunun derslerine ait) ─────────────
-    public async Task<List<MyAssignmentDto>> GetMyAssignmentsAsync(Guid tenantId, Guid userId)
+    public async Task<List<MyAssignmentDto>> GetMyAssignmentsAsync(Guid userId)
     {
         // Grup filtreleme: kullanıcının erişebildiği kurs ID'leri
-        var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
+        var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
 
         var assignments = await _context.Assignments.AsNoTracking()
-            .Where(a => a.TenantId == tenantId && accessibleCourseIds.Contains(a.CourseId))
+            .Where(a => accessibleCourseIds.Contains(a.CourseId))
             .Include(a => a.Course)
             .Include(a => a.Submissions.Where(s => s.UserId == userId))
             .OrderByDescending(a => a.DueDate)

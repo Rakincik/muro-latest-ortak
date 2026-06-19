@@ -19,14 +19,14 @@ public class ExamResultService : IExamResultService
         _cache = cache;
     }
 
-    public async Task<ExamResultSummaryDto> GetExamResultsAsync(Guid tenantId, Guid examId)
+    public async Task<ExamResultSummaryDto> GetExamResultsAsync(Guid examId)
     {
-        var cacheKey = $"{tenantId}:exams:{examId}:results";
+        var cacheKey = $"exams:{examId}:results";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var exam = await _context.Exams
                 .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+                .FirstOrDefaultAsync(e => e.Id == examId )
                 ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
             var query = _context.ExamResults.AsNoTracking().Where(r => r.ExamId == examId);
@@ -90,13 +90,13 @@ public class ExamResultService : IExamResultService
         }, TimeSpan.FromMinutes(10));
     }
 
-    public async Task<ExamOverallSummaryDto> GetOverallSummaryAsync(Guid tenantId)
+    public async Task<ExamOverallSummaryDto> GetOverallSummaryAsync()
     {
-        var cacheKey = $"{tenantId}:exams:overallsummary";
+        var cacheKey = $"exams:overallsummary";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var examsWithResults = await _context.Exams.AsNoTracking()
-                .Where(e => e.TenantId == tenantId && e.Results.Any())
+                .Where(e => e.Results.Any())
                 .Select(e => new
                 {
                     e.ExamType,
@@ -115,10 +115,10 @@ public class ExamResultService : IExamResultService
         }, TimeSpan.FromMinutes(3));
     }
 
-    public async Task<ExamResultDto> SubmitAnswersAsync(Guid tenantId, Guid examId, Guid userId, SubmitExamAnswersRequest request)
+    public async Task<ExamResultDto> SubmitAnswersAsync(Guid examId, Guid userId, SubmitExamAnswersRequest request)
     {
         var exam = await _context.Exams
-            .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == examId )
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
         if (exam.Status != "Published")
@@ -131,7 +131,6 @@ public class ExamResultService : IExamResultService
         var queueItem = new ExamSubmissionQueue
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             ExamId = examId,
             UserId = userId,
             AnswersJson = JsonSerializer.Serialize(request.Answers),
@@ -148,7 +147,7 @@ public class ExamResultService : IExamResultService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
         var user = await _context.Users.FindAsync(userId);
         var fullName = user != null ? $"{user.FirstName} {user.LastName}" : "—";
@@ -158,7 +157,7 @@ public class ExamResultService : IExamResultService
             0, 0, 0, 0, 0, queueItem.SubmittedAt, request.StartedAt, null, null, true);
     }
 
-    public async Task SaveDraftAsync(Guid tenantId, Guid examId, Guid userId, Dictionary<int, string> answers)
+    public async Task SaveDraftAsync(Guid examId, Guid userId, Dictionary<int, string> answers)
     {
         var draft = await _context.StudentExamDrafts
             .FirstOrDefaultAsync(d => d.ExamId == examId && d.UserId == userId);
@@ -168,7 +167,6 @@ public class ExamResultService : IExamResultService
             draft = new StudentExamDraft
             {
                 Id = Guid.NewGuid(),
-                TenantId = tenantId,
                 ExamId = examId,
                 UserId = userId,
                 AnswersJson = JsonSerializer.Serialize(answers),
@@ -185,7 +183,7 @@ public class ExamResultService : IExamResultService
         await _context.SaveChangesAsync();
     }
 
-    public async Task<Dictionary<int, string>?> GetDraftAsync(Guid tenantId, Guid examId, Guid userId)
+    public async Task<Dictionary<int, string>?> GetDraftAsync(Guid examId, Guid userId)
     {
         var draft = await _context.StudentExamDrafts
             .AsNoTracking()
@@ -204,10 +202,10 @@ public class ExamResultService : IExamResultService
         }
     }
 
-    public async Task<List<MyExamResultDto>> GetMyExamResultsAsync(Guid tenantId, Guid userId)
+    public async Task<List<MyExamResultDto>> GetMyExamResultsAsync(Guid userId)
     {
         var myResults = await _context.ExamResults.AsNoTracking()
-            .Where(r => r.UserId == userId && r.Exam.TenantId == tenantId)
+            .Where(r => r.UserId == userId )
             .Include(r => r.Exam)
             .OrderByDescending(r => r.SubmittedAt)
             .ToListAsync();

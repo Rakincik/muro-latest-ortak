@@ -16,19 +16,19 @@ public class RecordingService : IRecordingService
         _groupAccess = groupAccess;
     }
 
-    public async Task<List<SessionRecordingDto>> GetRecordingsAsync(Guid tenantId, Guid userId, string? role)
+    public async Task<List<SessionRecordingDto>> GetRecordingsAsync(Guid userId, string? role)
     {
         var query = _context.SessionRecordings
             .AsNoTracking()
             .Include(r => r.Session)
                 .ThenInclude(s => s.Course)
             .Include(r => r.MediaAsset)
-            .Where(r => r.Session.Course.TenantId == tenantId && r.Session.Description != "Video (VOD)");
+            .Where(r => r.Session.Description != "Video (VOD)");
 
         // Student ise sadece erişebildiği kursların kayıtlarını görsün
         if (role == "Student")
         {
-            var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
+            var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
             query = query.Where(r => accessibleCourseIds.Contains(r.Session.CourseId));
         }
 
@@ -53,12 +53,12 @@ public class RecordingService : IRecordingService
         return recordings;
     }
 
-    public async Task DeleteRecordingAsync(Guid tenantId, Guid id)
+    public async Task DeleteRecordingAsync(Guid id)
     {
         var recording = await _context.SessionRecordings
             .Include(r => r.Session).ThenInclude(s => s.Course)
             .Include(r => r.MediaAsset)
-            .FirstOrDefaultAsync(r => r.Id == id && r.Session.Course.TenantId == tenantId);
+            .FirstOrDefaultAsync(r => r.Id == id);
 
         if (recording == null) throw new KeyNotFoundException("Kayıt bulunamadı.");
 

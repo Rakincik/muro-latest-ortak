@@ -14,12 +14,10 @@ public class Group : ISoftDeletable
     public string? Color { get; set; }          // hex: #6366f1
     public string? EducationType { get; set; }   // Canlı, Offline, Kamp, Sınav, Hibrit, Demo
     public DateTime? ExpirationDate { get; set; } // Grubun son kullanma tarihi
-    public Guid TenantId { get; set; }
     public Guid? ParentId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    public Tenant Tenant { get; set; } = null!;
     public Group? Parent { get; set; }
     public ICollection<Group> Children { get; set; } = new List<Group>();
     public ICollection<GroupMember> Members { get; set; } = new List<GroupMember>();

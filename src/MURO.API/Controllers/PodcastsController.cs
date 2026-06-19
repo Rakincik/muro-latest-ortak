@@ -19,23 +19,21 @@ namespace MURO.API.Controllers;
 public class PodcastsController : ControllerBase
 {
     private readonly IPodcastService _podcastService;
-    private readonly ITenantService _tenantService;
-    private readonly IWebHostEnvironment _env;
+        private readonly IWebHostEnvironment _env;
     private readonly IBackgroundJobQueue _jobQueue;
 
     public PodcastsController(
         IPodcastService podcastService,
-        ITenantService tenantService,
+        
         IWebHostEnvironment env,
         IBackgroundJobQueue jobQueue)
     {
         _podcastService = podcastService;
-        _tenantService  = tenantService;
         _env            = env;
         _jobQueue       = jobQueue;
     }
 
-    private Guid GetTenantId() => _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException();
+    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
@@ -44,29 +42,29 @@ public class PodcastsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PagedResult<PodcastDto>>> GetPodcasts(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? courseId = null)
-        => Ok(await _podcastService.GetPodcastsAsync(GetTenantId(), page, pageSize, courseId));
+        => Ok(await _podcastService.GetPodcastsAsync(page, pageSize, courseId));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PodcastDto>> GetPodcast(Guid id)
-        => Ok(await _podcastService.GetByIdAsync(GetTenantId(), id));
+        => Ok(await _podcastService.GetByIdAsync(id));
 
     [HttpPost]
     public async Task<ActionResult<PodcastDto>> Create([FromBody] CreatePodcastRequest request)
     {
-        var p = await _podcastService.CreateAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "Podcast", p.Id.ToString(), request.Title, null, GetIp()));
+        var p = await _podcastService.CreateAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "Podcast", p.Id.ToString(), request.Title, null, GetIp()));
         return Created($"/api/v1/podcasts/{p.Id}", p);
     }
 
     [HttpPut("{id:guid}/status")]
     public async Task<ActionResult<PodcastDto>> UpdateStatus(Guid id, [FromBody] string status)
-        => Ok(await _podcastService.UpdateStatusAsync(GetTenantId(), id, status));
+        => Ok(await _podcastService.UpdateStatusAsync(id, status));
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _podcastService.DeleteAsync(GetTenantId(), id);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "Podcast", id.ToString(), null, null, GetIp()));
+        await _podcastService.DeleteAsync(id);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "Podcast", id.ToString(), null, null, GetIp()));
         return NoContent();
     }
 
@@ -78,8 +76,8 @@ public class PodcastsController : ControllerBase
     [HttpPost("generate")]
     public async Task<ActionResult<PodcastDto>> Generate([FromBody] GeneratePodcastRequest request)
     {
-        var p = await _podcastService.GenerateAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Generate", "Podcast", p.Id.ToString(), request.Title, "AI Generated", GetIp()));
+        var p = await _podcastService.GenerateAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Generate", "Podcast", p.Id.ToString(), request.Title, "AI Generated", GetIp()));
         return Created($"/api/v1/podcasts/{p.Id}", p);
     }
 

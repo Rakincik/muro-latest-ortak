@@ -41,8 +41,6 @@ builder.Services.AddDbContext<MuroDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // --- Tenant DB Context Factory (per-tenant DB resolution) ---
-builder.Services.AddScoped<MURO.Infrastructure.Persistence.ITenantDbContextFactory,
-    MURO.Infrastructure.Persistence.TenantDbContextFactory>();
 
 // --- JWT Authentication ---
 var jwtSecret = builder.Configuration["Jwt:Secret"]
@@ -204,7 +202,6 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Description = "MURO — Multi-Tenant Uzaktan Eğitim Platformu REST API.\n\n" +
                       "**Kimlik Doğrulama:** Tüm korumalı endpoint'ler `Authorization: Bearer {token}` header'ı gerektirir.\n\n" +
-                      "**Multi-Tenant:** İstek header'ında `X-Tenant-Id` ile tenant belirtilir.\n\n" +
                       "**Hata Formatı:** Tüm hatalar `{ error, errorCode, statusCode, traceId, timestamp }` formatında döner.",
         Contact = new() { Name = "MURO Destek", Email = "destek@muro.com" }
     });
@@ -284,7 +281,7 @@ if (!app.Environment.IsDevelopment())
     app.UseRateLimiter();
 }
 
-// 4. Serilog request logging — UserId, TenantId, IP ile zenginleştirilmiş
+// 4. Serilog request logging — UserId,  IP ile zenginleştirilmiş
 app.UseSerilogRequestLogging(options =>
 {
     options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} → {StatusCode} in {Elapsed:0.000}ms | User:{UserId} Tenant:{TenantId}";
@@ -328,7 +325,7 @@ app.UseStaticFiles(new StaticFileOptions
         }
         else if (ctx.File.Name.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase))
         {
-            // Playlist dinamik değişebilir (yeni kalite eklenebilir vs.), no-cache
+            // Playlist dinamik değişebilir (yeni kalite eklenebilir ), no-cache
             ctx.Context.Response.Headers.Append("Cache-Control", "no-cache");
         }
     }
@@ -362,7 +359,6 @@ app.UseMiddleware<CookieAuthMiddleware>();
 app.UseMiddleware<IpBlacklistMiddleware>();
 
 app.UseAuthentication();
-app.UseMiddleware<TenantMiddleware>();
 app.UseAuthorization();
 // Oturum geçerliliği: sessionId DB'de hâlâ aktif mi? (tek cihaz politikası)
 app.UseMiddleware<SessionValidationMiddleware>();
@@ -451,7 +447,7 @@ app.MapHub<AdminHub>("/hubs/admin");
             
             // SuperAdmin seed — her ortamda çalışır (migration sonrası)
             var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            await SuperAdminSeeder.SeedAsync(db, seedLogger);
+            // await SuperAdminSeeder.SeedAsync(db, seedLogger);
             
             if (app.Environment.IsDevelopment())
             {

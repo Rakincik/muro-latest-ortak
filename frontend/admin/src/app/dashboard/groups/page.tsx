@@ -807,12 +807,12 @@ export default function GroupsPage() {
                 </div>
             </div>
 
-            {/* ── Premium Group Form Modal ── */}
+            {/* ✨💎 Premium Group Form Modal ✨💎 */}
             {formOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setFormOpen(false)}>
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                         {/* Clean Premium Header */}
-                        <div className="relative overflow-hidden px-7 py-6 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                        <div className="relative overflow-hidden px-7 py-6 border-b border-[#E2E8F0] bg-[#F8FAFC] shrink-0">
                             <div className="absolute top-0 left-0 w-full h-1" style={{ background: formColor }} />
                             <div className="flex items-center justify-between relative z-10">
                                 <div className="flex items-center gap-4">
@@ -829,7 +829,7 @@ export default function GroupsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-5 gap-0">
+                        <div className="grid grid-cols-5 gap-0 overflow-y-auto">
                             {/* Left: Form */}
                             <div className="col-span-3 p-6 space-y-4 border-r border-[#E2E8F0]">
                                 {/* Group Type Selector */}
@@ -928,7 +928,7 @@ export default function GroupsPage() {
                         </div>
 
                         {/* Footer */}
-                        <div className="flex items-center justify-between px-7 py-5 border-t border-[#E2E8F0] bg-white">
+                        <div className="flex items-center justify-between px-7 py-5 border-t border-[#E2E8F0] bg-white shrink-0">
                             <p className="text-[11px] font-bold text-[#64748B]">{!formType ? <span className="text-red-500 bg-red-50 px-2 py-1 rounded-md">Eğitim modeli seçin</span> : !formName.trim() ? <span className="text-amber-600 bg-amber-50 px-2 py-1 rounded-md">Grup adı gerekli</span> : <span className="text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">✓ Form Hazır</span>}</p>
                             <div className="flex gap-3">
                                 <button onClick={() => setFormOpen(false)} className="px-5 py-2.5 text-sm font-bold text-[#64748B] hover:text-[#0A1931] hover:bg-[#F8FAFC] rounded-xl transition-colors">İptal</button>

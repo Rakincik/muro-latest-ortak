@@ -20,14 +20,14 @@ public class ExamService : IExamService
     }
 
     // ── LIST ──
-    public async Task<PagedResult<ExamListDto>> GetExamsAsync(Guid tenantId, int page, int pageSize, string? search, string? examType, string? status)
+    public async Task<PagedResult<ExamListDto>> GetExamsAsync(int page, int pageSize, string? search, string? examType, string? status)
     {
-        var cacheKey = $"{tenantId}:exams:list:{page}:{pageSize}:{search}:{examType}:{status}";
+        var cacheKey = $"exams:list:{page}:{pageSize}:{search}:{examType}:{status}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Exams
                 .AsNoTracking()
-                .Where(e => e.TenantId == tenantId);
+                .Where(e => true);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -63,14 +63,14 @@ public class ExamService : IExamService
     }
 
     // ── GET BY ID ──
-    public async Task<ExamDetailDto> GetExamByIdAsync(Guid tenantId, Guid examId)
+    public async Task<ExamDetailDto> GetExamByIdAsync(Guid examId)
     {
-        var cacheKey = $"{tenantId}:exams:detail:{examId}";
+        var cacheKey = $"exams:detail:{examId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var exam = await _context.Exams
                 .AsNoTracking()
-                .Where(e => e.Id == examId && e.TenantId == tenantId)
+                .Where(e => e.Id == examId )
                 .Include(e => e.ExamAssignments)
                 .Include(e => e.Results).ThenInclude(r => r.User)
                 .FirstOrDefaultAsync()
@@ -138,11 +138,11 @@ public class ExamService : IExamService
     }
 
     // ── GET DIGITAL QUESTIONS ──
-    public async Task<string?> GetExamDigitalQuestionsAsync(Guid tenantId, Guid examId)
+    public async Task<string?> GetExamDigitalQuestionsAsync(Guid examId)
     {
         var exam = await _context.Exams
             .AsNoTracking()
-            .Where(e => e.Id == examId && e.TenantId == tenantId)
+            .Where(e => e.Id == examId )
             .Select(e => e.DigitalQuestionsJson)
             .FirstOrDefaultAsync();
         
@@ -150,12 +150,11 @@ public class ExamService : IExamService
     }
 
     // ── CREATE ──
-    public async Task<ExamListDto> CreateExamAsync(Guid tenantId, CreateExamRequest request)
+    public async Task<ExamListDto> CreateExamAsync(CreateExamRequest request)
     {
         var exam = new Exam
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             Title = request.Title,
             Description = request.Description,
             ExamType = request.ExamType,
@@ -179,7 +178,7 @@ public class ExamService : IExamService
 
         _context.Exams.Add(exam);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
         return new ExamListDto(exam.Id, exam.Title, exam.Description, exam.ExamType,
             exam.QuestionCount, exam.OptionCount, exam.DurationMinutes,
@@ -188,12 +187,12 @@ public class ExamService : IExamService
     }
 
     // ── UPDATE ──
-    public async Task<ExamListDto> UpdateExamAsync(Guid tenantId, Guid examId, UpdateExamRequest request)
+    public async Task<ExamListDto> UpdateExamAsync(Guid examId, UpdateExamRequest request)
     {
         var exam = await _context.Exams
             .Include(e => e.ExamAssignments)
             .Include(e => e.Results)
-            .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == examId )
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
         if (request.Title != null) exam.Title = request.Title;
@@ -216,7 +215,7 @@ public class ExamService : IExamService
         if (request.DigitalQuestionsJson != null) exam.DigitalQuestionsJson = request.DigitalQuestionsJson;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
         var avgScore = exam.Results.Any() ? (double?)Math.Round(exam.Results.Average(r => r.Score), 1) : null;
 
@@ -228,33 +227,33 @@ public class ExamService : IExamService
     }
 
     // ── DELETE ──
-    public async Task DeleteExamAsync(Guid tenantId, Guid examId)
+    public async Task DeleteExamAsync(Guid examId)
     {
         var exam = await _context.Exams
-            .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == examId )
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
         _context.Exams.Remove(exam);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
     }
 
     // ── ANSWER KEY ──
-    public async Task<ExamDetailDto> UpdateAnswerKeyAsync(Guid tenantId, Guid examId, UpdateAnswerKeyRequest request)
+    public async Task<ExamDetailDto> UpdateAnswerKeyAsync(Guid examId, UpdateAnswerKeyRequest request)
     {
         var exam = await _context.Exams
-            .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == examId )
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
         exam.AnswerKeyJson = JsonSerializer.Serialize(request.AnswerKey);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
-        return await GetExamByIdAsync(tenantId, examId);
+        return await GetExamByIdAsync(examId);
     }
 
     // ── STATUS ──
-    public async Task<ExamListDto> UpdateStatusAsync(Guid tenantId, Guid examId, UpdateExamStatusRequest request)
+    public async Task<ExamListDto> UpdateStatusAsync(Guid examId, UpdateExamStatusRequest request)
     {
         var validStatuses = new[] { "Taslak", "Yayında", "Tamamlandı" };
         if (!validStatuses.Contains(request.Status))
@@ -263,12 +262,12 @@ public class ExamService : IExamService
         var exam = await _context.Exams
             .Include(e => e.ExamAssignments)
             .Include(e => e.Results)
-            .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == examId )
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
         exam.Status = request.Status;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
         var avgScore = exam.Results.Any() ? (double?)Math.Round(exam.Results.Average(r => r.Score), 1) : null;
 
@@ -280,18 +279,18 @@ public class ExamService : IExamService
     }
 
     // ── PDF ──
-    public async Task<ExamDetailDto> UpdatePdfAsync(Guid tenantId, Guid examId, UpdateExamPdfRequest request)
+    public async Task<ExamDetailDto> UpdatePdfAsync(Guid examId, UpdateExamPdfRequest request)
     {
         var exam = await _context.Exams
-            .FirstOrDefaultAsync(e => e.Id == examId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == examId )
             ?? throw new KeyNotFoundException("Sınav bulunamadı.");
 
         if (request.PdfUrl != null) exam.PdfUrl = request.PdfUrl;
         if (request.SolutionPdfUrl != null) exam.SolutionPdfUrl = request.SolutionPdfUrl;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
-        return await GetExamByIdAsync(tenantId, examId);
+        return await GetExamByIdAsync(examId);
     }
 
 

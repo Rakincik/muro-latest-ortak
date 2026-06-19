@@ -17,14 +17,14 @@ public class CalendarService : ICalendarService
         _cache = cache;
     }
 
-    public async Task<List<CalendarEventDto>> GetEventsAsync(Guid tenantId, DateTime from, DateTime to, Guid? groupId, Guid? instructorId = null)
+    public async Task<List<CalendarEventDto>> GetEventsAsync(DateTime from, DateTime to, Guid? groupId, Guid? instructorId = null)
     {
-        var cacheKey = $"{tenantId}:calendar:{from:yyyyMMdd}:{to:yyyyMMdd}:{groupId}:{instructorId}";
+        var cacheKey = $"calendar:{from:yyyyMMdd}:{to:yyyyMMdd}:{groupId}:{instructorId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.CalendarEvents
                 .AsNoTracking()
-                .Where(e => e.TenantId == tenantId && e.StartDate >= from && e.EndDate <= to);
+                .Where(e => e.StartDate >= from && e.EndDate <= to);
 
             if (groupId.HasValue)
                 query = query.Where(e => e.GroupId == groupId);
@@ -46,11 +46,11 @@ public class CalendarService : ICalendarService
         }, TimeSpan.FromMinutes(3));
     }
 
-    public async Task<CalendarEventDto> GetEventByIdAsync(Guid tenantId, Guid eventId)
+    public async Task<CalendarEventDto> GetEventByIdAsync(Guid eventId)
     {
         return await _context.CalendarEvents
             .AsNoTracking()
-            .Where(e => e.Id == eventId && e.TenantId == tenantId)
+            .Where(e => e.Id == eventId )
             .Include(e => e.Group)
             .Include(e => e.Course)
             .Select(e => new CalendarEventDto(
@@ -63,14 +63,14 @@ public class CalendarService : ICalendarService
             ?? throw new KeyNotFoundException("Etkinlik bulunamadı.");
     }
 
-    public async Task<CalendarEventDto> CreateEventAsync(Guid tenantId, CreateCalendarEventRequest request, Guid? instructorId = null)
+    public async Task<CalendarEventDto> CreateEventAsync(CreateCalendarEventRequest request, Guid? instructorId = null)
     {
         if (instructorId.HasValue)
         {
             if (!request.CourseId.HasValue)
                 throw new UnauthorizedAccessException("Eğitmenler sadece kendilerine ait dersler için etkinlik oluşturabilir.");
             
-            var ownsCourse = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.TenantId == tenantId && c.InstructorId == instructorId.Value);
+            var ownsCourse = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.InstructorId == instructorId.Value);
             if (!ownsCourse)
                 throw new UnauthorizedAccessException("Bu ders üzerinde işlem yapma yetkiniz yok.");
         }
@@ -78,7 +78,6 @@ public class CalendarService : ICalendarService
         var ev = new CalendarEvent
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             Title = request.Title,
             Description = request.Description,
             EventType = request.EventType,
@@ -91,16 +90,16 @@ public class CalendarService : ICalendarService
 
         _context.CalendarEvents.Add(ev);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:calendar:");
+        await _cache.RemoveByPrefixAsync($"calendar:");
 
         return new CalendarEventDto(ev.Id, ev.Title, ev.Description, ev.EventType,
             ev.StartDate, ev.EndDate, ev.GroupId, null, ev.CourseId, null, ev.Color, ev.CreatedAt);
     }
 
-    public async Task<CalendarEventDto> UpdateEventAsync(Guid tenantId, Guid eventId, UpdateCalendarEventRequest request, Guid? instructorId = null)
+    public async Task<CalendarEventDto> UpdateEventAsync(Guid eventId, UpdateCalendarEventRequest request, Guid? instructorId = null)
     {
         var ev = await _context.CalendarEvents.Include(e => e.Course)
-            .FirstOrDefaultAsync(e => e.Id == eventId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == eventId )
             ?? throw new KeyNotFoundException("Etkinlik bulunamadı.");
 
         if (instructorId.HasValue)
@@ -110,7 +109,7 @@ public class CalendarService : ICalendarService
             
             if (request.CourseId.HasValue && request.CourseId != ev.CourseId)
             {
-                var ownsCourse = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.TenantId == tenantId && c.InstructorId == instructorId.Value);
+                var ownsCourse = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.InstructorId == instructorId.Value);
                 if (!ownsCourse)
                     throw new UnauthorizedAccessException("Yeni seçilen ders üzerinde işlem yapma yetkiniz yok.");
             }
@@ -126,16 +125,16 @@ public class CalendarService : ICalendarService
         if (request.Color != null) ev.Color = request.Color;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:calendar:");
+        await _cache.RemoveByPrefixAsync($"calendar:");
 
         return new CalendarEventDto(ev.Id, ev.Title, ev.Description, ev.EventType,
             ev.StartDate, ev.EndDate, ev.GroupId, null, ev.CourseId, null, ev.Color, ev.CreatedAt);
     }
 
-    public async Task DeleteEventAsync(Guid tenantId, Guid eventId, Guid? instructorId = null)
+    public async Task DeleteEventAsync(Guid eventId, Guid? instructorId = null)
     {
         var ev = await _context.CalendarEvents.Include(e => e.Course)
-            .FirstOrDefaultAsync(e => e.Id == eventId && e.TenantId == tenantId)
+            .FirstOrDefaultAsync(e => e.Id == eventId )
             ?? throw new KeyNotFoundException("Etkinlik bulunamadı.");
 
         if (instructorId.HasValue)
@@ -146,7 +145,7 @@ public class CalendarService : ICalendarService
 
         _context.CalendarEvents.Remove(ev);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:calendar:");
+        await _cache.RemoveByPrefixAsync($"calendar:");
     }
 }
 

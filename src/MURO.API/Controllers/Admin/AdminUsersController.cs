@@ -22,7 +22,7 @@ public class AdminUsersController : ControllerBase
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null, [FromQuery] string? role = null, [FromQuery] Guid? tenantId = null)
     {
-        var (status_code, data) = await _userService.GetUsers(page, pageSize, search, role, tenantId);
+        var (status_code, data) = await _userService.GetUsers(page, pageSize, search, role);
         return StatusCode(status_code, data);
     }
 }

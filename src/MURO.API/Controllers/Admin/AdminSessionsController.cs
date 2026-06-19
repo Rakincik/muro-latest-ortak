@@ -50,7 +50,7 @@ public class AdminSessionsController : ControllerBase
     [HttpGet("recordings")]
     public async Task<IActionResult> GetRecordings([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? status = null, [FromQuery] Guid? tenantId = null)
     {
-        var (status_code, data) = await _sessionService.GetRecordings(page, pageSize, status, tenantId);
+        var (status_code, data) = await _sessionService.GetRecordings(page, pageSize, status);
         return StatusCode(status_code, data);
     }
 }

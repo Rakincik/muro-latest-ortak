@@ -3,7 +3,6 @@ namespace MURO.Domain.Entities;
 public class Transaction
 {
     public Guid   Id              { get; set; }
-    public Guid   TenantId       { get; set; }
     public Guid?  UserId         { get; set; }
     public Guid?  PlanId         { get; set; }
     public decimal Amount        { get; set; }
@@ -23,7 +22,6 @@ public class Transaction
     public DateTime CreatedAt    { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    public Tenant  Tenant        { get; set; } = null!;
     public User?   User          { get; set; }
     public Plan?   Plan          { get; set; }
 }

@@ -26,7 +26,7 @@ public class User : ISoftDeletable
     public DateTime? LockoutUntil { get; set; }
 
     // Navigation
-    public ICollection<TenantMembership> TenantMemberships { get; set; } = new List<TenantMembership>();
+
     public ICollection<GroupMember> GroupMemberships { get; set; } = new List<GroupMember>();
     public ICollection<DeviceSession> DeviceSessions { get; set; } = new List<DeviceSession>();
     public ICollection<VideoProgress> VideoProgresses { get; set; } = new List<VideoProgress>();

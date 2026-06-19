@@ -36,15 +36,15 @@ public class CourseService : ICourseService
 
     // 🚀 Redis cache: sayfalı ders listesi — 5 dk TTL, CRUD sonrası invalidation
     public async Task<PagedResult<CourseListDto>> GetCoursesAsync(
-        Guid tenantId, int page, int pageSize, string? search, string? courseType, bool? isPublished, Guid? instructorId = null)
+        int page, int pageSize, string? search, string? courseType, bool? isPublished, Guid? instructorId = null)
     {
         // Filtreli sorgularda cache key dinamik — aynı filtre aynı sonucu döner
-        var cacheKey = $"{tenantId}:courses:list:{page}:{pageSize}:{search ?? ""}:{courseType ?? ""}:{isPublished}:{instructorId}";
+        var cacheKey = $"courses:list:{page}:{pageSize}:{search ?? ""}:{courseType ?? ""}:{isPublished}:{instructorId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Courses
                 .AsNoTracking()
-                .Where(c => c.TenantId == tenantId);
+                .Where(c => true);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -85,16 +85,16 @@ public class CourseService : ICourseService
     /// Student spesifik: sadece kullanıcının aktif grupüne atanmış, yayınlanmış dersler.
     /// </summary>
     public async Task<PagedResult<CourseListDto>> GetCoursesByUserAsync(
-        Guid tenantId, Guid userId, int page, int pageSize, string? search, string? courseType)
+        Guid userId, int page, int pageSize, string? search, string? courseType)
     {
-        var cacheKey = $"{tenantId}:courses:user:{userId}:{page}:{pageSize}:{search ?? ""}:{courseType ?? ""}";
+        var cacheKey = $"courses:user:{userId}:{page}:{pageSize}:{search ?? ""}:{courseType ?? ""}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
+            var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
 
             var query = _context.Courses
                 .AsNoTracking()
-                .Where(c => c.TenantId == tenantId && c.IsPublished && accessibleIds.Contains(c.Id));
+                .Where(c => c.IsPublished && accessibleIds.Contains(c.Id));
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -125,19 +125,19 @@ public class CourseService : ICourseService
         }, TimeSpan.FromMinutes(1));
     }
 
-    public async Task<CourseDetailDto> GetCourseByIdAsync(Guid tenantId, Guid courseId, Guid? userId = null)
+    public async Task<CourseDetailDto> GetCourseByIdAsync(Guid courseId, Guid? userId = null)
     {
-        var cacheKey = $"{tenantId}:courses:detail:{courseId}:{userId}";
+        var cacheKey = $"courses:detail:{courseId}:{userId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             // Erişim kontrolü: userId verilmişse grup kontrolü yap
-            if (userId.HasValue && !await _groupAccess.CanAccessCourseAsync(tenantId, userId.Value, courseId))
+            if (userId.HasValue && !await _groupAccess.CanAccessCourseAsync(userId.Value, courseId))
                 throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
 
             var course = await _context.Courses
                 .AsNoTracking()
                 .AsSplitQuery() // <-- Cartesian Explosion engelleyici (Performans)
-                .Where(c => c.Id == courseId && c.TenantId == tenantId)
+                .Where(c => c.Id == courseId )
                 .Include(c => c.Instructor)
                 .Include(c => c.Sessions.OrderBy(s => s.Order))
                 .Include(c => c.CourseGroups).ThenInclude(cg => cg.Group)
@@ -182,16 +182,15 @@ public class CourseService : ICourseService
         }, TimeSpan.FromMinutes(1));
     }
 
-    public async Task<CourseListDto> CreateCourseAsync(Guid tenantId, CreateCourseRequest request)
+    public async Task<CourseListDto> CreateCourseAsync(CreateCourseRequest request)
     {
         var maxOrder = await _context.Courses
-            .Where(c => c.TenantId == tenantId)
+            .Where(c => true)
             .MaxAsync(c => (int?)c.Order) ?? 0;
 
         var course = new Course
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             Title = request.Title,
             Description = request.Description,
             ThumbnailUrl = request.ThumbnailUrl,
@@ -203,20 +202,20 @@ public class CourseService : ICourseService
 
         _context.Courses.Add(course);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
             course.CourseType.ToString(), course.IsPublished, 0, 0, course.Order, course.StartDate, course.CreatedAt, course.InstructorId, null);
     }
 
-    public async Task<CourseListDto> UpdateCourseAsync(Guid tenantId, Guid courseId, UpdateCourseRequest request)
+    public async Task<CourseListDto> UpdateCourseAsync(Guid courseId, UpdateCourseRequest request)
     {
         var course = await _context.Courses
             .Include(c => c.Instructor)
             .Include(c => c.Sessions)
             .Include(c => c.CourseMedias)
             .Include(c => c.CourseGroups)
-            .FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
+            .FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Ders bulunamadı.");
 
         if (request.Title != null) course.Title = request.Title;
@@ -231,7 +230,7 @@ public class CourseService : ICourseService
         else if (request.InstructorId == Guid.Empty) course.InstructorId = null;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
             course.CourseType.ToString(), course.IsPublished, course.CourseMedias.Count,
@@ -240,15 +239,15 @@ public class CourseService : ICourseService
             course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null);
     }
 
-    public async Task DeleteCourseAsync(Guid tenantId, Guid courseId)
+    public async Task DeleteCourseAsync(Guid courseId)
     {
         var course = await _context.Courses
-            .FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
+            .FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Ders bulunamadı.");
 
         _context.Courses.Remove(course);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
 }

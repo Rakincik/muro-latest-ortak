@@ -17,10 +17,10 @@ public class AccountingService : IAccountingService
         _jobQueue = jobQueue;
     }
 
-    public async Task<AccountingSummaryDto> GetSummaryAsync(Guid tenantId, DateTime? from, DateTime? to)
+    public async Task<AccountingSummaryDto> GetSummaryAsync(DateTime? from, DateTime? to)
     {
         var q = _db.Transactions.AsNoTracking()
-            .Where(t => t.TenantId == tenantId)
+            .Where(t => true)
             .Include(t => t.Plan)
             .AsQueryable();
 
@@ -103,10 +103,10 @@ public class AccountingService : IAccountingService
         );
     }
 
-    public async Task<List<TransactionDto>> GetTransactionsAsync(Guid tenantId, string? type, string? status, Guid? planId, DateTime? from, DateTime? to, int page, int pageSize)
+    public async Task<List<TransactionDto>> GetTransactionsAsync(string? type, string? status, Guid? planId, DateTime? from, DateTime? to, int page, int pageSize)
     {
         var q = _db.Transactions.AsNoTracking()
-            .Where(t => t.TenantId == tenantId)
+            .Where(t => true)
             .Include(t => t.User)
             .Include(t => t.Plan)
             .AsQueryable();
@@ -130,11 +130,10 @@ public class AccountingService : IAccountingService
             .ToListAsync();
     }
 
-    public async Task<TransactionDto> CreateTransactionAsync(Guid tenantId, Guid userId, CreateTransactionRequest req, string? ipAddress)
+    public async Task<TransactionDto> CreateTransactionAsync(Guid userId, CreateTransactionRequest req, string? ipAddress)
     {
         var tx = new Transaction
         {
-            TenantId = tenantId,
             UserId = req.UserId,
             PlanId = req.PlanId,
             Amount = req.Amount,
@@ -149,27 +148,27 @@ public class AccountingService : IAccountingService
         await _db.SaveChangesAsync();
         await _db.Entry(tx).Reference(t => t.User).LoadAsync();
         await _db.Entry(tx).Reference(t => t.Plan).LoadAsync();
-        await _jobQueue.EnqueueAsync(new AuditLogJob(tenantId, userId, null, "Create", "Transaction", tx.Id.ToString(), tx.Description, $"Tutar: {tx.Amount} {tx.Type}", ipAddress));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(userId, null, "Create", "Transaction", tx.Id.ToString(), tx.Description, $"Tutar: {tx.Amount} {tx.Type}", ipAddress));
         return new TransactionDto(tx.Id, tx.Type, tx.Amount, tx.Description, tx.Status,
             tx.PaymentMethod, tx.InvoiceNo, tx.UserId,
             tx.User != null ? $"{tx.User.FirstName} {tx.User.LastName}" : null,
             tx.PlanId, tx.Plan?.Name, tx.TransactionDate, tx.CreatedAt);
     }
 
-    public async Task<bool> DeleteTransactionAsync(Guid tenantId, Guid userId, Guid transactionId, string? ipAddress)
+    public async Task<bool> DeleteTransactionAsync(Guid userId, Guid transactionId, string? ipAddress)
     {
-        var tx = await _db.Transactions.FirstOrDefaultAsync(t => t.Id == transactionId && t.TenantId == tenantId);
+        var tx = await _db.Transactions.FirstOrDefaultAsync(t => t.Id == transactionId );
         if (tx is null) return false;
         _db.Transactions.Remove(tx);
         await _db.SaveChangesAsync();
-        await _jobQueue.EnqueueAsync(new AuditLogJob(tenantId, userId, null, "Delete", "Transaction", transactionId.ToString(), null, null, ipAddress));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(userId, null, "Delete", "Transaction", transactionId.ToString(), null, null, ipAddress));
         return true;
     }
 
-    public async Task<List<PlanDto>> GetPlansAsync(Guid tenantId)
+    public async Task<List<PlanDto>> GetPlansAsync()
     {
         return await _db.Plans.AsNoTracking()
-            .Where(p => p.TenantId == tenantId)
+            .Where(p => true)
             .Select(p => new PlanDto(
                 p.Id, p.Name, p.Description, p.Price, p.Currency, p.BillingCycle,
                 p.MaxStudents, p.IsActive,
@@ -178,11 +177,10 @@ public class AccountingService : IAccountingService
             .ToListAsync();
     }
 
-    public async Task<PlanDto> CreatePlanAsync(Guid tenantId, Guid userId, CreatePlanRequest req, string? ipAddress)
+    public async Task<PlanDto> CreatePlanAsync(Guid userId, CreatePlanRequest req, string? ipAddress)
     {
         var plan = new Plan
         {
-            TenantId = tenantId,
             Name = req.Name,
             Description = req.Description,
             Price = req.Price,
@@ -192,17 +190,17 @@ public class AccountingService : IAccountingService
         };
         _db.Plans.Add(plan);
         await _db.SaveChangesAsync();
-        await _jobQueue.EnqueueAsync(new AuditLogJob(tenantId, userId, null, "Create", "Plan", plan.Id.ToString(), req.Name, $"Fiyat: {req.Price}", ipAddress));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(userId, null, "Create", "Plan", plan.Id.ToString(), req.Name, $"Fiyat: {req.Price}", ipAddress));
         return new PlanDto(plan.Id, plan.Name, plan.Description, plan.Price, plan.Currency, plan.BillingCycle, plan.MaxStudents, plan.IsActive, 0);
     }
 
-    public async Task<bool> DeletePlanAsync(Guid tenantId, Guid userId, Guid planId, string? ipAddress)
+    public async Task<bool> DeletePlanAsync(Guid userId, Guid planId, string? ipAddress)
     {
-        var plan = await _db.Plans.FirstOrDefaultAsync(p => p.Id == planId && p.TenantId == tenantId);
+        var plan = await _db.Plans.FirstOrDefaultAsync(p => p.Id == planId );
         if (plan is null) return false;
         _db.Plans.Remove(plan);
         await _db.SaveChangesAsync();
-        await _jobQueue.EnqueueAsync(new AuditLogJob(tenantId, userId, null, "Delete", "Plan", planId.ToString(), plan.Name, null, ipAddress));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(userId, null, "Delete", "Plan", planId.ToString(), plan.Name, null, ipAddress));
         return true;
     }
 }

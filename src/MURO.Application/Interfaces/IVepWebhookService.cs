@@ -2,7 +2,7 @@ namespace MURO.Application.Interfaces;
 
 /// <summary>
 /// VEP Control Plane'e olay bildirimi gönderen webhook servisi.
-/// MURO'da önemli olaylar olduğunda (oturum başladı, kayıt tamamlandı vb.)
+/// MURO'da önemli olaylar olduğunda (oturum başladı, kayıt tamamlandı )
 /// yapılandırılmış VEP URL'sine HTTP POST gönderir.
 /// </summary>
 public interface IVepWebhookService

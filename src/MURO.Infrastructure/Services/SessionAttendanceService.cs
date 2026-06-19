@@ -19,15 +19,15 @@ public class SessionAttendanceService : ISessionAttendanceService
 
     // Eğitmen/Admin: Bir derse ait tüm katılımları özet olarak getirir
     // 🚀 Redis cache: 2 dk TTL
-    public async Task<AttendanceSummaryDto> GetAttendanceBySessionAsync(Guid tenantId, Guid sessionId)
+    public async Task<AttendanceSummaryDto> GetAttendanceBySessionAsync(Guid sessionId)
     {
-        var cacheKey = $"{tenantId}:attendance:session:{sessionId}";
+        var cacheKey = $"attendance:session:{sessionId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var session = await _context.Sessions
                 .AsNoTracking()
                 .Include(s => s.Course)
-                .FirstOrDefaultAsync(s => s.Id == sessionId && s.Course.TenantId == tenantId)
+                .FirstOrDefaultAsync(s => s.Id == sessionId )
                 ?? throw new KeyNotFoundException("Oturum bulunamadı.");
 
             var attendances = await _context.SessionAttendances
@@ -61,14 +61,14 @@ public class SessionAttendanceService : ISessionAttendanceService
 
     // Öğrencinin tüm ders katılım geçmişi
     // 🚀 Redis cache: 3 dk TTL
-    public async Task<List<MyAttendanceDto>> GetMyAttendanceHistoryAsync(Guid tenantId, Guid userId)
+    public async Task<List<MyAttendanceDto>> GetMyAttendanceHistoryAsync(Guid userId)
     {
-        var cacheKey = $"{tenantId}:attendance:history:{userId}";
+        var cacheKey = $"attendance:history:{userId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             return await _context.SessionAttendances
                 .AsNoTracking()
-                .Where(sa => sa.UserId == userId && sa.TenantId == tenantId)
+                .Where(sa => sa.UserId == userId )
                 .Include(sa => sa.Session).ThenInclude(s => s.Course)
                 .OrderByDescending(sa => sa.JoinedAt)
                 .Select(sa => new MyAttendanceDto(
@@ -79,7 +79,7 @@ public class SessionAttendanceService : ISessionAttendanceService
     }
 
     // BBB Webhook: Öğrenci derse katıldı
-    public async Task<SessionAttendanceDto> RecordJoinAsync(Guid tenantId, Guid sessionId, Guid userId)
+    public async Task<SessionAttendanceDto> RecordJoinAsync(Guid sessionId, Guid userId)
     {
         // Aynı giriş kaydı yoksa yeni oluştur
         var existing = await _context.SessionAttendances
@@ -98,12 +98,11 @@ public class SessionAttendanceService : ISessionAttendanceService
             Id = Guid.NewGuid(),
             SessionId = sessionId,
             UserId = userId,
-            TenantId = tenantId,
             JoinedAt = DateTime.UtcNow
         };
         _context.SessionAttendances.Add(attendance);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:attendance:");
+        await _cache.RemoveByPrefixAsync($"attendance:");
 
         var u = await _context.Users.FindAsync(userId)
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
@@ -111,7 +110,7 @@ public class SessionAttendanceService : ISessionAttendanceService
     }
 
     // BBB Webhook: Öğrenci dersten ayrıldı
-    public async Task<SessionAttendanceDto> RecordLeaveAsync(Guid tenantId, Guid sessionId, Guid userId)
+    public async Task<SessionAttendanceDto> RecordLeaveAsync(Guid sessionId, Guid userId)
     {
         var attendance = await _context.SessionAttendances
             .Include(sa => sa.User)
@@ -121,7 +120,7 @@ public class SessionAttendanceService : ISessionAttendanceService
         attendance.LeftAt = DateTime.UtcNow;
         attendance.DurationMinutes = (int)(attendance.LeftAt.Value - attendance.JoinedAt).TotalMinutes;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:attendance:");
+        await _cache.RemoveByPrefixAsync($"attendance:");
 
         return MapDto(attendance, attendance.User);
     }

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MURO.Application.Interfaces;
@@ -29,7 +29,7 @@ public class AdminSecurityService : IAdminSecurityService
     private (int, object?) Conflict(object? data = null) => (409, data);
 
     public async Task<(int, object?)> GetSecurityEvents(
-        string? eventType, Guid? tenantId,
+        string? eventType,
         int page = 1, int pageSize = 50)
     {
         var query = _db.SecurityEvents
@@ -39,8 +39,7 @@ public class AdminSecurityService : IAdminSecurityService
 
         if (!string.IsNullOrEmpty(eventType))
             query = query.Where(e => e.EventType == eventType);
-        if (tenantId.HasValue)
-            query = query.Where(e => e.TenantId == tenantId);
+
 
         var total = await query.CountAsync();
         var events = await query
@@ -48,7 +47,7 @@ public class AdminSecurityService : IAdminSecurityService
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(e => new
             {
-                e.Id, e.EventType, e.IpAddress, e.UserAgent, e.Details, e.CreatedAt, e.TenantId,
+                e.Id, e.EventType, e.IpAddress, e.UserAgent, e.Details, e.CreatedAt, 
                 userId = e.UserId,
                 userName = e.User != null ? e.User.FirstName + " " + e.User.LastName : null,
                 userEmail = e.User != null ? e.User.Email : null,
@@ -99,13 +98,11 @@ public class AdminSecurityService : IAdminSecurityService
         var now = DateTime.UtcNow;
         var locked = await _db.Users
             .Where(u => u.LockoutUntil != null && u.LockoutUntil > now)
-            .Include(u => u.TenantMemberships).ThenInclude(tm => tm.Tenant)
             .Select(u => new
             {
                 u.Id, u.FirstName, u.LastName, u.Email,
                 role = u.Role.ToString(),
-                u.FailedLoginCount, u.LockoutUntil,
-                tenants = u.TenantMemberships.Select(tm => new { tm.Tenant.Name, tm.Tenant.Code }),
+                u.FailedLoginCount, u.LockoutUntil
             })
             .ToListAsync();
         return (200, new { items = locked, count = locked.Count });

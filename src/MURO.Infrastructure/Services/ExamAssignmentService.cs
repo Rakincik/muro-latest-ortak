@@ -17,9 +17,9 @@ public class ExamAssignmentService : IExamAssignmentService
         _cache = cache;
     }
 
-    public async Task<ExamAssignmentDto> AssignExamAsync(Guid tenantId, Guid examId, CreateExamAssignmentRequest request)
+    public async Task<ExamAssignmentDto> AssignExamAsync(Guid examId, CreateExamAssignmentRequest request)
     {
-        var exists = await _context.Exams.AnyAsync(e => e.Id == examId && e.TenantId == tenantId);
+        var exists = await _context.Exams.AnyAsync(e => e.Id == examId );
         if (!exists) throw new KeyNotFoundException("Sınav bulunamadı.");
 
         var assignment = new ExamAssignment
@@ -34,7 +34,7 @@ public class ExamAssignmentService : IExamAssignmentService
 
         _context.ExamAssignments.Add(assignment);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
 
         // Resolve target name
         var targetName = request.TargetType switch
@@ -49,7 +49,7 @@ public class ExamAssignmentService : IExamAssignmentService
             targetName, assignment.StartsAt, assignment.EndsAt, assignment.AssignedAt);
     }
 
-    public async Task RemoveAssignmentAsync(Guid tenantId, Guid examId, Guid assignmentId)
+    public async Task RemoveAssignmentAsync(Guid examId, Guid assignmentId)
     {
         var assignment = await _context.ExamAssignments
             .FirstOrDefaultAsync(a => a.Id == assignmentId && a.ExamId == examId)
@@ -57,6 +57,6 @@ public class ExamAssignmentService : IExamAssignmentService
 
         _context.ExamAssignments.Remove(assignment);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:exams:");
+        await _cache.RemoveByPrefixAsync($"exams:");
     }
 }

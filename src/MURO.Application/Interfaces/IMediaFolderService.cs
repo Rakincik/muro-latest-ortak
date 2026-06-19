@@ -5,9 +5,9 @@ namespace MURO.Application.Interfaces;
 
 public interface IMediaFolderService
 {
-    Task<List<MediaFolderDto>> GetFoldersAsync(Guid tenantId, Guid? parentFolderId = null);
-    Task<MediaFolderDto> GetFolderByIdAsync(Guid tenantId, Guid folderId);
-    Task<MediaFolderDto> CreateFolderAsync(Guid tenantId, CreateMediaFolderRequest request);
-    Task<MediaFolderDto> UpdateFolderAsync(Guid tenantId, Guid folderId, UpdateMediaFolderRequest request);
-    Task DeleteFolderAsync(Guid tenantId, Guid folderId, bool force = false);
+    Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null);
+    Task<MediaFolderDto> GetFolderByIdAsync(Guid folderId);
+    Task<MediaFolderDto> CreateFolderAsync(CreateMediaFolderRequest request);
+    Task<MediaFolderDto> UpdateFolderAsync(Guid folderId, UpdateMediaFolderRequest request);
+    Task DeleteFolderAsync(Guid folderId, bool force = false);
 }

@@ -21,53 +21,31 @@ public class AdminConfigService : IAdminConfigService
 
     public async Task<(int, object?)> GetStorageStats()
     {
-        var tenantStorage = await _db.MediaAssets
-            .GroupBy(a => a.TenantId)
-            .Select(g => new
-            {
-                tenantId = g.Key,
-                totalAssets = g.Count(),
-                readyAssets = g.Count(a => a.Status == MediaStatus.Ready),
-                processingAssets = g.Count(a => a.Status == MediaStatus.Processing),
-                failedAssets = g.Count(a => a.Status == MediaStatus.Failed),
-            })
-            .ToListAsync();
+        var totalAssets = await _db.MediaAssets.CountAsync();
+        var readyAssets = await _db.MediaAssets.CountAsync(a => a.Status == MediaStatus.Ready);
+        var processingAssets = await _db.MediaAssets.CountAsync(a => a.Status == MediaStatus.Processing);
+        var failedAssets = await _db.MediaAssets.CountAsync(a => a.Status == MediaStatus.Failed);
+        var recordings = await _db.SessionRecordings.CountAsync();
 
-        var tenants = await _db.Tenants.AsNoTracking()
-            .Select(t => new { t.Id, t.Name, t.Code, t.StorageLimitGb })
-            .ToDictionaryAsync(t => t.Id);
-
-        var recordingCounts = await _db.SessionRecordings
-            .GroupBy(r => r.Session.Course.TenantId)
-            .Select(g => new { TenantId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.TenantId, x => x.Count);
-
-        var items = tenantStorage.Select(ts =>
+        var item = new
         {
-            tenants.TryGetValue(ts.tenantId, out var tenant);
-            recordingCounts.TryGetValue(ts.tenantId, out var recCount);
-            return new
-            {
-                tenantId = ts.tenantId,
-                tenantName = tenant?.Name ?? "?",
-                tenantCode = tenant?.Code ?? "?",
-                storageLimitGb = tenant?.StorageLimitGb,
-                totalAssets = ts.totalAssets,
-                readyAssets = ts.readyAssets,
-                processingAssets = ts.processingAssets,
-                failedAssets = ts.failedAssets,
-                recordings = recCount,
-            };
-        }).OrderByDescending(x => x.totalAssets).ToList();
+            tenantId = Guid.Empty,
+            tenantName = "Global",
+            tenantCode = "GLOBAL",
+            storageLimitGb = 500,
+            totalAssets, readyAssets, processingAssets, failedAssets, recordings
+        };
+
+        var items = new[] { item };
 
         return Ok(new
         {
             items,
             totals = new
             {
-                totalAssets = tenantStorage.Sum(t => t.totalAssets),
-                totalRecordings = recordingCounts.Values.Sum(),
-                totalTenants = items.Count,
+                totalAssets = totalAssets,
+                totalRecordings = recordings,
+                totalTenants = 1,
             },
         });
     }
@@ -101,21 +79,19 @@ public class AdminConfigService : IAdminConfigService
             new { key = "VEP Webhook Secret", category = "integration", value = MaskSecret(_config["Vep:WebhookSecret"]), configured = !string.IsNullOrEmpty(_config["Vep:WebhookSecret"]) },
         };
 
-        var tenantSecrets = await _db.Tenants
-            .AsNoTracking()
-            .Select(t => new
+        var tenantSecrets = new List<object>
+        {
+            new
             {
-                t.Id,
-                t.Name,
-                t.Code,
-                bbbUrl = t.BbbServerUrl,
-                bbbSecretConfigured = t.BbbSecret != null && t.BbbSecret.Length > 0,
-                bbbSecretHint = t.BbbSecret != null && t.BbbSecret.Length > 8
-                    ? t.BbbSecret.Substring(0, 4) + "..." + t.BbbSecret.Substring(t.BbbSecret.Length - 4)
-                    : t.BbbSecret != null ? "***" : null,
-                connectionStringConfigured = t.ConnectionString != null && t.ConnectionString.Length > 0,
-            })
-            .ToListAsync();
+                Id = Guid.Empty,
+                Name = "Monopol",
+                Code = "monopol",
+                bbbUrl = _config["Bbb:Url"],
+                bbbSecretConfigured = !string.IsNullOrEmpty(_config["Bbb:Secret"]),
+                bbbSecretHint = "***",
+                connectionStringConfigured = true,
+            }
+        };
 
         return (200, new { platformSecrets, tenantSecrets });
     }

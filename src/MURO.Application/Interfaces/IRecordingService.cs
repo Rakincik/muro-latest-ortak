@@ -4,6 +4,6 @@ namespace MURO.Application.Interfaces;
 
 public interface IRecordingService
 {
-    Task<List<SessionRecordingDto>> GetRecordingsAsync(Guid tenantId, Guid userId, string? role);
-    Task DeleteRecordingAsync(Guid tenantId, Guid id);
+    Task<List<SessionRecordingDto>> GetRecordingsAsync(Guid userId, string? role);
+    Task DeleteRecordingAsync(Guid id);
 }

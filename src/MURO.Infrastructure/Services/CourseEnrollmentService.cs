@@ -17,7 +17,7 @@ public class CourseEnrollmentService : ICourseEnrollmentService
         _cache = cache;
     }
 
-    public async Task AssignToGroupAsync(Guid tenantId, Guid courseId, Guid groupId, string mode)
+    public async Task AssignToGroupAsync(Guid courseId, Guid groupId, string mode)
     {
         var exists = await _context.CourseGroups
             .AnyAsync(cg => cg.CourseId == courseId && cg.GroupId == groupId);
@@ -34,11 +34,11 @@ public class CourseEnrollmentService : ICourseEnrollmentService
             Mode = courseMode
         });
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task RemoveFromGroupAsync(Guid tenantId, Guid courseId, Guid groupId)
+    public async Task RemoveFromGroupAsync(Guid courseId, Guid groupId)
     {
         var cg = await _context.CourseGroups
             .FirstOrDefaultAsync(c => c.CourseId == courseId && c.GroupId == groupId)
@@ -46,10 +46,10 @@ public class CourseEnrollmentService : ICourseEnrollmentService
 
         _context.CourseGroups.Remove(cg);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:groups:");
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
-    public async Task AssignToStudentAsync(Guid tenantId, Guid courseId, Guid userId)
+    public async Task AssignToStudentAsync(Guid courseId, Guid userId)
     {
         var exists = await _context.CourseStudents
             .AnyAsync(cs => cs.CourseId == courseId && cs.UserId == userId);
@@ -63,10 +63,10 @@ public class CourseEnrollmentService : ICourseEnrollmentService
             AssignedAt = DateTime.UtcNow
         });
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task RemoveFromStudentAsync(Guid tenantId, Guid courseId, Guid userId)
+    public async Task RemoveFromStudentAsync(Guid courseId, Guid userId)
     {
         var cs = await _context.CourseStudents
             .FirstOrDefaultAsync(c => c.CourseId == courseId && c.UserId == userId)
@@ -74,15 +74,15 @@ public class CourseEnrollmentService : ICourseEnrollmentService
 
         _context.CourseStudents.Remove(cs);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task<List<MURO.Application.DTOs.Courses.CourseStudentListDto>> GetEnrolledStudentsAsync(Guid tenantId, Guid courseId)
+    public async Task<List<MURO.Application.DTOs.Courses.CourseStudentListDto>> GetEnrolledStudentsAsync(Guid courseId)
     {
         return await _context.CourseStudents
             .AsNoTracking()
             .Include(cs => cs.User)
-            .Where(cs => cs.CourseId == courseId && cs.Course.TenantId == tenantId)
+            .Where(cs => cs.CourseId == courseId )
             .Select(cs => new MURO.Application.DTOs.Courses.CourseStudentListDto(
                 cs.UserId,
                 cs.User.FirstName,
@@ -94,23 +94,23 @@ public class CourseEnrollmentService : ICourseEnrollmentService
             .ToListAsync();
     }
 
-    public async Task UpdateStudentExpirationAsync(Guid tenantId, Guid courseId, Guid userId, DateTime? expiresAt)
+    public async Task UpdateStudentExpirationAsync(Guid courseId, Guid userId, DateTime? expiresAt)
     {
         var cs = await _context.CourseStudents
-            .FirstOrDefaultAsync(c => c.CourseId == courseId && c.UserId == userId && c.Course.TenantId == tenantId)
+            .FirstOrDefaultAsync(c => c.CourseId == courseId && c.UserId == userId )
             ?? throw new KeyNotFoundException("Atama bulunamadı.");
 
         cs.ExpiresAt = expiresAt;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 
-    public async Task<List<MURO.Application.DTOs.Courses.CourseListDto>> GetDirectCoursesByUserAsync(Guid tenantId, Guid userId)
+    public async Task<List<MURO.Application.DTOs.Courses.CourseListDto>> GetDirectCoursesByUserAsync(Guid userId)
     {
         return await _context.CourseStudents
             .AsNoTracking()
             .Include(cs => cs.Course)
-            .Where(cs => cs.UserId == userId && cs.Course.TenantId == tenantId)
+            .Where(cs => cs.UserId == userId )
             .Select(cs => new MURO.Application.DTOs.Courses.CourseListDto(
                 cs.Course.Id, cs.Course.Title, cs.Course.Description, cs.Course.ThumbnailUrl,
                 cs.Course.CourseType.ToString(), cs.Course.IsPublished, 0, 0,

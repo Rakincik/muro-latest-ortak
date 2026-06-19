@@ -15,7 +15,6 @@ public class Course : ISoftDeletable
     public CourseType CourseType { get; set; } = CourseType.Online;
     public CourseMode Mode { get; set; } = CourseMode.Offline;
     public Guid? InstructorId { get; set; }
-    public Guid TenantId { get; set; }
     public bool IsPublished { get; set; } = false;
     public int Order { get; set; } = 0;
     public DateTime? StartDate { get; set; }
@@ -23,7 +22,6 @@ public class Course : ISoftDeletable
 
     // Navigation
     public User? Instructor { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<CourseGroup> CourseGroups { get; set; } = new List<CourseGroup>();
     public ICollection<Session> Sessions { get; set; } = new List<Session>();
     public ICollection<MediaAsset> MediaAssets { get; set; } = new List<MediaAsset>();

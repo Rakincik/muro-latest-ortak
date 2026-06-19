@@ -31,9 +31,8 @@ public class BbbMeetingProvider : IMeetingProvider
             RecordingEnabled: request.RecordingEnabled,
             WelcomeMessage: request.WelcomeMessage,
             DurationMinutes: request.DurationMinutes,
-            LogoutURL: request.LogoutUrl,
-            TenantId: request.TenantId
-        );
+            LogoutURL: request.LogoutUrl
+            );
 
         var meetingId = await _bbb.CreateMeetingAsync(bbbOptions);
         return new MeetingCreateResult(meetingId, "bbb");

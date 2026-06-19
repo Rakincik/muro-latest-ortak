@@ -59,7 +59,7 @@ public class AuthController : ControllerBase
         // 🔐 HttpOnly cookie — XSS ile çalınamaz
         CookieAuthMiddleware.SetAuthCookie(HttpContext, result.Token, result.ExpiresAt);
 
-        await _jobQueue.EnqueueAsync(new AuditLogJob(result.User.Tenants?.FirstOrDefault()?.TenantId, result.User.Id, $"{result.User.FirstName} {result.User.LastName}", "Login", "User", result.User.Id.ToString(), $"{result.User.FirstName} {result.User.LastName}", $"Rol: {result.User.Role}", ipAddress));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(result.User.Id, $"{result.User.FirstName} {result.User.LastName}", "Login", "User", result.User.Id.ToString(), $"{result.User.FirstName} {result.User.LastName}", $"Rol: {result.User.Role}", ipAddress));
         
         return Ok(result);
     }
@@ -78,7 +78,7 @@ public class AuthController : ControllerBase
         var result = await _loginService.RegisterAsync(request);
         CookieAuthMiddleware.SetAuthCookie(HttpContext, result.Token, result.ExpiresAt);
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _jobQueue.EnqueueAsync(new AuditLogJob(result.User.Tenants?.FirstOrDefault()?.TenantId, result.User.Id, $"{result.User.FirstName} {result.User.LastName}", "Register", "User", result.User.Id.ToString(), $"{result.User.FirstName} {result.User.LastName}", null, ip));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(result.User.Id, $"{result.User.FirstName} {result.User.LastName}", "Register", "User", result.User.Id.ToString(), $"{result.User.FirstName} {result.User.LastName}", null, ip));
         return Created("", result);
     }
 
@@ -113,7 +113,7 @@ public class AuthController : ControllerBase
         await _sessionService.LogoutAsync(userId);
         CookieAuthMiddleware.ClearAuthCookie(HttpContext);
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _jobQueue.EnqueueAsync(new AuditLogJob(null, userId, null, "Logout", "User", userId.ToString(), null, null, ip));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(userId, null, "Logout", "User", userId.ToString(), null, null, ip));
         return Ok(new { message = "Oturum kapatıldı" });
     }
 

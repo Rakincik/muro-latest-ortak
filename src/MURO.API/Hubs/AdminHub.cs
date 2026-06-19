@@ -7,7 +7,7 @@ namespace MURO.API.Hubs;
 /// Admin'lere özel WebSocket hub — real-time dashboard güncellemeleri.
 /// 
 /// Channels:
-/// - "DashboardUpdate" → istatistik güncellemesi (öğrenci sayısı, aktif ders vb.)
+/// - "DashboardUpdate" → istatistik güncellemesi (öğrenci sayısı, aktif ders )
 /// - "LiveSessionUpdate" → canlı ders başladı/bitti
 /// - "OnlineCountUpdate" → anlık online kullanıcı sayısı
 /// </summary>
@@ -20,8 +20,8 @@ public class AdminHub : Hub
     {
         var role = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
         
-        // Sadece Admin rolündeki kullanıcılar bu hub'a bağlanabilir
-        if (role != "Admin")
+        // Sadece Admin ve SuperAdmin rolündeki kullanıcılar bu hub'a bağlanabilir
+        if (role != "Admin" && role != "SuperAdmin")
         {
             Context.Abort();
             return;

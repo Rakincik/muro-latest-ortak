@@ -38,7 +38,7 @@ public class AdminSecurityController : ControllerBase
     [HttpGet("security/events")]
     public async Task<IActionResult> GetSecurityEvents([FromQuery] string? eventType = null, [FromQuery] Guid? tenantId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
-        var (status_code, data) = await _securityService.GetSecurityEvents(eventType, tenantId, page, pageSize);
+        var (status_code, data) = await _securityService.GetSecurityEvents(eventType, page, pageSize);
         return StatusCode(status_code, data);
     }
 

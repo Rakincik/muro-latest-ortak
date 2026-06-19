@@ -7,8 +7,7 @@ public record RegisterRequest(
     string LastName,
     string Email,
     string Password,
-    string? Phone,
-    Guid? TenantId
+    string? Phone
 );
 
 public record AuthResponse(
@@ -36,7 +35,7 @@ public record UserDto(
 );
 
 public record UserTenantDto(
-    Guid TenantId,
+    string TenantId,
     string TenantName,
     string TenantCode,
     string Role,

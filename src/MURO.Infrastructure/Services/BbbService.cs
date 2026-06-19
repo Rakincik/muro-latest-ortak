@@ -86,8 +86,7 @@ public class BbbService : IBbbService
             parameters["meta_sessionId"] = options.SessionId;
         if (options.CourseId != null)
             parameters["meta_courseId"] = options.CourseId;
-        if (options.TenantId != null)
-            parameters["meta_tenantId"] = options.TenantId;
+
 
         var url = BuildUrl("create", parameters);
 

@@ -18,19 +18,18 @@ public class StudentService : IStudentService
         _cache = cache;
     }
 
-    public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid tenantId, Guid userId, DateTime from, DateTime to)
+    public async Task<List<CalendarEventDto>> GetCalendarEventsAsync(Guid userId, DateTime from, DateTime to)
     {
-        var cacheKey = $"{tenantId}:student:calendar:{userId}:{from:yyyyMMdd}:{to:yyyyMMdd}";
+        var cacheKey = $"student:calendar:{userId}:{from:yyyyMMdd}:{to:yyyyMMdd}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(tenantId, userId);
+            var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
 
             // 1) Scheduled sessions from the student's courses
             var sessionEvents = await _context.Sessions
                 .AsNoTracking()
                 .Include(s => s.Course)
-                .Where(s => s.Course.TenantId == tenantId 
-                         && s.Course.IsPublished 
+                .Where(s => s.Course.IsPublished 
                          && accessibleCourseIds.Contains(s.CourseId)
                          && s.ScheduledStart >= from 
                          && s.ScheduledStart <= to)
@@ -49,7 +48,7 @@ public class StudentService : IStudentService
             var studentGroupIds = await _context.GroupMembers
                 .AsNoTracking()
                 .Where(gm => gm.UserId == userId && gm.Status == "active")
-                .Join(_context.Groups.Where(g => g.TenantId == tenantId),
+                .Join(_context.Groups.Where(g => true),
                       gm => gm.GroupId, g => g.Id, (gm, g) => g.Id)
                 .ToListAsync();
 
@@ -57,8 +56,7 @@ public class StudentService : IStudentService
                 .AsNoTracking()
                 .Include(e => e.Group)
                 .Include(e => e.Course)
-                .Where(e => e.TenantId == tenantId
-                         && e.StartDate >= from && e.EndDate <= to
+                .Where(e => e.StartDate >= from && e.EndDate <= to
                          && ((e.GroupId.HasValue && studentGroupIds.Contains(e.GroupId.Value)) 
                              || (e.CourseId.HasValue && accessibleCourseIds.Contains(e.CourseId.Value))))
                 .OrderBy(e => e.StartDate)

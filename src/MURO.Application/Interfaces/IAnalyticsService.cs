@@ -7,13 +7,13 @@ namespace MURO.Application.Interfaces;
 /// </summary>
 public interface IAnalyticsService
 {
-    Task<DashboardStatsDto> GetDashboardStatsAsync(Guid tenantId);
-    Task<List<VideoWatchStatsDto>> GetVideoStatsAsync(Guid tenantId);
-    Task<List<TransactionDto>> GetTransactionsAsync(Guid tenantId, DateTime from, DateTime to);
-    Task<List<DeviceSessionDto>> GetActiveSessionsAsync(Guid tenantId);
-    Task<CourseAttendanceReportDto> GetCourseAttendanceReportAsync(Guid tenantId, Guid courseId);
-    Task<StudentScorecardDto> GetStudentScorecardAsync(Guid tenantId, Guid studentId);
-    Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid tenantId, Guid studentId);
-    Task<ScorecardSummaryDto> GetScorecardSummaryAsync(Guid tenantId);
-    Task<StudentDashboardDto> GetStudentDashboardAsync(Guid tenantId, Guid userId);
+    Task<DashboardStatsDto> GetDashboardStatsAsync();
+    Task<List<VideoWatchStatsDto>> GetVideoStatsAsync();
+    Task<List<TransactionDto>> GetTransactionsAsync(DateTime from, DateTime to);
+    Task<List<DeviceSessionDto>> GetActiveSessionsAsync();
+    Task<CourseAttendanceReportDto> GetCourseAttendanceReportAsync(Guid courseId);
+    Task<StudentScorecardDto> GetStudentScorecardAsync(Guid studentId);
+    Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid studentId);
+    Task<ScorecardSummaryDto> GetScorecardSummaryAsync();
+    Task<StudentDashboardDto> GetStudentDashboardAsync(Guid userId);
 }

@@ -58,7 +58,7 @@ public class NotificationProcessingJob : BackgroundService
                     notifications.Add(new Notification
                     {
                         Id = Guid.NewGuid(),
-                        TenantId = payload.TenantId,
+                        
                         UserId = uid,
                         Title = payload.Title,
                         Body = payload.Body,

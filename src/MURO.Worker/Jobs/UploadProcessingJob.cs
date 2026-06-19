@@ -195,7 +195,7 @@ public class UploadProcessingJob : BackgroundService
 
         _logger.LogInformation("[{Pipeline}] İşleniyor → {Id} | {Path}", pipeline, asset.Id, localMp4Path);
 
-        var outDir = Path.Combine(_hlsOutputDir, asset.TenantId.ToString());
+        var outDir = Path.Combine(_hlsOutputDir, "monopol");
         var result = await hls.ProcessAsync(asset.Id, localMp4Path, outDir, pipeline, ct);
 
         if (!result.Success)
@@ -216,8 +216,8 @@ public class UploadProcessingJob : BackgroundService
         }
 
         asset.FilePath      = null;
-        asset.HlsPath       = $"/hls/{asset.TenantId}/{asset.Id}/master.m3u8";
-        asset.ThumbnailPath = string.IsNullOrEmpty(result.ThumbnailPath) ? null : $"/hls/{asset.TenantId}/{asset.Id}/thumbnail.jpg";
+        asset.HlsPath       = $"/hls/monopol/{asset.Id}/master.m3u8";
+        asset.ThumbnailPath = string.IsNullOrEmpty(result.ThumbnailPath) ? null : $"/hls/monopol/{asset.Id}/thumbnail.jpg";
         if (result.DurationSeconds.HasValue) asset.DurationSeconds = result.DurationSeconds;
         asset.Status = MediaStatus.Ready;
 

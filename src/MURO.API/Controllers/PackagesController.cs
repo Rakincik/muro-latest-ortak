@@ -15,62 +15,60 @@ namespace MURO.API.Controllers;
 public class PackagesController : ControllerBase
 {
     private readonly IPackageService _packages;
-    private readonly ITenantService _tenantService;
-    private readonly IBackgroundJobQueue _jobQueue;
+        private readonly IBackgroundJobQueue _jobQueue;
 
-    public PackagesController(IPackageService packages, ITenantService tenantService, IBackgroundJobQueue jobQueue)
+    public PackagesController(IPackageService packages, IBackgroundJobQueue jobQueue)
     {
         _packages = packages;
-        _tenantService = tenantService;
-        _jobQueue = jobQueue;
+                _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId() => _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException();
+    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     // ── Paket Listesi ─────────────────────────────────────────────────────────
 
     [HttpGet]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin,SuperAdmin,Assistant,Instructor")]
     public async Task<IActionResult> GetPackages()
-        => Ok(await _packages.GetPackagesAsync(GetTenantId()));
+        => Ok(await _packages.GetPackagesAsync());
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor")]
     public async Task<IActionResult> GetPackage(Guid id)
     {
-        try { return Ok(await _packages.GetPackageByIdAsync(GetTenantId(), id)); }
+        try { return Ok(await _packages.GetPackageByIdAsync(id)); }
         catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
     }
 
     // ── Paket CRUD ────────────────────────────────────────────────────────────
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<IActionResult> CreatePackage([FromBody] CreatePackageRequest request)
     {
-        var result = await _packages.CreatePackageAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "Package", result.Id.ToString(), request.Name, null, GetIp()));
+        var result = await _packages.CreatePackageAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "Package", result.Id.ToString(), request.Name, null, GetIp()));
         return CreatedAtAction(nameof(GetPackage), new { id = result.Id }, result);
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<IActionResult> UpdatePackage(Guid id, [FromBody] UpdatePackageRequest request)
     {
-        try { return Ok(await _packages.UpdatePackageAsync(GetTenantId(), id, request)); }
+        try { return Ok(await _packages.UpdatePackageAsync(id, request)); }
         catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<IActionResult> DeletePackage(Guid id)
     {
         try
         {
-            await _packages.DeletePackageAsync(GetTenantId(), id);
-            await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "Package", id.ToString(), null, null, GetIp()));
+            await _packages.DeletePackageAsync(id);
+            await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "Package", id.ToString(), null, null, GetIp()));
             return NoContent();
         }
         catch (KeyNotFoundException ex) { return NotFound(new { error = ex.Message }); }
@@ -79,7 +77,7 @@ public class PackagesController : ControllerBase
     // ── Kullanıcı Paket İşlemleri ─────────────────────────────────────────────
 
     [HttpPost("{id:guid}/activate")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<IActionResult> ActivateForUser(Guid id, [FromBody] ActivatePackageRequest request)
     {
         try
@@ -93,12 +91,12 @@ public class PackagesController : ControllerBase
     }
 
     [HttpGet("user/{userId:guid}")]
-    [Authorize(Roles = "Admin,Instructor")]
+    [Authorize(Roles = "Admin,SuperAdmin,Instructor")]
     public async Task<IActionResult> GetUserPackages(Guid userId)
         => Ok(await _packages.GetUserPackagesAsync(userId));
 
     [HttpPost("user-packages/{userPackageId:guid}/extend")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<IActionResult> ExtendPackage(Guid userPackageId, [FromBody] ExtendPackageRequest request)
     {
         try { return Ok(await _packages.ExtendPackageAsync(userPackageId, request.ExtraDays)); }
@@ -106,7 +104,7 @@ public class PackagesController : ControllerBase
     }
 
     [HttpPost("user-packages/{userPackageId:guid}/cancel")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin")]
     public async Task<IActionResult> CancelPackage(Guid userPackageId)
     {
         try { await _packages.CancelPackageAsync(userPackageId); return Ok(new { success = true }); }
@@ -116,7 +114,7 @@ public class PackagesController : ControllerBase
     // ── Webhook Bilgisi ───────────────────────────────────────────────────────
 
     [HttpGet("webhook-info")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,SuperAdmin,Assistant")]
     public IActionResult GetWebhookInfo([FromServices] IConfiguration config)
     {
         var secret = config["Webhook:Secret"];

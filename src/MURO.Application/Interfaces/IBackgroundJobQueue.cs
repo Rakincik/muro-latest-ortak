@@ -22,7 +22,6 @@ public abstract record BackgroundJob;
 
 /// <summary>Audit log kaydı — controller'dan fire-and-forget olarak gönderilir.</summary>
 public record AuditLogJob(
-    Guid? TenantId,
     Guid? UserId,
     string? UserName,
     string Action,

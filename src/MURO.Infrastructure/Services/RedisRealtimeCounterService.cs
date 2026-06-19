@@ -7,7 +7,7 @@ namespace MURO.Infrastructure.Services;
 /// <summary>
 /// Redis INCR/DECR ile anlık counter'lar.
 /// Online kullanıcı sayısı, aktif ders, bekleyen talep gibi metrikleri tutar.
-/// Key format: "muro:{tenantId}:{metricName}"
+/// Key format: "muro:{metricName}"
 /// </summary>
 public class RedisRealtimeCounterService : IRealtimeCounterService
 {

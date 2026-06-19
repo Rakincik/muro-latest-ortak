@@ -20,17 +20,17 @@ public class PackageService : IPackageService
 
     // ── Paket CRUD ────────────────────────────────────────────────────────────
 
-    public async Task<List<PackageDto>> GetPackagesAsync(Guid tenantId)
+    public async Task<List<PackageDto>> GetPackagesAsync()
     {
-        var cacheKey = $"{tenantId}:packages:list";
+        var cacheKey = $"packages:list";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             return await _context.Packages
                 .AsNoTracking()
-                .Where(p => p.TenantId == tenantId)
+                .Where(p => true)
                 .Include(p => p.PackageGroups).ThenInclude(pg => pg.Group)
                 .Select(p => new PackageDto(
-                    p.Id, p.TenantId, p.Name, p.Description, p.Price,
+                    p.Id,  p.Name, p.Description, p.Price,
                     p.DurationDays, p.IsActive, p.CreatedAt,
                     p.PackageGroups.Select(pg => new PackageGroupDto(
                         pg.Id, pg.GroupId, pg.Group.Name, pg.ContentMode.ToString())).ToList(),
@@ -39,19 +39,19 @@ public class PackageService : IPackageService
         }, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<PackageDto> GetPackageByIdAsync(Guid tenantId, Guid packageId)
+    public async Task<PackageDto> GetPackageByIdAsync(Guid packageId)
     {
-        var cacheKey = $"{tenantId}:packages:{packageId}";
+        var cacheKey = $"packages:{packageId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var p = await _context.Packages
                 .AsNoTracking()
                 .Include(x => x.PackageGroups).ThenInclude(pg => pg.Group)
-                .FirstOrDefaultAsync(x => x.Id == packageId && x.TenantId == tenantId)
+                .FirstOrDefaultAsync(x => x.Id == packageId )
                 ?? throw new KeyNotFoundException("Paket bulunamadı.");
 
             return new PackageDto(
-                p.Id, p.TenantId, p.Name, p.Description, p.Price,
+                p.Id,  p.Name, p.Description, p.Price,
                 p.DurationDays, p.IsActive, p.CreatedAt,
                 p.PackageGroups.Select(pg => new PackageGroupDto(
                     pg.Id, pg.GroupId, pg.Group.Name, pg.ContentMode.ToString())).ToList(),
@@ -59,12 +59,11 @@ public class PackageService : IPackageService
         }, TimeSpan.FromMinutes(5));
     }
 
-    public async Task<PackageDto> CreatePackageAsync(Guid tenantId, CreatePackageRequest request)
+    public async Task<PackageDto> CreatePackageAsync(CreatePackageRequest request)
     {
         var package = new Package
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
             Name = request.Name,
             Description = request.Description,
             Price = request.Price,
@@ -86,15 +85,15 @@ public class PackageService : IPackageService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:packages:"); // Cache invalidation
-        return await GetPackageByIdAsync(tenantId, package.Id);
+        await _cache.RemoveByPrefixAsync($"packages:"); // Cache invalidation
+        return await GetPackageByIdAsync(package.Id);
     }
 
-    public async Task<PackageDto> UpdatePackageAsync(Guid tenantId, Guid packageId, UpdatePackageRequest request)
+    public async Task<PackageDto> UpdatePackageAsync(Guid packageId, UpdatePackageRequest request)
     {
         var package = await _context.Packages
             .Include(p => p.PackageGroups)
-            .FirstOrDefaultAsync(p => p.Id == packageId && p.TenantId == tenantId)
+            .FirstOrDefaultAsync(p => p.Id == packageId )
             ?? throw new KeyNotFoundException("Paket bulunamadı.");
 
         if (request.Name != null) package.Name = request.Name;
@@ -104,18 +103,18 @@ public class PackageService : IPackageService
         if (request.IsActive.HasValue) package.IsActive = request.IsActive.Value;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:packages:"); // Cache invalidation
-        return await GetPackageByIdAsync(tenantId, packageId);
+        await _cache.RemoveByPrefixAsync($"packages:"); // Cache invalidation
+        return await GetPackageByIdAsync(packageId);
     }
 
-    public async Task DeletePackageAsync(Guid tenantId, Guid packageId)
+    public async Task DeletePackageAsync(Guid packageId)
     {
         var package = await _context.Packages
-            .FirstOrDefaultAsync(p => p.Id == packageId && p.TenantId == tenantId)
+            .FirstOrDefaultAsync(p => p.Id == packageId )
             ?? throw new KeyNotFoundException("Paket bulunamadı.");
         _context.Packages.Remove(package);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:packages:"); // Cache invalidation
+        await _cache.RemoveByPrefixAsync($"packages:"); // Cache invalidation
     }
 
     // ── Kullanıcı Paket Aktivasyonu ───────────────────────────────────────────
@@ -178,10 +177,10 @@ public class PackageService : IPackageService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{package.TenantId}:packages:"); // Cache invalidation
+        await _cache.RemoveByPrefixAsync($"packages:"); // Cache invalidation
 
         // Bildirim gönder
-        await _notifications.CreateAsync(package.TenantId,
+        await _notifications.CreateAsync(
             new Application.DTOs.Notifications.CreateNotificationRequest(
                 userId,
                 "Paketiniz Aktive Edildi",
@@ -225,7 +224,7 @@ public class PackageService : IPackageService
         up.Status = "active";
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{up.Package.TenantId}:packages:"); // Cache invalidation
+        await _cache.RemoveByPrefixAsync($"packages:"); // Cache invalidation
 
         return new UserPackageDto(up.Id, up.UserId, up.PackageId, up.Package.Name, // Kept original return type and logic
             up.OrderId, up.ActivatedAt, up.ExpiresAt, up.Status, up.Source);
@@ -242,9 +241,9 @@ public class PackageService : IPackageService
         up.ExpiresAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{up.Package.TenantId}:packages:");
+        await _cache.RemoveByPrefixAsync($"packages:");
 
-        await _notifications.CreateAsync(up.Package.TenantId,
+        await _notifications.CreateAsync(
             new Application.DTOs.Notifications.CreateNotificationRequest(
                 up.UserId,
                 "Paket İptal Edildi",

@@ -9,7 +9,6 @@ public class Assignment : ISoftDeletable
 
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
-    public Guid TenantId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime DueDate { get; set; }
@@ -19,6 +18,5 @@ public class Assignment : ISoftDeletable
 
     // Navigation
     public Course Course { get; set; } = null!;
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<AssignmentSubmission> Submissions { get; set; } = new List<AssignmentSubmission>();
 }

@@ -15,18 +15,15 @@ namespace MURO.API.Controllers;
 public class CalendarController : ControllerBase
 {
     private readonly ICalendarService _calendarService;
-    private readonly ITenantService _tenantService;
-    private readonly IBackgroundJobQueue _jobQueue;
+        private readonly IBackgroundJobQueue _jobQueue;
 
-    public CalendarController(ICalendarService calendarService, ITenantService tenantService, IBackgroundJobQueue jobQueue)
+    public CalendarController(ICalendarService calendarService, IBackgroundJobQueue jobQueue)
     {
         _calendarService = calendarService;
-        _tenantService = tenantService;
-        _jobQueue = jobQueue;
+                _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId() =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+    
 
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string? GetIp() => HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -59,36 +56,36 @@ public class CalendarController : ControllerBase
             start = from ?? DateTime.UtcNow.AddMonths(-1);
             end = to ?? DateTime.UtcNow.AddMonths(1);
         }
-        return Ok(await _calendarService.GetEventsAsync(GetTenantId(), start, end, groupId, GetInstructorIdIfInstructor()));
+        return Ok(await _calendarService.GetEventsAsync(start, end, groupId, GetInstructorIdIfInstructor()));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<CalendarEventDto>> GetEvent(Guid id)
     {
-        return Ok(await _calendarService.GetEventByIdAsync(GetTenantId(), id));
+        return Ok(await _calendarService.GetEventByIdAsync(id));
     }
 
     [HttpPost]
     public async Task<ActionResult<CalendarEventDto>> CreateEvent([FromBody] CreateCalendarEventRequest request)
     {
-        var ev = await _calendarService.CreateEventAsync(GetTenantId(), request, GetInstructorIdIfInstructor());
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "CalendarEvent", ev.Id.ToString(), request.Title, null, GetIp()));
+        var ev = await _calendarService.CreateEventAsync(request, GetInstructorIdIfInstructor());
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "CalendarEvent", ev.Id.ToString(), request.Title, null, GetIp()));
         return Created($"/api/v1/calendar/{ev.Id}", ev);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<CalendarEventDto>> UpdateEvent(Guid id, [FromBody] UpdateCalendarEventRequest request)
     {
-        var ev = await _calendarService.UpdateEventAsync(GetTenantId(), id, request, GetInstructorIdIfInstructor());
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Update", "CalendarEvent", id.ToString(), request.Title, null, GetIp()));
+        var ev = await _calendarService.UpdateEventAsync(id, request, GetInstructorIdIfInstructor());
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Update", "CalendarEvent", id.ToString(), request.Title, null, GetIp()));
         return Ok(ev);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteEvent(Guid id)
     {
-        await _calendarService.DeleteEventAsync(GetTenantId(), id, GetInstructorIdIfInstructor());
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "CalendarEvent", id.ToString(), null, null, GetIp()));
+        await _calendarService.DeleteEventAsync(id, GetInstructorIdIfInstructor());
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "CalendarEvent", id.ToString(), null, null, GetIp()));
         return NoContent();
     }
 }

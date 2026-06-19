@@ -29,13 +29,12 @@ public abstract class AuthServiceBase
     }
 
     protected async Task LogSecurityEventAsync(
-        Guid? userId, Guid? tenantId, string eventType,
+        Guid? userId, string eventType,
         string? ip, string? userAgent, string? details = null)
     {
         _context.SecurityEvents.Add(new SecurityEvent
         {
             UserId = userId,
-            TenantId = tenantId,
             EventType = eventType,
             IpAddress = ip,
             UserAgent = userAgent,
@@ -59,8 +58,7 @@ public abstract class AuthServiceBase
             new("sessionId", sessionId.ToString()),
         };
 
-        foreach (var membership in user.TenantMemberships.Where(m => m.Status == "active"))
-            claims.Add(new Claim("tenantId", membership.TenantId.ToString()));
+
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"] ?? "MURO",
@@ -110,9 +108,7 @@ public abstract class AuthServiceBase
         user.Id, user.FirstName, user.LastName, user.Email, user.Phone,
         user.Role.ToString(), user.StudentType?.ToString(), user.DemoExpiresAt,
         user.IsActive, user.CreatedAt,
-        user.TenantMemberships.Select(tm => new UserTenantDto(
-            tm.TenantId, tm.Tenant.Name, tm.Tenant.Code, tm.Role.ToString(), tm.Status, tm.Tenant.Features
-        )).ToList(),
+        new List<UserTenantDto> { new UserTenantDto("monopol", "Monopol", "monopol", user.Role.ToString(), "Active", null) },
         user.TcNo
     );
 }

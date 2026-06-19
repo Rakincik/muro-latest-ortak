@@ -16,21 +16,21 @@ public class CourseMaterialService : ICourseMaterialService
         _cache = cache;
     }
 
-    public async Task<List<CourseMaterialDto>> GetMaterialsAsync(Guid tenantId, Guid courseId)
+    public async Task<List<CourseMaterialDto>> GetMaterialsAsync(Guid courseId)
     {
         return await _context.CourseMaterials
-            .Where(m => m.CourseId == courseId && m.TenantId == tenantId)
+            .Where(m => m.CourseId == courseId )
             .OrderByDescending(m => m.CreatedAt)
             .Select(m => new CourseMaterialDto(m.Id, m.Title, m.FileName, m.FilePath, m.ContentType, m.FileSize, m.CreatedAt))
             .ToListAsync();
     }
 
-    public async Task<CourseMaterialDto> UploadMaterialAsync(Guid tenantId, Guid courseId, Stream fileStream, string fileName, string contentType, long fileSize, string? title, string webRootPath)
+    public async Task<CourseMaterialDto> UploadMaterialAsync(Guid courseId, Stream fileStream, string fileName, string contentType, long fileSize, string? title, string webRootPath)
     {
-        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Kurs bulunamadı.");
 
-        var uploadsDir = Path.Combine(webRootPath, "uploads", "materials", tenantId.ToString());
+        var uploadsDir = Path.Combine(webRootPath, "uploads", "materials", Guid.Empty.ToString());
         Directory.CreateDirectory(uploadsDir);
 
         var uniqueName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
@@ -45,10 +45,9 @@ public class CourseMaterialService : ICourseMaterialService
         {
             Id = Guid.NewGuid(),
             CourseId = courseId,
-            TenantId = tenantId,
             Title = title ?? Path.GetFileNameWithoutExtension(fileName),
             FileName = fileName,
-            FilePath = $"/uploads/materials/{tenantId}/{uniqueName}",
+            FilePath = $"/uploads/materials/{uniqueName}",
             ContentType = contentType,
             FileSize = fileSize,
             CreatedAt = DateTime.UtcNow
@@ -56,15 +55,15 @@ public class CourseMaterialService : ICourseMaterialService
 
         _context.CourseMaterials.Add(material);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseMaterialDto(material.Id, material.Title, material.FileName, material.FilePath, material.ContentType, material.FileSize, material.CreatedAt);
     }
 
-    public async Task DeleteMaterialAsync(Guid tenantId, Guid courseId, Guid materialId, string webRootPath)
+    public async Task DeleteMaterialAsync(Guid courseId, Guid materialId, string webRootPath)
     {
         var material = await _context.CourseMaterials
-            .FirstOrDefaultAsync(m => m.Id == materialId && m.CourseId == courseId && m.TenantId == tenantId)
+            .FirstOrDefaultAsync(m => m.Id == materialId && m.CourseId == courseId )
             ?? throw new KeyNotFoundException("Doküman bulunamadı.");
 
         var diskPath = Path.Combine(webRootPath, material.FilePath.TrimStart('/'));
@@ -72,6 +71,6 @@ public class CourseMaterialService : ICourseMaterialService
 
         _context.CourseMaterials.Remove(material);
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
     }
 }

@@ -7,9 +7,6 @@ import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
 export const metadata: Metadata = {
   title: "Monopoluzem",
   description: "Monopol Uzaktan Eğitim Platformu",
-  icons: {
-    icon: "/monopolfavicon.png",
-  },
 };
 
 export default function RootLayout({

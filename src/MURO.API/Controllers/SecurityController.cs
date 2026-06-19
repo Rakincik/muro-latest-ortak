@@ -17,16 +17,13 @@ namespace MURO.API.Controllers;
 public class SecurityController : ControllerBase
 {
     private readonly ISecurityService _securityService;
-    private readonly ITenantService _tenantService;
-
-    public SecurityController(ISecurityService securityService, ITenantService tenantService)
+    
+    public SecurityController(ISecurityService securityService)
     {
         _securityService = securityService;
-        _tenantService = tenantService;
-    }
+            }
 
-    private Guid GetTenantId() =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+    
 
     [HttpGet("events")]
     public async Task<ActionResult<SecurityEventPageDto>> GetEvents(
@@ -37,24 +34,24 @@ public class SecurityController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var tenantId = GetTenantId();
-        var events = await _securityService.GetEventsAsync(tenantId, from, to, userId, eventType, page, pageSize);
+        
+        var events = await _securityService.GetEventsAsync(from, to, userId, eventType, page, pageSize);
         return Ok(events);
     }
 
     [HttpGet("summary")]
     public async Task<ActionResult> GetSummary()
     {
-        var tenantId = GetTenantId();
-        var summary = await _securityService.GetSummaryAsync(tenantId);
+        
+        var summary = await _securityService.GetSummaryAsync();
         return Ok(summary);
     }
 
     [HttpGet("suspicious")]
     public async Task<ActionResult> GetSuspiciousActivity()
     {
-        var tenantId = GetTenantId();
-        var suspicious = await _securityService.GetSuspiciousActivityAsync(tenantId);
+        
+        var suspicious = await _securityService.GetSuspiciousActivityAsync();
         return Ok(suspicious);
     }
 }

@@ -33,11 +33,11 @@ public class LiveMeetingService : ILiveMeetingService
         _cache = cache;
     }
 
-    public async Task<SessionStartResult> StartSessionAsync(Guid tenantId, Guid courseId, Guid sessionId, Guid moderatorUserId)
+    public async Task<SessionStartResult> StartSessionAsync(Guid courseId, Guid sessionId, Guid moderatorUserId)
     {
         var session = await _context.Sessions
             .Include(s => s.Course)
-            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId && s.Course.TenantId == tenantId)
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId )
             ?? throw new KeyNotFoundException("Oturum bulunamadı.");
 
         if (session.Status == SessionStatus.Live)
@@ -63,14 +63,13 @@ public class LiveMeetingService : ILiveMeetingService
         var moderator = await _context.Users.FindAsync(moderatorUserId)
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
 
-        var tenant = await _context.Tenants.FindAsync(tenantId)
-            ?? throw new KeyNotFoundException("Kurum bulunamadı.");
+
 
         if (!string.IsNullOrEmpty(session.VideoUrl))
         {
             session.Status = SessionStatus.Live;
             await _context.SaveChangesAsync();
-            await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+            await _cache.RemoveByPrefixAsync($"courses:");
 
             var enrolledUserIds = await _context.CourseGroups
                 .Where(cg => cg.CourseId == courseId)
@@ -80,7 +79,7 @@ public class LiveMeetingService : ILiveMeetingService
 
             if (enrolledUserIds.Any())
             {
-                await _notificationService.BulkSendAsync(tenantId, new Application.DTOs.Notifications.BulkNotificationRequest(
+                await _notificationService.BulkSendAsync(new Application.DTOs.Notifications.BulkNotificationRequest(
                     enrolledUserIds,
                     "🔴 Canlı Ders Başladı",
                     $"\"{session.Title}\" dersi şu an canlı! Hemen katıl.",
@@ -91,7 +90,7 @@ public class LiveMeetingService : ILiveMeetingService
             return new SessionStartResult(session.Id, "", session.VideoUrl, "Live");
         }
 
-        var meetingId = $"{tenant.Code}_{session.Id}";
+        var meetingId = $"monopol_{session.Id}";
         var attendeePw = _config["Bbb:DefaultAttendeePw"] ?? "ap";
         var moderatorPw = _config["Bbb:DefaultModeratorPw"] ?? "mp";
 
@@ -105,14 +104,13 @@ public class LiveMeetingService : ILiveMeetingService
             DurationMinutes: session.DurationMinutes,
             LogoutURL: _config["Bbb:Defaults:LogoutURL"],
             SessionId: session.Id.ToString(),
-            CourseId: courseId.ToString(),
-            TenantId: tenantId.ToString()
+            CourseId: courseId.ToString().ToString()
         ));
 
         session.BbbMeetingId = meetingId;
         session.Status = SessionStatus.Live;
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         if (session.RecordingEnabled)
         {
@@ -147,7 +145,7 @@ public class LiveMeetingService : ILiveMeetingService
 
         if (enrolledUserIds2.Any())
         {
-            await _notificationService.BulkSendAsync(tenantId, new Application.DTOs.Notifications.BulkNotificationRequest(
+            await _notificationService.BulkSendAsync(new Application.DTOs.Notifications.BulkNotificationRequest(
                 enrolledUserIds2,
                 "🔴 Canlı Ders Başladı",
                 $"\"{session.Title}\" dersi şu an canlı! Hemen katıl.",
@@ -159,11 +157,11 @@ public class LiveMeetingService : ILiveMeetingService
     }
 
     public async Task<SessionJoinResult> JoinSessionAsync(
-        Guid tenantId, Guid courseId, Guid sessionId, Guid userId, string fullName, bool checkGroupAccess = false)
+        Guid courseId, Guid sessionId, Guid userId, string fullName, bool checkGroupAccess = false)
     {
         var session = await _context.Sessions
             .Include(s => s.Course)
-            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId && s.Course.TenantId == tenantId)
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId )
             ?? throw new KeyNotFoundException("Oturum bulunamadı.");
 
         if (session.Status != SessionStatus.Live)
@@ -173,14 +171,14 @@ public class LiveMeetingService : ILiveMeetingService
         {
             if (checkGroupAccess)
             {
-                var hasAccess = await _groupAccess.CanAccessCourseAsync(tenantId, userId, courseId);
+                var hasAccess = await _groupAccess.CanAccessCourseAsync(userId, courseId);
                 if (!hasAccess)
                     throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
             }
             else
             {
-                var isMember = await _context.TenantMemberships
-                    .AnyAsync(tm => tm.TenantId == tenantId && tm.UserId == userId && tm.Status == "active");
+                var isMember = await _context.Users
+                    .AnyAsync(tm => tm.Id == userId && tm.IsActive);
                 if (!isMember)
                     throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
             }
@@ -195,14 +193,14 @@ public class LiveMeetingService : ILiveMeetingService
 
         if (checkGroupAccess)
         {
-            var hasAccess = await _groupAccess.CanAccessCourseAsync(tenantId, userId, courseId);
+            var hasAccess = await _groupAccess.CanAccessCourseAsync(userId, courseId);
             if (!hasAccess)
                 throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
         }
         else
         {
-            var isMember = await _context.TenantMemberships
-                .AnyAsync(tm => tm.TenantId == tenantId && tm.UserId == userId && tm.Status == "active");
+            var isMember = await _context.Users
+                .AnyAsync(tm => tm.Id == userId && tm.IsActive);
             if (!isMember)
                 throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
         }
@@ -233,11 +231,11 @@ public class LiveMeetingService : ILiveMeetingService
         return new SessionJoinResult(session.Id, joinUrl, isModerator2);
     }
 
-    public async Task EndSessionAsync(Guid tenantId, Guid courseId, Guid sessionId)
+    public async Task EndSessionAsync(Guid courseId, Guid sessionId)
     {
         var session = await _context.Sessions
             .Include(s => s.Course)
-            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId && s.Course.TenantId == tenantId)
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.CourseId == courseId )
             ?? throw new KeyNotFoundException("Oturum bulunamadı.");
 
         if (session.Status != SessionStatus.Live)
@@ -267,7 +265,7 @@ public class LiveMeetingService : ILiveMeetingService
         }
 
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"{tenantId}:courses:");
+        await _cache.RemoveByPrefixAsync($"courses:");
 
         var enrolledUserIds = await _context.CourseGroups
             .Where(cg => cg.CourseId == courseId)
@@ -277,7 +275,7 @@ public class LiveMeetingService : ILiveMeetingService
 
         if (enrolledUserIds.Any())
         {
-            await _notificationService.BulkSendAsync(tenantId, new Application.DTOs.Notifications.BulkNotificationRequest(
+            await _notificationService.BulkSendAsync(new Application.DTOs.Notifications.BulkNotificationRequest(
                 enrolledUserIds,
                 "📚 Ders Sona Erdi",
                 $"\"{session.Title}\" dersi sona erdi." + (session.RecordingEnabled ? " Kayıt kısa süre içinde hazır olacak." : ""),

@@ -7,8 +7,6 @@ namespace MURO.Domain.Entities;
 public class Package
 {
     public Guid Id { get; set; }
-    public Guid TenantId { get; set; }
-
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public decimal Price { get; set; }
@@ -24,7 +22,6 @@ public class Package
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<PackageGroup> PackageGroups { get; set; } = new List<PackageGroup>();
     public ICollection<UserPackage> UserPackages { get; set; } = new List<UserPackage>();
 }

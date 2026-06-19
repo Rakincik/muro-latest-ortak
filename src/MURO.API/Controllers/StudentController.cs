@@ -15,30 +15,27 @@ namespace MURO.API.Controllers;
 public class StudentController : ControllerBase
 {
     private readonly IStudentService _studentService;
-    private readonly ITenantService _tenantService;
-    private readonly IAnalyticsService _analyticsService;
+        private readonly IAnalyticsService _analyticsService;
     private readonly ICourseService _courseService;
     private readonly ICourseSessionService _sessionService;
     private readonly INotificationService _notificationService;
 
     public StudentController(
         IStudentService studentService, 
-        ITenantService tenantService,
+        
         IAnalyticsService analyticsService,
         ICourseService courseService,
         ICourseSessionService sessionService,
         INotificationService notificationService)
     {
         _studentService = studentService;
-        _tenantService = tenantService;
-        _analyticsService = analyticsService;
+                _analyticsService = analyticsService;
         _courseService = courseService;
         _sessionService = sessionService;
         _notificationService = notificationService;
     }
 
-    private Guid GetTenantId() =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+    
 
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı."));
@@ -62,7 +59,7 @@ public class StudentController : ControllerBase
             end = to ?? DateTime.UtcNow.AddMonths(1);
         }
 
-        var events = await _studentService.GetCalendarEventsAsync(GetTenantId(), GetUserId(), start, end);
+        var events = await _studentService.GetCalendarEventsAsync(GetUserId(), start, end);
         return Ok(events);
     }
 
@@ -73,27 +70,27 @@ public class StudentController : ControllerBase
     [HttpGet("dashboard-summary")]
     public async Task<ActionResult<MURO.Application.DTOs.Analytics.StudentDashboardSummaryDto>> GetDashboardSummary()
     {
-        var tenantId = GetTenantId();
+        
         var userId = GetUserId();
 
         // Güvenli kapsayıcılar (Partial Failure engellemek için)
         async Task<MURO.Application.DTOs.Analytics.StudentDashboardDto> SafeGetStats() {
-            try { return await _analyticsService.GetStudentDashboardAsync(tenantId, userId); }
+            try { return await _analyticsService.GetStudentDashboardAsync(userId); }
             catch { return new MURO.Application.DTOs.Analytics.StudentDashboardDto(0, 0, 0, 0, 0, 0, 0, new(), new()); }
         }
 
         async Task<List<MURO.Application.DTOs.Courses.CourseListDto>> SafeGetCourses() {
-            try { return (await _courseService.GetCoursesByUserAsync(tenantId, userId, 1, 4, null, null)).Items; }
+            try { return (await _courseService.GetCoursesByUserAsync(userId, 1, 4, null, null)).Items; }
             catch { return new List<MURO.Application.DTOs.Courses.CourseListDto>(); }
         }
 
         async Task<List<MURO.Application.DTOs.Courses.UpcomingSessionDto>> SafeGetSessions() {
-            try { return await _sessionService.GetUpcomingSessionsByUserAsync(tenantId, userId); }
+            try { return await _sessionService.GetUpcomingSessionsByUserAsync(userId); }
             catch { return new List<MURO.Application.DTOs.Courses.UpcomingSessionDto>(); }
         }
 
         async Task<int> SafeGetUnreadCount() {
-            try { return await _notificationService.GetUnreadCountAsync(tenantId, userId); }
+            try { return await _notificationService.GetUnreadCountAsync(userId); }
             catch { return 0; }
         }
 

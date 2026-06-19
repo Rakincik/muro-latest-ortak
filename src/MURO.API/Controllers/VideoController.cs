@@ -73,7 +73,7 @@ public class VideoController : ControllerBase
         Guid mediaAssetId, [FromBody] CreateVideoNoteRequest request)
     {
         var result = await _noteService.AddNoteAsync(CurrentUserId, mediaAssetId, request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(null, CurrentUserId, null, "Create", "VideoNote", result.Id.ToString(), null, $"MediaAsset: {mediaAssetId}", GetIp()));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(CurrentUserId, "AddNote", "VideoNote", result.Id.ToString(), $"MediaAsset: {mediaAssetId}", null, null, GetIp()));
         return CreatedAtAction(nameof(GetNotes), new { mediaAssetId }, result);
     }
 
@@ -91,7 +91,7 @@ public class VideoController : ControllerBase
     public async Task<IActionResult> DeleteNote(Guid noteId)
     {
         await _noteService.DeleteNoteAsync(CurrentUserId, noteId);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(null, CurrentUserId, null, "Delete", "VideoNote", noteId.ToString(), null, null, GetIp()));
+        await _jobQueue.EnqueueAsync(new AuditLogJob(CurrentUserId, "DeleteNote", "VideoNote", noteId.ToString(), null, null, null, GetIp()));
         return NoContent();
     }
 }

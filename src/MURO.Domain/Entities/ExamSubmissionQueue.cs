@@ -7,8 +7,7 @@ public class ExamSubmissionQueue
 {
     [Key]
     public Guid Id { get; set; }
-    
-    public Guid TenantId { get; set; }
+
     public Guid ExamId { get; set; }
     public Guid UserId { get; set; }
 

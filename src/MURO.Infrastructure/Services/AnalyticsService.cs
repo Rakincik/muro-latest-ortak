@@ -21,23 +21,23 @@ public class AnalyticsService : IAnalyticsService
     // ── Admin: Genel dashboard istatistikleri ───────────────────────────────
     // Fix #5: 7 ayrı round-trip yerine paralel Task.WhenAll
     // 🚀 Redis cache: 2 dk TTL — en sık çağrılan endpoint
-    public async Task<DashboardStatsDto> GetDashboardStatsAsync(Guid tenantId)
+    public async Task<DashboardStatsDto> GetDashboardStatsAsync()
     {
-        var cacheKey = $"{tenantId}:analytics:dashboard";
+        var cacheKey = $"analytics:dashboard";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var memberships = _context.TenantMemberships
-                .Where(tm => tm.TenantId == tenantId && tm.Status == "active");
+            var memberships = _context.Users
+                .Where(tm => tm.IsActive);
 
             var totalUsers       = await memberships.CountAsync();
-            var activeStudents   = await memberships.CountAsync(tm => tm.User.Role == UserRole.Student && tm.User.IsActive && tm.User.StudentType == StudentType.Active);
-            var demoStudents     = await memberships.CountAsync(tm => tm.User.Role == UserRole.Student && tm.User.StudentType == StudentType.Demo);
-            var totalCourses     = await _context.Courses.CountAsync(c => c.TenantId == tenantId);
-            var publishedCourses = await _context.Courses.CountAsync(c => c.TenantId == tenantId && c.IsPublished);
-            var totalExams       = await _context.Exams.CountAsync(e => e.TenantId == tenantId);
-            var totalAssignments = await _context.Assignments.CountAsync(a => a.TenantId == tenantId);
-            var totalGroups      = await _context.Groups.CountAsync(g => g.TenantId == tenantId);
-            var pendingTickets   = await _context.SupportTickets.CountAsync(t => t.TenantId == tenantId && t.Status == TicketStatus.Open);
+            var activeStudents   = await memberships.CountAsync(tm => tm.Role == UserRole.Student && tm.IsActive && tm.StudentType == StudentType.Active);
+            var demoStudents     = await memberships.CountAsync(tm => tm.Role == UserRole.Student && tm.StudentType == StudentType.Demo);
+            var totalCourses     = await _context.Courses.CountAsync(c => true);
+            var publishedCourses = await _context.Courses.CountAsync(c => c.IsPublished);
+            var totalExams       = await _context.Exams.CountAsync(e => true);
+            var totalAssignments = await _context.Assignments.CountAsync(a => true);
+            var totalGroups      = await _context.Groups.CountAsync(g => true);
+            var pendingTickets   = await _context.SupportTickets.CountAsync(t => t.Status == TicketStatus.Open);
 
             return new DashboardStatsDto(
                 totalUsers, activeStudents, demoStudents,
@@ -48,13 +48,13 @@ public class AnalyticsService : IAnalyticsService
 
     // ── Admin: Video izleme istatistikleri (skip/replay analizi dahil) ──────
     // 🚀 Redis cache: 3 dk TTL
-    public async Task<List<VideoWatchStatsDto>> GetVideoStatsAsync(Guid tenantId)
+    public async Task<List<VideoWatchStatsDto>> GetVideoStatsAsync()
     {
-        var cacheKey = $"{tenantId}:analytics:videostats";
+        var cacheKey = $"analytics:videostats";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             return await _context.MediaAssets.AsNoTracking()
-                .Where(m => m.TenantId == tenantId)
+                .Where(m => true)
                 .Select(m => new VideoWatchStatsDto(
                     m.Id, m.Title,
                     m.VideoProgresses.Count,
@@ -74,13 +74,13 @@ public class AnalyticsService : IAnalyticsService
 
     // ── Admin: Finansal işlemler ─────────────────────────────────────────────
     // 🚀 Redis cache: 2 dk TTL
-    public async Task<List<TransactionDto>> GetTransactionsAsync(Guid tenantId, DateTime from, DateTime to)
+    public async Task<List<TransactionDto>> GetTransactionsAsync(DateTime from, DateTime to)
     {
-        var cacheKey = $"{tenantId}:analytics:transactions:{from:yyyyMMdd}:{to:yyyyMMdd}";
+        var cacheKey = $"analytics:transactions:{from:yyyyMMdd}:{to:yyyyMMdd}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             return await _context.Transactions.AsNoTracking()
-                .Where(t => t.TenantId == tenantId && t.TransactionDate >= from && t.TransactionDate <= to)
+                .Where(t => t.TransactionDate >= from && t.TransactionDate <= to)
                 .OrderByDescending(t => t.TransactionDate)
                 .Select(t => new TransactionDto(t.Id, t.Description ?? string.Empty, t.Amount, t.Type, t.TransactionDate))
                 .ToListAsync();
@@ -89,13 +89,13 @@ public class AnalyticsService : IAnalyticsService
 
     // ── Admin: Aktif cihaz oturumları ────────────────────────────────────────
     // 🚀 Redis cache: 1 dk TTL (sık değişen veri)
-    public async Task<List<DeviceSessionDto>> GetActiveSessionsAsync(Guid tenantId)
+    public async Task<List<DeviceSessionDto>> GetActiveSessionsAsync()
     {
-        var cacheKey = $"{tenantId}:analytics:activesessions:students";
+        var cacheKey = $"analytics:activesessions:students";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             return await _context.DeviceSessions.AsNoTracking()
-                .Where(ds => ds.TenantId == tenantId && ds.IsActive && ds.User.Role == UserRole.Student)
+                .Where(ds => ds.IsActive && ds.User.Role == UserRole.Student)
                 .Include(ds => ds.User)
                 .OrderByDescending(ds => ds.LoginAt)
                 .Select(ds => new DeviceSessionDto(ds.Id, ds.UserId,
@@ -107,13 +107,13 @@ public class AnalyticsService : IAnalyticsService
 
     // ── Admin: Kurs bazlı devam/yoklama raporu ───────────────────────────────
     // 🚀 Redis cache: 2 dk TTL
-    public async Task<CourseAttendanceReportDto> GetCourseAttendanceReportAsync(Guid tenantId, Guid courseId)
+    public async Task<CourseAttendanceReportDto> GetCourseAttendanceReportAsync(Guid courseId)
     {
-        var cacheKey = $"{tenantId}:analytics:courseattendance:{courseId}";
+        var cacheKey = $"analytics:courseattendance:{courseId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var course = await _context.Courses.AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == courseId && c.TenantId == tenantId)
+                .FirstOrDefaultAsync(c => c.Id == courseId )
                 ?? throw new KeyNotFoundException("Kurs bulunamadı.");
 
             // Kursa atanmış toplam öğrenci
@@ -152,7 +152,7 @@ public class AnalyticsService : IAnalyticsService
                 .ToListAsync();
 
             int riskStudentCount = 0;
-            if (sessions.Count > 0)
+            if (sessions.Count() > 0)
             {
                 foreach (var student in allStudentIds)
                 {
@@ -169,9 +169,9 @@ public class AnalyticsService : IAnalyticsService
 
     // ── Admin: Öğrenci skor kartı ────────────────────────────────────────────
     // 🚀 Redis cache: 2 dk TTL + Task.WhenAll paralel sorgu
-    public async Task<StudentScorecardDto> GetStudentScorecardAsync(Guid tenantId, Guid studentId)
+    public async Task<StudentScorecardDto> GetStudentScorecardAsync(Guid studentId)
     {
-        var cacheKey = $"{tenantId}:analytics:scorecard:{studentId}";
+        var cacheKey = $"analytics:scorecard:{studentId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var user = await _context.Users.AsNoTracking()
@@ -180,22 +180,22 @@ public class AnalyticsService : IAnalyticsService
 
             // EF Core aynı anda birden fazla sorguyu aynı context üzerinden desteklemediği için sıralı await yapıyoruz.
             var attendance = await _context.SessionAttendances.AsNoTracking()
-                .Where(sa => sa.UserId == studentId && sa.TenantId == tenantId)
+                .Where(sa => sa.UserId == studentId )
                 .ToListAsync();
 
             var videoProgress = await _context.VideoProgresses.AsNoTracking()
-                .Where(vp => vp.UserId == studentId && vp.MediaAsset.TenantId == tenantId)
+                .Where(vp => vp.UserId == studentId )
                 .Include(vp => vp.MediaAsset)
                 .ToListAsync();
 
             var totalVideos = await _context.MediaAssets
-                .CountAsync(m => m.TenantId == tenantId);
+                .CountAsync(m => true);
 
             var submittedAssignments = await _context.AssignmentSubmissions
                 .CountAsync(s => s.UserId == studentId);
 
             var examScores = await _context.ExamResults.AsNoTracking()
-                .Where(r => r.UserId == studentId && r.Exam.TenantId == tenantId)
+                .Where(r => r.UserId == studentId )
                 .Select(r => r.Score)
                 .ToListAsync();
 
@@ -206,7 +206,7 @@ public class AnalyticsService : IAnalyticsService
 
             var videoCompletionRate = totalVideos > 0
                 ? Math.Round((double)completedVideos / totalVideos * 100, 1) : 0;
-            var attendanceRate = attendance.Count > 0
+            var attendanceRate = attendance.Count() > 0
                 ? Math.Round((double)attendedCount / attendance.Count * 100, 1) : 0;
 
             return new StudentScorecardDto(
@@ -217,9 +217,9 @@ public class AnalyticsService : IAnalyticsService
         }, TimeSpan.FromMinutes(2));
     }
 
-    public async Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid tenantId, Guid studentId)
+    public async Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid studentId)
     {
-        var cacheKey = $"{tenantId}:analytics:academichistory:{studentId}";
+        var cacheKey = $"analytics:academichistory:{studentId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var user = await _context.Users.AsNoTracking()
@@ -227,7 +227,7 @@ public class AnalyticsService : IAnalyticsService
                 ?? throw new KeyNotFoundException("Öğrenci bulunamadı.");
 
             var examsTask = _context.ExamResults.AsNoTracking()
-                .Where(r => r.UserId == studentId && r.Exam.TenantId == tenantId)
+                .Where(r => r.UserId == studentId )
                 .Include(r => r.Exam)
                 .Select(r => new StudentExamHistoryDto(
                     r.ExamId, r.Exam.Title, r.Score, 
@@ -236,7 +236,7 @@ public class AnalyticsService : IAnalyticsService
                 .ToListAsync();
 
             var assignmentsTask = _context.AssignmentSubmissions.AsNoTracking()
-                .Where(s => s.UserId == studentId && s.Assignment.TenantId == tenantId)
+                .Where(s => s.UserId == studentId )
                 .Include(s => s.Assignment)
                 .Select(s => new StudentAssignmentHistoryDto(
                     s.AssignmentId, s.Assignment.Title, s.Score.HasValue ? "Değerlendirildi" : "Bekliyor", s.Score, s.SubmittedAt))
@@ -249,14 +249,14 @@ public class AnalyticsService : IAnalyticsService
     }
 
     // ── Admin: Tüm öğrencilerin toplu karne ortalaması ────────────────────────
-    public async Task<ScorecardSummaryDto> GetScorecardSummaryAsync(Guid tenantId)
+    public async Task<ScorecardSummaryDto> GetScorecardSummaryAsync()
     {
-        var cacheKey = $"{tenantId}:analytics:scorecardsummary";
+        var cacheKey = $"analytics:scorecardsummary";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var studentIds = await _context.TenantMemberships
-                .Where(tm => tm.TenantId == tenantId && tm.Status == "active" && tm.User.Role == Domain.Enums.UserRole.Student)
-                .Select(tm => tm.UserId)
+            var studentIds = await _context.Users
+                .Where(tm => tm.IsActive && tm.Role == Domain.Enums.UserRole.Student)
+                .Select(tm => tm.Id)
                 .ToListAsync();
 
             if (studentIds.Count == 0)
@@ -266,7 +266,7 @@ public class AnalyticsService : IAnalyticsService
 
             // Aggregate attendance
             var allAttendance = await _context.SessionAttendances.AsNoTracking()
-                .Where(sa => studentIds.Contains(sa.UserId) && sa.TenantId == tenantId)
+                .Where(sa => studentIds.Contains(sa.UserId) )
                 .ToListAsync();
             var totalAttended = allAttendance.Count(a => a.DurationMinutes > 0);
             var totalAttendanceRecords = allAttendance.Count;
@@ -274,19 +274,19 @@ public class AnalyticsService : IAnalyticsService
                 ? Math.Round((double)totalAttended / totalAttendanceRecords * 100, 1) : 0;
 
             // Aggregate video completion
-            var totalVideos = await _context.MediaAssets.CountAsync(m => m.TenantId == tenantId);
+            var totalVideos = await _context.MediaAssets.CountAsync(m => true);
             var totalCompletedVideos = await _context.VideoProgresses
-                .CountAsync(vp => studentIds.Contains(vp.UserId) && vp.MediaAsset.TenantId == tenantId && vp.CompletedAt != null);
+                .CountAsync(vp => studentIds.Contains(vp.UserId) && vp.CompletedAt != null);
             var avgVideoCompletionRate = totalVideos > 0 && n > 0
                 ? Math.Round((double)totalCompletedVideos / (totalVideos * n) * 100, 1) : 0;
 
             var totalWatchedMinutes = await _context.VideoProgresses
-                .Where(vp => studentIds.Contains(vp.UserId) && vp.MediaAsset.TenantId == tenantId)
+                .Where(vp => studentIds.Contains(vp.UserId) )
                 .SumAsync(vp => (long)vp.WatchedSeconds) / 60;
 
             // Aggregate exam scores
             var examScores = await _context.ExamResults.AsNoTracking()
-                .Where(r => studentIds.Contains(r.UserId) && r.Exam.TenantId == tenantId)
+                .Where(r => studentIds.Contains(r.UserId) )
                 .Select(r => r.Score)
                 .ToListAsync();
             var avgExamScore = examScores.Any() ? Math.Round(examScores.Average(), 1) : 0;
@@ -313,9 +313,9 @@ public class AnalyticsService : IAnalyticsService
     // ── Öğrenci: Kendi dashboard istatistikleri ──────────────────────────────
     // Fix #6: Tüm VideoProgress kayıtları belleğe çekilmiyor — SQL'de hesaplanıyor.
     // 🚀 Redis cache: 3 dk TTL — öğrenci bazlı cache
-    public async Task<StudentDashboardDto> GetStudentDashboardAsync(Guid tenantId, Guid userId)
+    public async Task<StudentDashboardDto> GetStudentDashboardAsync(Guid userId)
     {
-        var cacheKey = $"{tenantId}:student:dashboard:{userId}";
+        var cacheKey = $"student:dashboard:{userId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var now = DateTime.UtcNow;
@@ -324,20 +324,19 @@ public class AnalyticsService : IAnalyticsService
 
             // Fix #6: SQL'de topla, belleğe çekme
             var totalWatchedSeconds = await _context.VideoProgresses.AsNoTracking()
-                .Where(vp => vp.UserId == userId && vp.UpdatedAt >= weekAgo && vp.MediaAsset.TenantId == tenantId)
+                .Where(vp => vp.UserId == userId && vp.UpdatedAt >= weekAgo )
                 .SumAsync(vp => (long)vp.WatchedSeconds);
             var totalWatchedMinutes = (int)(totalWatchedSeconds / 60);
 
             // Bu ay katılım
             var monthlyAttendance = await _context.SessionAttendances.AsNoTracking()
-                .Where(sa => sa.UserId == userId && sa.TenantId == tenantId && sa.JoinedAt >= monthStart)
+                .Where(sa => sa.UserId == userId && sa.JoinedAt >= monthStart)
                 .ToListAsync();
             var attendedThisMonth = monthlyAttendance.Count(a => a.DurationMinutes > 0);
 
             // Toplam bu aydaki oturum sayısı (kursa atanan)
             var totalSessionsThisMonth = await _context.Sessions.AsNoTracking()
-                .Where(s => s.Course.TenantId == tenantId
-                    && s.ScheduledStart >= monthStart && s.ScheduledStart <= now)
+                .Where(s => s.ScheduledStart >= monthStart && s.ScheduledStart <= now)
                 .CountAsync();
 
             var attendanceRate = totalSessionsThisMonth > 0
@@ -346,20 +345,19 @@ public class AnalyticsService : IAnalyticsService
             // Fix #6: SQL'de say
             var completedVideos = await _context.VideoProgresses
                 .CountAsync(vp => vp.UserId == userId
-                    && vp.MediaAsset.TenantId == tenantId && vp.CompletedAt != null);
+                    && vp.CompletedAt != null);
 
             // ── Aktif Seri (Consecutif Gün) Hesabı ──────────────────────────────
             var thirtyDaysAgo = now.AddDays(-30);
             var activeDates = await _context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UserId == userId
-                    && vp.MediaAsset.TenantId == tenantId
                     && vp.UpdatedAt >= thirtyDaysAgo)
                 .Select(vp => vp.UpdatedAt.Date)
                 .Distinct()
                 .ToListAsync();
 
             var attendanceDates = await _context.SessionAttendances.AsNoTracking()
-                .Where(sa => sa.UserId == userId && sa.TenantId == tenantId && sa.JoinedAt >= thirtyDaysAgo)
+                .Where(sa => sa.UserId == userId && sa.JoinedAt >= thirtyDaysAgo)
                 .Select(sa => sa.JoinedAt.Date)
                 .Distinct()
                 .ToListAsync();
@@ -376,7 +374,7 @@ public class AnalyticsService : IAnalyticsService
 
             // Sınav net ortalaması
             var examResults = await _context.ExamResults.AsNoTracking()
-                .Where(r => r.UserId == userId && r.Exam.TenantId == tenantId)
+                .Where(r => r.UserId == userId )
                 .Select(r => new { r.CorrectCount, r.WrongCount, r.Exam.WrongPenaltyWeight })
                 .ToListAsync();
             var avgExamNet = examResults.Any()
@@ -386,7 +384,6 @@ public class AnalyticsService : IAnalyticsService
             // "Devam et" listesi — yarıda bırakılan videolar
             var continueWatching = await _context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UserId == userId
-                    && vp.MediaAsset.TenantId == tenantId
                     && vp.LastPosition > 0
                     && vp.CompletedAt == null)
                 .Include(vp => vp.MediaAsset)
@@ -403,7 +400,6 @@ public class AnalyticsService : IAnalyticsService
             var sevenDaysAgo = now.Date.AddDays(-6);
             var dailyMinutes = await _context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UserId == userId
-                    && vp.MediaAsset.TenantId == tenantId
                     && vp.UpdatedAt >= sevenDaysAgo)
                 .GroupBy(vp => vp.UpdatedAt.Date)
                 .Select(g => new { Date = g.Key, Minutes = (int)(g.Sum(vp => (long)vp.WatchedSeconds) / 60) })

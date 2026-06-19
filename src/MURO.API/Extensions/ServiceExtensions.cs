@@ -20,7 +20,7 @@ public static class ServiceExtensions
         services.AddScoped<IAuthLoginService, AuthLoginService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
-        services.AddScoped<ITenantService, TenantService>();
+        
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IGroupService, GroupService>();
         services.AddScoped<IGroupAccessService, GroupAccessService>();
@@ -43,7 +43,7 @@ public static class ServiceExtensions
         services.AddScoped<IAnalyticsService, AnalyticsService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ILiveMeetingService, LiveMeetingService>();
-        services.AddScoped<IPlatformAnalyticsService, PlatformAnalyticsService>();
+        
         services.AddScoped<IPodcastService, PodcastService>();
         services.AddScoped<ISessionAttendanceService, SessionAttendanceService>();
         services.AddScoped<IExcelService, ExcelService>();
@@ -58,9 +58,7 @@ public static class ServiceExtensions
         services.AddScoped<ISystemHealthService, SystemHealthService>();
 
         // --- Admin Control Plane (Refactored from AdminService) ---
-        services.AddScoped<IAdminTenantManagementService, AdminTenantManagementService>();
-        services.AddScoped<IAdminTenantQuotaService, AdminTenantQuotaService>();
-        services.AddScoped<IAdminTenantHealthService, AdminTenantHealthService>();
+
         services.AddScoped<IAdminSessionService, AdminSessionService>();
         services.AddScoped<IAdminAnalyticsService, AdminAnalyticsService>();
         services.AddScoped<IAdminUserService, AdminUserService>();

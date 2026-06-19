@@ -3,7 +3,7 @@ namespace MURO.Application.Interfaces;
 // DTO'lar
 public record PackageGroupDto(Guid Id, Guid GroupId, string GroupName, string ContentMode);
 public record PackageDto(
-    Guid Id, Guid TenantId, string Name, string? Description,
+    Guid Id, string Name, string? Description,
     decimal Price, int DurationDays, bool IsActive, DateTime CreatedAt,
     List<PackageGroupDto> Groups, int ActiveUserCount);
 public record UserPackageDto(
@@ -25,11 +25,11 @@ public record UpdatePackageRequest(
 /// </summary>
 public interface IPackageService
 {
-    Task<List<PackageDto>> GetPackagesAsync(Guid tenantId);
-    Task<PackageDto> GetPackageByIdAsync(Guid tenantId, Guid packageId);
-    Task<PackageDto> CreatePackageAsync(Guid tenantId, CreatePackageRequest request);
-    Task<PackageDto> UpdatePackageAsync(Guid tenantId, Guid packageId, UpdatePackageRequest request);
-    Task DeletePackageAsync(Guid tenantId, Guid packageId);
+    Task<List<PackageDto>> GetPackagesAsync();
+    Task<PackageDto> GetPackageByIdAsync(Guid packageId);
+    Task<PackageDto> CreatePackageAsync(CreatePackageRequest request);
+    Task<PackageDto> UpdatePackageAsync(Guid packageId, UpdatePackageRequest request);
+    Task DeletePackageAsync(Guid packageId);
 
     /// <summary>Paketi kullanıcıya aktive et (webhook veya admin)</summary>
     Task<UserPackageDto> ActivateUserPackageAsync(

@@ -20,25 +20,22 @@ public class ExamsController : ControllerBase
     private readonly IExamService _examService;
     private readonly IExamAssignmentService _assignmentService;
     private readonly IExamResultService _resultService;
-    private readonly ITenantService _tenantService;
-    private readonly IBackgroundJobQueue _jobQueue;
+        private readonly IBackgroundJobQueue _jobQueue;
 
     public ExamsController(
         IExamService examService, 
         IExamAssignmentService assignmentService,
         IExamResultService resultService,
-        ITenantService tenantService, 
+        
         IBackgroundJobQueue jobQueue)
     {
         _examService = examService;
         _assignmentService = assignmentService;
         _resultService = resultService;
-        _tenantService = tenantService;
-        _jobQueue = jobQueue;
+                _jobQueue = jobQueue;
     }
 
-    private Guid GetTenantId() =>
-        _tenantService.CurrentTenantId ?? throw new UnauthorizedAccessException("Kurum bilgisi bulunamadı.");
+    
 
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -53,43 +50,43 @@ public class ExamsController : ControllerBase
         [FromQuery] string? search = null, [FromQuery] string? examType = null,
         [FromQuery] string? status = null)
     {
-        return Ok(await _examService.GetExamsAsync(GetTenantId(), page, pageSize, search, examType, status));
+        return Ok(await _examService.GetExamsAsync(page, pageSize, search, examType, status));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ExamDetailDto>> GetExam(Guid id)
     {
-        return Ok(await _examService.GetExamByIdAsync(GetTenantId(), id));
+        return Ok(await _examService.GetExamByIdAsync(id));
     }
 
     [HttpGet("{id:guid}/digital-questions")]
     public async Task<ActionResult<string>> GetDigitalQuestions(Guid id)
     {
-        var questions = await _examService.GetExamDigitalQuestionsAsync(GetTenantId(), id);
+        var questions = await _examService.GetExamDigitalQuestionsAsync(id);
         return Ok(questions ?? "[]");
     }
 
     [HttpPost]
     public async Task<ActionResult<ExamListDto>> CreateExam([FromBody] CreateExamRequest request)
     {
-        var exam = await _examService.CreateExamAsync(GetTenantId(), request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Create", "Exam", exam.Id.ToString(), request.Title, $"Tip: {request.ExamType}", GetIp()));
+        var exam = await _examService.CreateExamAsync(request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Create", "Exam", exam.Id.ToString(), request.Title, $"Tip: {request.ExamType}", GetIp()));
         return Created($"/api/v1/exams/{exam.Id}", exam);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<ExamListDto>> UpdateExam(Guid id, [FromBody] UpdateExamRequest request)
     {
-        var result = await _examService.UpdateExamAsync(GetTenantId(), id, request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Update", "Exam", id.ToString(), request.Title, null, GetIp()));
+        var result = await _examService.UpdateExamAsync(id, request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Update", "Exam", id.ToString(), request.Title, null, GetIp()));
         return Ok(result);
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteExam(Guid id)
     {
-        await _examService.DeleteExamAsync(GetTenantId(), id);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "Delete", "Exam", id.ToString(), null, null, GetIp()));
+        await _examService.DeleteExamAsync(id);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "Exam", id.ToString(), null, null, GetIp()));
         return NoContent();
     }
 
@@ -98,7 +95,7 @@ public class ExamsController : ControllerBase
     [HttpPut("{id:guid}/answer-key")]
     public async Task<ActionResult<ExamDetailDto>> UpdateAnswerKey(Guid id, [FromBody] UpdateAnswerKeyRequest request)
     {
-        return Ok(await _examService.UpdateAnswerKeyAsync(GetTenantId(), id, request));
+        return Ok(await _examService.UpdateAnswerKeyAsync(id, request));
     }
 
     // ── Durum ──
@@ -106,8 +103,8 @@ public class ExamsController : ControllerBase
     [HttpPut("{id:guid}/status")]
     public async Task<ActionResult<ExamListDto>> UpdateStatus(Guid id, [FromBody] UpdateExamStatusRequest request)
     {
-        var result = await _examService.UpdateStatusAsync(GetTenantId(), id, request);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetTenantId(), GetUserId(), null, "StatusChange", "Exam", id.ToString(), null, $"Yeni durum: {request.Status}", GetIp()));
+        var result = await _examService.UpdateStatusAsync(id, request);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "StatusChange", "Exam", id.ToString(), null, $"Yeni durum: {request.Status}", GetIp()));
         return Ok(result);
     }
 
@@ -116,7 +113,7 @@ public class ExamsController : ControllerBase
     [HttpPut("{id:guid}/pdf")]
     public async Task<ActionResult<ExamDetailDto>> UpdatePdf(Guid id, [FromBody] UpdateExamPdfRequest request)
     {
-        return Ok(await _examService.UpdatePdfAsync(GetTenantId(), id, request));
+        return Ok(await _examService.UpdatePdfAsync(id, request));
     }
 
     // ── Atamalar ──
@@ -124,13 +121,13 @@ public class ExamsController : ControllerBase
     [HttpPost("{examId:guid}/assign")]
     public async Task<ActionResult<ExamAssignmentDto>> AssignExam(Guid examId, [FromBody] CreateExamAssignmentRequest request)
     {
-        return Ok(await _assignmentService.AssignExamAsync(GetTenantId(), examId, request));
+        return Ok(await _assignmentService.AssignExamAsync(examId, request));
     }
 
     [HttpDelete("{examId:guid}/assign/{assignmentId:guid}")]
     public async Task<IActionResult> RemoveAssignment(Guid examId, Guid assignmentId)
     {
-        await _assignmentService.RemoveAssignmentAsync(GetTenantId(), examId, assignmentId);
+        await _assignmentService.RemoveAssignmentAsync(examId, assignmentId);
         return NoContent();
     }
 
@@ -139,14 +136,14 @@ public class ExamsController : ControllerBase
     [HttpGet("{examId:guid}/results")]
     public async Task<ActionResult<ExamResultSummaryDto>> GetResults(Guid examId)
     {
-        return Ok(await _resultService.GetExamResultsAsync(GetTenantId(), examId));
+        return Ok(await _resultService.GetExamResultsAsync(examId));
     }
 
     /// GET /api/v1/exams/results/summary — Tüm sınavların genel özeti
     [HttpGet("results/summary")]
     public async Task<ActionResult<ExamOverallSummaryDto>> GetOverallSummary()
     {
-        return Ok(await _resultService.GetOverallSummaryAsync(GetTenantId()));
+        return Ok(await _resultService.GetOverallSummaryAsync());
     }
 
     // ── Öğrenci Optik Form Gönderimi ──
@@ -154,7 +151,7 @@ public class ExamsController : ControllerBase
     [HttpPost("{examId:guid}/submit")]
     public async Task<ActionResult<ExamResultDto>> SubmitAnswers(Guid examId, [FromBody] SubmitExamAnswersRequest request)
     {
-        return Ok(await _resultService.SubmitAnswersAsync(GetTenantId(), examId, GetUserId(), request));
+        return Ok(await _resultService.SubmitAnswersAsync(examId, GetUserId(), request));
     }
 
     // ── Öğrenci endpoint'leri ──────────────────────────────────────────────────
@@ -162,19 +159,19 @@ public class ExamsController : ControllerBase
     [HttpPost("{examId:guid}/draft")]
     public async Task<IActionResult> SaveDraft(Guid examId, [FromBody] Dictionary<int, string> answers)
     {
-        await _resultService.SaveDraftAsync(GetTenantId(), examId, GetUserId(), answers);
+        await _resultService.SaveDraftAsync(examId, GetUserId(), answers);
         return Ok();
     }
 
     [HttpGet("{examId:guid}/draft")]
     public async Task<ActionResult<Dictionary<int, string>>> GetDraft(Guid examId)
     {
-        var draft = await _resultService.GetDraftAsync(GetTenantId(), examId, GetUserId());
+        var draft = await _resultService.GetDraftAsync(examId, GetUserId());
         return Ok(draft ?? new Dictionary<int, string>());
     }
 
     /// GET /api/v1/exams/my-results — Öğrencinin kendi sınav sonuçları
     [HttpGet("my-results")]
     public async Task<ActionResult<List<MyExamResultDto>>> GetMyResults()
-        => Ok(await _resultService.GetMyExamResultsAsync(GetTenantId(), GetUserId()));
+        => Ok(await _resultService.GetMyExamResultsAsync(GetUserId()));
 }
