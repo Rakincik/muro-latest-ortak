@@ -154,7 +154,7 @@ public class UserService : IUserService
         var cleanedPhone = CleanPhoneNumber(request.Phone);
         
         string email = request.Email;
-        if (isStudent || string.IsNullOrWhiteSpace(email))
+        if (string.IsNullOrWhiteSpace(email))
         {
             var baseUsername = ToEnglishUsername(request.FirstName, request.LastName);
             email = baseUsername;
@@ -294,19 +294,46 @@ public class UserService : IUserService
         var existingEmails = (await _context.Users
             .Select(u => u.Email)
             .ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            
+        var existingTcs = (await _context.Users
+            .Where(u => !string.IsNullOrEmpty(u.TcNo))
+            .Select(u => u.TcNo)
+            .ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            
+        var existingPhones = (await _context.Users
+            .Where(u => !string.IsNullOrEmpty(u.Phone))
+            .Select(u => u.Phone)
+            .ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var generatedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var generatedTcs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var generatedPhones = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var req in requests)
         {
             if (!Enum.TryParse<UserRole>(req.Role, true, out var role)) continue;
             var isStudent = role == UserRole.Student;
 
-            // Clean phone number
+            // TC No duplicate check
+            var tc = req.TcNo?.Trim();
+            if (!string.IsNullOrEmpty(tc))
+            {
+                if (existingTcs.Contains(tc) || generatedTcs.Contains(tc))
+                    continue; // Skip duplicate TC
+                generatedTcs.Add(tc);
+            }
+
+            // Phone duplicate check
             var cleanedPhone = CleanPhoneNumber(req.Phone);
+            if (!string.IsNullOrEmpty(cleanedPhone))
+            {
+                if (existingPhones.Contains(cleanedPhone) || generatedPhones.Contains(cleanedPhone))
+                    continue; // Skip duplicate Phone
+                generatedPhones.Add(cleanedPhone);
+            }
 
             string email = req.Email;
-            if (isStudent || string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(email))
             {
                 var baseUsername = ToEnglishUsername(req.FirstName, req.LastName);
                 email = baseUsername;
