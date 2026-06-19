@@ -25,8 +25,7 @@ COPY src/ src/
 # Build & publish in Release mode
 RUN dotnet publish src/MURO.API/MURO.API.csproj \
     -c Release \
-    -o /app/publish \
-    --no-restore
+    -o /app/publish
 
 # --- Stage 2: Runtime ---
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
