@@ -94,8 +94,16 @@ public class BbbService : IBbbService
 
         try
         {
-            // Beyaz tahtanın sorunsuz açılması için hatalı XML payload gönderimini kaldırıyoruz
-            var response = await _httpClient.PostAsync(url, null);
+            // Varsayılan PDF'i ezmek için base64 formatında boş bir txt dosyası gönderiyoruz
+            var xmlPayload = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<modules>
+  <module name=""presentation"">
+    <document name=""blank.txt"">IA==</document>
+  </module>
+</modules>";
+            var content = new StringContent(xmlPayload, System.Text.Encoding.UTF8, "application/xml");
+            
+            var response = await _httpClient.PostAsync(url, content);
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync();
             var data = DeserializeXml<BbbCreateMeetingResponse>(stream);
