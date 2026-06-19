@@ -195,6 +195,7 @@ export default function UsersPage() {
     const [bulkModalOpen, setBulkModalOpen] = useState(false);
     const [bulkFile, setBulkFile] = useState<File | null>(null);
     const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkDragging, setBulkDragging] = useState(false);
     const [bulkResult, setBulkResult] = useState<{ ok: number; fail: number; details?: { firstName: string, lastName: string, email: string, status: string, reason: string }[] } | null>(null);
 
     // ── Quick Password Reset ──
@@ -475,7 +476,20 @@ export default function UsersPage() {
                             <button onClick={() => setBulkModalOpen(false)} className="p-1.5 rounded-lg hover:bg-[#E2E8F0]/40 text-[#A0AEC0]"><X size={18} /></button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className={`border-2 rounded-xl p-8 text-center transition-colors ${bulkFile ? 'border-emerald-500 bg-emerald-50/50 border-solid' : 'border-dashed border-[#E2E8F0] hover:border-[#1B3B6F]/40'}`}>
+                            <div 
+                                onDragOver={(e) => { e.preventDefault(); setBulkDragging(true); }}
+                                onDragLeave={(e) => { e.preventDefault(); setBulkDragging(false); }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    setBulkDragging(false);
+                                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                        const f = e.dataTransfer.files[0];
+                                        if (f.name.endsWith('.xlsx')) setBulkFile(f);
+                                        else alert("Lütfen geçerli bir .xlsx dosyası yükleyin.");
+                                    }
+                                }}
+                                className={`border-2 rounded-2xl p-10 text-center transition-colors ${bulkFile ? 'border-emerald-500 bg-emerald-50/30 border-solid' : (bulkDragging ? 'border-blue-500 bg-blue-50/50 border-solid' : 'border-dashed border-[#E2E8F0] hover:border-[#1B3B6F]/40 hover:bg-[#F8FAFC]')}`}
+                            >
                                 <input type="file" accept=".xlsx" className="hidden" id="bulk-file"
                                     onChange={e => { if (e.target.files?.[0]) handleBulkFile(e.target.files[0]); }} />
                                 <label htmlFor="bulk-file" className="cursor-pointer block">

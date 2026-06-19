@@ -26,7 +26,8 @@ import {
     PiVideoCameraDuotone,
     PiTentDuotone,
     PiNotePencilDuotone,
-    PiTargetDuotone
+    PiTargetDuotone,
+    PiFilePlusDuotone
 } from "react-icons/pi";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -34,6 +35,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { groupsApi, courseApi, notificationApi, userApi, type GroupListDto, type GroupDetailDto, type CourseListDto } from "@/lib/api";
 import { PremiumTabs } from "@/components/ui/PremiumTabs";
 import { KpiGrid } from "@/components/ui/KpiGrid";
+import { BulkRegisterModal } from "./BulkRegisterModal";
 
 type DetailTab = "members" | "courses" | "settings";
 
@@ -119,6 +121,7 @@ export default function GroupsPage() {
     const [formType, setFormType] = useState("");
     const [formExpirationDate, setFormExpirationDate] = useState("");
     const [formSaving, setFormSaving] = useState(false);
+    const [bulkRegisterOpen, setBulkRegisterOpen] = useState(false);
 
     // Detail Members Pagination & Search
     const [memberPage, setMemberPage] = useState(1);
@@ -623,6 +626,10 @@ export default function GroupsPage() {
                                                         </button>
                                                     </div>
                                                 )}
+                                                <button onClick={() => setBulkRegisterOpen(true)}
+                                                    className="px-3 py-1.5 text-xs bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-lg flex items-center gap-1.5 hover:bg-[#F8FAFC] font-bold">
+                                                    <PiFilePlusDuotone size={16} /> Excel ile Toplu Kayıt
+                                                </button>
                                                 <button onClick={() => { setBulkAddSelection(new Set()); setAddMemberOpen(true); }}
                                                     className="px-3 py-1.5 text-xs bg-[#0A1931] text-white rounded-lg flex items-center gap-1.5 hover:bg-[#1B3B6F] font-bold">
                                                     <UserPlus size={12} /> Öğrenci Ekle
@@ -1146,6 +1153,22 @@ export default function GroupsPage() {
             <ConfirmDialog open={hardDeleteOpen} title="Kullanıcıları İmha Et"
                 message={`DİKKAT: Seçili ${selectedMembers.size} kullanıcı SİSTEMDEN TAMAMEN SİLİNECEKTİR. Onaylıyor musunuz?`}
                 confirmText="İmha Et" onConfirm={executeHardDeleteMembers} onClose={() => setHardDeleteOpen(false)} variant="danger" />
+
+            {bulkRegisterOpen && (
+                <BulkRegisterModal
+                    token={token!}
+                    tenantId={tenantId!}
+                    groups={groups}
+                    preselectedGroupId={detail?.id}
+                    preselectedGroupName={detail?.name}
+                    onClose={() => setBulkRegisterOpen(false)}
+                    onSuccess={() => {
+                        if (detail) {
+                            groupsApi.get(token!, tenantId!, detail.id).then(setDetail).catch(() => {});
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

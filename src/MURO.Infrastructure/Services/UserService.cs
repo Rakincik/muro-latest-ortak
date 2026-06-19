@@ -311,9 +311,17 @@ public class UserService : IUserService
                        (!string.IsNullOrEmpty(u.Phone) && requestPhones.Contains(u.Phone)))
             .ToListAsync();
 
-        var existingUsersByTc = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.TcNo)).ToDictionary(u => u.TcNo, StringComparer.OrdinalIgnoreCase);
-        var existingUsersByPhone = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.Phone)).ToDictionary(u => u.Phone, StringComparer.OrdinalIgnoreCase);
-        var existingUsersByEmail = existingUsersMatch.ToDictionary(u => u.Email, StringComparer.OrdinalIgnoreCase);
+        var existingUsersByTc = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.TcNo))
+            .GroupBy(u => u.TcNo, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            
+        var existingUsersByPhone = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.Phone))
+            .GroupBy(u => u.Phone, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            
+        var existingUsersByEmail = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.Email))
+            .GroupBy(u => u.Email, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var generatedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var generatedTcs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -402,8 +410,21 @@ public class UserService : IUserService
                 var membership = existingUser.TenantMemberships.FirstOrDefault();
                 if (membership != null && membership.Status == "active")
                 {
-                    importResult.FailedCount++;
-                    importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = email ?? existingUser.Email, Status = "Başarısız", Reason = "Bu kullanıcı (TC, Telefon veya E-posta) zaten aktif olarak kayıtlı." });
+                    importResult.ImportedCount++;
+                    importResult.Details.Add(new BulkImportItemResultDto { 
+                        UserId = existingUser.Id, 
+                        FirstName = req.FirstName, 
+                        LastName = req.LastName, 
+                        Email = email ?? existingUser.Email, 
+                        Status = "Başarılı", 
+                        Reason = "Kullanıcı zaten sistemde kayıtlı." 
+                    });
+                    
+                    results.Add(new UserListDto(
+                        existingUser.Id, existingUser.FirstName, existingUser.LastName, existingUser.Email,
+                        existingUser.Phone, existingUser.Role.ToString(), existingUser.StudentType?.ToString(),
+                        existingUser.IsActive, existingUser.CreatedAt, existingUser.LastLoginAt, null, existingUser.PasswordHash.StartsWith("$2") ? null : existingUser.PasswordHash,
+                        existingUser.TcNo));
                     continue;
                 }
 
@@ -436,7 +457,7 @@ public class UserService : IUserService
                 }
                 
                 importResult.ImportedCount++;
-                importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = existingUser.Email, Status = "Başarılı", Reason = "Eski kayıt başarıyla aktifleştirildi" });
+                importResult.Details.Add(new BulkImportItemResultDto { UserId = existingUser.Id, FirstName = req.FirstName, LastName = req.LastName, Email = existingUser.Email, Status = "Başarılı", Reason = "Eski kayıt başarıyla aktifleştirildi" });
                 
                 results.Add(new UserListDto(
                     existingUser.Id, existingUser.FirstName, existingUser.LastName, existingUser.Email,
@@ -471,7 +492,7 @@ public class UserService : IUserService
             });
 
             importResult.ImportedCount++;
-            importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = email, Status = "Başarılı", Reason = "Başarıyla eklendi" });
+            importResult.Details.Add(new BulkImportItemResultDto { UserId = user.Id, FirstName = req.FirstName, LastName = req.LastName, Email = email, Status = "Başarılı", Reason = "Başarıyla eklendi" });
 
             results.Add(new UserListDto(
                 user.Id, user.FirstName, user.LastName, user.Email,

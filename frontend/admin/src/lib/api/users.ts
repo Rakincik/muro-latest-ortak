@@ -62,10 +62,11 @@ export const userApi = {
         a.click(); URL.revokeObjectURL(url);
     },
 
-    importExcel: async (token: string, tenantId: string, file: File): Promise<{ message: string; importedCount: number; skippedCount: number; details: { firstName: string, lastName: string, email: string, status: string, reason: string }[] }> => {
+    importExcel: async (token: string, tenantId: string, file: File, groupId?: string): Promise<{ message: string; importedCount: number; skippedCount: number; details: { firstName: string, lastName: string, email: string, status: string, reason: string }[] }> => {
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch(`${API_URL}/users/import-excel`, {
+        const url = groupId ? `${API_URL}/users/import-excel?groupId=${groupId}` : `${API_URL}/users/import-excel`;
+        const res = await fetch(url, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, 'X-Tenant-Id': tenantId },
             body: formData,

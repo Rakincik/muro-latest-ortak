@@ -156,7 +156,9 @@ public class UsersController : ControllerBase
     [HttpPost("import-excel")]
     public async Task<IActionResult> ImportUsersExcel(
         IFormFile file,
-        [FromServices] IExcelService excelService)
+        [FromQuery] Guid? groupId,
+        [FromServices] IExcelService excelService,
+        [FromServices] IGroupService groupService)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "Lütfen bir dosya seçin." });
@@ -197,6 +199,19 @@ public class UsersController : ControllerBase
         }
 
         var importResult = await _userService.BulkCreateUsersAsync(GetTenantId(), requests);
+
+        if (groupId.HasValue && importResult.ImportedCount > 0)
+        {
+            var newMemberIds = importResult.Details
+                .Where(d => d.Status == "Başarılı" && d.UserId.HasValue)
+                .Select(d => d.UserId.Value)
+                .ToList();
+
+            if (newMemberIds.Any())
+            {
+                await groupService.AddMembersAsync(GetTenantId(), groupId.Value, newMemberIds);
+            }
+        }
 
         return Ok(new { 
             message = $"{importResult.ImportedCount} kullanıcı başarıyla eklendi, {importResult.FailedCount} kişi başarısız oldu.", 
