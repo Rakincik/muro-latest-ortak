@@ -56,11 +56,15 @@ export async function api<T = unknown>(
             console.error(`API Error: ${response.status} | URL: ${endpoint} | Text:`, textContent);
         }
         
-        const errMsg = errorData.error
+        let errMsg = errorData.error
             || errorData.message
             || (errorData.errors ? Object.values(errorData.errors).flat().join(", ") : null)
             || errorData.title
             || `HTTP ${response.status}`;
+
+        if (typeof errMsg === "string" && (errMsg.trim().startsWith("<") || errMsg.toLowerCase().includes("<html"))) {
+            errMsg = "Sunucu ile bağlantı kurulamadı veya sistemsel bir hata oluştu. Lütfen birazdan tekrar deneyin.";
+        }
 
         if (response.status === 401 && errorData?.error === "SESSION_KICKED") {
             const displayMsg = errorData.message || errMsg;
