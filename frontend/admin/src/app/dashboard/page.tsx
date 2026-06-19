@@ -125,9 +125,6 @@ export default function DashboardPage() {
                 <h1 className="text-2xl font-bold text-[#0A1931]">
                     Hoş geldiniz
                 </h1>
-                <p className="text-[#A9A9A9] mt-1 text-sm">
-                    MURO Yönetim Paneli
-                </p>
             </div>
 
             {/* ── Stat Cards ── */}
