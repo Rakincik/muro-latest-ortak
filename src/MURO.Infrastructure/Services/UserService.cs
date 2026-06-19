@@ -572,7 +572,9 @@ public class UserService : IUserService
                           $"{Esc(u.IsActive ? "Aktif" : "Pasif")},{Esc(u.CreatedAt.ToString("yyyy-MM-dd"))}");
         }
 
-        return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var bom = new byte[] { 0xEF, 0xBB, 0xBF };
+        return bom.Concat(bytes).ToArray();
     }
 
     public static string ToEnglishUsername(string firstName, string lastName)
