@@ -73,6 +73,8 @@ services:
       - Cors__AllowedOrigins__0=http://192.168.1.115:3001
       - Cors__AllowedOrigins__1=http://192.168.1.115:3002
       - Cors__AllowedOrigins__2=http://localhost:3001
+      - Cors__AllowedOrigins__3=https://online.monopoluzem.com.tr
+      - Cors__AllowedOrigins__4=http://online.monopoluzem.com.tr
       - Tenant__BaseDomain=${BASE_DOMAIN:-192.168.1.115}
       - Gemini__ApiKey=${GEMINI_API_KEY:-}
       - Webhook__Secret=${WEBHOOK_SECRET:-CHANGE_THIS_IN_PRODUCTION}
