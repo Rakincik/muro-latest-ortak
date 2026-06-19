@@ -105,7 +105,17 @@ export default function WatchPage() {
 
                 const typedRecs = recs as RecordingDto[];
 
-                const courseRecs: RecordingDto[] = courseMedias
+                const readyCourseMedias = courseMedias.filter((cm: CourseMediaDto) => {
+                    if (cm.sessionId) {
+                        const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);
+                        if (matchRec && matchRec.status !== 'Ready') {
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+                const courseRecs: RecordingDto[] = readyCourseMedias
                     .filter((cm: CourseMediaDto) => cm.type !== "Exam")
                     .map((cm: CourseMediaDto) => {
                         const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);

@@ -150,8 +150,19 @@ export default function CourseDetailPage() {
                 
                 const typedRecs = recs as RecordingDto[];
 
+                // Filter out recordings that are still processing
+                const readyCourseMedias = courseMedias.filter((cm: CourseMediaDto) => {
+                    if (cm.sessionId) {
+                        const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);
+                        if (matchRec && matchRec.status !== 'Ready') {
+                            return false; // Hide processing/failed recordings
+                        }
+                    }
+                    return true;
+                });
+
                 // Map CourseMediaDto to RecordingDto for the player and sidebar
-                const mappedRecordings: RecordingDto[] = courseMedias.map((cm: CourseMediaDto) => {
+                const mappedRecordings: RecordingDto[] = readyCourseMedias.map((cm: CourseMediaDto) => {
                     const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);
                     const matchSession = sess.find(s => s.id === cm.sessionId);
                     return {
