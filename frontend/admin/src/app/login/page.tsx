@@ -23,7 +23,21 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      router.push("/dashboard");
+      const role = user.role?.toLowerCase();
+      if (role === "student") {
+        // Öğrenci yanlışlıkla admin panelinden giriş yaptıysa onu öğrenci paneline yönlendir
+        const t = localStorage.getItem("muro_token");
+        const r = localStorage.getItem("muro_refresh");
+        if (t) localStorage.setItem("muro_student_token", t);
+        if (r) localStorage.setItem("muro_student_refresh", r);
+        
+        localStorage.removeItem("muro_token");
+        localStorage.removeItem("muro_refresh");
+
+        window.location.href = "/"; // Öğrenci portalının adresi
+      } else {
+        router.push("/dashboard");
+      }
     }
   }, [user, authLoading, router]);
 
