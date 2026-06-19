@@ -234,7 +234,7 @@ export default function UsersPage() {
         setBulkLoading(true);
         try {
             const result = await userApi.importExcel(token, tenantId, bulkFile);
-            setBulkResult({ ok: result.importedCount, fail: 0 });
+            setBulkResult({ ok: result.importedCount, fail: result.skippedCount || 0 });
             success('Toplu Yükleme Tamamlandı', result.message);
         } catch (e: any) {
             setBulkResult({ ok: 0, fail: 1 });

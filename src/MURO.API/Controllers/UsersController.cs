@@ -197,8 +197,13 @@ public class UsersController : ControllerBase
         }
 
         var results = await _userService.BulkCreateUsersAsync(GetTenantId(), requests);
+        var skipped = requests.Count - results.Count;
 
-        return Ok(new { message = $"{results.Count} kullanıcı başarıyla eklendi.", importedCount = results.Count });
+        return Ok(new { 
+            message = $"{results.Count} kullanıcı başarıyla eklendi, {skipped} kişi es geçildi.", 
+            importedCount = results.Count,
+            skippedCount = skipped
+        });
     }
 }
 
