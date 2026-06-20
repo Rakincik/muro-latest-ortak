@@ -8,6 +8,8 @@ import {
     BarChart3, Eye, Play, MessageSquare, Award, Loader2
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import CoursesPage from "./courses/page";
 import { KpiGrid } from "@/components/ui/KpiGrid";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -50,8 +52,8 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
     "Sınav": "#0A1931",
     "Canlı Ders": "#1B3B6F",
     "Ödev": "#A9A9A9",
-import CoursesPage from "./courses/page";
-import { useRouter } from "next/navigation";
+    "Etkinlik": "#A0AEC0",
+};
 
 export default function DashboardPage() {
     const { user, token, currentTenantId: tenantId } = useAuth();
