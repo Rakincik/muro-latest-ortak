@@ -146,6 +146,7 @@ export default function UsersPage() {
                 setUsers(p => p.map(u => u.id === editUser.id ? { ...u, ...d, studentType: apiStudentType as any } : u)); 
                 success("Güncellendi"); 
                 setEditUser(null);
+                setShowAddModal(false);
             } else {
                 const created = await userApi.create(token, tenantId, { 
                     firstName: d.firstName || "", 
