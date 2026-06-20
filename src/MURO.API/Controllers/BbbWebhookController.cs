@@ -137,7 +137,7 @@ public class BbbWebhookController : ControllerBase
                             {
                                 EventType = "recording-ready",
                                 MeetingId = extMeetingId,
-                                RecordingUrl = _configuration["Bbb:Url"]?.Replace("/api", $"/playback/presentation/2.3/{recordId}") ?? $"https://canli.monopoluzem.com.tr/playback/presentation/2.3/{recordId}"
+                                RecordingUrl = _configuration["Bbb:Url"]?.Replace("/bigbluebutton/api", $"/playback/presentation/2.3/{recordId}") ?? $"https://canli.monopoluzem.com.tr/playback/presentation/2.3/{recordId}"
                             });
                         }
                     }
