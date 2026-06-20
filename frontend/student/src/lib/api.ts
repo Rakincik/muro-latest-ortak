@@ -637,9 +637,14 @@ export const studentSupportApi = {
         return [];
     },
     create: (token: string, tenantId: string, data: { subject: string; message: string; category: string; priority?: string }) =>
-        api<StudentTicketDto>('/support/tickets', { method: 'POST', token, tenantId, body: JSON.stringify(data) }),
+        api<StudentTicketDto>('/support/tickets', { method: 'POST', token, tenantId, body: JSON.stringify({
+            subject: data.subject,
+            body: data.message,
+            category: data.category,
+            priority: data.priority || 'Normal'
+        }) }),
     reply: (token: string, tenantId: string, ticketId: string, message: string) =>
-        api('/support/' + ticketId + '/replies', { method: 'POST', token, tenantId, body: JSON.stringify({ message }) }),
+        api('/support/' + ticketId + '/replies', { method: 'POST', token, tenantId, body: JSON.stringify({ body: message }) }),
 };
 
 // ── Tenant Branding API ──────────────────────────────────────────────────────
