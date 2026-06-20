@@ -44,6 +44,7 @@ public class AuthController : ControllerBase
     /// <response code="422">Doğrulama hatası (boş alan vb.)</response>
     /// <response code="429">Çok fazla deneme — rate limited</response>
     [HttpPost("login")]
+    [AllowAnonymous]
     [EnableRateLimiting(RateLimitingConfig.AuthPolicy)]
     [ProducesResponseType(typeof(AuthResponse), 200)]
     [ProducesResponseType(401)]
@@ -69,6 +70,7 @@ public class AuthController : ControllerBase
     /// <response code="409">E-posta adresi zaten kayıtlı</response>
     /// <response code="422">Doğrulama hatası</response>
     [HttpPost("register")]
+    [AllowAnonymous]
     [EnableRateLimiting(RateLimitingConfig.AuthPolicy)]
     [ProducesResponseType(typeof(AuthResponse), 201)]
     [ProducesResponseType(409)]
@@ -122,6 +124,7 @@ public class AuthController : ControllerBase
     /// <response code="200">Yeni JWT + RefreshToken</response>
     /// <response code="401">Refresh token geçersiz veya süresi dolmuş</response>
     [HttpPost("refresh")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthResponse), 200)]
     [ProducesResponseType(401)]
     public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
