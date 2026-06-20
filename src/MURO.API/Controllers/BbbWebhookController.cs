@@ -157,7 +157,7 @@ public class BbbWebhookController : ControllerBase
         }
 
         if (payload?.Events == null || payload.Events.Count == 0)
-            return BadRequest(new { error = "No events" });
+            return Ok(new { processed = 0, message = "Ignored unhandled events" });
 
         // ── 3. Event işleme ──────────────────────────────────────────────────
         foreach (var evt in payload.Events)
