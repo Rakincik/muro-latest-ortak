@@ -278,6 +278,10 @@ export default function WatchPage() {
                                             src={details.url} 
                                             className="w-full h-full border-0 absolute inset-0"
                                             allowFullScreen
+                                            //@ts-ignore
+                                            webkitallowfullscreen="true"
+                                            //@ts-ignore
+                                            mozallowfullscreen="true"
                                             allow="autoplay; fullscreen"
                                         />
                                     );
@@ -301,6 +305,10 @@ export default function WatchPage() {
                                         src={src} 
                                         className="w-full h-full border-0"
                                         allowFullScreen
+                                        //@ts-ignore
+                                        webkitallowfullscreen="true"
+                                        //@ts-ignore
+                                        mozallowfullscreen="true"
                                         allow="camera; microphone; display-capture; fullscreen"
                                     />
                                 );

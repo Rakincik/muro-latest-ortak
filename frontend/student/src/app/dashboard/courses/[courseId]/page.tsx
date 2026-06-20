@@ -405,6 +405,10 @@ export default function CourseDetailPage() {
                                                         className="w-full h-full border-0 absolute inset-0"
                                                         allow="autoplay; fullscreen"
                                                         allowFullScreen
+                                                        //@ts-ignore
+                                                        webkitallowfullscreen="true"
+                                                        //@ts-ignore
+                                                        mozallowfullscreen="true"
                                                         title={activeRec.sessionTitle}
                                                         onLoad={() => setIframeLoaded(true)}
                                                     />
@@ -431,6 +435,10 @@ export default function CourseDetailPage() {
                                                     className="w-full h-full border-0"
                                                     allow="autoplay; fullscreen; camera; microphone; display-capture"
                                                     allowFullScreen
+                                                    //@ts-ignore
+                                                    webkitallowfullscreen="true"
+                                                    //@ts-ignore
+                                                    mozallowfullscreen="true"
                                                     title={activeRec.sessionTitle}
                                                     onLoad={() => setIframeLoaded(true)}
                                                 />
