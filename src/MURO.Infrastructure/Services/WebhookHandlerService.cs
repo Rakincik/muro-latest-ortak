@@ -231,9 +231,9 @@ public class WebhookHandlerService : IWebhookHandlerService
             asset.FilePath = evt.RecordingUrl;
             asset.HlsPath = null;
             asset.DurationSeconds = durationSeconds;
-            asset.Status = MediaStatus.Uploading;
+            asset.Status = MediaStatus.Ready;
 
-            recording.Status = MediaStatus.Processing;
+            recording.Status = MediaStatus.Ready;
 
             var existsInMedia = await _context.CourseMedias.AnyAsync(cm => cm.SessionId == session.Id);
             if (!existsInMedia)
