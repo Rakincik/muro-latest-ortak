@@ -59,10 +59,21 @@ public class BbbWebhookController : ControllerBase
         try
         {
             var rawTrimmed = rawBody.TrimStart();
+            
+            // Eğer BBB URL-encoded gönderdiyse (event=...)
+            if (rawTrimmed.StartsWith("event="))
+            {
+                var parsed = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(rawTrimmed);
+                if (parsed.TryGetValue("event", out var evnt))
+                {
+                    rawTrimmed = evnt.ToString();
+                }
+            }
+
             if (rawTrimmed.StartsWith("["))
             {
                 // Standart BBB 3.0 Webhook Payload (Array)
-                var bbbArray = JsonDocument.Parse(rawBody).RootElement;
+                var bbbArray = JsonDocument.Parse(rawTrimmed).RootElement;
                 payload = new BbbWebhookPayload();
                 
                 foreach (var item in bbbArray.EnumerateArray())
@@ -125,7 +136,7 @@ public class BbbWebhookController : ControllerBase
             else
             {
                 // Eski Özel MURO Payload
-                payload = JsonSerializer.Deserialize<BbbWebhookPayload>(rawBody,
+                payload = JsonSerializer.Deserialize<BbbWebhookPayload>(rawTrimmed,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
         }
