@@ -234,6 +234,21 @@ public class WebhookHandlerService : IWebhookHandlerService
             asset.Status = MediaStatus.Uploading;
 
             recording.Status = MediaStatus.Processing;
+
+            var existsInMedia = await _context.CourseMedias.AnyAsync(cm => cm.SessionId == session.Id);
+            if (!existsInMedia)
+            {
+                var courseMediaMaxOrder = await _context.CourseMedias
+                    .Where(cm => cm.CourseId == session.CourseId)
+                    .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
+
+                _context.CourseMedias.Add(new CourseMedia
+                {
+                    CourseId = session.CourseId,
+                    SessionId = session.Id,
+                    OrderIndex = courseMediaMaxOrder + 1
+                });
+            }
         }
 
         await _context.SaveChangesAsync();

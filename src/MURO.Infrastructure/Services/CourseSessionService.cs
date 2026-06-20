@@ -59,17 +59,6 @@ public class CourseSessionService : ICourseSessionService
 
         _context.Sessions.Add(session);
 
-        var courseMediaMaxOrder = await _context.CourseMedias
-            .Where(cm => cm.CourseId == courseId)
-            .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
-
-        _context.CourseMedias.Add(new CourseMedia
-        {
-            CourseId = courseId,
-            SessionId = session.Id,
-            OrderIndex = courseMediaMaxOrder + 1
-        });
-
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"courses:");
 
