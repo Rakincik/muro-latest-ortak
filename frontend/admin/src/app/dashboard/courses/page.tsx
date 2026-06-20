@@ -19,6 +19,7 @@ import { CourseMediaTab } from "./CourseMediaTab";
 import { CourseStudentTab } from "./CourseStudentTab";
 import { PremiumTabs } from "@/components/ui/PremiumTabs";
 import { ResponsiveList } from "@/components/ui/ResponsiveList";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 // ─── HLS Player Component ──────────────────────────────────────────────────
 function HlsVideoPlayer({ src }: { src: string }) {
@@ -825,23 +826,31 @@ export default function CoursesPage() {
                                         
                                         <div className="flex items-center justify-between pt-2 sm:pt-4 border-t border-[#E2E8F0] mt-auto">
                                             <div className="flex items-center gap-1 sm:gap-1.5">
-                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }} title="Düzenle"
-                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
-                                                    <Settings size={14} className="sm:w-4 sm:h-4" />
-                                                </button>
-                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }} title="Dokümanlar"
-                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
-                                                    <FolderOpen size={14} className="sm:w-4 sm:h-4" />
-                                                </button>
-                                                <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }} title="Kayıtlar"
-                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
-                                                    <Video size={14} className="sm:w-4 sm:h-4" />
-                                                </button>
+                                                <Tooltip content="Düzenle">
+                                                    <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }}
+                                                        className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
+                                                        <Settings size={14} className="sm:w-4 sm:h-4" />
+                                                    </button>
+                                                </Tooltip>
+                                                <Tooltip content="Dokümanlar">
+                                                    <button onClick={e => { e.stopPropagation(); openDetail(co, "docs"); }}
+                                                        className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
+                                                        <FolderOpen size={14} className="sm:w-4 sm:h-4" />
+                                                    </button>
+                                                </Tooltip>
+                                                <Tooltip content="Kayıtlar">
+                                                    <button onClick={e => { e.stopPropagation(); openDetail(co, "recordings"); }}
+                                                        className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50 rounded-lg sm:rounded-xl transition-all">
+                                                        <Video size={14} className="sm:w-4 sm:h-4" />
+                                                    </button>
+                                                </Tooltip>
                                             </div>
-                                            <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }} title="Sil"
-                                                className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg sm:rounded-xl transition-all">
-                                                <Trash2 size={14} className="sm:w-4 sm:h-4" />
-                                            </button>
+                                            <Tooltip content="Sil">
+                                                <button onClick={e => { e.stopPropagation(); setDeleteTarget(co.id); }}
+                                                    className="p-1.5 sm:p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg sm:rounded-xl transition-all">
+                                                    <Trash2 size={14} className="sm:w-4 sm:h-4" />
+                                                </button>
+                                            </Tooltip>
                                         </div>
                                     </div>
                                 </div>
