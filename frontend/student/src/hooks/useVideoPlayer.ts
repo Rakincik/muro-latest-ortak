@@ -59,18 +59,44 @@ export function useVideoPlayer(
     // ── Fullscreen toggle ──
     const toggleFullscreen = useCallback(() => {
         if (!playerContainerRef.current) return;
-        if (!document.fullscreenElement) {
-            playerContainerRef.current.requestFullscreen().catch(() => { });
+        const isNative = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+        
+        if (!isNative && !isFullscreen) {
+            const elem = playerContainerRef.current as any;
+            const reqFs = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
+            if (reqFs) {
+                reqFs.call(elem).catch(() => {
+                    setIsFullscreen(true); // CSS fallback
+                });
+            } else {
+                setIsFullscreen(true); // CSS fallback
+            }
         } else {
-            document.exitFullscreen().catch(() => { });
+            if (isNative) {
+                const exitFs = document.exitFullscreen || (document as any).webkitExitFullscreen || (document as any).mozCancelFullScreen || (document as any).msExitFullscreen;
+                if (exitFs) {
+                    exitFs.call(document).catch(() => setIsFullscreen(false));
+                }
+            } else {
+                setIsFullscreen(false); // Disable CSS fallback
+            }
         }
-    }, []);
+    }, [isFullscreen]);
 
     // ── Fullscreen change listener ──
     useEffect(() => {
-        const handler = () => setIsFullscreen(!!document.fullscreenElement);
+        const handler = () => {
+            const isNative = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+            // If the event fired and we are no longer native fullscreen, exit fullscreen state.
+            // If we are native fullscreen, ensure state is true.
+            setIsFullscreen(isNative);
+        };
         document.addEventListener("fullscreenchange", handler);
-        return () => document.removeEventListener("fullscreenchange", handler);
+        document.addEventListener("webkitfullscreenchange", handler);
+        return () => {
+            document.removeEventListener("fullscreenchange", handler);
+            document.removeEventListener("webkitfullscreenchange", handler);
+        };
     }, []);
 
     // ── Watch timer: mark as watched after 30s on same video ──
