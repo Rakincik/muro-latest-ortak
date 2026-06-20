@@ -212,7 +212,11 @@ public class LiveMeetingService : ILiveMeetingService
             : (_config["Bbb:DefaultAttendeePw"] ?? "ap");
 
         var defaultLogoutUrl = _config["Bbb:Defaults:LogoutURL"];
-        var studentLogoutUrl = defaultLogoutUrl?.Replace("/admin/", "/");
+        var studentLogoutUrl = defaultLogoutUrl?.Replace("admin.", "app.").Replace("/admin/dashboard", "/dashboard").Replace("/admin/", "/");
+        if (!string.IsNullOrEmpty(studentLogoutUrl))
+        {
+            studentLogoutUrl = studentLogoutUrl.TrimEnd('/') + $"/{courseId}";
+        }
         var logoutUrl = isModerator2 ? defaultLogoutUrl : studentLogoutUrl;
 
         var joinUrl = await _bbbService.GetJoinUrlAsync(new BbbJoinOptions(
