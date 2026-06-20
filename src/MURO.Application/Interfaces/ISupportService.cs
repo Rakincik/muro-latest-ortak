@@ -7,7 +7,7 @@ public interface ISupportService
 {
     // Tickets
     Task<PagedResult<TicketListDto>> GetTicketsAsync(int page, int pageSize, string? status, Guid? userId = null);
-    Task<TicketDetailDto> GetTicketByIdAsync(Guid ticketId);
+    Task<TicketDetailDto> GetTicketByIdAsync(Guid ticketId, Guid? userId = null);
     Task<TicketListDto> CreateTicketAsync(Guid userId, CreateTicketRequest request);
     Task<TicketMessageDto> ReplyAsync(Guid ticketId, Guid senderId, ReplyTicketRequest request);
     Task CloseTicketAsync(Guid ticketId);
