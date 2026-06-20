@@ -460,23 +460,23 @@ export interface CreateCalendarEventRequest {
 
 export interface TicketDto {
     id: string;
-    studentId: string;
-    studentName: string;
+    userId: string;
+    userFullName: string;
     subject: string;
-    message: string;
+    body: string;
     category: string;   // Teknik | İçerik | Ödeme | Diğer
     priority: string;   // Düşük | Normal | Yüksek | Acil
     status: string;     // Açık | Yanıtlandı | Çözüldü
     createdAt: string;
-    replies: TicketReplyDto[];
+    messages: TicketReplyDto[];
 }
 
 export interface TicketReplyDto {
     id: string;
-    authorId: string;
-    authorName: string;
-    message: string;
-    isAdmin: boolean;
+    senderId: string;
+    senderName: string;
+    body: string;
+    isAdmin?: boolean;
     createdAt: string;
 }
 

@@ -59,10 +59,10 @@ export default function SupportPage() {
     // Scroll chat to bottom when messages change
     useEffect(() => {
         if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-    }, [selected?.replies]);
+    }, [selected?.messages]);
 
     const filtered = tickets.filter(t => {
-        const matchSearch = !search || t.subject.toLowerCase().includes(search.toLowerCase()) || t.studentName.toLowerCase().includes(search.toLowerCase());
+        const matchSearch = !search || t.subject.toLowerCase().includes(search.toLowerCase()) || (t.userFullName && t.userFullName.toLowerCase().includes(search.toLowerCase()));
         const matchStatus = statusFilter === "all" || t.status === statusFilter;
         return matchSearch && matchStatus;
     });
@@ -78,7 +78,7 @@ export default function SupportPage() {
             const reply = await supportApi.reply(token, tenantId, selected.id, replyText.trim());
             const updatedTicket: TicketDto = {
                 ...selected,
-                replies: [...(selected.replies ?? []), reply],
+                messages: [...(selected.messages ?? []), reply],
                 status: "Yanıtlandı",
             };
             setSelected(updatedTicket);
@@ -176,7 +176,7 @@ export default function SupportPage() {
                                         <p className="text-sm font-semibold text-[#0A1931] truncate">{t.subject}</p>
                                         <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${st.bg} ${st.text}`}>{st.label}</span>
                                     </div>
-                                    <p className="text-xs text-[#A9A9A9] truncate">{t.studentName}</p>
+                                    <p className="text-xs text-[#A9A9A9] truncate">{t.userFullName}</p>
                                     <div className="flex items-center gap-2 mt-1">
                                         <span className={`w-1.5 h-1.5 rounded-full ${prio.dot}`} />
                                         <span className="text-[10px] text-[#A0AEC0]">{prio.label}</span>
@@ -206,7 +206,7 @@ export default function SupportPage() {
                                     <div className="min-w-0">
                                         <h2 className="text-base font-bold text-[#0A1931] truncate">{selected.subject}</h2>
                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                            <span className="text-xs text-[#A9A9A9]">{selected.studentName}</span>
+                                            <span className="text-xs text-[#A9A9A9]">{selected.userFullName}</span>
                                             <span className="text-[#A0AEC0]">·</span>
                                             <span className="text-[11px] text-[#A0AEC0] flex items-center gap-1"><Tag size={10} />{selected.category}</span>
                                             <span className="text-[#A0AEC0]">·</span>
@@ -239,29 +239,31 @@ export default function SupportPage() {
                                 {/* Original message */}
                                 <div className="flex gap-3">
                                     <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center shrink-0 text-xs font-bold text-[#1B3B6F]">
-                                        {selected.studentName?.[0] ?? "?"}
+                                        {selected.userFullName?.[0] ?? "?"}
                                     </div>
                                     <div className="flex-1">
                                         <div className="bg-[#E2E8F0]/40 rounded-xl rounded-tl-none p-3 max-w-[85%]">
-                                            <p className="text-sm text-[#0A1931]">{selected.message}</p>
+                                            <p className="text-sm text-[#0A1931]">{selected.body}</p>
                                         </div>
                                         <p className="text-[10px] text-[#A0AEC0] mt-1 ml-1">{new Date(selected.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</p>
                                     </div>
                                 </div>
                                 {/* Replies */}
-                                {(selected.replies ?? []).map((r: TicketReplyDto) => (
-                                    <div key={r.id} className={`flex gap-3 ${r.isAdmin ? "flex-row-reverse" : ""}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${r.isAdmin ? "bg-purple-600 text-white" : "bg-[#E2E8F0] text-[#1B3B6F]"}`}>
-                                            {r.authorName?.[0] ?? "?"}
+                                {(selected.messages ?? []).map((r: TicketReplyDto) => {
+                                    const isAdminReply = r.senderId !== selected.userId;
+                                    return (
+                                    <div key={r.id} className={`flex gap-3 ${isAdminReply ? "flex-row-reverse" : ""}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${isAdminReply ? "bg-purple-600 text-white" : "bg-[#E2E8F0] text-[#1B3B6F]"}`}>
+                                            {r.senderName?.[0] ?? "?"}
                                         </div>
-                                        <div className={`flex-1 ${r.isAdmin ? "flex flex-col items-end" : ""}`}>
-                                            <div className={`rounded-xl p-3 max-w-[85%] ${r.isAdmin ? "bg-purple-600 text-white rounded-tr-none" : "bg-[#E2E8F0]/40 text-[#0A1931] rounded-tl-none"}`}>
-                                                <p className="text-sm">{r.message}</p>
+                                        <div className={`flex-1 ${isAdminReply ? "flex flex-col items-end" : ""}`}>
+                                            <div className={`rounded-xl p-3 max-w-[85%] ${isAdminReply ? "bg-purple-600 text-white rounded-tr-none" : "bg-[#E2E8F0]/40 text-[#0A1931] rounded-tl-none"}`}>
+                                                <p className="text-sm">{r.body}</p>
                                             </div>
                                             <p className="text-[10px] text-[#A0AEC0] mt-1 mx-1">{new Date(r.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</p>
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
 
                             {/* Reply box */}
