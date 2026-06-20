@@ -78,57 +78,67 @@ public class BbbWebhookController : ControllerBase
                 
                 foreach (var item in bbbArray.EnumerateArray())
                 {
+                    JsonElement eventDoc;
+                    
+                    // Format 1: Eski stil, string formatında "event" objesi içine gömülü
                     if (item.TryGetProperty("event", out var eventStrProp))
                     {
                         var eventStr = eventStrProp.GetString();
-                        if (!string.IsNullOrEmpty(eventStr))
+                        if (string.IsNullOrEmpty(eventStr)) continue;
+
+                        if (eventStr.TrimStart().StartsWith("["))
                         {
-                            JsonElement eventDoc;
-                            if (eventStr.TrimStart().StartsWith("["))
-                            {
-                                var innerArr = JsonDocument.Parse(eventStr).RootElement;
-                                if (innerArr.GetArrayLength() > 0)
-                                    eventDoc = innerArr[0];
-                                else
-                                    continue;
-                            }
+                            var innerArr = JsonDocument.Parse(eventStr).RootElement;
+                            if (innerArr.GetArrayLength() > 0)
+                                eventDoc = innerArr[0];
                             else
-                            {
-                                eventDoc = JsonDocument.Parse(eventStr).RootElement;
-                            }
+                                continue;
+                        }
+                        else
+                        {
+                            eventDoc = JsonDocument.Parse(eventStr).RootElement;
+                        }
+                    }
+                    // Format 2: Yeni stil, obje direkt array'in içinde
+                    else if (item.TryGetProperty("data", out _))
+                    {
+                        eventDoc = item;
+                    }
+                    else
+                    {
+                        continue;
+                    }
 
-                            if (eventDoc.TryGetProperty("data", out var dataNode) && dataNode.TryGetProperty("id", out var idNode))
+                    if (eventDoc.TryGetProperty("data", out var dataNode) && dataNode.TryGetProperty("id", out var idNode))
+                    {
+                        var id = idNode.GetString();
+                        if (id == "rap-publish-ended" || id == "rap-post-publish-started")
+                        {
+                            string extMeetingId = "";
+                            string recordId = "";
+
+                            if (dataNode.TryGetProperty("attributes", out var attrNode))
                             {
-                                var id = idNode.GetString();
-                                if (id == "rap-publish-ended")
+                                if (attrNode.TryGetProperty("meeting", out var meetingNode))
                                 {
-                                    string extMeetingId = "";
-                                    string recordId = "";
-
-                                    if (dataNode.TryGetProperty("attributes", out var attrNode))
-                                    {
-                                        if (attrNode.TryGetProperty("meeting", out var meetingNode))
-                                        {
-                                            if (meetingNode.TryGetProperty("external-meeting-id", out var extNode))
-                                                extMeetingId = extNode.GetString() ?? "";
-                                            else if (meetingNode.TryGetProperty("externalMeetingId", out var extNodeOld))
-                                                extMeetingId = extNodeOld.GetString() ?? "";
-                                        }
-
-                                        if (attrNode.TryGetProperty("record-id", out var recIdNode))
-                                            recordId = recIdNode.GetString() ?? "";
-                                        else if (attrNode.TryGetProperty("recordId", out var recIdNodeOld))
-                                            recordId = recIdNodeOld.GetString() ?? "";
-                                    }
-
-                                    payload.Events.Add(new BbbEvent
-                                    {
-                                        EventType = "recording-ready",
-                                        MeetingId = extMeetingId,
-                                        RecordingUrl = _configuration["Bbb:Url"]?.Replace("/api", $"/playback/presentation/2.3/{recordId}") ?? $"https://canli.monopoluzem.com.tr/playback/presentation/2.3/{recordId}"
-                                    });
+                                    if (meetingNode.TryGetProperty("external-meeting-id", out var extNode))
+                                        extMeetingId = extNode.GetString() ?? "";
+                                    else if (meetingNode.TryGetProperty("externalMeetingId", out var extNodeOld))
+                                        extMeetingId = extNodeOld.GetString() ?? "";
                                 }
+
+                                if (attrNode.TryGetProperty("record-id", out var recIdNode))
+                                    recordId = recIdNode.GetString() ?? "";
+                                else if (attrNode.TryGetProperty("recordId", out var recIdNodeOld))
+                                    recordId = recIdNodeOld.GetString() ?? "";
                             }
+
+                            payload.Events.Add(new BbbEvent
+                            {
+                                EventType = "recording-ready",
+                                MeetingId = extMeetingId,
+                                RecordingUrl = _configuration["Bbb:Url"]?.Replace("/api", $"/playback/presentation/2.3/{recordId}") ?? $"https://canli.monopoluzem.com.tr/playback/presentation/2.3/{recordId}"
+                            });
                         }
                     }
                 }
