@@ -55,10 +55,18 @@ function mapApiUser(u: UserDto): User {
 
 export default function UsersPage() {
     const { success, error: toastError } = useToast();
-    const { token, currentTenantId: tenantId } = useAuth();
+    const { token, currentTenantId: tenantId, user: currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [groupOptions, setGroupOptions] = useState<string[]>([]);
+    const isAssistant = currentUser?.role === "Assistant" || currentUser?.tenants?.find((t: any) => t.tenantId === tenantId)?.role === "Assistant";
+
+    const canEditUser = (u: User) => {
+        if (isAssistant && ["Admin", "SuperAdmin", "Accountant"].includes(u.role)) {
+            return false;
+        }
+        return true;
+    };
 
     // ── Fetch users from API ──
     const fetchUsers = async () => {
@@ -287,10 +295,11 @@ export default function UsersPage() {
                 <UserDetail 
                     user={detailUser}
                     onBack={() => setDetailUser(null)}
-                    onToggleActive={toggleActive}
-                    onChangeRole={changeRole}
-                    onDelete={async (id) => { await del(id); setDetailUser(null); }}
-                    onQuickReset={handleQuickReset}
+                    onToggleActive={canEditUser(detailUser) ? toggleActive : undefined}
+                    onChangeRole={canEditUser(detailUser) ? changeRole : undefined}
+                    onDelete={canEditUser(detailUser) ? async (id) => { await del(id); setDetailUser(null); } : undefined}
+                    onQuickReset={canEditUser(detailUser) ? handleQuickReset : undefined}
+                    canEdit={canEditUser(detailUser)}
                 />
                 {passwordResetModalNode}
             </>
@@ -377,9 +386,15 @@ export default function UsersPage() {
                                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center justify-center gap-2">
                                                 <button onClick={() => setDetailUser(u)} title="Detay" className="p-2 rounded-lg hover:bg-[#E2E8F0]/30 text-[#A0AEC0] hover:text-[#1B3B6F]"><Eye size={18} /></button>
-                                                <button onClick={() => { setEditUser(u); setShowAddModal(true); }} title="Düzenle" className="p-2 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={18} /></button>
-                                                <button onClick={() => toggleActive(u.id)} title={u.isActive ? "Pasife Al" : "Aktif Et"} className={`p-2 rounded-lg ${u.isActive ? "hover:bg-orange-50 text-[#A0AEC0] hover:text-orange-500" : "hover:bg-emerald-50 text-[#A0AEC0] hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
-                                                <button onClick={() => setDeleteTarget(u.id)} title="Sil" className="p-2 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-600"><Trash2 size={18} /></button>
+                                                {canEditUser(u) ? (
+                                                    <>
+                                                        <button onClick={() => { setEditUser(u); setShowAddModal(true); }} title="Düzenle" className="p-2 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={18} /></button>
+                                                        <button onClick={() => toggleActive(u.id)} title={u.isActive ? "Pasife Al" : "Aktif Et"} className={`p-2 rounded-lg ${u.isActive ? "hover:bg-orange-50 text-[#A0AEC0] hover:text-orange-500" : "hover:bg-emerald-50 text-[#A0AEC0] hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}</button>
+                                                        <button onClick={() => setDeleteTarget(u.id)} title="Sil" className="p-2 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-600"><Trash2 size={18} /></button>
+                                                    </>
+                                                ) : (
+                                                    <div className="text-[10px] text-[#A0AEC0] font-bold uppercase tracking-widest px-2 opacity-50"><Shield size={14} /></div>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -437,9 +452,13 @@ export default function UsersPage() {
                                                     <MessageCircle size={14} />
                                                 </a>
                                             )}
-                                            <button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-amber-50 hover:text-amber-600 transition-colors"><Edit3 size={14} /></button>
-                                            <button onClick={() => toggleActive(u.id)} className={`w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center transition-colors ${u.isActive ? "hover:bg-orange-50 hover:text-orange-500" : "hover:bg-emerald-50 hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}</button>
-                                            <button onClick={() => setDeleteTarget(u.id)} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+                                            {canEditUser(u) && (
+                                                <>
+                                                    <button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-amber-50 hover:text-amber-600 transition-colors"><Edit3 size={14} /></button>
+                                                    <button onClick={() => toggleActive(u.id)} className={`w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center transition-colors ${u.isActive ? "hover:bg-orange-50 hover:text-orange-500" : "hover:bg-emerald-50 hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}</button>
+                                                    <button onClick={() => setDeleteTarget(u.id)} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -743,8 +762,8 @@ export default function UsersPage() {
                                 }} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]">
                                     <option value="Student">Öğrenci</option>
                                     <option value="Instructor">Eğitmen</option>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Accountant">Muhasebe</option>
+                                    {!isAssistant && <option value="Admin">Admin</option>}
+                                    {!isAssistant && <option value="Accountant">Muhasebe</option>}
                                     <option value="Assistant">Asistan</option>
                                 </select>
                             </div>

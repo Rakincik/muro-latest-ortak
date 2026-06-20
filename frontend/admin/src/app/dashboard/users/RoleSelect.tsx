@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Shield, ChevronDown, Check } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface RoleSelectProps {
     value: string;
@@ -30,6 +31,14 @@ export function RoleSelect({ value, onChange }: RoleSelectProps) {
 
     const selectedRole = ROLES.find(r => r.value === value) || ROLES[0];
 
+    const { user, currentTenantId: tenantId } = useAuth();
+    const isAssistant = user?.role === "Assistant" || user?.tenants?.find((t: any) => t.tenantId === tenantId)?.role === "Assistant";
+
+    const availableRoles = ROLES.filter(r => {
+        if (isAssistant && (r.value === "Admin" || r.value === "Accountant")) return false;
+        return true;
+    });
+
     return (
         <div className="relative" ref={ref}>
             <button
@@ -46,7 +55,7 @@ export function RoleSelect({ value, onChange }: RoleSelectProps) {
 
             {open && (
                 <div className="absolute z-50 mt-2 w-40 bg-white border border-[#E2E8F0] rounded-xl shadow-xl overflow-hidden py-1 right-0 animate-fade-in-up">
-                    {ROLES.map(role => (
+                    {availableRoles.map(role => (
                         <button
                             key={role.value}
                             onClick={() => {

@@ -37,9 +37,10 @@ interface UserDetailProps {
     onChangeRole: (id: string, role: string) => void;
     onDelete: (id: string) => void;
     onQuickReset: (user: User) => void;
+    canEdit?: boolean;
 }
 
-export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDelete, onQuickReset }: UserDetailProps) {
+export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDelete, onQuickReset, canEdit = true }: UserDetailProps) {
     const { success } = useToast();
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [confirmRoleChange, setConfirmRoleChange] = useState<string | null>(null);
@@ -139,21 +140,25 @@ export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDe
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <RoleSelect value={u.role} onChange={handleRoleChangeRequest} />
-                    
-                    <div className="h-8 w-px bg-[#E2E8F0] mx-1 hidden md:block"></div>
-
-                    <button onClick={() => onQuickReset(u)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#1B3B6F] text-xs font-bold whitespace-nowrap hover:bg-[#F0F4F8] transition-all active:scale-[0.97] bg-white border border-[#E2E8F0]/80 shadow-sm">
-                        <KeyRound size={14} /> Şifre Sıfırla
-                    </button>
-
-                    <button onClick={() => onToggleActive(u.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-[0.97] bg-white border border-[#E2E8F0]/80 shadow-sm ${u.isActive ? "text-orange-600 hover:bg-orange-50" : "text-emerald-600 hover:bg-emerald-50"}`}>
-                        {u.isActive ? <><ToggleRight size={14} /> Pasife Al</> : <><ToggleLeft size={14} /> Aktif Et</>}
-                    </button>
-
-                    <button onClick={() => setDeleteTarget(u.id)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-600 text-xs font-bold whitespace-nowrap hover:bg-red-50 transition-all active:scale-[0.97] bg-white border border-[#E2E8F0]/80 shadow-sm">
-                        <Trash2 size={14} /> Sil
-                    </button>
+                    {canEdit ? (
+                        <>
+                            <RoleSelect value={u.role} onChange={handleRoleChangeRequest} />
+                            <div className="h-8 w-px bg-[#E2E8F0] mx-1 hidden md:block"></div>
+                            <button onClick={() => onQuickReset(u)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#1B3B6F] text-xs font-bold whitespace-nowrap hover:bg-[#F0F4F8] transition-all active:scale-[0.97] bg-white border border-[#E2E8F0]/80 shadow-sm">
+                                <KeyRound size={14} /> Şifre Sıfırla
+                            </button>
+                            <button onClick={() => onToggleActive(u.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-[0.97] bg-white border border-[#E2E8F0]/80 shadow-sm ${u.isActive ? "text-orange-600 hover:bg-orange-50" : "text-emerald-600 hover:bg-emerald-50"}`}>
+                                {u.isActive ? <><ToggleRight size={14} /> Pasife Al</> : <><ToggleLeft size={14} /> Aktif Et</>}
+                            </button>
+                            <button onClick={() => setDeleteTarget(u.id)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-red-600 text-xs font-bold whitespace-nowrap hover:bg-red-50 transition-all active:scale-[0.97] bg-white border border-[#E2E8F0]/80 shadow-sm">
+                                <Trash2 size={14} /> Sil
+                            </button>
+                        </>
+                    ) : (
+                        <div className="px-4 py-2 rounded-xl bg-[#F8FAFC] text-[#64748B] text-xs font-bold border border-[#E2E8F0] flex items-center gap-2">
+                            <Shield size={14} /> Yetki Yok
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -177,7 +182,7 @@ export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDe
                                 <p className="text-[10px] text-[#A0AEC0] uppercase tracking-widest font-bold mb-0.5">{r.label}</p>
                                 <p className="text-[15px] font-bold text-[#0A1931] truncate">{r.value}</p>
                             </div>
-                            {r.action && (
+                            {r.action && canEdit && (
                                 <button onClick={r.action} title={r.actionTooltip} className="p-2.5 rounded-xl bg-white shadow-sm border border-[#E2E8F0] hover:bg-[#F0F4F8] text-[#1B3B6F] transition-all">
                                     {r.actionIcon}
                                 </button>
