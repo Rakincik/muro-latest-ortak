@@ -54,11 +54,13 @@ public class SupportController : ControllerBase
     public async Task<ActionResult<TicketMessageDto>> Reply(Guid ticketId, [FromBody] ReplyTicketRequest request)
         => Ok(await _supportService.ReplyAsync(ticketId, GetUserId(), request));
 
-    [HttpPut("tickets/{ticketId:guid}/close")]
-    public async Task<IActionResult> CloseTicket(Guid ticketId)
+    public class UpdateTicketStatusRequest { public string Status { get; set; } = null!; }
+
+    [HttpPut("tickets/{ticketId:guid}/status")]
+    public async Task<IActionResult> UpdateTicketStatus(Guid ticketId, [FromBody] UpdateTicketStatusRequest request)
     {
-        await _supportService.CloseTicketAsync(ticketId);
-        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Close", "Ticket", ticketId.ToString(), null, null, GetIp()));
+        await _supportService.UpdateTicketStatusAsync(ticketId, request.Status);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "UpdateStatus", "Ticket", ticketId.ToString(), request.Status, null, GetIp()));
         return NoContent();
     }
 

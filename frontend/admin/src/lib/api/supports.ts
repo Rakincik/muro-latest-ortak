@@ -10,16 +10,13 @@ export const supportApi = {
         return api<PagedResult<TicketDto>>(`/support/tickets?${qs}`, { token, tenantId });
     },
     get: (token: string, tenantId: string, id: string) =>
-        api<TicketDto>(`/support/${id}`, { token, tenantId }),
+        api<TicketDto>(`/support/tickets/${id}`, { token, tenantId }),
     reply: (token: string, tenantId: string, ticketId: string, message: string) =>
-        api<TicketReplyDto>(`/support/${ticketId}/replies`, { method: 'POST', token, tenantId, body: JSON.stringify({ message }) }),
+        api<TicketReplyDto>(`/support/tickets/${ticketId}/reply`, { method: 'POST', token, tenantId, body: JSON.stringify({ message }) }),
     updateStatus: (token: string, tenantId: string, ticketId: string, status: string) =>
-        api<TicketDto>(`/support/${ticketId}/status`, { method: 'PUT', token, tenantId, body: JSON.stringify({ status }) }),
+        api<TicketDto>(`/support/tickets/${ticketId}/status`, { method: 'PUT', token, tenantId, body: JSON.stringify({ status }) }),
     delete: (token: string, tenantId: string, id: string) =>
-        api<void>(`/support/${id}`, { method: 'DELETE', token, tenantId }),
+        api<void>(`/support/tickets/${id}`, { method: 'DELETE', token, tenantId }),
 };
 
 // ── Analytics Admin Dashboard Types ──────────────────────────────────────────
-
-
-

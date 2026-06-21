@@ -111,13 +111,22 @@ public class SupportService : ISupportService
         return new TicketMessageDto(msg.Id, senderId, $"{sender?.FirstName} {sender?.LastName}", msg.Body, msg.CreatedAt);
     }
 
-    public async Task CloseTicketAsync(Guid ticketId)
+    public async Task UpdateTicketStatusAsync(Guid ticketId, string status)
     {
-        var t = await _context.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId )
+        var ticket = await _context.SupportTickets.FirstOrDefaultAsync(t => t.Id == ticketId)
             ?? throw new KeyNotFoundException("Destek talebi bulunamadı.");
-        t.Status = TicketStatus.Closed;
+
+        if (Enum.TryParse<TicketStatus>(status, true, out var parsedStatus))
+        {
+            ticket.Status = parsedStatus;
+        }
+        else
+        {
+            throw new ArgumentException("Geçersiz bilet durumu.");
+        }
+
         await _context.SaveChangesAsync();
-        await _cache.RemoveByPrefixAsync($"support:");
+        await _cache.RemoveByPrefixAsync("support:");
     }
 
     public async Task DeleteTicketAsync(Guid ticketId)
