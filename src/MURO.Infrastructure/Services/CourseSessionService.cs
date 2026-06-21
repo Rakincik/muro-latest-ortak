@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using MURO.Application.DTOs;
 using MURO.Application.DTOs.Courses;
 using MURO.Application.Interfaces;
@@ -14,15 +15,18 @@ public class CourseSessionService : ICourseSessionService
     private readonly MuroDbContext _context;
     private readonly IGroupAccessService _groupAccess;
     private readonly ICacheService _cache;
+    private readonly IServiceProvider _serviceProvider;
 
     public CourseSessionService(
         MuroDbContext context,
         IGroupAccessService groupAccess,
-        ICacheService cache)
+        ICacheService cache,
+        IServiceProvider serviceProvider)
     {
         _context = context;
         _groupAccess = groupAccess;
         _cache = cache;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<SessionDto> CreateSessionAsync(Guid courseId, CreateSessionRequest request)
@@ -155,41 +159,76 @@ public class CourseSessionService : ICourseSessionService
 
     public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsAsync()
     {
-        return await _context.Sessions
-            .AsNoTracking()
+        var sessions = await _context.Sessions
             .Where(s => s.Course.IsPublished && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
             .Include(s => s.Course)
             .OrderBy(s => s.Status == SessionStatus.Live ? 0 : 1).ThenBy(s => s.ScheduledStart)
-            .Select(s => new UpcomingSessionDto(
-                s.Id, s.Title, s.Description, s.Order,
-                s.VideoUrl, s.DurationMinutes, s.IsFree,
-                s.ScheduledStart, s.ScheduledEnd,
-                s.RecordingEnabled, s.Status.ToString(), s.BbbMeetingId,
-                s.CreatedAt,
-                s.CourseId, s.Course.Title))
             .ToListAsync();
+
+        return await SyncAndMapUpcomingSessions(sessions);
     }
 
     public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsByUserAsync(Guid userId)
     {
         var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
 
-        return await _context.Sessions
-            .AsNoTracking()
+        var sessions = await _context.Sessions
             .Where(s => s.Course.IsPublished
                         && accessibleIds.Contains(s.CourseId)
                         && (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live))
             .Include(s => s.Course)
             .OrderBy(s => s.Status == SessionStatus.Live ? 0 : 1).ThenBy(s => s.ScheduledStart)
-            .Select(s => new UpcomingSessionDto(
-                s.Id, s.Title, s.Description, s.Order,
-                s.VideoUrl, s.DurationMinutes, s.IsFree,
-                s.ScheduledStart, s.ScheduledEnd,
-                s.RecordingEnabled, s.Status.ToString(), s.BbbMeetingId,
-                s.CreatedAt,
-                s.CourseId, s.Course.Title))
             .ToListAsync();
+
+        return await SyncAndMapUpcomingSessions(sessions);
     }
+
+    private async Task<List<UpcomingSessionDto>> SyncAndMapUpcomingSessions(List<Session> sessions)
+    {
+        var result = new List<UpcomingSessionDto>();
+        bool dbChanged = false;
+
+        using var scope = _serviceProvider.CreateScope();
+        var bbbService = scope.ServiceProvider.GetService<IBbbService>();
+
+        foreach (var s in sessions)
+        {
+            if (s.Status == SessionStatus.Live && s.BbbMeetingId != null && bbbService != null)
+            {
+                try
+                {
+                    var isRunning = await bbbService.IsMeetingRunningAsync(s.BbbMeetingId);
+                    if (!isRunning)
+                    {
+                        s.Status = SessionStatus.Ended;
+                        dbChanged = true;
+                    }
+                }
+                catch { /* Ignore BBB errors */ }
+            }
+
+            // Only add if it's truly upcoming OR still genuinely live
+            if (s.ScheduledStart > DateTime.UtcNow || s.Status == SessionStatus.Live)
+            {
+                result.Add(new UpcomingSessionDto(
+                    s.Id, s.Title, s.Description, s.Order,
+                    s.VideoUrl, s.DurationMinutes, s.IsFree,
+                    s.ScheduledStart, s.ScheduledEnd,
+                    s.RecordingEnabled, s.Status.ToString(), s.BbbMeetingId,
+                    s.CreatedAt,
+                    s.CourseId, s.Course.Title));
+            }
+        }
+
+        if (dbChanged)
+        {
+            await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync("courses:");
+        }
+
+        return result;
+    }
+
 
     public async Task<SessionDto> CreateVodSessionAsync(Guid courseId, string title, string filePath, int? durationSeconds = null)
     {
