@@ -139,12 +139,28 @@ export default function SupportPage() {
                         Sistemsel ve idari taleplerinizi buradan iletebilirsiniz.
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowForm(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
-                >
-                    <Plus size={16} /> Yeni Talep
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-[#25D366]/10 px-3 py-1.5 rounded-xl border border-[#25D366]/20">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-[#25D366] uppercase">Acil Durum WhatsApp</span>
+                            <div className="flex items-center gap-3 mt-0.5">
+                                <a href="https://wa.me/905453724201" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
+                                    Rüstem Akıncık (0545 372 4201)
+                                </a>
+                                <span className="text-[#A0AEC0]/40">|</span>
+                                <a href="https://wa.me/905536445851" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
+                                    Volkan Çetin (0553 644 5851)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
+                    >
+                        <Plus size={16} /> Yeni Talep
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-5 gap-6" style={{ height: 'calc(100vh - 200px)' }}>
