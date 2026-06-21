@@ -245,6 +245,21 @@ public class CourseService : ICourseService
             .FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Ders bulunamadı.");
 
+        // True Hard Delete: Explicitly delete all child records first to satisfy Foreign Key constraints
+        await _context.CourseStudents.Where(cs => cs.CourseId == courseId).ExecuteDeleteAsync();
+        await _context.CourseGroups.Where(cg => cg.CourseId == courseId).ExecuteDeleteAsync();
+        await _context.CourseMedias.Where(cm => cm.CourseId == courseId).ExecuteDeleteAsync();
+        await _context.CourseMaterials.Where(cm => cm.CourseId == courseId).ExecuteDeleteAsync();
+        
+        // Sessions might have attendances or recordings, so we delete them specifically if needed.
+        // Wait, Session has attendances that cascade if the DB is set up, but let's be safe:
+        var sessionIds = await _context.Sessions.Where(s => s.CourseId == courseId).Select(s => s.Id).ToListAsync();
+        if (sessionIds.Any())
+        {
+            await _context.Set<SessionAttendance>().Where(sa => sessionIds.Contains(sa.SessionId)).ExecuteDeleteAsync();
+            await _context.Sessions.Where(s => sessionIds.Contains(s.Id)).ExecuteDeleteAsync();
+        }
+
         _context.Courses.Remove(course);
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"courses:");

@@ -125,11 +125,11 @@ export default function SupportPage() {
                             <span className="text-[10px] font-bold text-[#25D366] uppercase">Acil Durum WhatsApp</span>
                             <div className="flex items-center gap-3 mt-0.5">
                                 <a href="https://wa.me/905453724201" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
-                                    Rüstem (0545 372 4201)
+                                    Rüstem Akıncık (0545 372 4201)
                                 </a>
                                 <span className="text-[#A0AEC0]/40">|</span>
                                 <a href="https://wa.me/905536445851" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
-                                    Volkan (0553 644 5851)
+                                    Volkan Çetin (0553 644 5851)
                                 </a>
                             </div>
                         </div>

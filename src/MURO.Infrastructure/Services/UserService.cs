@@ -500,16 +500,17 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new KeyNotFoundException("Kullanıcı bu kurumda bulunamadı.");
 
-        _context.Users.Remove(membership);
+        // True Hard Delete: Explicitly delete all child records first to satisfy Foreign Key constraints
+        await _context.GroupMembers.Where(gm => gm.UserId == userId).ExecuteDeleteAsync();
+        await _context.CourseStudents.Where(cs => cs.UserId == userId).ExecuteDeleteAsync();
+        await _context.Set<SessionAttendance>().Where(sa => sa.UserId == userId).ExecuteDeleteAsync();
+        await _context.Set<VideoNote>().Where(vn => vn.UserId == userId).ExecuteDeleteAsync();
+        await _context.Set<SupportMessage>().Where(sm => sm.SenderId == userId).ExecuteDeleteAsync();
+        await _context.Set<SecurityEvent>().Where(se => se.UserId == userId).ExecuteDeleteAsync();
         
-        // Kullanıcının grup üyeliklerini de kalıcı olarak sil
-        var groupMemberships = await _context.GroupMembers
-            .Where(gm => gm.UserId == userId)
-            .ToListAsync();
-
-        _context.GroupMembers.RemoveRange(groupMemberships);
-
+        _context.Users.Remove(membership);
         await _context.SaveChangesAsync();
+        
         await _cache.RemoveByPrefixAsync($"users:");
         await _cache.RemoveByPrefixAsync($"analytics:");
         await _cache.RemoveByPrefixAsync($"groups:");

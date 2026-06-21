@@ -442,7 +442,13 @@ public class MuroDbContext : DbContext
             entity.HasIndex(pg => pg.PackageId);
         });
 
-        // ─── Soft Delete Global Query Filters Kaldırıldı ───────────────────────────────
+        // ─── Soft Delete Global Query Filters (Restored for backward compatibility) ───
+        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Course>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Group>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Exam>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Session>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Assignment>().HasQueryFilter(e => !e.IsDeleted);
     }
 
 
