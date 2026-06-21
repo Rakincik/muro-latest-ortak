@@ -120,6 +120,19 @@ public class SupportService : ISupportService
         await _cache.RemoveByPrefixAsync($"support:");
     }
 
+    public async Task DeleteTicketAsync(Guid ticketId)
+    {
+        var ticket = await _context.SupportTickets
+            .Include(t => t.Messages)
+            .FirstOrDefaultAsync(t => t.Id == ticketId)
+            ?? throw new KeyNotFoundException("Destek talebi bulunamadı.");
+        
+        _context.SupportMessages.RemoveRange(ticket.Messages);
+        _context.SupportTickets.Remove(ticket);
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"support:");
+    }
+
     // --- FAQ ---
     public async Task<List<FaqDto>> GetFaqsAsync()
     {

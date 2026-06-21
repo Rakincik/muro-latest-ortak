@@ -500,18 +500,14 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(u => u.Id == userId)
             ?? throw new KeyNotFoundException("Kullanıcı bu kurumda bulunamadı.");
 
-        membership.IsActive = false;
+        _context.Users.Remove(membership);
         
-        // Kullanıcının bu kuruma ait tüm grup üyeliklerini de soft-delete yap
+        // Kullanıcının grup üyeliklerini de kalıcı olarak sil
         var groupMemberships = await _context.GroupMembers
-            .Include(gm => gm.Group)
-            .Where(gm => gm.UserId == userId && gm.Status == "active")
+            .Where(gm => gm.UserId == userId)
             .ToListAsync();
 
-        foreach (var gm in groupMemberships)
-        {
-            gm.Status = "removed";
-        }
+        _context.GroupMembers.RemoveRange(groupMemberships);
 
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"users:");
@@ -532,18 +528,14 @@ public class UserService : IUserService
             .Where(tm => safeIds.Contains(tm.Id) )
             .ToListAsync();
 
-        foreach (var m in memberships) m.IsActive = false;
+        _context.Users.RemoveRange(memberships);
 
-        // Bu kurumdaki seçili kullanıcıların tüm grup üyeliklerini de soft-delete yap
+        // Seçili kullanıcıların tüm grup üyeliklerini kalıcı olarak sil
         var groupMemberships = await _context.GroupMembers
-            .Include(gm => gm.Group)
-            .Where(gm => safeIds.Contains(gm.UserId) && gm.Status == "active")
+            .Where(gm => safeIds.Contains(gm.UserId))
             .ToListAsync();
 
-        foreach (var gm in groupMemberships)
-        {
-            gm.Status = "removed";
-        }
+        _context.GroupMembers.RemoveRange(groupMemberships);
 
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"users:");

@@ -62,6 +62,15 @@ public class SupportController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("tickets/{ticketId:guid}")]
+    [Authorize(Roles = "Admin,SuperAdmin")] // Yalnızca admin silebilir
+    public async Task<IActionResult> DeleteTicket(Guid ticketId)
+    {
+        await _supportService.DeleteTicketAsync(ticketId);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetUserId(), null, "Delete", "Ticket", ticketId.ToString(), null, null, GetIp()));
+        return NoContent();
+    }
+
     // --- FAQ ---
     [HttpGet("faq")]
     public async Task<ActionResult<List<FaqDto>>> GetFaqs()

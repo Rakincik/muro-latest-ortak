@@ -442,29 +442,8 @@ public class MuroDbContext : DbContext
             entity.HasIndex(pg => pg.PackageId);
         });
 
-        // ─── Soft Delete Global Query Filters ───────────────────────────────
-        modelBuilder.Entity<Exam>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Course>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Group>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Session>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Assignment>().HasQueryFilter(e => !e.IsDeleted);
+        // ─── Soft Delete Global Query Filters Kaldırıldı ───────────────────────────────
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        var entries = ChangeTracker.Entries<MURO.Domain.Common.ISoftDeletable>();
 
-        foreach (var entry in entries)
-        {
-            if (entry.State == EntityState.Deleted)
-            {
-                entry.State = EntityState.Modified;
-                entry.Entity.IsDeleted = true;
-                entry.Entity.DeletedAt = DateTime.UtcNow;
-            }
-        }
-
-        return base.SaveChangesAsync(cancellationToken);
-    }
 }

@@ -958,11 +958,28 @@ export default function GroupsPage() {
                             </div>
                         </div>
                         <div className="p-4">
-                            <div className="relative mb-3">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
-                                <input value={addMemberSearch} onChange={e => setAddMemberSearch(e.target.value)}
-                                    placeholder="İsim veya e-posta ara..."
-                                    className="w-full pl-8 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-xl text-[#1B3B6F] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20" />
+                            <div className="flex items-center gap-3 mb-3">
+                                <label className="flex items-center gap-2 cursor-pointer bg-[#F8FAFC] hover:bg-[#E2E8F0]/50 px-3 py-2 rounded-xl border border-[#E2E8F0] transition-colors shrink-0 shadow-sm" title="Gösterilen tüm öğrencileri seç">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={nonMembers.length > 0 && bulkAddSelection.size === Math.min(nonMembers.length, 30)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setBulkAddSelection(new Set(nonMembers.slice(0, 30).map(u => u.id)));
+                                            } else {
+                                                setBulkAddSelection(new Set());
+                                            }
+                                        }}
+                                        className="w-4 h-4 rounded border-[#A0AEC0] text-[#1B3B6F] focus:ring-[#1B3B6F]/20 cursor-pointer"
+                                    />
+                                    <span className="text-xs font-bold text-[#64748B]">Tümünü Seç</span>
+                                </label>
+                                <div className="relative flex-1">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                    <input value={addMemberSearch} onChange={e => setAddMemberSearch(e.target.value)}
+                                        placeholder="İsim veya e-posta ara..."
+                                        className="w-full pl-8 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-xl text-[#0A1931] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 shadow-sm" />
+                                </div>
                             </div>
                             <div className="max-h-64 overflow-y-auto space-y-1">
                                 {nonMembers.slice(0, 30).map(u => (

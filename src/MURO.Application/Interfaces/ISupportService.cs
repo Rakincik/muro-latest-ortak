@@ -11,6 +11,7 @@ public interface ISupportService
     Task<TicketListDto> CreateTicketAsync(Guid userId, CreateTicketRequest request);
     Task<TicketMessageDto> ReplyAsync(Guid ticketId, Guid senderId, ReplyTicketRequest request);
     Task CloseTicketAsync(Guid ticketId);
+    Task DeleteTicketAsync(Guid ticketId);
     // FAQ
     Task<List<FaqDto>> GetFaqsAsync();
     Task<FaqDto> CreateFaqAsync(CreateFaqRequest request);
