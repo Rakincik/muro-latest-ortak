@@ -51,7 +51,8 @@ function evEndHour(ev: CalendarEventDto) { return new Date(ev.endDate).getHours(
 
 export default function CalendarPage() {
     const router = useRouter();
-    const { token, currentTenantId: tenantId } = useAuth();
+    const { token, currentTenantId: tenantId, user } = useAuth();
+    const isInstructor = user?.role === "Eğitmen" || user?.role === "Instructor";
     const { success, error: toastError } = useToast();
 
     const [events, setEvents] = useState<CalendarEventDto[]>([]);
@@ -762,7 +763,7 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, course
                                             {Ic && <Ic size={14} />}{t}</button>);
                                     })}
                                 </div></div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className={`grid ${isInstructor ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                                 <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Ders</label>
                                     <select value={form.courseId} onChange={e => setForm(p => ({ ...p, courseId: e.target.value }))}
                                         className={`w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] ${isLive && !hasCourse ? 'border-red-400 ring-1 ring-red-400/50' : 'border-[#E2E8F0]'}`}>
@@ -770,13 +771,15 @@ function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, course
                                         {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                                     </select>
                                 </div>
-                                <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Grup</label>
-                                    <select value={form.groupId} onChange={e => setForm(p => ({ ...p, groupId: e.target.value }))}
-                                        className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]">
-                                        <option value="">-- Grup Seç --</option>
-                                        {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                                    </select>
-                                </div>
+                                {!isInstructor && (
+                                    <div><label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Grup</label>
+                                        <select value={form.groupId} onChange={e => setForm(p => ({ ...p, groupId: e.target.value }))}
+                                            className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]">
+                                            <option value="">-- Grup Seç --</option>
+                                            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         </>
                     )}

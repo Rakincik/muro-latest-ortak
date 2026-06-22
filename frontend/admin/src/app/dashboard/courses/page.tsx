@@ -12,7 +12,7 @@ import {
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { sessionApi, courseApi, recordingApi, userApi, type CourseListDto, type SessionDto, type CourseDetailDto, type RecordingDto, type GroupSummaryDto, type CourseMaterialDto, type UserDto } from "@/lib/api";
+import { sessionApi, courseApi, recordingApi, userApi, mediaLibraryApi, type CourseListDto, type SessionDto, type CourseDetailDto, type RecordingDto, type GroupSummaryDto, type CourseMaterialDto, type UserDto } from "@/lib/api";
 import { API_URL } from "@/lib/api/core";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
 import { CourseMediaTab } from "./CourseMediaTab";
@@ -127,6 +127,7 @@ export default function CoursesPage() {
     const [tab, setTab] = useState<DTab>("overview");
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [recordings, setRecordings] = useState<RecordingDto[]>([]);
+    const [mediaCount, setMediaCount] = useState<number>(0);
     const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
     const [attendanceData, setAttendanceData] = useState<any | null>(null);
     const [attendanceLoading, setAttendanceLoading] = useState(false);
@@ -182,10 +183,12 @@ export default function CoursesPage() {
         setDetail(course); setTab(targetTab);
         if (!token || !tenantId) return;
         try {
-            const [d, recs] = await Promise.all([
+            const [d, recs, medias] = await Promise.all([
                 courseApi.get(token, tenantId, course.id),
                 recordingApi.list(token, tenantId),
+                mediaLibraryApi.getCourseMedias(course.id)
             ]);
+            setMediaCount(medias.length);
             const mapped = mapCourse(
                 { ...d, sessionCount: course.sessionCount, groupCount: d.groups.length, order: d.order, createdAt: d.createdAt },
                 d.sessions.map(mapSession), d
@@ -554,7 +557,7 @@ export default function CoursesPage() {
                                     </div>
                                     <div className="p-5 rounded-2xl bg-[#E2E8F0]/20 border border-[#E2E8F0]/60">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mb-1">Kayıt Sayısı</p>
-                                        <p className="text-sm font-bold text-[#0A1931]">{recordings.length}</p>
+                                        <p className="text-sm font-bold text-[#0A1931]">{mediaCount}</p>
                                     </div>
                                 </div>
 

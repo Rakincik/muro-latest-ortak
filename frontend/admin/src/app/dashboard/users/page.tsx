@@ -119,7 +119,7 @@ export default function UsersPage() {
             .then(res => setGroupOptions(res.items.map((g: any) => g.name)))
             .catch(() => {});
     }, [token, tenantId]);
-    const [search, setSearch] = useState(""); const [roleFilter, setRoleFilter] = useState("all"); const [statusFilter, setStatusFilter] = useState("all");
+    const [search, setSearch] = useState(""); const [roleFilter, setRoleFilter] = useState("all"); const [statusFilter, setStatusFilter] = useState("all"); const [groupFilter, setGroupFilter] = useState("all");
     const [page, setPage] = useState(1); const [perPage, setPerPage] = useState(10); const [selected, setSelected] = useState<Set<string>>(new Set());
     const [showAddModal, setShowAddModal] = useState(false); const [editUser, setEditUser] = useState<User | null>(null);
     const [detailUser, setDetailUser] = useState<User | null>(null);
@@ -131,7 +131,8 @@ export default function UsersPage() {
             const ms = !search || `${u.firstName} ${u.lastName}`.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) || u.email.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) || (u.phone && u.phone.includes(search));
             const mr = roleFilter === "all" || u.role === roleFilter || roleLabel[u.role] === roleLabel[roleFilter];
             const md = statusFilter === "all" || (statusFilter === "active" && u.isActive) || (statusFilter === "inactive" && !u.isActive) || (statusFilter === "demo" && u.studentType === "Demo");
-            return ms && mr && md;
+            const mg = groupFilter === "all" || (u.groupNames && u.groupNames.includes(groupFilter));
+            return ms && mr && md && mg;
         });
         r.sort((a, b) => { let c = 0; switch (sortField) { case "name": c = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`); break; case "role": c = a.role.localeCompare(b.role); break; case "group": c = (a.groupNames[0] || "zzz").localeCompare(b.groupNames[0] || "zzz"); break; case "status": c = Number(b.isActive) - Number(a.isActive); break; case "phone": c = (a.phone || "").localeCompare(b.phone || ""); break; case "createdAt": c = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break; case "lastLogin": c = new Date(a.lastLoginAt || 0).getTime() - new Date(b.lastLoginAt || 0).getTime(); break; default: c = 0; } return sortDir === "desc" ? -c : c; });
         return r;
@@ -380,7 +381,16 @@ export default function UsersPage() {
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                     <input type="text" placeholder="İsim, kullanıcı adı veya telefon ile ara..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-9 pr-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto overflow-x-auto hide-scrollbar pb-1 sm:pb-0">
+                    <FilterDropdown 
+                        value={groupFilter} 
+                        onChange={v => { setGroupFilter(v); setPage(1); }}
+                        icon={Users}
+                        options={[
+                            { value: "all", label: "Tüm Gruplar" },
+                            ...groupOptions.map(g => ({ value: g, label: g }))
+                        ]}
+                    />
                     <FilterDropdown 
                         value={roleFilter} 
                         onChange={v => { setRoleFilter(v); setPage(1); }}
@@ -595,7 +605,7 @@ export default function UsersPage() {
                                             </p>
                                             <p className="text-xs text-[#64748B] mb-5">Sütunlar: Ad, Soyad, TC, Telefon, Rol</p>
                                             <div className="bg-[#F8FAFC] p-3.5 rounded-xl text-left border border-[#E2E8F0]/60 space-y-2">
-                                                <p className="text-[11px] text-emerald-600 font-semibold flex items-start gap-2 leading-relaxed"><div className="mt-0.5 w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check size={10} strokeWidth={3} /></div> Şifreler otomatik olarak TC + . + telefon numarasının son 2 hanesi olarak atanır.</p>
+
                                                 <p className="text-[11px] text-rose-500 font-semibold flex items-start gap-2 leading-relaxed"><div className="mt-0.5 w-4 h-4 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><AlertTriangle size={10} strokeWidth={3} /></div> Telefon numaralarını başında 0 olmadan giriniz!</p>
                                             </div>
                                         </>

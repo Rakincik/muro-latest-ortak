@@ -395,6 +395,18 @@ export default function GroupsPage() {
         }).catch(() => toastError("Hata", "Renk güncellenemedi."));
     };
 
+    const handleExpirationDateChange = async (g: GroupListDto, date: string) => {
+        if (!token || !tenantId) return;
+        try {
+            await groupsApi.update(token, tenantId, g.id, { expirationDate: date ? new Date(date).toISOString() : null });
+            success("Tarih Güncellendi", "Grubun son kullanma tarihi güncellendi.");
+            setGroups(p => p.map(x => x.id === g.id ? { ...x, expirationDate: date ? new Date(date).toISOString() : null } : x));
+            if (detail?.id === g.id) {
+                setDetail(p => p ? { ...p, expirationDate: date ? new Date(date).toISOString() : null } : null);
+            }
+        } catch (e: any) { toastError("Hata", e.message || "Tarih güncellenemedi"); }
+    };
+
     const toggleMember = (userId: string) => {
         const next = new Set(selectedMembers);
         next.has(userId) ? next.delete(userId) : next.add(userId);
@@ -792,6 +804,15 @@ export default function GroupsPage() {
                                                         style={{ background: c }} />
                                                 ))}
                                             </div>
+                                        </div>
+                                        <div className="pt-4 border-t border-[#E2E8F0]">
+                                            <p className="text-sm font-bold text-[#1B3B6F] mb-3">Grubun Son Kullanma Tarihi</p>
+                                            <input 
+                                                type="date" 
+                                                value={detail.expirationDate ? detail.expirationDate.split("T")[0] : ""} 
+                                                onChange={e => handleExpirationDateChange(detail as unknown as GroupListDto, e.target.value)}
+                                                className="w-full max-w-xs px-4 py-3 text-sm font-medium border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all cursor-pointer" 
+                                            />
                                         </div>
                                         <div className="pt-4 border-t border-[#E2E8F0]">
                                             <p className="text-sm font-bold text-red-600 mb-2">Tehlikeli Bölge</p>

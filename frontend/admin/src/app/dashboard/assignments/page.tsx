@@ -11,6 +11,7 @@ import { assignmentApi, courseApi, notificationApi, groupsApi, userApi, uploadAp
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 // ── Grade Modal ──
 function GradeModal({ submission, maxScore, assignmentId, onClose, onGraded }: {
@@ -313,7 +314,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                     <div>
                         <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Ödev Başlığı *</label>
                         <input type="text" value={form.title} onChange={e => u("title", e.target.value)}
-                            className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:bg-white text-[#0A1931] placeholder:text-[#A0AEC0]"
+                            className="w-full px-4 py-3 text-sm font-bold bg-white border border-[#E2E8F0] rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F]/50 text-[#0A1931] placeholder:text-[#A0AEC0] transition-all"
                             placeholder="Örn: Matematik Ödev 5 — Türev Uygulamaları" />
                     </div>
 
@@ -321,16 +322,23 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                     <div className="grid grid-cols-2 gap-5">
                         <div>
                             <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Hedef Ders *</label>
-                            <select value={form.courseId} onChange={e => u("courseId", e.target.value)}
-                                className={`w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] ${!form.courseId && !isEdit ? 'border-red-400 ring-1 ring-red-400/50' : 'border-[#E2E8F0]'}`}>
-                                <option value="">-- Ders Seç --</option>
-                                {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                            </select>
+                            <div className={`w-full ${!form.courseId && !isEdit ? 'ring-2 ring-red-400/50 rounded-2xl' : ''}`}>
+                                <CustomSelect 
+                                    value={form.courseId}
+                                    onChange={val => u("courseId", String(val))}
+                                    options={[
+                                        { label: "-- Ders Seç --", value: "" },
+                                        ...courses.map(c => ({ label: c.title, value: c.id }))
+                                    ]}
+                                    searchable={true}
+                                    className="w-full block"
+                                />
+                            </div>
                         </div>
                         <div>
                             <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Son Tarih *</label>
                             <input type="datetime-local" value={form.dueDate} onChange={e => u("dueDate", e.target.value)}
-                                className="w-full px-4 py-3 text-sm font-medium bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931]" />
+                                className="w-full px-4 py-3 text-sm font-bold bg-white border border-[#E2E8F0] rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F]/50 text-[#0A1931] transition-all" />
                         </div>
                     </div>
 
@@ -374,7 +382,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                     <div>
                         <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">veya Dosya URL</label>
                         <input type="url" value={form.fileUrl} onChange={e => u("fileUrl", e.target.value)}
-                            className="w-full px-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] placeholder:text-[#A0AEC0]"
+                            className="w-full px-4 py-3 text-sm font-bold bg-white border border-[#E2E8F0] rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F]/50 text-[#0A1931] placeholder:text-[#A0AEC0] transition-all"
                             placeholder="https://drive.google.com/..." />
                     </div>
 
@@ -397,7 +405,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                             <div className="mt-4">
                                 <input value={notifMsg} onChange={e => setNotifMsg(e.target.value)}
                                     placeholder="Özel mesaj (boş bırakırsanız otomatik oluşturulur)"
-                                    className="w-full px-4 py-3 text-sm bg-white border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 text-[#0A1931] placeholder:text-[#A0AEC0]" />
+                                    className="w-full px-4 py-3 text-sm font-bold bg-white border border-[#E2E8F0] rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F]/50 text-[#0A1931] placeholder:text-[#A0AEC0] transition-all" />
                             </div>
                         )}
                     </div>
@@ -406,7 +414,7 @@ function AssignmentFormModal({ assignment, courses, onClose, onSaved }: {
                     <div>
                         <label className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest block mb-2">Açıklama</label>
                         <textarea value={form.description} onChange={e => u("description", e.target.value)} rows={3}
-                            className="w-full px-4 py-3 text-sm bg-[#E2E8F0]/10 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 resize-none text-[#0A1931] placeholder:text-[#A0AEC0]"
+                            className="w-full px-4 py-3 text-sm font-bold bg-white border border-[#E2E8F0] rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F]/50 resize-none text-[#0A1931] placeholder:text-[#A0AEC0] transition-all"
                             placeholder="Ödev hakkında kısa açıklama..." />
                     </div>
                 </div>
