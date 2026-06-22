@@ -9,6 +9,7 @@ import { useToast } from "@/components/toast";
 import { LibrarySelectorModal } from "@/components/ui/LibrarySelectorModal";
 import { ExamSelectorModal } from "@/components/ui/ExamSelectorModal";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 export function getVideoPlaybackDetails(url: string) {
     if (!url) return { url: "", type: "video" as const };
@@ -311,25 +312,25 @@ export function CourseMediaTab({
                             </button>
                         )
                     )}
-                    <select 
+                    <CustomSelect 
                         value={filter}
-                        onChange={(e) => setFilter(e.target.value as any)}
-                        className="py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#E2E8F0] bg-gray-50 focus:outline-none cursor-pointer text-[#1B3B6F]"
-                    >
-                        <option value="all">Filtre: Tümü</option>
-                        <option value="video">Filtre: Videolar</option>
-                        <option value="recording">Filtre: Kayıtlar</option>
-                    </select>
-                    <select 
+                        onChange={(val) => setFilter(val as any)}
+                        options={[
+                            { label: "Filtre: Tümü", value: "all" },
+                            { label: "Filtre: Videolar", value: "video" },
+                            { label: "Filtre: Kayıtlar", value: "recording" }
+                        ]}
+                    />
+                    <CustomSelect 
                         value={pageSize}
-                        onChange={(e) => setPageSize(Number(e.target.value))}
-                        className="py-2.5 px-4 text-xs font-bold rounded-2xl border border-[#E2E8F0] bg-gray-50 focus:outline-none cursor-pointer text-[#1B3B6F]"
-                    >
-                        <option value={10}>10'lu Göster</option>
-                        <option value={20}>20'li Göster</option>
-                        <option value={50}>50'li Göster</option>
-                        <option value={-1}>Tümü (Sıralamaya İzin Ver)</option>
-                    </select>
+                        onChange={(val) => setPageSize(Number(val))}
+                        options={[
+                            { label: "10'lu Göster", value: 10 },
+                            { label: "20'li Göster", value: 20 },
+                            { label: "50'li Göster", value: 50 },
+                            { label: "Tümü (Sıralamaya İzin Ver)", value: -1 }
+                        ]}
+                    />
                     <button 
                         onClick={() => setIsLibraryModalOpen(true)}
                         className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"

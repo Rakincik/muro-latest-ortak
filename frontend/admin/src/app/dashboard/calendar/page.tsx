@@ -348,9 +348,9 @@ export default function CalendarPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col xl:flex-row gap-4" style={{ minHeight: "calc(100vh - 140px)" }}>
+            <div className="flex flex-col xl:flex-row gap-4 xl:items-start" style={{ minHeight: "calc(100vh - 140px)" }}>
                 {/* ── Courses Sidebar (always visible) ── */}
-                <div className="w-full xl:w-64 h-[250px] xl:h-auto shrink-0 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden flex flex-col shadow-sm">
+                <div className="w-full xl:w-64 h-[250px] xl:h-[calc(100vh-140px)] xl:sticky xl:top-6 shrink-0 bg-white rounded-2xl border border-[#E2E8F0] overflow-hidden flex flex-col shadow-sm">
                     <div className="p-4 border-b border-[#E2E8F0] bg-[#F8FAFC]">
                         <div className="flex items-center gap-2 mb-3">
                             <BookOpen size={16} className="text-emerald-600" />

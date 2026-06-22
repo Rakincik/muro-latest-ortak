@@ -4,9 +4,10 @@ import { createPortal } from "react-dom";
 import { courseApi, userApi, type CourseStudentListDto, type UserDto } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
-import { Users, Search, Plus, Trash2, Loader2, X, AlertCircle, Info, Calendar } from "lucide-react";
+import { Users, Search, Plus, Trash2, Loader2, X, AlertCircle, Info, Calendar, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 export function CourseStudentTab({ courseId }: { courseId: string }) {
     const { token, currentTenantId: tenantId } = useAuth();
@@ -25,6 +26,14 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
     // For Inline Expiration Date
     const [editingExpirationFor, setEditingExpirationFor] = useState<string | null>(null);
     const [expirationInputValue, setExpirationInputValue] = useState("");
+
+    // New features: Selection, Sorting, Pagination
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [sortByDateDesc, setSortByDateDesc] = useState(true);
+    const [coursePage, setCoursePage] = useState(0);
+    const [coursesPerPage, setCoursesPerPage] = useState(15);
+    const [bulkRemoving, setBulkRemoving] = useState(false);
+    const [bulkRemoveModalOpen, setBulkRemoveModalOpen] = useState(false);
 
     const fetchStudents = useCallback(async () => {
         if (!token || !tenantId) return;
@@ -53,6 +62,26 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
             toastError("Hata", "Öğrenci çıkarılamadı.");
         } finally {
             setRemoveTarget(null);
+            setSelectedIds(prev => prev.filter(id => id !== removeTarget.userId));
+        }
+    };
+
+    const handleBulkRemove = async () => {
+        if (selectedIds.length === 0 || !token || !tenantId) return;
+        setBulkRemoving(true);
+        try {
+            // Ideally backend should have a bulk remove endpoint, but we loop for now
+            for (const id of selectedIds) {
+                await courseApi.removeStudent(token, tenantId, courseId, id);
+            }
+            setStudents(s => s.filter(x => !selectedIds.includes(x.userId)));
+            success(`${selectedIds.length} öğrenci başarıyla dersten çıkarıldı.`);
+            setSelectedIds([]);
+        } catch {
+            toastError("Hata", "Bazı öğrenciler çıkarılamadı.");
+        } finally {
+            setBulkRemoving(false);
+            setBulkRemoveModalOpen(false);
         }
     };
 
@@ -114,6 +143,28 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
+    // Derived State
+    const sortedStudents = [...students].sort((a, b) => {
+        const da = new Date(a.assignedAt).getTime();
+        const db = new Date(b.assignedAt).getTime();
+        return sortByDateDesc ? db - da : da - db;
+    });
+
+    const totalPages = Math.ceil(sortedStudents.length / coursesPerPage);
+    const pagedStudents = sortedStudents.slice(coursePage * coursesPerPage, (coursePage + 1) * coursesPerPage);
+
+    const handleSelectAll = () => {
+        if (selectedIds.length === pagedStudents.length && pagedStudents.length > 0) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(pagedStudents.map(s => s.userId));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
@@ -121,9 +172,17 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
                     <h3 className="text-lg font-bold text-[#0A1931]">Sadece Bu Derse Tanımlanan Öğrenciler</h3>
                     <p className="text-sm text-[#A0AEC0]">Grup bağımsız olarak bu derse doğrudan atanan öğrenciler.</p>
                 </div>
-                <button onClick={() => setAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-100">
-                    <Plus size={16} /> Öğrenci Ekle
-                </button>
+                <div className="flex items-center gap-3">
+                    {selectedIds.length > 0 && (
+                        <button onClick={() => setBulkRemoveModalOpen(true)} disabled={bulkRemoving} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 font-bold text-sm transition-colors border border-red-100 disabled:opacity-50">
+                            {bulkRemoving ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />} 
+                            Seçilenleri Sil ({selectedIds.length})
+                        </button>
+                    )}
+                    <button onClick={() => setAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-100">
+                        <Plus size={16} /> Öğrenci Ekle
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -141,9 +200,21 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
                     <table className="w-full text-left">
                         <thead className="bg-[#E2E8F0]/20 border-b border-[#E2E8F0]/60">
                             <tr>
+                                <th className="px-6 py-4 w-12">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={pagedStudents.length > 0 && selectedIds.length === pagedStudents.length}
+                                        onChange={handleSelectAll}
+                                        className="rounded border-[#E2E8F0] text-[#1B3B6F] focus:ring-[#1B3B6F] cursor-pointer"
+                                    />
+                                </th>
                                 <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">Öğrenci</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">E-posta</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">Atanma Tarihi</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">
+                                    <button onClick={() => setSortByDateDesc(!sortByDateDesc)} className="flex items-center gap-1.5 hover:text-[#1B3B6F] transition-colors uppercase w-fit">
+                                        ATANMA TARİHİ <ArrowUpDown size={12} className={sortByDateDesc ? "text-[#1B3B6F]" : "opacity-40"} />
+                                    </button>
+                                </th>
                                 <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">
                                     <div className="flex items-center gap-1 group relative w-fit">
                                         Erişim Bitiş Tarihi
@@ -157,8 +228,16 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {students.map((s) => (
-                                <tr key={s.userId} className="border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10">
+                            {pagedStudents.map((s) => (
+                                <tr key={s.userId} className={`border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10 transition-colors ${selectedIds.includes(s.userId) ? "bg-indigo-50/30" : ""}`}>
+                                    <td className="px-6 py-4">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedIds.includes(s.userId)}
+                                            onChange={() => toggleSelect(s.userId)}
+                                            className="rounded border-[#E2E8F0] text-[#1B3B6F] focus:ring-[#1B3B6F] cursor-pointer"
+                                        />
+                                    </td>
                                     <td className="px-6 py-4">
                                         <p className="text-sm font-bold text-[#0A1931]">{s.firstName} {s.lastName}</p>
                                     </td>
@@ -214,12 +293,75 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
                 </div>
             )}
 
+            {/* Pagination */}
+            {!loading && (totalPages > 1 || sortedStudents.length > 0) && (
+                <div className="flex flex-wrap items-center justify-center gap-4 mt-6 mb-2">
+                    {totalPages > 1 && (
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setCoursePage(p => Math.max(0, p - 1))} disabled={coursePage === 0}
+                                className="p-2 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                                <ChevronLeft size={14} />
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => {
+                                // Show max 7 page buttons with ellipsis
+                                if (totalPages <= 7 || i === 0 || i === totalPages - 1 || Math.abs(i - coursePage) <= 1) {
+                                    return (
+                                        <button key={i} onClick={() => setCoursePage(i)}
+                                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${coursePage === i ? "bg-[#1B3B6F] text-white shadow-lg" : "border border-[#E2E8F0] text-[#A0AEC0] hover:bg-[#E2E8F0]/30"}`}>
+                                            {i + 1}
+                                        </button>
+                                    );
+                                }
+                                if (i === 1 && coursePage > 3) return <span key={i} className="text-[#A0AEC0] text-xs">…</span>;
+                                if (i === totalPages - 2 && coursePage < totalPages - 4) return <span key={i} className="text-[#A0AEC0] text-xs">…</span>;
+                                return null;
+                            })}
+                            <button onClick={() => setCoursePage(p => Math.min(totalPages - 1, p + 1))} disabled={coursePage >= totalPages - 1}
+                                className="p-2 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3 lg:border-l lg:border-[#E2E8F0] lg:pl-4">
+                        <span className="text-[10px] font-bold text-[#A0AEC0] whitespace-nowrap">
+                            {coursePage * coursesPerPage + 1}-{Math.min((coursePage + 1) * coursesPerPage, sortedStudents.length)} / {sortedStudents.length}
+                        </span>
+                        <div className="w-36">
+                            <CustomSelect 
+                                value={coursesPerPage}
+                                onChange={(val) => {
+                                    setCoursesPerPage(Number(val));
+                                    setCoursePage(0);
+                                }}
+                                options={[
+                                    { label: "15 Göster", value: 15 },
+                                    { label: "30 Göster", value: 30 },
+                                    { label: "60 Göster", value: 60 },
+                                    { label: "Tümünü Göster", value: 999999 }
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <ConfirmDialog
-                isOpen={!!removeTarget}
+                open={!!removeTarget}
                 title="Öğrenciyi Çıkar"
                 message={<>{removeTarget?.firstName} {removeTarget?.lastName} isimli öğrenciyi bu dersten çıkarmak istediğinize emin misiniz?</>}
                 onConfirm={handleRemove}
-                onCancel={() => setRemoveTarget(null)}
+                onClose={() => setRemoveTarget(null)}
+                confirmText="Evet, Çıkar"
+                cancelText="İptal"
+            />
+
+            <ConfirmDialog
+                open={bulkRemoveModalOpen}
+                title="Toplu Silme"
+                message={<>Seçili <b>{selectedIds.length}</b> öğrenciyi bu dersten çıkarmak istediğinize emin misiniz?</>}
+                onConfirm={handleBulkRemove}
+                onClose={() => setBulkRemoveModalOpen(false)}
                 confirmText="Evet, Çıkar"
                 cancelText="İptal"
             />
@@ -271,3 +413,4 @@ export function CourseStudentTab({ courseId }: { courseId: string }) {
         </div>
     );
 }
+

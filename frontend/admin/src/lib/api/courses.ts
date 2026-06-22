@@ -2,11 +2,12 @@ import { api, cachedApi, invalidateCache, invalidateCacheByPrefix, API_URL, Page
 import { CourseListDto, SessionDto, CourseDetailDto, CourseMaterialDto, AuthResponse, UserDto, UserTenantDto, ExamListDto, ExamDetailDto, ExamAssignmentDto, ExamResultDto, ExamResultSummaryDto, ExamOverallSummaryDto, ScoreRangeDto, AssignmentListDto, StudentScorecardDto, CourseAttendanceDto, DashboardStatsDto, DeviceSessionDto, ScorecardSummaryDto, NotificationDto, AdminSentNotificationDto, GroupSummaryDto, SessionStartResult, RecordingDto, PlanDto, TransactionDto, MonthlyRevenueDto, PlanRevenueDto, AccountingSummaryDto, PaymentMethodBreakdownDto, CreateTransactionRequest, PodcastDto, GeneratePodcastRequest, GroupListDto, GroupMemberDto, GroupDetailDto, CalendarEventDto, CreateCalendarEventRequest, TicketDto, TicketReplyDto, AdminDashboardDto, PackageGroupDto, PackageDto, UserPackageDto, CreatePackageRequest, WebhookInfo, PagedUsersResult, CreateUserRequest, QuestionDto, CreateQuestionRequest, AuditLogDto, PagedAuditResult, AuditSummaryDto, TenantBrandingDto, SubmissionDto, AssignmentDetailDto, CourseStudentListDto } from './types';
 
 export const courseApi = {
-    list: (token: string, tenantId: string, params?: { page?: number; pageSize?: number; search?: string }) => {
+    list: (token: string, tenantId: string, params?: { page?: number; pageSize?: number; search?: string; instructorId?: string }) => {
         const qs = new URLSearchParams();
         if (params?.page) qs.set("page", String(params.page));
         if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
         if (params?.search) qs.set("search", params.search);
+        if (params?.instructorId) qs.set("instructorId", params.instructorId);
         return api<PagedResult<CourseListDto>>(`/courses?${qs}`, { token, tenantId });
     },
 
@@ -64,7 +65,7 @@ export const courseApi = {
         ),
 
     update: async (token: string, tenantId: string, courseId: string, data: {
-        title?: string; description?: string; thumbnailUrl?: string; courseType?: string; isPublished?: boolean; order?: number;
+        title?: string; description?: string; thumbnailUrl?: string; courseType?: string; isPublished?: boolean; order?: number; instructorId?: string | null;
     }) => {
         const result = await api<CourseListDto>(`/courses/${courseId}`, { method: "PUT", token, tenantId, body: JSON.stringify(data) });
         invalidateCache("courses:");

@@ -77,7 +77,7 @@ public class AuditService : IAuditService
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(a => new AuditLogDto(
-                    a.Id, a.UserId, a.UserName,
+                    a.Id, a.UserId, a.UserName ?? (a.User != null ? a.User.FirstName + " " + a.User.LastName : null),
                     a.Action, a.EntityType, a.EntityId, a.EntityName,
                     a.Details, a.IpAddress, a.CreatedAt))
                 .ToListAsync();

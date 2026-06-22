@@ -8,7 +8,7 @@ import { BookOpen, Search, Plus, Trash2, Loader2, X, AlertCircle, Info, Calendar
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Tooltip } from "@/components/ui/Tooltip";
 
-export function UserDirectCoursesTab({ userId }: { userId: string }) {
+export function UserDirectCoursesTab({ userId, userRole }: { userId: string; userRole?: string }) {
     const { token, currentTenantId: tenantId } = useAuth();
     const { success, error: toastError } = useToast();
     const [courses, setCourses] = useState<CourseListDto[]>([]);
@@ -26,18 +26,25 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
     const [editingExpirationFor, setEditingExpirationFor] = useState<string | null>(null);
     const [expirationInputValue, setExpirationInputValue] = useState("");
 
+    const isInstructor = userRole === "Instructor" || userRole === "Eğitmen";
+
     const fetchCourses = useCallback(async () => {
         if (!token || !tenantId) return;
         setLoading(true);
         try {
-            const data = await userApi.getDirectCourses(token, tenantId, userId);
-            setCourses(data);
+            if (isInstructor) {
+                const data = await courseApi.list(token, tenantId, { instructorId: userId, pageSize: 100 });
+                setCourses(data.items);
+            } else {
+                const data = await userApi.getDirectCourses(token, tenantId, userId);
+                setCourses(data);
+            }
         } catch {
-            toastError("Hata", "Öğrencinin ders listesi alınamadı.");
+            toastError("Hata", "Ders listesi alınamadı.");
         } finally {
             setLoading(false);
         }
-    }, [token, tenantId, userId]);
+    }, [token, tenantId, userId, isInstructor]);
 
     useEffect(() => {
         fetchCourses();
@@ -46,11 +53,15 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
     const handleRemove = async () => {
         if (!removeTarget || !token || !tenantId) return;
         try {
-            await courseApi.removeStudent(token, tenantId, removeTarget.id, userId);
+            if (isInstructor) {
+                await courseApi.update(token, tenantId, removeTarget.id, { instructorId: null });
+            } else {
+                await courseApi.removeStudent(token, tenantId, removeTarget.id, userId);
+            }
             setCourses(c => c.filter(x => x.id !== removeTarget.id));
-            success("Ders ataması kaldırıldı.");
+            success(isInstructor ? "Ders sahipliği kaldırıldı." : "Ders ataması kaldırıldı.");
         } catch {
-            toastError("Hata", "Atama kaldırılamadı.");
+            toastError("Hata", "İşlem yapılamadı.");
         } finally {
             setRemoveTarget(null);
         }
@@ -85,13 +96,18 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
         if (!token || !tenantId) return;
         setAddingCourse(courseId);
         try {
-            await courseApi.assignStudent(token, tenantId, courseId, userId);
-            success("Öğrenci derse atandı.");
+            if (isInstructor) {
+                await courseApi.update(token, tenantId, courseId, { instructorId: userId });
+                success("Ders eğitmene atandı.");
+            } else {
+                await courseApi.assignStudent(token, tenantId, courseId, userId);
+                success("Öğrenci derse atandı.");
+            }
             setAddModalOpen(false);
             setSearchQuery("");
             fetchCourses();
         } catch {
-            toastError("Hata", "Öğrenci derse eklenemedi.");
+            toastError("Hata", "Ders eklenemedi.");
         } finally {
             setAddingCourse(null);
         }
@@ -117,8 +133,8 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-[#0A1931]">Özel Atanmış Dersler</h3>
-                    <p className="text-sm text-[#A0AEC0]">Öğrencinin doğrudan dahil edildiği dersler.</p>
+                    <h3 className="text-lg font-bold text-[#0A1931]">{isInstructor ? "Eğitmenin Dersleri" : "Özel Atanmış Dersler"}</h3>
+                    <p className="text-sm text-[#A0AEC0]">{isInstructor ? "Eğitmenin sahip olduğu ve yönettiği dersler." : "Öğrencinin doğrudan dahil edildiği dersler."}</p>
                 </div>
                 <button onClick={() => setAddModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 font-bold text-sm transition-colors border border-indigo-100">
                     <Plus size={16} /> Ders Ekle
@@ -133,7 +149,7 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
                         <BookOpen size={28} />
                     </div>
                     <h4 className="text-lg font-bold text-[#0A1931]">Kayıtlı Ders Yok</h4>
-                    <p className="text-sm text-[#A0AEC0] max-w-sm mt-1">Öğrenci henüz özel olarak hiçbir derse atanmamış.</p>
+                    <p className="text-sm text-[#A0AEC0] max-w-sm mt-1">{isInstructor ? "Eğitmene atanmış bir ders bulunmuyor." : "Öğrenci henüz özel olarak hiçbir derse atanmamış."}</p>
                 </div>
             ) : (
                 <div className="border border-[#E2E8F0]/60 rounded-2xl overflow-hidden bg-white shadow-sm">
@@ -142,15 +158,17 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
                             <tr>
                                 <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">Ders Adı</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">Tür</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">
-                                    <div className="flex items-center gap-1 group relative w-fit">
-                                        Erişim Bitiş Tarihi
-                                        <Info size={14} className="text-[#A0AEC0] group-hover:text-indigo-500 cursor-help transition-colors" />
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50">
-                                            Buradan belirleyeceğiniz tarih geçtiğinde, öğrencinin bu derse olan özel erişimi otomatik olarak kesilir.
+                                {!isInstructor && (
+                                    <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9]">
+                                        <div className="flex items-center gap-1 group relative w-fit">
+                                            Erişim Bitiş Tarihi
+                                            <Info size={14} className="text-[#A0AEC0] group-hover:text-indigo-500 cursor-help transition-colors" />
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all shadow-xl z-50">
+                                                Buradan belirleyeceğiniz tarih geçtiğinde, öğrencinin bu derse olan özel erişimi otomatik olarak kesilir.
+                                            </div>
                                         </div>
-                                    </div>
-                                </th>
+                                    </th>
+                                )}
                                 <th className="px-6 py-4 text-xs font-semibold text-[#A9A9A9] text-right">İşlem</th>
                             </tr>
                         </thead>
@@ -163,40 +181,42 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
                                     <td className="px-6 py-4">
                                         <p className="text-xs font-medium text-[#A0AEC0]">{c.courseType}</p>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        {editingExpirationFor === c.id ? (
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="date"
-                                                    value={expirationInputValue}
-                                                    onChange={e => setExpirationInputValue(e.target.value)}
-                                                    className="px-2 py-1 bg-white border border-[#E2E8F0] rounded-md text-xs focus:outline-none focus:border-indigo-500 text-[#0A1931]"
-                                                />
-                                                <button 
-                                                    onClick={() => handleUpdateExpiration(c.id, expirationInputValue ? new Date(expirationInputValue).toISOString() : null)}
-                                                    className="px-2 py-1 bg-indigo-500 text-white text-xs font-bold rounded-md hover:bg-indigo-600 transition-colors">
-                                                    Kaydet
-                                                </button>
-                                                <button 
-                                                    onClick={() => { setEditingExpirationFor(null); }}
-                                                    className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-bold rounded-md hover:bg-gray-200 transition-colors">
-                                                    İptal
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div 
-                                                onClick={() => {
-                                                    setEditingExpirationFor(c.id);
-                                                    setExpirationInputValue(c.expiresAt ? new Date(c.expiresAt).toISOString().split('T')[0] : "");
-                                                }}
-                                                className="flex items-center gap-2 px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0]/80 rounded-lg w-fit cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition-colors group">
-                                                <Calendar size={14} className={c.expiresAt && new Date(c.expiresAt) < new Date() ? "text-red-500" : "text-indigo-500"} />
-                                                <span className={`text-xs font-bold ${!c.expiresAt ? "text-[#A0AEC0] group-hover:text-indigo-600" : new Date(c.expiresAt) < new Date() ? "text-red-600" : "text-[#0A1931]"}`}>
-                                                    {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString("tr-TR") : "Süresiz"}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </td>
+                                    {!isInstructor && (
+                                        <td className="px-6 py-4">
+                                            {editingExpirationFor === c.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="date"
+                                                        value={expirationInputValue}
+                                                        onChange={e => setExpirationInputValue(e.target.value)}
+                                                        className="px-2 py-1 bg-white border border-[#E2E8F0] rounded-md text-xs focus:outline-none focus:border-indigo-500 text-[#0A1931]"
+                                                    />
+                                                    <button 
+                                                        onClick={() => handleUpdateExpiration(c.id, expirationInputValue ? new Date(expirationInputValue).toISOString() : null)}
+                                                        className="px-2 py-1 bg-indigo-500 text-white text-xs font-bold rounded-md hover:bg-indigo-600 transition-colors">
+                                                        Kaydet
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { setEditingExpirationFor(null); }}
+                                                        className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-bold rounded-md hover:bg-gray-200 transition-colors">
+                                                        İptal
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div 
+                                                    onClick={() => {
+                                                        setEditingExpirationFor(c.id);
+                                                        setExpirationInputValue(c.expiresAt ? new Date(c.expiresAt).toISOString().split('T')[0] : "");
+                                                    }}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-[#F8FAFC] border border-[#E2E8F0]/80 rounded-lg w-fit cursor-pointer hover:border-indigo-300 hover:bg-indigo-50 transition-colors group">
+                                                    <Calendar size={14} className={c.expiresAt && new Date(c.expiresAt) < new Date() ? "text-red-500" : "text-indigo-500"} />
+                                                    <span className={`text-xs font-bold ${!c.expiresAt ? "text-[#A0AEC0] group-hover:text-indigo-600" : new Date(c.expiresAt) < new Date() ? "text-red-600" : "text-[#0A1931]"}`}>
+                                                        {c.expiresAt ? new Date(c.expiresAt).toLocaleDateString("tr-TR") : "Süresiz"}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 text-right">
                                         <Tooltip content="Kaldır"><button onClick={() => setRemoveTarget(c)} className="p-2 text-[#A0AEC0] hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
                                             <Trash2 size={16} />
@@ -211,8 +231,8 @@ export function UserDirectCoursesTab({ userId }: { userId: string }) {
 
             <ConfirmDialog
                 isOpen={!!removeTarget}
-                title="Atamayı Kaldır"
-                message={<>Öğrencinin <span className="font-bold text-[#0A1931]">{removeTarget?.title}</span> dersinden atamasını kaldırmak istediğinize emin misiniz?</>}
+                title="Dersi Kaldır"
+                message={<>{isInstructor ? "Eğitmenin" : "Öğrencinin"} <span className="font-bold text-[#0A1931]">{removeTarget?.title}</span> dersinden ilişiğini kesmek istediğinize emin misiniz?</>}
                 onConfirm={handleRemove}
                 onCancel={() => setRemoveTarget(null)}
                 confirmText="Evet, Kaldır"

@@ -18,6 +18,7 @@ import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
 import { CourseMediaTab } from "./CourseMediaTab";
 import { CourseStudentTab } from "./CourseStudentTab";
 import { PremiumTabs } from "@/components/ui/PremiumTabs";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import { ResponsiveList } from "@/components/ui/ResponsiveList";
 import { Tooltip } from "@/components/ui/Tooltip";
 
@@ -140,9 +141,9 @@ export default function CoursesPage() {
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [vodModalOpen, setVodModalOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState("all");
-    const [sortBy, setSortBy] = useState<"name" | "date" | "sessions">("date");
+    const [sortBy, setSortBy] = useState<"name" | "date" | "sessions" | "status">("date");
     const [coursePage, setCoursePage] = useState(0);
-    const COURSES_PER_PAGE = 15;
+    const [coursesPerPage, setCoursesPerPage] = useState(15);
 
     // ── Fetch courses from API ────────────────────────────────────────────────
     const fetchCourses = useCallback(async () => {
@@ -411,12 +412,13 @@ export default function CoursesPage() {
         });
         if (sortBy === "name") result = [...result].sort((a, b) => a.title.localeCompare(b.title, "tr"));
         else if (sortBy === "sessions") result = [...result].sort((a, b) => b.sessionCount - a.sessionCount);
+        else if (sortBy === "status") result = [...result].sort((a, b) => (a.isPublished === b.isPublished ? 0 : a.isPublished ? -1 : 1));
         else result = [...result].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         return result;
     }, [courses, search, statusFilter, sortBy]);
 
-    const totalCoursePages = Math.ceil(filtered.length / COURSES_PER_PAGE);
-    const pagedCourses = filtered.slice(coursePage * COURSES_PER_PAGE, (coursePage + 1) * COURSES_PER_PAGE);
+    const totalCoursePages = Math.ceil(filtered.length / coursesPerPage);
+    const pagedCourses = filtered.slice(coursePage * coursesPerPage, (coursePage + 1) * coursesPerPage);
 
     const stats = {
         total: courses.length,
@@ -746,19 +748,30 @@ export default function CoursesPage() {
                             className="w-full pl-9 pr-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
                     </div>
                     {/* Status Filter */}
-                    <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCoursePage(0); }}
-                        className="shrink-0 snap-start px-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none cursor-pointer">
-                        <option value="all">Tüm Durumlar</option>
-                        <option value="published">Yayında</option>
-                        <option value="draft">Taslak</option>
-                    </select>
+                    <div className="shrink-0 snap-start">
+                        <CustomSelect 
+                            value={statusFilter}
+                            onChange={(val) => { setStatusFilter(val as string); setCoursePage(0); }}
+                            options={[
+                                { label: "Tüm Durumlar", value: "all" },
+                                { label: "Yayında", value: "published" },
+                                { label: "Taslak", value: "draft" }
+                            ]}
+                        />
+                    </div>
                     {/* Sort */}
-                    <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-                        className="shrink-0 snap-start px-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none cursor-pointer">
-                        <option value="date">Tarihe Göre</option>
-                        <option value="name">İsme Göre</option>
-                        <option value="sessions">Oturum Sayısı</option>
-                    </select>
+                    <div className="shrink-0 snap-start">
+                        <CustomSelect 
+                            value={sortBy}
+                            onChange={(val) => setSortBy(val as any)}
+                            options={[
+                                { label: "Tarihe Göre", value: "date" },
+                                { label: "İsme Göre", value: "name" },
+                                { label: "Oturum Sayısı", value: "sessions" },
+                                { label: "Duruma Göre", value: "status" }
+                            ]}
+                        />
+                    </div>
                     {/* View Toggle */}
                     <div className="shrink-0 snap-start flex rounded-xl border border-[#E2E8F0] overflow-hidden">
                         <button onClick={() => setViewMode("grid")}
@@ -864,7 +877,13 @@ export default function CoursesPage() {
                 <ResponsiveList 
                     data={pagedCourses}
                     keyExtractor={co => co.id}
-                    desktopColumns={["Ders Adı", "Oturum", "Durum", "Tarih", "İşlem"]}
+                    desktopColumns={[
+                        <button key="name" onClick={() => setSortBy("name")} className="flex items-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-left uppercase">DERS ADI <ArrowUpDown size={12} className={sortBy === "name" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
+                        <button key="sessions" onClick={() => setSortBy("sessions")} className="flex items-center justify-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-center uppercase">OTURUM <ArrowUpDown size={12} className={sortBy === "sessions" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
+                        <button key="status" onClick={() => setSortBy("status")} className="flex items-center justify-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-center uppercase">DURUM <ArrowUpDown size={12} className={sortBy === "status" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
+                        <button key="date" onClick={() => setSortBy("date")} className="flex items-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-left uppercase">TARİH <ArrowUpDown size={12} className={sortBy === "date" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
+                        <span key="actions" className="flex justify-end w-full uppercase">İŞLEM</span>
+                    ]}
                     renderDesktopRow={co => (
                         <tr key={co.id} onClick={() => openDetail(co)}
                             className="border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10 cursor-pointer transition-colors group">
@@ -927,31 +946,55 @@ export default function CoursesPage() {
             )}
 
             {/* Pagination */}
-            {!loading && totalCoursePages > 1 && (
-                <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => setCoursePage(p => Math.max(0, p - 1))} disabled={coursePage === 0}
-                        className="p-2 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-                        <ChevronLeft size={14} />
-                    </button>
-                    {Array.from({ length: totalCoursePages }, (_, i) => {
-                        // Show max 7 page buttons with ellipsis
-                        if (totalCoursePages <= 7 || i === 0 || i === totalCoursePages - 1 || Math.abs(i - coursePage) <= 1) {
-                            return (
-                                <button key={i} onClick={() => setCoursePage(i)}
-                                    className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${coursePage === i ? "bg-[#1B3B6F] text-white shadow-lg" : "border border-[#E2E8F0] text-[#A0AEC0] hover:bg-[#E2E8F0]/30"}`}>
-                                    {i + 1}
-                                </button>
-                            );
-                        }
-                        if (i === 1 && coursePage > 3) return <span key={i} className="text-[#A0AEC0] text-xs">…</span>;
-                        if (i === totalCoursePages - 2 && coursePage < totalCoursePages - 4) return <span key={i} className="text-[#A0AEC0] text-xs">…</span>;
-                        return null;
-                    })}
-                    <button onClick={() => setCoursePage(p => Math.min(totalCoursePages - 1, p + 1))} disabled={coursePage >= totalCoursePages - 1}
-                        className="p-2 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-                        <ChevronRight size={14} />
-                    </button>
-                    <span className="text-[10px] font-bold text-[#A0AEC0] ml-2">{coursePage * COURSES_PER_PAGE + 1}-{Math.min((coursePage + 1) * COURSES_PER_PAGE, filtered.length)} / {filtered.length}</span>
+            {!loading && (totalCoursePages > 1 || filtered.length > 0) && (
+                <div className="flex flex-wrap items-center justify-center gap-4 mt-6 mb-2">
+                    {totalCoursePages > 1 && (
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setCoursePage(p => Math.max(0, p - 1))} disabled={coursePage === 0}
+                                className="p-2 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                                <ChevronLeft size={14} />
+                            </button>
+                            {Array.from({ length: totalCoursePages }, (_, i) => {
+                                // Show max 7 page buttons with ellipsis
+                                if (totalCoursePages <= 7 || i === 0 || i === totalCoursePages - 1 || Math.abs(i - coursePage) <= 1) {
+                                    return (
+                                        <button key={i} onClick={() => setCoursePage(i)}
+                                            className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${coursePage === i ? "bg-[#1B3B6F] text-white shadow-lg" : "border border-[#E2E8F0] text-[#A0AEC0] hover:bg-[#E2E8F0]/30"}`}>
+                                            {i + 1}
+                                        </button>
+                                    );
+                                }
+                                if (i === 1 && coursePage > 3) return <span key={i} className="text-[#A0AEC0] text-xs">…</span>;
+                                if (i === totalCoursePages - 2 && coursePage < totalCoursePages - 4) return <span key={i} className="text-[#A0AEC0] text-xs">…</span>;
+                                return null;
+                            })}
+                            <button onClick={() => setCoursePage(p => Math.min(totalCoursePages - 1, p + 1))} disabled={coursePage >= totalCoursePages - 1}
+                                className="p-2 rounded-xl border border-[#E2E8F0] hover:bg-[#E2E8F0]/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3 lg:border-l lg:border-[#E2E8F0] lg:pl-4">
+                        <span className="text-[10px] font-bold text-[#A0AEC0] whitespace-nowrap">
+                            {coursePage * coursesPerPage + 1}-{Math.min((coursePage + 1) * coursesPerPage, filtered.length)} / {filtered.length}
+                        </span>
+                        <div className="w-36">
+                            <CustomSelect 
+                                value={coursesPerPage}
+                                onChange={(val) => {
+                                    setCoursesPerPage(Number(val));
+                                    setCoursePage(0);
+                                }}
+                                options={[
+                                    { label: "15 Göster", value: 15 },
+                                    { label: "30 Göster", value: 30 },
+                                    { label: "60 Göster", value: 60 },
+                                    { label: "Tümünü Göster", value: 999999 }
+                                ]}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 

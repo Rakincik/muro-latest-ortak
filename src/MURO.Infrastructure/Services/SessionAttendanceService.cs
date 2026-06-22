@@ -47,7 +47,7 @@ public class SessionAttendanceService : ISessionAttendanceService
                 a.Id, a.UserId,
                 $"{a.User.FirstName} {a.User.LastName}",
                 a.JoinedAt, a.LeftAt, a.DurationMinutes,
-                a.DurationMinutes.HasValue && a.DurationMinutes > 0
+                true // Sisteme düşen herkes katılmış sayılır
             )).ToList();
 
             var totalPresent = attendees.Count(a => a.IsPresent);
@@ -128,5 +128,5 @@ public class SessionAttendanceService : ISessionAttendanceService
     private static SessionAttendanceDto MapDto(SessionAttendance a, User user) =>
         new(a.Id, a.UserId, $"{user.FirstName} {user.LastName}",
             a.JoinedAt, a.LeftAt, a.DurationMinutes,
-            a.DurationMinutes.HasValue && a.DurationMinutes > 0);
+            true);
 }

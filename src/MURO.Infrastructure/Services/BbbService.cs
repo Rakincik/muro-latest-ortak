@@ -94,7 +94,7 @@ public class BbbService : IBbbService
 
         try
         {
-            // Varsayılan sunumu 16:9 oranında boş bir PDF ile değiştiriyoruz (Geniş beyaz ekran)
+            // Varsayılan sunumu 16:9 oranında boş bir PNG ile değiştiriyoruz (Geniş beyaz ekran)
             var xmlPayload = @"<?xml version=""1.0"" encoding=""UTF-8""?>
 <modules>
   <module name=""presentation"">

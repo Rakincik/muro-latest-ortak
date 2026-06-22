@@ -81,6 +81,13 @@ public class SessionValidationMiddleware
             return;
         }
 
+        // Real-time online presence heartbeat (10 min TTL)
+        try 
+        {
+            await cache.SetAsync($"presence:online:{sessionId}", "1", TimeSpan.FromMinutes(10));
+        }
+        catch { /* Fire and forget */ }
+
         await _next(context);
     }
 }

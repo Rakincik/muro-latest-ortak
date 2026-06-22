@@ -18,6 +18,7 @@ using tusdotnet;
 using tusdotnet.Models;
 using tusdotnet.Models.Configuration;
 using tusdotnet.Stores;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,7 +32,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
         path: "logs/muro-.log",
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 30,
+        retainedFileCountLimit: 7,
         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{CorrelationId}] {SourceContext} | {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 builder.Host.UseSerilog();
@@ -254,13 +255,24 @@ builder.Services.AddCors(options =>
     });
 });
 
+// --- Forwarded Headers (for Nginx/Docker Proxy IP resolution) ---
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
 
 // --- 👑 SuperAdmin Auto-Seed --- (migration sonrasında çalıştırılıyor, aşağıda)
 
 // --- 🔐 Middleware Pipeline (Güvenlik Sıralı) ---
 
-// 0. Response Compression — tüm response'lara Brotli/Gzip uygula
+// 0. Forwarded Headers — IP adreslerini proxy'den (Docker/Nginx) çözümle
+app.UseForwardedHeaders();
+
+// 0.1 Response Compression — tüm response'lara Brotli/Gzip uygula
 app.UseResponseCompression();
 
 // 0.5 Correlation ID — her isteğe benzersiz takip numarası

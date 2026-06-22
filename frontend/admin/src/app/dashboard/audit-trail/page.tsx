@@ -10,13 +10,22 @@ import { auditApi, securityApi } from "@/lib/api/audits";
 import { type AuditLogDto, type UserAuditSummaryDto, type SuspiciousUserDto } from "@/lib/api/types";
 import { UAParser } from "ua-parser-js";
 
-// Action Colors
-const actionMeta: Record<string, { labelTR: string; bg: string; text: string; icon: typeof Plus }> = {
-    Create: { labelTR: "Oluşturma", bg: "bg-emerald-50", text: "text-emerald-600", icon: Plus },
-    Update: { labelTR: "Güncelleme", bg: "bg-blue-50", text: "text-blue-600", icon: Edit3 },
-    Delete: { labelTR: "Silme", bg: "bg-red-50", text: "text-red-600", icon: Trash2 },
+const actionMeta: Record<string, { labelTR: string; bg: string; text: string; icon: any }> = {
+    Create: { labelTR: "Oluşturuldu", bg: "bg-emerald-50 border border-emerald-100", text: "text-emerald-700", icon: Plus },
+    Update: { labelTR: "Güncellendi", bg: "bg-blue-50 border border-blue-100", text: "text-blue-700", icon: Edit3 },
+    Delete: { labelTR: "Silindi", bg: "bg-red-50 border border-red-100", text: "text-red-700", icon: Trash2 },
+    BulkCreate: { labelTR: "Toplu Eklendi", bg: "bg-emerald-50 border border-emerald-100", text: "text-emerald-700", icon: Plus },
+    BulkDelete: { labelTR: "Toplu Silindi", bg: "bg-red-50 border border-red-100", text: "text-red-700", icon: Trash2 },
 };
-const defaultAction = { labelTR: "Diğer", bg: "bg-gray-50", text: "text-gray-600", icon: FileText };
+const defaultAction = { labelTR: "İşlem Yaptı", bg: "bg-slate-100 border border-slate-200", text: "text-slate-700", icon: Activity };
+
+const entityMeta: Record<string, { labelTR: string; icon: any }> = {
+    User: { labelTR: "Kullanıcı", icon: User },
+    Course: { labelTR: "Ders", icon: FileText },
+    Lesson: { labelTR: "İçerik/Video", icon: Monitor },
+    Group: { labelTR: "Grup", icon: User },
+    Settings: { labelTR: "Sistem Ayarları", icon: Activity },
+};
 
 // Parse User Agent
 const parseUserAgent = (ua?: string) => {
@@ -294,7 +303,7 @@ export default function AuditTrailPage() {
                                 </div>
                                 <div>
                                     <h2 className="text-lg font-bold text-[#0A1931]">{selectedUser.name || "Bilinmeyen Kullanıcı"}</h2>
-                                    <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest">Sicil & Aksiyon Geçmişi</p>
+                                    <p className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest">Aksiyon Geçmişi</p>
                                 </div>
                             </div>
                             <button onClick={() => setSelectedUser(null)} className="p-2 rounded-xl bg-[#E2E8F0]/30 hover:bg-[#E2E8F0] text-[#A0AEC0] hover:text-[#0A1931] transition-colors"><X size={18} /></button>
@@ -358,16 +367,32 @@ export default function AuditTrailPage() {
                                                         {isSystem ? (
                                                             // SYSTEM AUDIT LOG UI
                                                             <div>
-                                                                <div className="flex items-center gap-2 mb-2">
-                                                                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg ${(actionMeta[log.action] || defaultAction).bg} ${(actionMeta[log.action] || defaultAction).text}`}>
-                                                                        {(() => { const Icon = (actionMeta[log.action] || defaultAction).icon; return <Icon size={10} />; })()}
-                                                                        {(actionMeta[log.action] || defaultAction).labelTR}
-                                                                    </span>
-                                                                    <span className="text-xs font-bold text-[#0A1931]">{log.entityType}</span>
-                                                                </div>
-                                                                {log.entityName && <p className="text-sm font-medium text-[#1B3B6F] mb-1">{log.entityName}</p>}
-                                                                {log.details && <p className="text-xs text-[#A9A9A9] truncate max-w-lg">{log.details}</p>}
-                                                                <p className="text-[10px] text-[#A0AEC0] mt-2 font-mono flex items-center gap-1"><Globe size={10}/> IP: {log.ipAddress || "Bilinmiyor"}</p>
+                                                                {(() => {
+                                                                    const aMeta = actionMeta[log.action] || defaultAction;
+                                                                    const eMeta = entityMeta[log.entityType] || { labelTR: log.entityType, icon: FileText };
+                                                                    const AIcon = aMeta.icon;
+                                                                    return (
+                                                                        <>
+                                                                            <div className="flex items-center gap-2 mb-2.5">
+                                                                                <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg ${aMeta.bg} ${aMeta.text} shadow-sm`}>
+                                                                                    <AIcon size={12} />
+                                                                                    {eMeta.labelTR} {aMeta.labelTR}
+                                                                                </span>
+                                                                            </div>
+                                                                            {log.entityName && <p className="text-sm font-bold text-[#0A1931] mb-1.5">{log.entityName}</p>}
+                                                                            {log.details && (
+                                                                                <div className="mt-2 p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                                                                    {log.details}
+                                                                                </div>
+                                                                            )}
+                                                                            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                                                                <p className="text-[10px] text-[#A0AEC0] font-mono flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">
+                                                                                    <Globe size={10}/> IP: {log.ipAddress || "Bilinmiyor"}
+                                                                                </p>
+                                                                            </div>
+                                                                        </>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         ) : (
                                                             // SECURITY EVENT LOG UI

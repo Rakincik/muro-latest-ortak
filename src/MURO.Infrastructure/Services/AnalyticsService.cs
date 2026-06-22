@@ -3,6 +3,7 @@ using MURO.Application.DTOs.Analytics;
 using MURO.Application.Interfaces;
 using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
+using StackExchange.Redis;
 
 namespace MURO.Infrastructure.Services;
 
@@ -11,11 +12,13 @@ public class AnalyticsService : IAnalyticsService
 {
     private readonly MuroDbContext _context;
     private readonly ICacheService _cache;
+    private readonly IConnectionMultiplexer _redis;
 
-    public AnalyticsService(MuroDbContext context, ICacheService cache)
+    public AnalyticsService(MuroDbContext context, ICacheService cache, IConnectionMultiplexer redis)
     {
         _context = context;
         _cache = cache;
+        _redis = redis;
     }
 
     // ── Admin: Genel dashboard istatistikleri ───────────────────────────────
@@ -32,18 +35,18 @@ public class AnalyticsService : IAnalyticsService
             var totalUsers       = await memberships.CountAsync();
             var activeStudents   = await memberships.CountAsync(tm => tm.Role == UserRole.Student && tm.IsActive && tm.StudentType != StudentType.Demo);
             var demoStudents     = await memberships.CountAsync(tm => tm.Role == UserRole.Student && tm.StudentType == StudentType.Demo);
-            var totalCourses     = await _context.Courses.CountAsync(c => true);
-            var publishedCourses = await _context.Courses.CountAsync(c => c.IsPublished);
-            var totalExams       = await _context.Exams.CountAsync(e => true);
-            var totalAssignments = await _context.Assignments.CountAsync(a => true);
-            var totalGroups      = await _context.Groups.CountAsync(g => true);
+            var totalCourses     = await _context.Courses.CountAsync(c => !c.IsDeleted);
+            var publishedCourses = await _context.Courses.CountAsync(c => c.IsPublished && !c.IsDeleted);
+            var totalExams       = await _context.Exams.CountAsync(e => !e.IsDeleted);
+            var totalAssignments = await _context.Assignments.CountAsync(a => !a.IsDeleted);
+            var totalGroups      = await _context.Groups.CountAsync(g => !g.IsDeleted);
             var pendingTickets   = await _context.SupportTickets.CountAsync(t => t.Status == TicketStatus.Open);
 
             return new DashboardStatsDto(
                 totalUsers, activeStudents, demoStudents,
                 totalCourses, publishedCourses, totalExams,
                 totalAssignments, totalGroups, pendingTickets);
-        }, TimeSpan.FromMinutes(2));
+        }, TimeSpan.FromSeconds(15));
     }
 
     // ── Admin: Video izleme istatistikleri (skip/replay analizi dahil) ──────
@@ -87,22 +90,42 @@ public class AnalyticsService : IAnalyticsService
         }, TimeSpan.FromMinutes(2));
     }
 
-    // ── Admin: Aktif cihaz oturumları ────────────────────────────────────────
-    // 🚀 Redis cache: 1 dk TTL (sık değişen veri)
+    // 🟢 Admin: Aktif cihaz oturumları (Real-time Online Presence) 🟢
+    // ⚠️ Redis cache sildik çünkü veri anlık değişiyor. DB query'si Redis keys ile optimize edildi.
     public async Task<List<DeviceSessionDto>> GetActiveSessionsAsync()
     {
-        var cacheKey = $"analytics:activesessions:students";
-        return await _cache.GetOrSetAsync(cacheKey, async () =>
-        {
-            return await _context.DeviceSessions.AsNoTracking()
-                .Where(ds => ds.IsActive && ds.User.Role == UserRole.Student)
-                .Include(ds => ds.User)
-                .OrderByDescending(ds => ds.LoginAt)
-                .Select(ds => new DeviceSessionDto(ds.Id, ds.UserId,
-                    ds.User.FirstName + " " + ds.User.LastName,
-                    ds.DeviceInfo, ds.IpAddress, ds.LoginAt, ds.LogoutAt, ds.IsActive))
-                .ToListAsync();
-        }, TimeSpan.FromMinutes(1));
+        var db = _redis.GetDatabase();
+        var endpoints = _redis.GetEndPoints();
+        var server = _redis.GetServer(endpoints.First());
+        
+        // Redis'teki heartbeat sinyallerini topla
+        var onlineKeys = server.Keys(pattern: "muro:presence:online:*").ToArray();
+        
+        if (onlineKeys.Length == 0)
+            return new List<DeviceSessionDto>();
+
+        var onlineSessionIds = onlineKeys
+            .Select(k => 
+            {
+                var parts = k.ToString().Split(':');
+                if (Guid.TryParse(parts.Last(), out var id)) return (Guid?)id;
+                return null;
+            })
+            .Where(id => id.HasValue)
+            .Select(id => id.Value)
+            .ToList();
+
+        if (!onlineSessionIds.Any())
+            return new List<DeviceSessionDto>();
+
+        return await _context.DeviceSessions.AsNoTracking()
+            .Where(ds => onlineSessionIds.Contains(ds.Id) && ds.User.Role == UserRole.Student)
+            .Include(ds => ds.User)
+            .OrderByDescending(ds => ds.LoginAt)
+            .Select(ds => new DeviceSessionDto(ds.Id, ds.UserId,
+                ds.User.FirstName + " " + ds.User.LastName,
+                ds.DeviceInfo, ds.IpAddress, ds.LoginAt, ds.LogoutAt, true))
+            .ToListAsync();
     }
 
     // ── Admin: Kurs bazlı devam/yoklama raporu ───────────────────────────────
@@ -125,14 +148,14 @@ public class AnalyticsService : IAnalyticsService
 
             // Oturum bazlı yoklama
             var sessions = await _context.Sessions.AsNoTracking()
-                .Where(s => s.CourseId == courseId)
+                .Where(s => s.CourseId == courseId && !s.IsDeleted)
                 .Include(s => s.SessionAttendances)
                 .OrderBy(s => s.ScheduledStart)
                 .ToListAsync();
 
             var sessionSummaries = sessions.Select(s =>
             {
-                var presentStudents = s.SessionAttendances.Where(a => a.DurationMinutes > 0).Select(a => a.UserId).ToList();
+                var presentStudents = s.SessionAttendances.Select(a => a.UserId).ToList();
                 var presentCount = presentStudents.Count;
                 var rate = totalEnrolled > 0 ? Math.Round((double)presentCount / totalEnrolled * 100, 1) : 0;
                 return new SessionAttendanceSummaryDto(
@@ -156,7 +179,7 @@ public class AnalyticsService : IAnalyticsService
             {
                 foreach (var student in allStudentIds)
                 {
-                    var attended = sessions.Count(s => s.SessionAttendances.Any(a => a.UserId == student.UserId && a.DurationMinutes > 0));
+                    var attended = sessions.Count(s => s.SessionAttendances.Any(a => a.UserId == student.UserId));
                     var rate = (double)attended / sessions.Count * 100;
                     if (rate < 50) riskStudentCount++;
                 }
@@ -199,7 +222,7 @@ public class AnalyticsService : IAnalyticsService
                 .Select(r => r.Score)
                 .ToListAsync();
 
-            var attendedCount = attendance.Count(a => a.DurationMinutes > 0);
+            var attendedCount = attendance.Count;
             var completedVideos = videoProgress.Count(vp => vp.CompletedAt != null);
             var totalWatchedMinutes = videoProgress.Sum(vp => vp.WatchedSeconds) / 60;
             var avgScore = examScores.Any() ? Math.Round(examScores.Average(), 1) : 0;
@@ -268,7 +291,7 @@ public class AnalyticsService : IAnalyticsService
             var allAttendance = await _context.SessionAttendances.AsNoTracking()
                 .Where(sa => studentIds.Contains(sa.UserId) )
                 .ToListAsync();
-            var totalAttended = allAttendance.Count(a => a.DurationMinutes > 0);
+            var totalAttended = allAttendance.Count;
             var totalAttendanceRecords = allAttendance.Count;
             var avgAttendanceRate = totalAttendanceRecords > 0
                 ? Math.Round((double)totalAttended / totalAttendanceRecords * 100, 1) : 0;
@@ -332,11 +355,11 @@ public class AnalyticsService : IAnalyticsService
             var monthlyAttendance = await _context.SessionAttendances.AsNoTracking()
                 .Where(sa => sa.UserId == userId && sa.JoinedAt >= monthStart)
                 .ToListAsync();
-            var attendedThisMonth = monthlyAttendance.Count(a => a.DurationMinutes > 0);
+            var attendedThisMonth = monthlyAttendance.Count;
 
             // Toplam bu aydaki oturum sayısı (kursa atanan)
             var totalSessionsThisMonth = await _context.Sessions.AsNoTracking()
-                .Where(s => s.ScheduledStart >= monthStart && s.ScheduledStart <= now)
+                .Where(s => s.ScheduledStart >= monthStart && s.ScheduledStart <= now && !s.IsDeleted)
                 .CountAsync();
 
             var attendanceRate = totalSessionsThisMonth > 0
@@ -442,7 +465,7 @@ public class AnalyticsService : IAnalyticsService
             var sessionStatsThisWeek = await _context.SessionAttendances.AsNoTracking()
                 .Where(sa => sa.JoinedAt >= sevenDaysAgo)
                 .GroupBy(sa => sa.JoinedAt.Date)
-                .Select(g => new { Date = g.Key, Sessions = g.Count(a => a.DurationMinutes > 0) })
+                .Select(g => new { Date = g.Key, Sessions = g.Count() })
                 .ToListAsync();
 
             var weeklyActivity = Enumerable.Range(0, 7).Select(i =>
@@ -483,6 +506,6 @@ public class AnalyticsService : IAnalyticsService
                 topCourses,
                 topStudents
             );
-        }, TimeSpan.FromMinutes(5));
+        }, TimeSpan.FromSeconds(15));
     }
 }

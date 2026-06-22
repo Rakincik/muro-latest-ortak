@@ -91,19 +91,29 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
             .ToListAsync();
 
 
+        var newDeviceInfo = ParseDeviceInfo(userAgent);
 
         foreach (var old in existingSessions)
         {
             old.IsActive = false;
             old.LogoutAt = DateTime.UtcNow;
-            await LogSecurityEventAsync(user.Id,  "SESSION_KICKED", ipAddress, userAgent,
-                JsonSerializer.Serialize(new
-                {
-                    kickedSessionId = old.Id,
-                    kickedDeviceInfo = old.DeviceInfo,
-                    kickedIp = old.IpAddress,
-                    newIp = ipAddress
-                }));
+            
+            if (old.IpAddress == ipAddress && old.DeviceInfo == newDeviceInfo)
+            {
+                await LogSecurityEventAsync(user.Id, "SESSION_REPLACED", ipAddress, userAgent,
+                    JsonSerializer.Serialize(new { replacedSessionId = old.Id }));
+            }
+            else
+            {
+                await LogSecurityEventAsync(user.Id, "SESSION_KICKED", ipAddress, userAgent,
+                    JsonSerializer.Serialize(new
+                    {
+                        kickedSessionId = old.Id,
+                        kickedDeviceInfo = old.DeviceInfo,
+                        kickedIp = old.IpAddress,
+                        newIp = ipAddress
+                    }));
+            }
         }
 
         var deviceSession = new DeviceSession
@@ -112,7 +122,7 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
             UserId = user.Id,
             IpAddress = ipAddress,
             UserAgent = userAgent,
-            DeviceInfo = ParseDeviceInfo(userAgent),
+            DeviceInfo = newDeviceInfo,
             LoginAt = DateTime.UtcNow,
             IsActive = true
         };

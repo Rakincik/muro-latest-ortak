@@ -127,6 +127,12 @@ public class UserService : IUserService
         if (!Enum.TryParse<UserRole>(request.Role, true, out var role))
             throw new ArgumentException($"Geçersiz rol: {request.Role}");
 
+        if (role != UserRole.Student)
+        {
+            if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
+                throw new ArgumentException("Şifreniz minimum 6 haneli olmalıdır.");
+        }
+
         // Quota Enforcement
         if (role == UserRole.Student)
         {
@@ -353,6 +359,12 @@ public class UserService : IUserService
                     : "00";
                 password = $"{req.TcNo}.{lastTwo}";
             }
+            else if (!isStudent && (string.IsNullOrWhiteSpace(password) || password.Length < 6))
+            {
+                importResult.FailedCount++;
+                importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = req.Email ?? "", Status = "Başarısız", Reason = "Şifreniz minimum 6 haneli olmalıdır." });
+                continue;
+            }
 
             if (existingUser != null)
             {
@@ -469,6 +481,10 @@ public class UserService : IUserService
         {
             if (actorRole == "Student")
                 throw new InvalidOperationException("Öğrenciler kendi şifrelerini değiştiremezler. Lütfen yönetim ile iletişime geçin.");
+            
+            if (user.Role != UserRole.Student && request.Password.Length < 6)
+                throw new ArgumentException("Şifreniz minimum 6 haneli olmalıdır.");
+
             user.PasswordHash = request.Password;
         }
 

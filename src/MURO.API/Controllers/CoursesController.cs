@@ -59,7 +59,7 @@ public class CoursesController : ControllerBase
     public async Task<ActionResult<PagedResult<CourseListDto>>> GetCourses(
         [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null, [FromQuery] string? courseType = null,
-        [FromQuery] bool? isPublished = null)
+        [FromQuery] bool? isPublished = null, [FromQuery] Guid? instructorId = null)
     {
         
         // Student: sadece grubundaki dersler
@@ -69,8 +69,8 @@ public class CoursesController : ControllerBase
             return Ok(await _courseService.GetCoursesByUserAsync(userId, page, pageSize, search, courseType));
         }
         // Admin / Instructor: tüm dersler (Eğitmense sadece kendi dersleri)
-        Guid? instructorId = null;
-        if (User.IsInRole("Instructor") || User.HasClaim(c => (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "Instructor"))
+        // Eğer query parametresinde instructorId gönderilmemişse ve kişi Instructor rolündeyse kendi ID'sini kullan
+        if (!instructorId.HasValue && (User.IsInRole("Instructor") || User.HasClaim(c => (c.Type == ClaimTypes.Role || c.Type == "role") && c.Value == "Instructor")))
         {
             instructorId = Guid.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
         }

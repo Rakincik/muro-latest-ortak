@@ -231,9 +231,9 @@ export function UserDetail({ user: u, onBack, onToggleActive, onChangeRole, onDe
                 </div>
             )}
 
-            {/* Özel Atanmış Dersler */}
+            {/* Özel Atanmış Dersler veya Eğitmen Dersleri */}
             <div className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-6 shadow-sm">
-                <UserDirectCoursesTab userId={u.id} />
+                <UserDirectCoursesTab userId={u.id} userRole={u.role} />
             </div>
 
             {/* Modals */}

@@ -5,7 +5,7 @@ import {
     Users, BookOpen, FolderTree, FileText, Calendar, Video,
     Headphones, TrendingUp, TrendingDown, ArrowUpRight,
     Clock, Bell, CheckCircle, AlertCircle, Activity,
-    BarChart3, Eye, Play, MessageSquare, Award, Loader2
+    BarChart3, Eye, Play, MessageSquare, Award, Loader2, Plus
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -54,6 +54,22 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
     "Ödev": "#A9A9A9",
     "Etkinlik": "#A0AEC0",
 };
+
+// --- Helper: Beautiful Empty State ---
+const EmptyState = ({ icon: Icon, title, message, actionLabel, onAction }: { icon: any, title: string, message: string, actionLabel?: string, onAction?: () => void }) => (
+    <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center p-6 bg-gradient-to-b from-transparent to-[#F8FAFC]/80 rounded-2xl border-2 border-dashed border-[#E2E8F0] group hover:border-[#1B3B6F]/20 transition-colors">
+        <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-[#E2E8F0] flex items-center justify-center mb-4 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <Icon className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors duration-300" size={26} />
+        </div>
+        <h3 className="text-sm font-bold text-[#0A1931] mb-1.5">{title}</h3>
+        <p className="text-xs text-[#64748B] mb-5 max-w-[220px] leading-relaxed">{message}</p>
+        {actionLabel && onAction && (
+            <button onClick={onAction} className="px-5 py-2.5 bg-white text-xs font-bold text-[#1B3B6F] border border-[#E2E8F0] rounded-xl shadow-sm hover:shadow-md hover:border-[#1B3B6F]/30 hover:bg-[#F8FAFC] transition-all flex items-center gap-2">
+                <Plus size={14} /> {actionLabel}
+            </button>
+        )}
+    </div>
+);
 
 export default function DashboardPage() {
     const { user, token, currentTenantId: tenantId } = useAuth();
@@ -194,8 +210,12 @@ export default function DashboardPage() {
                         </div>
                     </div>
                     {weeklyData.length === 0 ? (
-                        <div className="flex items-center justify-center h-48 text-[#A0AEC0] text-sm">
-                            Henüz haftalık aktivite verisi yok
+                        <div className="h-48 pt-2">
+                            <EmptyState 
+                                icon={Activity} 
+                                title="Aktivite Bulunamadı" 
+                                message="Bu hafta henüz platformda video izlenmemiş veya oturum açılmamış." 
+                            />
                         </div>
                     ) : (
                         <div className="flex items-end gap-1 sm:gap-3 h-48">
@@ -227,10 +247,13 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                     {upcomingEvents.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10 text-center">
-                            <Calendar size={32} className="text-[#A0AEC0] mb-2" />
-                            <p className="text-xs text-[#A0AEC0]">Yaklaşan etkinlik yok</p>
-                        </div>
+                        <EmptyState 
+                            icon={Calendar} 
+                            title="Planlanmış Etkinlik Yok" 
+                            message="Gelecek günlerde planlanmış herhangi bir sanal sınıf veya sınav bulunmuyor." 
+                            actionLabel="Takvime Git" 
+                            onAction={() => router.push("/dashboard/calendar")} 
+                        />
                     ) : (
                         <div className="space-y-3">
                             {upcomingEvents.map((e) => (
@@ -264,7 +287,15 @@ export default function DashboardPage() {
                         <Award size={18} className="text-[#A0AEC0]" />
                     </div>
                     {topCourses.length === 0 ? (
-                        <p className="text-xs text-[#A0AEC0] text-center py-8">Henüz ders verisi yok</p>
+                        <div className="py-2">
+                            <EmptyState 
+                                icon={Award} 
+                                title="Kurs Verisi Yok" 
+                                message="Öğrenci kaydı bulunan veya yayında olan bir kursunuz henüz yok." 
+                                actionLabel="Kurs Ekle" 
+                                onAction={() => router.push("/dashboard/courses")} 
+                            />
+                        </div>
                     ) : (
                         <div className="space-y-3">
                             {topCourses.map((c, i) => (
@@ -326,9 +357,14 @@ export default function DashboardPage() {
                             ))}
                         </div>
                     ) : pendingTickets.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <CheckCircle size={32} className="text-emerald-400 mb-2" />
-                            <p className="text-xs text-[#A0AEC0]">Bekleyen destek talebi yok</p>
+                        <div className="py-2">
+                            <EmptyState 
+                                icon={MessageSquare} 
+                                title="Harika Haber!" 
+                                message="Şu an bekleyen hiçbir destek talebi bulunmuyor. Her şey yolunda." 
+                                actionLabel="Taleplere Göz At" 
+                                onAction={() => router.push("/dashboard/support")} 
+                            />
                         </div>
                     ) : (
                         <div className="space-y-1">
