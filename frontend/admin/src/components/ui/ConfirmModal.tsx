@@ -43,29 +43,42 @@ export function ConfirmModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                <div className="p-6">
-                    <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${getIconColor()}`}>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center sm:p-4 p-0 bg-black/40 backdrop-blur-md">
+            <div className="bg-white border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-md sm:rounded-3xl rounded-t-[2.5rem] flex flex-col self-end sm:self-center animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300">
+                {/* Mobile Drag Handle */}
+                <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto my-3 sm:hidden" />
+
+                <div className="p-6 relative">
+                    {/* Close button in top-right */}
+                    <button 
+                        onClick={onCancel}
+                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+                        title="Kapat"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="flex items-start gap-4 pr-6 sm:pr-0">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${getIconColor()}`}>
                             <AlertTriangle className="w-6 h-6" />
                         </div>
                         <div className="flex-1 mt-1">
-                            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+                            <h3 className="text-lg font-bold text-gray-900 tracking-tight">{title}</h3>
                             <p className="text-sm text-gray-500 mt-2 leading-relaxed">{message}</p>
                         </div>
                     </div>
                 </div>
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex sm:justify-end justify-between gap-3 sm:rounded-b-3xl">
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
+                        className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-200 transition-all"
                     >
                         {cancelText}
                     </button>
                     <button
                         onClick={onConfirm}
-                        className={`px-4 py-2 text-sm font-medium text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors shadow-sm ${getButtonColor()}`}
+                        className={`flex-1 sm:flex-none px-6 py-2.5 text-sm font-medium text-white rounded-xl focus:outline-none focus:ring-4 transition-all shadow-md ${getButtonColor()}`}
                     >
                         {confirmText}
                     </button>

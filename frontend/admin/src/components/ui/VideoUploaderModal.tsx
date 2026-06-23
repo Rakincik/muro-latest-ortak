@@ -229,13 +229,15 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
     };
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-[#09090B] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center sm:p-4 p-0 bg-black/40 backdrop-blur-md">
+            <div className="bg-white dark:bg-[#09090B] border border-gray-100 dark:border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-2xl sm:max-h-[90vh] max-h-[92vh] flex flex-col self-end sm:self-center animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 sm:rounded-3xl rounded-t-[2.5rem]">
+                {/* Mobile Drag Handle */}
+                <div className="w-12 h-1 bg-gray-200 dark:bg-white/10 rounded-full mx-auto my-3 sm:hidden shrink-0" />
                 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400">
+                        <div className="p-2.5 bg-blue-50 dark:bg-blue-500/10 rounded-xl text-blue-600 dark:text-blue-400">
                             <UploadCloud className="w-5 h-5" />
                         </div>
                         <div>
@@ -243,7 +245,7 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                             <p className="text-[12px] text-gray-500 dark:text-[#A0AEC0]">Videoları seçin, başlıklarını düzenleyin ve arka planda yükleyin.</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -261,8 +263,11 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
-                        className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all
-                            ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-gray-200 dark:border-white/10'}
+                        className={`relative border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all duration-200
+                            ${isDragging 
+                                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-500/10 scale-[0.99] shadow-inner' 
+                                : 'border-gray-200 dark:border-white/10 bg-gray-50/30 dark:bg-white/2'
+                            }
                         `}
                     >
                         <input 
@@ -285,58 +290,58 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                             className="hidden" 
                         />
                         
-                        <div className="p-4 rounded-full mb-4 bg-blue-50 dark:bg-blue-500/10 text-blue-500">
+                        <div className="p-4 rounded-2xl mb-4 bg-blue-50 dark:bg-blue-500/10 text-blue-500 shadow-sm">
                             <UploadCloud className="w-8 h-8" />
                         </div>
-                        <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-4">Videoları veya Klasörleri Sürükleyin</h4>
+                        <h4 className="text-[14px] font-semibold text-gray-900 dark:text-white mb-4">Videoları veya Klasörleri Sürükleyin</h4>
                         
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center justify-center gap-3">
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="px-4 py-2 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm font-medium hover:bg-gray-50 dark:hover:bg-white/10 transition-colors flex items-center gap-2"
+                                className="px-4 py-2.5 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors flex items-center gap-2 shadow-sm"
                             >
                                 <Film className="w-4 h-4" />
                                 Dosya Seç
                             </button>
-                            <span className="text-sm text-gray-400">veya</span>
+                            <span className="text-sm text-gray-400 font-medium">veya</span>
                             <button 
                                 onClick={() => folderInputRef.current?.click()}
-                                className="px-4 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors flex items-center gap-2"
+                                className="px-4 py-2.5 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-sm font-semibold hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors flex items-center gap-2"
                             >
                                 <FolderOpen className="w-4 h-4" />
                                 Klasör Seç
                             </button>
                         </div>
-                        <p className="text-[12px] text-gray-500 mt-4">Alt klasörler otomatik olarak sistemde oluşturulur.</p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-4">Alt klasörler otomatik olarak sistemde oluşturulur.</p>
                     </div>
 
                     {/* File List */}
                     {selectedFiles.length > 0 && (
                         <div className="space-y-3">
                             <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                Seçilen Videolar <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 py-0.5 px-2 rounded-full text-xs">{selectedFiles.length}</span>
+                                Seçilen Videolar <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 py-0.5 px-2 rounded-full text-xs font-semibold">{selectedFiles.length}</span>
                             </h4>
                             <div className="space-y-2">
                                 {selectedFiles.map(file => (
-                                    <div key={file.id} className="flex gap-3 items-start p-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl">
-                                        <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400 shrink-0">
-                                            <Film className="w-4 h-4" />
+                                    <div key={file.id} className="flex gap-3 items-start p-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl transition-all hover:bg-gray-100/50 dark:hover:bg-white/10">
+                                        <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-400 shrink-0">
+                                            <Film className="w-4.5 h-4.5" />
                                         </div>
-                                        <div className="flex-1 space-y-2">
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-xs text-gray-500 dark:text-[#A0AEC0] line-clamp-1">{file.file.name}</p>
-                                                <p className="text-xs text-gray-400 shrink-0">{(file.file.size / (1024 * 1024)).toFixed(1)} MB</p>
+                                        <div className="flex-1 space-y-2 min-w-0">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <p className="text-xs text-gray-500 dark:text-[#A0AEC0] truncate font-medium">{file.file.name}</p>
+                                                <p className="text-xs text-gray-400 dark:text-gray-500 shrink-0 font-medium">{(file.file.size / (1024 * 1024)).toFixed(1)} MB</p>
                                             </div>
                                             <input
                                                 type="text"
                                                 value={file.title}
                                                 onChange={(e) => updateTitle(file.id, e.target.value)}
                                                 placeholder="Ders Başlığı"
-                                                className="w-full px-3 py-2 bg-white dark:bg-[#09090B] border border-gray-200 dark:border-white/10 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                                                className="w-full px-3 py-2 bg-white dark:bg-[#09090B] border border-gray-200 dark:border-white/10 rounded-xl text-sm text-gray-900 dark:text-white placeholder-gray-450 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
                                             />
                                         </div>
-                                        <button onClick={() => removeFile(file.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors shrink-0">
-                                            <Trash2 className="w-4 h-4" />
+                                        <button onClick={() => removeFile(file.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors shrink-0">
+                                            <Trash2 className="w-4.5 h-4.5" />
                                         </button>
                                     </div>
                                 ))}
@@ -346,14 +351,14 @@ export function VideoUploaderModal({ isOpen, onClose, onSuccess, courseId, folde
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/10 flex justify-end gap-3 shrink-0 rounded-b-2xl">
-                    <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors">
+                <div className="px-6 py-4 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/10 flex sm:justify-end justify-between gap-3 shrink-0 sm:rounded-b-3xl">
+                    <button onClick={onClose} className="flex-1 sm:flex-none px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-colors">
                         İptal
                     </button>
                     <button 
                         onClick={handleStartUpload} 
                         disabled={selectedFiles.length === 0 || isPreparing}
-                        className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+                        className="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-2"
                     >
                         {isPreparing ? (
                             <>

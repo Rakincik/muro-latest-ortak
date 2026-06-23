@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen } from "lucide-react";
+import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen, X } from "lucide-react";
 import { mediaLibraryApi, type MediaFolderDto, type MediaAssetDto } from "@/lib/api";
 import { useToast } from "@/components/toast";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
@@ -63,7 +63,20 @@ export default function MediaLibraryPage() {
     const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
     // Confirm Modal state
-    const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({isOpen: false, title: "", message: "", onConfirm: () => {}});
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        confirmText?: string;
+        cancelText?: string;
+        type?: string;
+        onConfirm: () => void;
+    }>({
+        isOpen: false,
+        title: "",
+        message: "",
+        onConfirm: () => {}
+    });
 
     // Video Player Modal state
     const [playingAsset, setPlayingAsset] = useState<MediaAssetDto | null>(null);
@@ -73,7 +86,9 @@ export default function MediaLibraryPage() {
     const [currentPage, setCurrentPage] = useState(1);
 
     // Sorting state
-    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "longest" | "shortest">("newest");
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "longest" | "shortest">("az");
+    const [statusFilter, setStatusFilter] = useState<"all" | "Ready" | "Processing" | "Failed">("all");
+    const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
 
     const { uploads } = useGlobalUpload();
@@ -413,6 +428,13 @@ export default function MediaLibraryPage() {
     
     const filteredAssets = [...assets]
         .filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter(a => {
+            if (statusFilter === "all") return true;
+            if (statusFilter === "Ready") return a.status === "Ready";
+            if (statusFilter === "Processing") return a.status === "Processing" || a.status === "Uploading";
+            if (statusFilter === "Failed") return a.status === "Failed";
+            return true;
+        })
         .sort((a, b) => {
             switch (sortBy) {
                 case "newest":
@@ -439,8 +461,8 @@ export default function MediaLibraryPage() {
 
     return (
         <div className="max-w-[1600px] mx-auto min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] flex flex-col md:flex-row md:overflow-hidden bg-white">
-            {/* Left Pane (30%): Folder Tree */}
-            <div className="w-full md:w-[30%] md:min-w-[250px] md:max-w-[400px] h-64 md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col">
+            {/* Left Pane (25%): Folder Tree */}
+            <div className={`w-full md:w-[25%] md:min-w-[240px] md:max-w-[320px] h-64 md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col ${isSidebarVisible ? 'flex' : 'hidden'}`}>
                 <FolderTree 
                     activeFolderId={currentFolderId}
                     onSelect={handleTreeSelect}
@@ -459,15 +481,15 @@ export default function MediaLibraryPage() {
                 {/* Header Section */}
 
                 {/* Header Section & Toolbar */}
-                <div className="flex flex-col 2xl:flex-row justify-between items-start 2xl:items-center mb-6 gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
                     {/* Breadcrumbs & Title */}
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center flex-wrap gap-1 text-xs font-medium text-gray-500 mb-1">
+                        <div className="flex items-center flex-wrap gap-y-1 gap-x-1.5 text-xs font-medium text-gray-500 mb-1.5 min-w-0">
                             {breadcrumbs.map((crumb, idx) => (
                                 <div key={idx} className="flex items-center">
                                     <button 
                                         onClick={() => handleTreeSelect(crumb.id, breadcrumbs.slice(0, idx + 1))}
-                                        className={`hover:text-blue-600 transition-colors ${idx === breadcrumbs.length - 1 ? 'text-gray-900 font-bold' : ''}`}
+                                        className={`hover:text-blue-600 transition-colors whitespace-nowrap ${idx === breadcrumbs.length - 1 ? 'text-gray-900 font-bold' : ''}`}
                                     >
                                         {crumb.name}
                                     </button>
@@ -475,14 +497,23 @@ export default function MediaLibraryPage() {
                                 </div>
                             ))}
                         </div>
-                        <h1 className="text-xl font-bold text-gray-900 tracking-tight truncate">
-                            {currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}
-                        </h1>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <button 
+                                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                                className={`p-1.5 rounded-lg border transition-all ${isSidebarVisible ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'} flex items-center justify-center shrink-0`}
+                                title={isSidebarVisible ? "Klasör Panelini Gizle" : "Klasör Panelini Göster"}
+                            >
+                                <Folder size={16} />
+                            </button>
+                            <h1 className="text-xl font-bold text-gray-900 tracking-tight truncate" title={currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}>
+                                {currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}
+                            </h1>
+                        </div>
                     </div>
 
                     {/* Actions & Filters */}
-                    <div className="flex flex-wrap items-center justify-start 2xl:justify-end gap-3 w-full 2xl:w-auto">
-                        <div className="relative w-full sm:w-56">
+                    <div className="flex flex-wrap items-center justify-start xl:justify-end gap-2.5 w-full xl:w-auto">
+                        <div className="relative w-full sm:w-48">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <input
                                 type="text"
@@ -494,13 +525,24 @@ export default function MediaLibraryPage() {
                         </div>
 
                         <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value as any)}
+                            className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
+                        >
+                            <option value="all">Tüm Durumlar</option>
+                            <option value="Ready">Hazır</option>
+                            <option value="Processing">Yükleniyor/İşleniyor</option>
+                            <option value="Failed">Hata</option>
+                        </select>
+
+                        <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as any)}
                             className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
                         >
+                            <option value="az">A'dan Z'ye</option>
                             <option value="newest">En Yeni</option>
                             <option value="oldest">En Eski</option>
-                            <option value="az">A'dan Z'ye</option>
                             <option value="za">Z'den A'ya</option>
                             <option value="longest">En Uzun</option>
                             <option value="shortest">En Kısa</option>
@@ -554,16 +596,16 @@ export default function MediaLibraryPage() {
                                 <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">Videolar</h2>
                                 {viewMode === "list" ? (
                                     <div className="bg-white border border-gray-200 rounded-2xl overflow-x-auto shadow-sm">
-                                        <table className="w-full text-left border-collapse min-w-[600px]">
+                                        <table className="w-full text-left border-collapse min-w-[800px] table-fixed">
                                             <thead>
                                                 <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                                                    <th className="px-5 py-3 w-10">
+                                                    <th className="px-3 py-3 w-10 text-center">
                                                         <input type="checkbox" onChange={toggleAll} checked={selectedAssetIds.length === paginatedAssets.length && paginatedAssets.length > 0} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                                                     </th>
-                                                    <th className="px-5 py-3 font-medium">Video Adı</th>
-                                                    <th className="px-5 py-3 font-medium w-32">Durum</th>
-                                                    <th className="px-5 py-3 font-medium w-24">Süre</th>
-                                                    <th className="px-5 py-3 font-medium text-right w-48">İşlemler</th>
+                                                    <th className="px-3 py-3 font-medium">Video Adı</th>
+                                                    <th className="px-3 py-3 font-medium w-28">Durum</th>
+                                                    <th className="px-3 py-3 font-medium w-20">Süre</th>
+                                                    <th className="px-3 py-3 font-medium text-right w-32">İşlemler</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
@@ -574,10 +616,10 @@ export default function MediaLibraryPage() {
                                                         onDragStart={(e) => handleDragStartAsset(e, asset.id)}
                                                         className="hover:bg-blue-50/30 transition-colors group cursor-move"
                                                     >
-                                                        <td className="px-5 py-3 text-center">
+                                                        <td className="px-3 py-3 text-center">
                                                             <input type="checkbox" checked={selectedAssetIds.includes(asset.id)} onChange={() => toggleAsset(asset.id)} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
                                                         </td>
-                                                        <td className="px-5 py-3">
+                                                        <td className="px-3 py-3">
                                                             <div className="flex items-center gap-3 min-w-0">
                                                                 <div 
                                                                     className="w-14 h-9 rounded bg-gray-900 relative overflow-hidden shrink-0 cursor-pointer group-hover:ring-2 ring-blue-400 transition-all"
@@ -600,18 +642,17 @@ export default function MediaLibraryPage() {
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="px-5 py-3">
+                                                        <td className="px-3 py-3">
                                                             <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium ${asset.status === 'Ready' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse'}`}>
                                                                 <div className={`w-1.5 h-1.5 rounded-full ${asset.status === 'Ready' ? 'bg-green-500' : 'bg-amber-500'}`} />
                                                                 {asset.status === 'Ready' ? 'Hazır' : asset.status === 'Uploading' ? 'Yükleniyor' : asset.status === 'Processing' ? 'İşleniyor' : 'Hata'}
                                                             </span>
                                                         </td>
-                                                        <td className="px-5 py-3 text-sm text-gray-500 font-medium">
+                                                        <td className="px-3 py-3 text-sm text-gray-500 font-medium">
                                                             {asset.durationSeconds != null ? `${Math.floor(asset.durationSeconds / 60)}:${String(asset.durationSeconds % 60).padStart(2, '0')}` : '-'}
                                                         </td>
-                                                        <td className="px-5 py-3 text-right">
-                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-
+                                                        <td className="px-3 py-3 text-right">
+                                                            <div className="flex items-center justify-end gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                                 <Tooltip content="Düzenle"><button onClick={() => { setRenameTarget({ id: asset.id, type: 'asset', currentName: asset.title, currentTags: asset.tags || "" }); setNewName(asset.title); setNewTags(asset.tags || ""); setIsRenameModalOpen(true); }} className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg"><Edit2 size={16} /></button></Tooltip>
                                                                 <Tooltip content="Derse Tanımla"><button onClick={() => handleOpenAssetCourseModal(asset)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><BookOpen size={16} /></button></Tooltip>
                                                                 <Tooltip content="Sil"><button onClick={() => handleRemoveAsset(asset)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button></Tooltip>
@@ -742,34 +783,53 @@ export default function MediaLibraryPage() {
 
             {/* Create Folder Modal */}
             {isCreateFolderModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Yeni Klasör Oluştur</h2>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4 p-0 bg-black/40 backdrop-blur-md">
+                    <div className="bg-white border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-md p-6 sm:rounded-3xl rounded-t-[2.5rem] flex flex-col self-end sm:self-center animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300">
+                        {/* Mobile Drag Handle */}
+                        <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden shrink-0" />
+                        
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                                    <FolderPlus size={20} />
+                                </div>
+                                <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">Yeni Klasör Oluştur</h2>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={() => setIsCreateFolderModalOpen(false)} 
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
                         <form onSubmit={handleCreateFolder}>
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Klasör Adı</label>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Klasör Adı</label>
                                 <input
                                     type="text"
                                     required
                                     autoFocus
                                     value={newFolderName}
                                     onChange={(e) => setNewFolderName(e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-gray-400"
                                     placeholder="Örn: 2026 Matematik Videoları"
                                 />
                             </div>
-                            <div className="flex justify-end gap-3">
+                            <div className="flex sm:justify-end justify-between gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsCreateFolderModalOpen(false)}
-                                    className="px-5 py-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors"
+                                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 sm:border-0 transition-colors"
                                 >
                                     İptal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!newFolderName.trim()}
-                                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/10"
                                 >
                                     Oluştur
                                 </button>
@@ -780,45 +840,66 @@ export default function MediaLibraryPage() {
             )}
             {/* Rename Modal */}
             {isRenameModalOpen && renameTarget && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">{renameTarget.type === 'folder' ? 'Klasörü Yeniden Adlandır' : 'Videoyu Düzenle'}</h2>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4 p-0 bg-black/40 backdrop-blur-md">
+                    <div className="bg-white border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-md p-6 sm:rounded-3xl rounded-t-[2.5rem] flex flex-col self-end sm:self-center animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300">
+                        {/* Mobile Drag Handle */}
+                        <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden shrink-0" />
+
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                                    <Edit2 size={20} />
+                                </div>
+                                <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">
+                                    {renameTarget.type === 'folder' ? 'Klasörü Yeniden Adlandır' : 'Videoyu Düzenle'}
+                                </h2>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={() => setIsRenameModalOpen(false)} 
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
                         <form onSubmit={handleRenameSubmit}>
                             <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Ad</label>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Başlık / Ad</label>
                                 <input
                                     type="text"
                                     required
                                     autoFocus
                                     value={newName}
                                     onChange={(e) => setNewName(e.target.value)}
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                                 />
                             </div>
                             {renameTarget.type === 'asset' && (
                                 <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Etiketler (Virgülle Ayırın)</label>
+                                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Etiketler (Virgülle Ayırın)</label>
                                     <input
                                         type="text"
                                         value={newTags}
                                         onChange={(e) => setNewTags(e.target.value)}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-gray-400"
                                         placeholder="Örn: matematik, 12.sınıf, türev"
                                     />
                                 </div>
                             )}
-                            <div className="flex justify-end gap-3">
+                            <div className="flex sm:justify-end justify-between gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setIsRenameModalOpen(false)}
-                                    className="px-5 py-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors"
+                                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 sm:border-0 transition-colors"
                                 >
                                     İptal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!newName.trim() || (newName.trim() === renameTarget.currentName && newTags.trim() === (renameTarget.currentTags || ""))}
-                                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-sm text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/10"
                                 >
                                     Kaydet
                                 </button>
@@ -852,16 +933,35 @@ export default function MediaLibraryPage() {
 
             {/* Bulk Move Modal */}
             {isBulkMoveModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Videoları Taşı</h2>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center sm:p-4 p-0 bg-black/40 backdrop-blur-md">
+                    <div className="bg-white border border-gray-100 shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-md p-6 sm:rounded-3xl rounded-t-[2.5rem] flex flex-col self-end sm:self-center animate-in fade-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300">
+                        {/* Mobile Drag Handle */}
+                        <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-4 sm:hidden shrink-0" />
+
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                                    <Folder size={20} />
+                                </div>
+                                <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">Videoları Taşı</h2>
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={() => setIsBulkMoveModalOpen(false)} 
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
                         <form onSubmit={handleBulkMoveSubmit}>
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Hedef Klasör</label>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Hedef Klasör</label>
                                 <select
                                     value={bulkMoveFolderId || ""}
                                     onChange={(e) => setBulkMoveFolderId(e.target.value || null)}
-                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-semibold"
                                 >
                                     <option value="">Kök Dizin (Ana Klasör)</option>
                                     {folders.map(f => (
@@ -869,9 +969,20 @@ export default function MediaLibraryPage() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex justify-end gap-3">
-                                <button type="button" onClick={() => setIsBulkMoveModalOpen(false)} className="px-5 py-2.5 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100 font-medium transition-colors">İptal</button>
-                                <button type="submit" className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors shadow-sm">Taşı</button>
+                            <div className="flex sm:justify-end justify-between gap-3">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsBulkMoveModalOpen(false)} 
+                                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 sm:border-0 transition-colors"
+                                >
+                                    İptal
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-sm text-white font-medium shadow-md shadow-blue-500/10 transition-all"
+                                >
+                                    Taşı
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -896,9 +1007,11 @@ export default function MediaLibraryPage() {
                 isOpen={confirmModal.isOpen}
                 title={confirmModal.title}
                 message={confirmModal.message}
+                confirmText={confirmModal.confirmText}
+                cancelText={confirmModal.cancelText}
+                type={confirmModal.type as any || "danger"}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={() => setConfirmModal(prev => ({...prev, isOpen: false}))}
-                type="danger"
             />
 
             {/* Video Player Modal */}

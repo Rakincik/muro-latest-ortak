@@ -54,7 +54,8 @@ export function VideoPlayerModal({ asset, onClose }: VideoPlayerModalProps) {
                 controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                 settings: ['captions', 'quality', 'speed'],
                 speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-                previewThumbnails: vttPath ? { enabled: true, src: vttPath } : { enabled: false }
+                previewThumbnails: vttPath ? { enabled: true, src: vttPath } : { enabled: false },
+                keyboard: { focused: true, global: true }
             };
 
             if (qualities.length > 0) {
@@ -66,7 +67,7 @@ export function VideoPlayerModal({ asset, onClose }: VideoPlayerModalProps) {
                         if (hls) {
                             const levelIndex = hls.levels.findIndex(l => l.height === q);
                             if (levelIndex !== -1) {
-                                hls.currentLevel = levelIndex;
+                                hls.nextLevel = levelIndex;
                             }
                         }
                     }
