@@ -9,20 +9,13 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm install
-
-# === DIAGNOSTIC: Show what npm actually installed ===
-RUN echo "=== NEXT VERSION ===" && npx next --version || echo "NEXT NOT FOUND"
-RUN echo "=== BIN CONTENTS ===" && ls node_modules/.bin/ | head -30 || echo "NO BIN DIR"
-RUN echo "=== NEXT IN NODE_MODULES ===" && ls node_modules/next/package.json || echo "NEXT PACKAGE NOT FOUND"
-# === END DIAGNOSTIC ===
-
 COPY . .
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
-RUN npx next build
+RUN node node_modules/next/dist/bin/next build
 
 # --- Stage 2: Runner ---
 FROM node:20-alpine AS runner
