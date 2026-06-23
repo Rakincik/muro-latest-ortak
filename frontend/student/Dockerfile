@@ -10,8 +10,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
-RUN echo "=== Listing node_modules ===" && ls -la node_modules/ && \
-    echo "=== Running npm list ===" && npm list --depth=0 && \
+RUN echo "=== Listing node_modules/next ===" && ls -la node_modules/next/ && \
+    echo "=== Cat node_modules/next/package.json ===" && cat node_modules/next/package.json && \
     exit 1
 
 # Build-time environment variables
