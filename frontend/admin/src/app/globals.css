@@ -543,3 +543,37 @@ body {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
+
+/* ─── Mobile Touch & Premium Feedback Overrides ─── */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dokunsal (tactile) buton/navigasyon hissiyatı */
+button:active, 
+a:active, 
+[role="button"]:active {
+  transform: scale(0.97) !important;
+  opacity: 0.9;
+  transition: transform 0.1s ease;
+}
+
+/* Mobil cihazlarda istenmeyen seçimi kısıtla */
+@media (max-width: 1024px) {
+  body:not(input):not(textarea) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+

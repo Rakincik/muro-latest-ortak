@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { api, type UserTenantDto } from "@/lib/api";
-import { Camera, Lock, LogOut, User2, Shield, Building2, Calendar, Upload } from "lucide-react";
+import { lightTap } from "@/hooks/useHaptics";
+import { Camera, Lock, LogOut, User2, Shield, Building2, Calendar, Upload, ClipboardList, FileText, BookMarked, CalendarCheck, Mic2, MessageCircleQuestion, Headset, ArrowRight, Layers } from "lucide-react";
 
 export default function ProfilePage() {
     const { user, token, currentTenantId, logout } = useAuth();
@@ -133,6 +135,42 @@ export default function ProfilePage() {
                             <p className="text-[#0A1931] text-sm font-medium truncate">{item.val}</p>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Akademik ve İletişim Menüsü */}
+            <div className="glass-card p-6 space-y-4">
+                <h3 className="text-[#0A1931] font-bold text-sm flex items-center gap-2">
+                    <Layers size={16} className="text-[#1B3B6F]" /> Akademik ve Destek Araçları
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                        { href: "/dashboard/assignments", label: "Ödevlerim", icon: ClipboardList, color: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
+                        { href: "/dashboard/exams", label: "Sınavlarım", icon: FileText, color: "text-violet-500 bg-violet-500/10 border-violet-500/20" },
+                        { href: "/dashboard/notes", label: "Notlarım", icon: BookMarked, color: "text-pink-500 bg-pink-500/10 border-pink-500/20" },
+                        { href: "/dashboard/attendance", label: "Devam Takibim", icon: CalendarCheck, color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
+                        { href: "/dashboard/podcast", label: "Podcast", icon: Mic2, color: "text-blue-500 bg-blue-500/10 border-blue-500/20" },
+                        { href: "/dashboard/questions", label: "Soru Sor", icon: MessageCircleQuestion, color: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20" },
+                        { href: "/dashboard/support", label: "Teknik Destek", icon: Headset, color: "text-sky-500 bg-sky-500/10 border-sky-500/20" },
+                    ].map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <Link 
+                                key={item.href} 
+                                href={item.href} 
+                                onClick={() => lightTap()}
+                                className="flex items-center justify-between p-3.5 rounded-2xl border border-[#E2E8F0] hover:border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/5 transition-all group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-xl ${item.color.split(" ")[0]} ${item.color.split(" ")[1]} flex items-center justify-center border ${item.color.split(" ")[2]}`}>
+                                        <Icon size={18} />
+                                    </div>
+                                    <span className="text-xs font-bold text-[#0A1931] group-hover:text-[#1B3B6F] transition-colors">{item.label}</span>
+                                </div>
+                                <ArrowRight size={14} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] group-hover:translate-x-0.5 transition-all" />
+                            </Link>
+                        );
+                    })}
                 </div>
             </div>
 

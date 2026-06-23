@@ -133,6 +133,12 @@ export default function CourseAttendancePage() {
     const [loadingCourses, setLoadingCourses] = useState(true);
     const [loadingReport, setLoadingReport] = useState(false);
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(12);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedCourseId]);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -182,6 +188,28 @@ export default function CourseAttendancePage() {
             return { id, name: data.name, present, total, rate, sessions: data.sessions };
         }).sort((a, b) => a.rate - b.rate);
     }, [studentMap, report]);
+
+    const paginatedStudents = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return students.slice(start, start + pageSize);
+    }, [students, currentPage, pageSize]);
+
+    const totalPages = Math.ceil(students.length / pageSize) || 1;
+    const pageNumbers = useMemo(() => {
+        const pages: number[] = [];
+        const maxVisible = 5;
+        let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let end = Math.min(totalPages, start + maxVisible - 1);
+        
+        if (end - start + 1 < maxVisible) {
+            start = Math.max(1, end - maxVisible + 1);
+        }
+        
+        for (let i = start; i <= end; i++) {
+            pages.push(i);
+        }
+        return pages;
+    }, [currentPage, totalPages]);
 
     const riskStudents = students.filter(s => s.rate < 50);
 
@@ -292,97 +320,159 @@ export default function CourseAttendancePage() {
                                     <p className="text-sm">Devam verisi bulunamadı</p>
                                 </div>
                             ) : (
-                                <div className="divide-y divide-[#E2E8F0]/40">
-                                    {students.map((st) => {
-                                        const isExpanded = expandedStudent === st.id;
-                                        const isRisk = st.rate < 50;
-                                        
-                                        return (
-                                            <div key={st.id} className="transition-colors hover:bg-[#f8fafc]/50">
-                                                {/* Accordion Header */}
-                                                <div 
-                                                    className={`cursor-pointer px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isExpanded ? "bg-blue-50/30" : ""}`}
-                                                    onClick={() => toggleStudent(st.id)}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${isRisk ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}>
-                                                            {st.name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`text-sm font-bold ${isRisk ? "text-red-600" : "text-[#0A1931]"}`}>
-                                                                    {st.name}
-                                                                </span>
-                                                                {isRisk && <AlertTriangle size={14} className="text-red-500" />}
+                                <>
+                                    <div className="divide-y divide-[#E2E8F0]/40">
+                                        {paginatedStudents.map((st) => {
+                                            const isExpanded = expandedStudent === st.id;
+                                            const isRisk = st.rate < 50;
+                                            
+                                            return (
+                                                <div key={st.id} className="transition-colors hover:bg-[#f8fafc]/50">
+                                                    {/* Accordion Header */}
+                                                    <div 
+                                                        className={`cursor-pointer px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isExpanded ? "bg-blue-50/30" : ""}`}
+                                                        onClick={() => toggleStudent(st.id)}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${isRisk ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"}`}>
+                                                                {st.name.charAt(0).toUpperCase()}
                                                             </div>
-                                                            <div className="text-xs text-[#A0AEC0] flex items-center gap-2 mt-0.5">
-                                                                <span className="flex items-center gap-1">
-                                                                    <CheckCircle2 size={12} className="text-emerald-500" /> {st.present} Katılım
-                                                                </span>
-                                                                <span>•</span>
-                                                                <span className="flex items-center gap-1">
-                                                                    <XCircle size={12} className="text-red-500" /> {st.total - st.present} Devamsız
-                                                                </span>
+                                                            <div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`text-sm font-bold ${isRisk ? "text-red-600" : "text-[#0A1931]"}`}>
+                                                                        {st.name}
+                                                                    </span>
+                                                                    {isRisk && <AlertTriangle size={14} className="text-red-500" />}
+                                                                </div>
+                                                                <div className="text-xs text-[#A0AEC0] flex items-center gap-2 mt-0.5">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <CheckCircle2 size={12} className="text-emerald-500" /> {st.present} Katılım
+                                                                    </span>
+                                                                    <span>•</span>
+                                                                    <span className="flex items-center gap-1">
+                                                                        <XCircle size={12} className="text-red-500" /> {st.total - st.present} Devamsız
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
 
-                                                    <div className="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
-                                                        <div className="flex flex-col items-end w-32">
-                                                            <div className="flex justify-between w-full mb-1">
-                                                                <span className="text-[10px] font-medium text-[#A0AEC0]">Devam Oranı</span>
-                                                                <span className={`text-xs font-bold ${rateColor(st.rate)}`}>{st.rate.toFixed(0)}%</span>
-                                                            </div>
-                                                            <div className="w-full h-1.5 bg-[#E2E8F0]/40 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className={`h-full rounded-full transition-all duration-500 ${rateBg(st.rate)}`}
-                                                                    style={{ width: `${st.rate}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                        <button className="text-[#A0AEC0] hover:text-[#0A1931] p-1">
-                                                            {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* Accordion Details */}
-                                                {isExpanded && (
-                                                    <div className="px-5 py-4 bg-[#f8fafc] border-t border-[#E2E8F0]/40">
-                                                        <h4 className="text-xs font-semibold text-[#1B3B6F] mb-3 flex items-center gap-1.5">
-                                                            <Calendar size={12} /> Oturum Katılım Detayları
-                                                        </h4>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                                                            {report.sessions.map((sess) => {
-                                                                const v = st.sessions.get(sess.sessionId);
-                                                                const attended = v === true;
-                                                                
-                                                                return (
+                                                        <div className="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
+                                                            <div className="flex flex-col items-end w-32">
+                                                                <div className="flex justify-between w-full mb-1">
+                                                                    <span className="text-[10px] font-medium text-[#A0AEC0]">Devam Oranı</span>
+                                                                    <span className={`text-xs font-bold ${rateColor(st.rate)}`}>{st.rate.toFixed(0)}%</span>
+                                                                </div>
+                                                                <div className="w-full h-1.5 bg-[#E2E8F0]/40 rounded-full overflow-hidden">
                                                                     <div 
-                                                                        key={sess.sessionId} 
-                                                                        className={`flex items-start gap-2 p-2.5 rounded-lg border ${attended ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"}`}
-                                                                    >
-                                                                        <div className={`mt-0.5 shrink-0 ${attended ? "text-emerald-500" : "text-red-500"}`}>
-                                                                            {attended ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                                                                        </div>
-                                                                        <div className="min-w-0">
-                                                                            <p className={`text-xs font-medium truncate ${attended ? "text-emerald-800" : "text-red-800"}`} title={sess.sessionTitle}>
-                                                                                {sess.sessionTitle}
-                                                                            </p>
-                                                                            <p className={`text-[10px] mt-0.5 ${attended ? "text-emerald-600/70" : "text-red-600/70"}`}>
-                                                                                {formatSessionDate(sess.scheduledStart)}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                                        className={`h-full rounded-full transition-all duration-500 ${rateBg(st.rate)}`}
+                                                                        style={{ width: `${st.rate}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <button className="text-[#A0AEC0] hover:text-[#0A1931] p-1">
+                                                                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+
+                                                    {/* Accordion Details */}
+                                                    {isExpanded && (
+                                                        <div className="px-5 py-4 bg-[#f8fafc] border-t border-[#E2E8F0]/40">
+                                                            <h4 className="text-xs font-semibold text-[#1B3B6F] mb-3 flex items-center gap-1.5">
+                                                                <Calendar size={12} /> Oturum Katılım Detayları
+                                                            </h4>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+                                                                {report.sessions.map((sess) => {
+                                                                    const v = st.sessions.get(sess.sessionId);
+                                                                    const attended = v === true;
+                                                                    
+                                                                    return (
+                                                                        <div 
+                                                                            key={sess.sessionId} 
+                                                                            className={`flex items-start gap-2 p-2.5 rounded-lg border ${attended ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"}`}
+                                                                        >
+                                                                            <div className={`mt-0.5 shrink-0 ${attended ? "text-emerald-500" : "text-red-500"}`}>
+                                                                                {attended ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                                                                            </div>
+                                                                            <div className="min-w-0">
+                                                                                <p className={`text-xs font-medium truncate ${attended ? "text-emerald-800" : "text-red-800"}`} title={sess.sessionTitle}>
+                                                                                    {sess.sessionTitle}
+                                                                                </p>
+                                                                                <p className={`text-[10px] mt-0.5 ${attended ? "text-emerald-600/70" : "text-red-600/70"}`}>
+                                                                                    {formatSessionDate(sess.scheduledStart)}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Pagination Footer */}
+                                    <div className="px-5 py-4 border-t border-[#E2E8F0]/60 flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#f8fafc]/50">
+                                        <div className="flex items-center gap-2 text-xs font-semibold text-[#1B3B6F]">
+                                            <span className="text-[#A0AEC0]">Sayfa Başına Gösterim:</span>
+                                            <select 
+                                                value={pageSize} 
+                                                onChange={(e) => {
+                                                    setPageSize(Number(e.target.value));
+                                                    setCurrentPage(1);
+                                                }}
+                                                className="bg-white border border-[#E2E8F0] rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 text-[#0A1931] cursor-pointer"
+                                            >
+                                                <option value={12}>12</option>
+                                                <option value={24}>24</option>
+                                                <option value={36}>36</option>
+                                                <option value={48}>48</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div className="text-xs text-[#A0AEC0] font-medium">
+                                            {students.length > 0 ? (
+                                                <span>{(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, students.length)} / {students.length} Öğrenci</span>
+                                            ) : (
+                                                <span>0 - 0 / 0 Öğrenci</span>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                disabled={currentPage === 1}
+                                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                                className="px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#E2E8F0] bg-white text-[#1B3B6F] hover:bg-slate-50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-all"
+                                            >
+                                                Önceki
+                                            </button>
+                                            
+                                            {pageNumbers.map(page => (
+                                                <button
+                                                    key={page}
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={`w-7 h-7 flex items-center justify-center text-xs font-bold rounded-lg transition-all active:scale-95 ${
+                                                        currentPage === page
+                                                            ? "bg-[#1B3B6F] text-white shadow-sm"
+                                                            : "border border-[#E2E8F0] bg-white text-[#1B3B6F] hover:bg-slate-50"
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ))}
+                                            
+                                            <button
+                                                disabled={currentPage === totalPages}
+                                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                                className="px-2.5 py-1.5 text-xs font-bold rounded-lg border border-[#E2E8F0] bg-white text-[#1B3B6F] hover:bg-slate-50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-all"
+                                            >
+                                                Sonraki
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
 

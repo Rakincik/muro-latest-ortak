@@ -3,14 +3,16 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/contexts/AuthContext";
-import { analyticsApi, courseApi, getFileUrl, type StudentDashboardDto, type UpcomingSessionDto, type CourseDto } from "@/lib/api";
+import { analyticsApi, courseApi, getFileUrl, mediaApi, type StudentDashboardDto, type UpcomingSessionDto, type CourseDto, type ResumeVideoDto } from "@/lib/api";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { openUrl } from "@/lib/openUrl";
 import { useToast } from "@/components/ToastProvider";
+import { lightTap } from "@/hooks/useHaptics";
 import Image from "next/image";
 import {
     Play, Clock, Flame, BookOpen, Calendar, CheckCircle2, Video,
-    ArrowRight, Zap, Trophy, Target, Star
+    ArrowRight, Zap, Trophy, Target, Star, RotateCcw
 } from "lucide-react";
 import { KpiGrid } from "@/components/ui/KpiGrid";
 
@@ -34,7 +36,27 @@ export default function StudentDashboardPage() {
     const loading = isLoading;
 
     const [joiningId, setJoiningId] = useState<string | null>(null);
+    const [resumingAssetId, setResumingAssetId] = useState<string | null>(null);
     const { showToast } = useToast();
+    const router = useRouter();
+
+    const handleResumeVideo = async (video: ResumeVideoDto) => {
+        lightTap();
+        if (!token || !tenantId) return;
+        setResumingAssetId(video.mediaAssetId);
+        try {
+            const asset = await mediaApi.get(token, tenantId, video.mediaAssetId);
+            if (asset && asset.courseId) {
+                router.push(`/dashboard/courses/${asset.courseId}`);
+            } else {
+                showToast("Ders bilgisi bulunamadı.", "error");
+            }
+        } catch (err) {
+            showToast("Ders yüklenirken hata oluştu.", "error");
+        } finally {
+            setResumingAssetId(null);
+        }
+    };
 
     const handleJoinLive = async (session: UpcomingSessionDto) => {
         if (!token || !tenantId) return;
@@ -97,6 +119,61 @@ export default function StudentDashboardPage() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Öğrenmeye Devam Et (Resume Playback) ── */}
+            {stats?.continueWatching && stats.continueWatching.length > 0 && (
+                <div className="space-y-3 animate-fade-in animate-fade-in-delay-1">
+                    <h2 className="text-[#0A1931] font-bold text-base flex items-center gap-2">
+                        <Play size={16} className="text-[#1B3B6F]" /> Öğrenmeye Devam Et
+                    </h2>
+                    <div className="flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-2 select-none">
+                        {stats.continueWatching.map((video) => (
+                            <button
+                                key={video.mediaAssetId}
+                                onClick={() => handleResumeVideo(video)}
+                                disabled={resumingAssetId !== null}
+                                className="glass-card p-4 flex items-center gap-4 hover:border-[#1B3B6F]/30 w-[290px] sm:w-[320px] shrink-0 text-left relative overflow-hidden transition-all duration-200 group"
+                            >
+                                {video.thumbnailPath ? (
+                                    <div className="w-16 h-12 rounded-xl overflow-hidden shrink-0 relative bg-[#E2E8F0] border border-[#E2E8F0]">
+                                        <Image src={getFileUrl(video.thumbnailPath)} alt={video.title} fill className="object-cover" unoptimized />
+                                    </div>
+                                ) : (
+                                    <div className="w-16 h-12 rounded-xl bg-gradient-to-br from-[#1B3B6F]/10 to-[#0A1931]/10 flex items-center justify-center shrink-0 border border-[#E2E8F0]/30">
+                                        <Play size={16} className="text-[#1B3B6F] fill-[#1B3B6F]" />
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-[#0A1931] truncate leading-normal">
+                                        {video.title}
+                                    </p>
+                                    <div className="w-full mt-1.5">
+                                        <div className="flex items-center justify-between text-[9px] text-[#A0AEC0] mb-0.5 font-bold">
+                                            <span>%{Math.round(video.completionPercentage)} tamamlandı</span>
+                                        </div>
+                                        <div className="w-full h-1 bg-[#E2E8F0] rounded-full overflow-hidden">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-[#1B3B6F] to-[#0A1931] rounded-full transition-all duration-300" 
+                                                style={{ width: `${video.completionPercentage}%` }} 
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                {resumingAssetId === video.mediaAssetId ? (
+                                    <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-[#1B3B6F] border-t-transparent rounded-full animate-spin" />
+                                        <span className="text-[10px] font-bold text-[#1B3B6F]">Yükleniyor...</span>
+                                    </div>
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-[#1B3B6F]/5 group-hover:bg-[#1B3B6F]/10 flex items-center justify-center shrink-0 text-[#1B3B6F] transition-colors">
+                                        <ArrowRight size={14} />
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* 🔴 Canlı Ders Banner */}
             {liveSessions?.length > 0 && (

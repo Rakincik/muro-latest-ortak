@@ -44,6 +44,14 @@ export default function WatchPage() {
     const [sideTab, setSideTab] = useState<"playlist" | "notes">("playlist");
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [securityViolation, setSecurityViolation] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     // ── Watch tracking ──
     const [watchedMap, setWatchedMap] = useState<Record<string, boolean>>({});
@@ -304,9 +312,12 @@ export default function WatchPage() {
                             
                             // Check if it's a BigBlueButton presentation URL
                             if (src.includes("/playback/presentation/") || src.includes("meetingId=")) {
+                                const cleanSrc = isMobile
+                                    ? `${src}${src.includes("?") ? "&" : "?"}showChat=false&showClosedCaptions=false&layout=presentation`
+                                    : src;
                                 return (
                                     <iframe 
-                                        src={src} 
+                                        src={cleanSrc} 
                                         className="w-full h-full border-0"
                                         allowFullScreen
                                         //@ts-ignore

@@ -1,14 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-    appId: 'com.muro.student',
-    appName: 'MURO LMS',
+    appId: 'com.monopoluzem.app',
+    appName: 'Monopoluzem',
     webDir: 'www',
     server: {
         // Remote URL — uygulama bu adresi yükler
         // White-label build script bu alanı kuruma göre değiştirir
-        url: 'http://192.168.1.10:3002',
-        cleartext: true  // development için — production'da false olacak
+        url: 'https://online.monopoluzem.com.tr',
+        cleartext: false  // development için — production'da false olacak
     },
     plugins: {
         SplashScreen: {

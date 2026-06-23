@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { Menu } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+import MobileTabBar from "@/components/MobileTabBar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAdminHub } from "@/hooks/useAdminHub";
 import { useToast } from "@/components/toast";
@@ -53,6 +54,7 @@ export default function DashboardLayout({
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const pathname = usePathname();
+    const currentTenant = user?.tenants?.find(t => t.tenantId === currentTenantId);
 
     // Sync isSidebarCollapsed with localStorage and handle auto-expand on other routes
     useEffect(() => {
@@ -149,14 +151,9 @@ export default function DashboardLayout({
                     {/* Mobile Header */}
                     <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-sm">
                         <div className="flex items-center gap-3">
-                            <button 
-                                onClick={() => setIsSidebarOpen(true)}
-                                className="p-2 -ml-2 text-[#1B3B6F] hover:bg-[#F1F5F9] rounded-lg transition-colors"
-                                aria-label="Menüyü Aç"
-                            >
-                                <Menu size={24} />
-                            </button>
-                            <h1 className="text-lg font-bold text-[#1B3B6F] tracking-tight">MURO Yönetim</h1>
+                            <h1 className="text-lg font-bold text-[#1B3B6F] tracking-tight pl-1">
+                                {currentTenant?.tenantName || "Yönetim Paneli"}
+                            </h1>
                         </div>
                         <NotificationBell />
                     </header>
@@ -168,6 +165,8 @@ export default function DashboardLayout({
                     </main>
                 </div>
             </div>
+            {/* Mobile Bottom Tab Bar */}
+            <MobileTabBar />
         </GlobalUploadProvider>
     );
 }

@@ -57,6 +57,14 @@ export default function CourseDetailPage() {
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [isExamOpen, setIsExamOpen] = useState(false);
     const { showToast } = useToast();
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        handleResize();
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     // ── Custom hooks — extracted player & notes state ──
     const player = useVideoPlayer(courseId, recordings, token, tenantId, activeTab);
@@ -410,10 +418,13 @@ export default function CourseDetailPage() {
                                         if (!src) return null;
 
                                         if (src.includes("/playback/presentation/") || src.includes("meetingId=")) {
+                                            const cleanSrc = isMobile
+                                                 ? `${src}${src.includes("?") ? "&" : "?"}showChat=false&showClosedCaptions=false&layout=presentation`
+                                                 : src;
                                             return (
                                                 <iframe
                                                     key={activeRec.id}
-                                                    src={src}
+                                                    src={cleanSrc}
                                                     className="w-full h-full border-0"
                                                     allow="autoplay; fullscreen; camera; microphone; display-capture"
                                                     allowFullScreen

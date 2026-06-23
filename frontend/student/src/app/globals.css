@@ -12,6 +12,8 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent; /* Mobil tarayıcılardaki mavi dokunma gölgesini kaldırır */
+  outline: none;
 }
 
 body {
@@ -19,6 +21,25 @@ body {
   background: #f8fafc;
   color: #0A1931;
   -webkit-font-smoothing: antialiased;
+  -webkit-touch-callout: none; /* Link/görsellere uzun basınca çıkan tarayıcı menüsünü kapatır */
+  -webkit-user-select: none;   /* Kopyalama/seçim yapmayı engeller */
+  user-select: none;
+}
+
+/* Metin kutularında seçime izin ver */
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Dokunsal (tactile) buton hissiyatı - Tıklanınca hafifçe içe basılma efekti */
+button:active, 
+.mobile-tab-item:active, 
+.video-card:active,
+.playlist-item:active {
+  transform: scale(0.97) !important;
+  opacity: 0.9;
+  transition: transform 0.1s ease;
 }
 
 /* Custom scrollbar */
