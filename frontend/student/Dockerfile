@@ -10,9 +10,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
-RUN echo "Listing node_modules contents:" && ls -la node_modules/
-RUN echo "Running npm list:" && npm list --depth=0 || true
-RUN exit 1
+RUN echo "=== Listing node_modules ===" && ls -la node_modules/ && \
+    echo "=== Running npm list ===" && npm list --depth=0 && \
+    exit 1
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_API_URL
