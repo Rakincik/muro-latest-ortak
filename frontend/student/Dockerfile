@@ -10,8 +10,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
-RUN echo "Listing node_modules/next/dist/bin:" && ls -la node_modules/next/dist/bin/
-RUN echo "Listing node_modules/.bin:" && ls -la node_modules/.bin/
+RUN echo "Listing node_modules contents:" && ls -la node_modules/
+RUN echo "Running npm list:" && npm list --depth=0 || true
 RUN exit 1
 
 # Build-time environment variables
