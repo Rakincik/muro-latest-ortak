@@ -31,9 +31,9 @@ RUN dotnet publish src/MURO.API/MURO.API.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Install FFmpeg for HLS video transcoding
+# Install FFmpeg and curl for HLS video transcoding and healthchecks
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg && \
+    apt-get install -y --no-install-recommends ffmpeg curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Create required directories
@@ -53,6 +53,6 @@ EXPOSE 5292
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:5292/health || exit 1
+    CMD curl -f http://localhost:5292/api/health || exit 1
 
 ENTRYPOINT ["dotnet", "MURO.API.dll"]
