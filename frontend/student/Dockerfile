@@ -7,7 +7,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json ./
 RUN npm install
 
 RUN echo "=== Listing node_modules/next ===" && ls -la node_modules/next/ && \
