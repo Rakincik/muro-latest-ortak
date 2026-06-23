@@ -12,8 +12,8 @@ RUN npm install
 # --- Stage 2: Build ---
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+COPY --from=deps /app/node_modules ./node_modules
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_API_URL
