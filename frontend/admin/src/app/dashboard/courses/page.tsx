@@ -116,7 +116,7 @@ export default function CoursesPage() {
     const { success, error: toastError } = useToast();
     const { user, token, currentTenantId: tenantId } = useAuth();
     const isInstructor = user?.role === "Instructor" || user?.tenants?.find((t: any) => t.tenantId === tenantId)?.role === "Instructor";
-    const canJoinLive = ["Super Admin", "Admin", "Assistant", "Asistan", "Instructor", "Eğitmen"].includes(user?.role || "");
+    const canJoinLive = ["Super Admin", "SuperAdmin", "Admin", "Assistant", "Asistan", "Instructor", "Eğitmen"].includes(user?.role || "");
     const [courses, setCourses] = useState<MappedCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
