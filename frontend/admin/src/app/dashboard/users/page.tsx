@@ -161,7 +161,7 @@ export default function UsersPage() {
         });
         r.sort((a, b) => { let c = 0; switch (sortField) { case "name": c = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`); break; case "role": c = a.role.localeCompare(b.role); break; case "group": c = (a.groupNames[0] || "zzz").localeCompare(b.groupNames[0] || "zzz"); break; case "status": c = Number(b.isActive) - Number(a.isActive); break; case "phone": c = (a.phone || "").localeCompare(b.phone || ""); break; case "createdAt": c = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break; case "lastLogin": c = new Date(a.lastLoginAt || 0).getTime() - new Date(b.lastLoginAt || 0).getTime(); break; default: c = 0; } return sortDir === "desc" ? -c : c; });
         return r;
-    }, [users, search, roleFilter, statusFilter, sortField, sortDir]);
+    }, [users, search, roleFilter, statusFilter, groupFilter, sortField, sortDir]);
 
     const totalPages = Math.ceil(filtered.length / perPage);
     const paginated = filtered.slice((page - 1) * perPage, page * perPage);
@@ -833,6 +833,14 @@ export default function UsersPage() {
             }
             if (!f.firstName || !f.lastName) {
                 alert("Ad ve Soyad zorunludur.");
+                return;
+            }
+            if (!f.email) {
+                alert("Kullanıcı Adı veya E-posta alanı zorunludur.");
+                return;
+            }
+            if (manualPw && manualPw.length < 6) {
+                alert("Şifreniz en az 6 haneli olmalıdır.");
                 return;
             }
             onSave({ ...f, role: f.role as User["role"], groupNames: f.groupNames, studentType: (f.role === "Student" || f.role === "Öğrenci") ? f.studentType as User["studentType"] : null, ...(currentPassword && { password: currentPassword }) });

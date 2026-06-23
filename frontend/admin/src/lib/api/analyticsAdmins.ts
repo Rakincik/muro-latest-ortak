@@ -12,6 +12,12 @@ export const analyticsAdminApi = {
         return Array.isArray(data) ? data : [];
     },
 
+    /** Admin: Geçmiş oturumlar */
+    recentSessions: async (token: string, tenantId: string, days = 7): Promise<DeviceSessionDto[]> => {
+        const data = await api<DeviceSessionDto[] | unknown>(`/analytics/sessions/recent?days=${days}`, { token, tenantId });
+        return Array.isArray(data) ? data : [];
+    },
+
     studentScorecard: (token: string, tenantId: string, userId: string) =>
         api<StudentScorecardDto>(`/analytics/students/${userId}/scorecard`, { token, tenantId }),
 

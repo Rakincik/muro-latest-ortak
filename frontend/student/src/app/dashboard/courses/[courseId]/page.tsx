@@ -77,28 +77,9 @@ export default function CourseDetailPage() {
         }
     }, [activeRecId]);
 
-    // Optimistic note add with backend persist
+    // Delegate to hook
     const addPlayerNote = async () => {
-        if (!playerNotes.noteText.trim()) return;
-        const text = playerNotes.noteText.trim();
-        playerNotes.setNoteText("");
-
-        const now = new Date().toISOString();
-        const tempNote: VideoNoteDto = {
-            id: crypto.randomUUID(), mediaAssetId: selectedRec?.id || "",
-            timestampSeconds: 0,
-            timestampFormatted: fmtClockTime(now),
-            text, createdAt: now,
-        };
-        // Manually add to notes (optimistic)
-        playerNotes.addNote();
-
-        // Persist via hook
-        if (token && tenantId && selectedRec) {
-            try {
-                await videoApi.addNote(token, tenantId, selectedRec.id, 0, text);
-            } catch { /* keep optimistic note */ }
-        }
+        await playerNotes.addNote();
     };
 
     const deletePlayerNote = async (noteId: string) => {

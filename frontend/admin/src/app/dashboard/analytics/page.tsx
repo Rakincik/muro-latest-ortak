@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
         try {
             const [s, sess] = await Promise.all([
                 analyticsAdminApi.stats(token, tenantId),
-                analyticsAdminApi.activeSessions(token, tenantId).catch(() => []),
+                analyticsAdminApi.recentSessions(token, tenantId, 7).catch(() => []),
             ]);
             setStats(s);
             setSessions(sess);

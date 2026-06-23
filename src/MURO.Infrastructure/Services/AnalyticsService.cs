@@ -128,6 +128,40 @@ public class AnalyticsService : IAnalyticsService
             .ToListAsync();
     }
 
+    public async Task<List<DeviceSessionDto>> GetRecentSessionsAsync(int days = 7)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-days);
+        
+        // Also fetch active ones from Redis to mark them as IsActive
+        var db = _redis.GetDatabase();
+        var endpoints = _redis.GetEndPoints();
+        var server = _redis.GetServer(endpoints.First());
+        var onlineKeys = server.Keys(pattern: "muro:presence:online:*").ToArray();
+        
+        var onlineSessionIds = onlineKeys
+            .Select(k => 
+            {
+                var parts = k.ToString().Split(':');
+                if (Guid.TryParse(parts.Last(), out var id)) return (Guid?)id;
+                return null;
+            })
+            .Where(id => id.HasValue)
+            .Select(id => id.Value)
+            .ToHashSet();
+
+        return await _context.DeviceSessions.AsNoTracking()
+            .Where(ds => ds.LoginAt >= cutoff && ds.User.Role == UserRole.Student)
+            .Include(ds => ds.User)
+            .OrderByDescending(ds => ds.LoginAt)
+            // Limit to max 1000 to prevent huge payloads
+            .Take(1000)
+            .Select(ds => new DeviceSessionDto(ds.Id, ds.UserId,
+                ds.User.FirstName + " " + ds.User.LastName,
+                ds.DeviceInfo, ds.IpAddress, ds.LoginAt, ds.LogoutAt, 
+                onlineSessionIds.Contains(ds.Id)))
+            .ToListAsync();
+    }
+
     // ── Admin: Kurs bazlı devam/yoklama raporu ───────────────────────────────
     // 🚀 Redis cache: 2 dk TTL
     public async Task<CourseAttendanceReportDto> GetCourseAttendanceReportAsync(Guid courseId)

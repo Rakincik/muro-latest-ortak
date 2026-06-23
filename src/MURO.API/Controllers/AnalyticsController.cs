@@ -74,6 +74,10 @@ public class AnalyticsController : ControllerBase
     public async Task<ActionResult<List<DeviceSessionDto>>> GetActiveSessions()
         => Ok(await _analyticsService.GetActiveSessionsAsync());
 
+    [HttpGet("sessions/recent")]
+    public async Task<ActionResult<List<DeviceSessionDto>>> GetRecentSessions([FromQuery] int days = 7)
+        => Ok(await _analyticsService.GetRecentSessionsAsync(days));
+
     /// GET /api/v1/analytics/courses/{courseId}/attendance — Kurs devam raporu
     [HttpGet("courses/{courseId:guid}/attendance")]
     public async Task<ActionResult<CourseAttendanceReportDto>> GetCourseAttendance(Guid courseId)
