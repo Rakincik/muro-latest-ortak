@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
   // (causes duplicate API calls and double error toasts)
   reactStrictMode: false,
 
+  // Ignore ESLint errors during Docker builds to speed up the process
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // React Compiler (already enabled)
   reactCompiler: true,
 
