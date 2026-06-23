@@ -1,19 +1,16 @@
 # ============================================
 # MURO Student Frontend — Production Dockerfile
-# Multi-stage: deps → build → runner
+# Two-stage: build → runner
 # ============================================
 
-# --- Stage 1: Dependencies ---
-FROM node:20-alpine AS deps
+# --- Stage 1: Build ---
+FROM node:20-alpine AS builder
 WORKDIR /app
+
 COPY package.json package-lock.json ./
 RUN npm install
 
-# --- Stage 2: Build ---
-FROM node:20-alpine AS builder
-WORKDIR /app
 COPY . .
-COPY --from=deps /app/node_modules ./node_modules
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_API_URL
@@ -21,7 +18,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 RUN npm run build
 
-# --- Stage 3: Runner ---
+# --- Stage 2: Runner ---
 FROM node:20-alpine AS runner
 WORKDIR /app
 
