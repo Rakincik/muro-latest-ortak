@@ -222,7 +222,7 @@ export default function UsersPage() {
             const apiStudentType = d.studentType === "Aktif" ? "Active" : d.studentType === "Pasif" ? "Passive" : d.studentType;
 
             if (editUser) {
-                await userApi.update(token, tenantId, editUser.id, { 
+                const updatePayload: any = { 
                     firstName: d.firstName, 
                     lastName: d.lastName, 
                     email: d.email, 
@@ -230,7 +230,11 @@ export default function UsersPage() {
                     phone: d.phone,
                     studentType: apiStudentType,
                     tcNo: d.tcNo
-                } as any);
+                };
+                if (d.password) {
+                    updatePayload.password = d.password;
+                }
+                await userApi.update(token, tenantId, editUser.id, updatePayload);
                 setUsers(p => p.map(u => u.id === editUser.id ? { ...u, ...d, studentType: apiStudentType as any } : u)); 
                 success("Güncellendi"); 
                 setEditUser(null);
