@@ -55,7 +55,7 @@ function mapApiUser(u: UserDto): User {
     return { ...u, phone: formatPhoneForDisplay(u.phone), groupNames: u.groupNames || [], tcNo: (u as any).tcNo || "" };
 }
 
-function FilterDropdown({ value, onChange, options, icon: Icon, widthClass = "w-full lg:w-44", searchable = false }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; icon?: any; widthClass?: string; searchable?: boolean }) {
+function FilterDropdown({ value, onChange, options, icon: Icon, widthClass = "w-full lg:w-44", searchable = false }: { value: string; onChange: (v: string) => void; options: { value: string; label: string; icon?: any }[]; icon?: any; widthClass?: string; searchable?: boolean }) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const ref = useRef<HTMLDivElement>(null);
@@ -71,39 +71,59 @@ function FilterDropdown({ value, onChange, options, icon: Icon, widthClass = "w-
 
     return (
         <div ref={ref} className={`relative shrink-0 ${widthClass}`}>
-            <button type="button" onClick={() => setOpen(!open)} className={`w-full flex items-center justify-between px-4 py-2.5 text-sm bg-white border rounded-xl transition-all shadow-sm ${open ? 'border-[#A0AEC0] ring-2 ring-[#0A1931]/10' : 'border-[#E2E8F0]'}`}>
+            <button type="button" onClick={() => setOpen(!open)} className={`group w-full flex items-center justify-between px-4 py-2.5 text-sm bg-white border rounded-2xl transition-all duration-200 shadow-sm ${open ? 'border-slate-300 ring-4 ring-slate-100/60 shadow-sm' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 hover:shadow-md hover:shadow-slate-200/60'}`}>
                 <div className="flex items-center gap-2.5 min-w-0">
-                    {Icon && <Icon size={14} className="text-[#A0AEC0] shrink-0" />}
+                    {Icon && <Icon size={16} className={`shrink-0 transition-colors ${open ? 'text-[#0A1931]' : 'text-slate-400 group-hover:text-slate-500'}`} />}
                     <span className="text-[#0A1931] font-semibold truncate" title={sel.label}>{sel.label}</span>
                 </div>
-                <ChevronDown size={16} className={`text-[#A0AEC0] transition-transform shrink-0 ml-2 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown size={16} className={`text-slate-400 transition-transform duration-200 shrink-0 ml-2 group-hover:text-slate-500 ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-                <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-[#E2E8F0] shadow-xl shadow-black/10 py-1.5 flex flex-col animate-fade-in-up">
+                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/60 shadow-[0_12px_38px_rgba(15,23,42,0.12)] p-1.5 flex flex-col origin-top transition-all duration-200 animate-fade-in">
                     {searchable && (
-                        <div className="px-2 pb-1.5 mb-1.5 border-b border-[#E2E8F0]">
+                        <div className="px-2 pb-2 mb-1.5 border-b border-slate-100">
                             <div className="relative">
-                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
                                     type="text" 
                                     placeholder="Ara..." 
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#0A1931]/20"
+                                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#F8FAFC] border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-100 focus:border-slate-300 transition-all"
                                     onClick={e => e.stopPropagation()}
                                     autoFocus
                                 />
                             </div>
                         </div>
                     )}
-                    <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                        {filteredOptions.length > 0 ? filteredOptions.map(o => (
-                            <button key={o.value} type="button" onClick={() => { onChange(o.value); setOpen(false); setSearchQuery(""); }} className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-[#F8FAFC] transition-colors">
-                                <span className={`text-xs truncate ${value === o.value ? 'font-bold text-[#0A1931]' : 'text-[#475569] font-medium'}`} title={o.label}>{o.label}</span>
-                                {value === o.value && <Check size={14} className="text-blue-600 shrink-0 ml-2" />}
-                            </button>
-                        )) : (
-                            <div className="px-4 py-3 text-xs text-center text-[#A0AEC0]">Bulunamadı</div>
+                    <div className={`${searchable ? 'max-h-60 overflow-y-auto custom-scrollbar' : ''} flex flex-col gap-0.5`}>
+                        {filteredOptions.length > 0 ? filteredOptions.map((o, idx) => {
+                            const OptionIcon = o.icon;
+                            const isSelected = value === o.value;
+                            return (
+                                <div key={o.value} className="flex flex-col gap-0.5">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { onChange(o.value); setOpen(false); setSearchQuery(""); }} 
+                                        className={`group w-full flex items-center justify-between px-3.5 py-2.5 text-left rounded-xl transition-all duration-150 ${
+                                            isSelected 
+                                                ? "bg-slate-50 text-[#0A1931]" 
+                                                : "bg-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            {OptionIcon && <OptionIcon size={16} className={`shrink-0 transition-colors ${isSelected ? 'text-[#0A1931]' : 'text-slate-400 group-hover:text-slate-500'}`} />}
+                                            <span className={`text-sm truncate ${isSelected ? 'font-semibold' : 'font-medium'}`} title={o.label}>{o.label}</span>
+                                        </div>
+                                        {isSelected && <Check size={16} strokeWidth={2.5} className="text-blue-600 shrink-0 ml-2" />}
+                                    </button>
+                                    {idx === 0 && filteredOptions.length > 1 && (
+                                        <div className="my-1 border-t border-slate-100/80" />
+                                    )}
+                                </div>
+                            );
+                        }) : (
+                            <div className="px-4 py-3 text-xs text-center text-slate-400 font-medium">Bulunamadı</div>
                         )}
                     </div>
                 </div>
@@ -155,13 +175,22 @@ export default function UsersPage() {
 
     useEffect(() => {
         const urlUserId = searchParams?.get("userId");
-        if (urlUserId && users.length > 0) {
-            const targetUser = users.find(u => u.id === urlUserId);
-            if (targetUser) {
-                setDetailUser(targetUser);
-            }
+        if (!urlUserId || !token || !tenantId) return;
+
+        const targetUser = users.find(u => u.id === urlUserId);
+        if (targetUser) {
+            setDetailUser(targetUser);
+            return;
         }
-    }, [searchParams, users]);
+
+        userApi.get(token, tenantId, urlUserId)
+            .then(res => {
+                setDetailUser(mapApiUser(res));
+            })
+            .catch(err => {
+                console.error("Kullanıcı ID ile çekilemedi:", err);
+            });
+    }, [searchParams, users, token, tenantId]);
 
     const handleCloseDetail = () => {
         setDetailUser(null);
@@ -439,8 +468,8 @@ export default function UsersPage() {
                         searchable={true}
                         widthClass="w-full lg:w-64"
                         options={[
-                            { value: "all", label: "Tüm Gruplar" },
-                            ...groupOptions.map(g => ({ value: g, label: g }))
+                            { value: "all", label: "Tüm Gruplar", icon: Users },
+                            ...groupOptions.map(g => ({ value: g, label: g, icon: BookOpen }))
                         ]}
                     />
                     <FilterDropdown 
@@ -448,12 +477,12 @@ export default function UsersPage() {
                         onChange={v => { setRoleFilter(v); setPage(1); }}
                         icon={Shield}
                         options={[
-                            { value: "all", label: "Tüm Roller" },
-                            { value: "Admin", label: "Admin" },
-                            { value: "Eğitmen", label: "Eğitmen" },
-                            { value: "Öğrenci", label: "Öğrenci" },
-                            { value: "Muhasebe", label: "Muhasebe" },
-                            { value: "Asistan", label: "Asistan" }
+                            { value: "all", label: "Tüm Roller", icon: Shield },
+                            { value: "Admin", label: "Admin", icon: Shield },
+                            { value: "Eğitmen", label: "Eğitmen", icon: Briefcase },
+                            { value: "Öğrenci", label: "Öğrenci", icon: GraduationCap },
+                            { value: "Muhasebe", label: "Muhasebe", icon: CreditCard },
+                            { value: "Asistan", label: "Asistan", icon: UserCheck }
                         ]}
                     />
                     <FilterDropdown 
@@ -461,10 +490,10 @@ export default function UsersPage() {
                         onChange={v => { setStatusFilter(v); setPage(1); }}
                         icon={Activity}
                         options={[
-                            { value: "all", label: "Tüm Durum" },
-                            { value: "active", label: "Aktif" },
-                            { value: "inactive", label: "Pasif" },
-                            { value: "demo", label: "Demo" }
+                            { value: "all", label: "Tüm Durum", icon: Activity },
+                            { value: "active", label: "Aktif", icon: ToggleRight },
+                            { value: "inactive", label: "Pasif", icon: ToggleLeft },
+                            { value: "demo", label: "Demo", icon: CalendarIcon }
                         ]}
                     />
                 </div>

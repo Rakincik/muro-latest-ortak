@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     Search, User, BarChart3, Video, BookOpen, FileText,
     Clock, Activity, Download, X, TrendingUp, TrendingDown,
-    Monitor, Globe, ChevronDown, Eye, RefreshCw, Users
+    Monitor, Globe, ChevronDown, Eye, RefreshCw, Users, ArrowUpDown
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import {
     analyticsAdminApi,
     notificationApi,
@@ -452,13 +453,18 @@ export default function StudentScorecardPage() {
                         className="w-full pl-8 pr-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10" />
                 </div>
                 <div className="w-full sm:w-auto flex items-center gap-3">
-                    <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
-                        className="flex-1 sm:flex-none px-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none text-[#1B3B6F]">
-                        <option value="name">İsme Göre</option>
-                        <option value="attendance">Devam Oranına Göre</option>
-                        <option value="video">Video Tamamlamaya Göre</option>
-                        <option value="exam">Sınav Ortalamasına Göre</option>
-                    </select>
+                    <CustomSelect
+                        value={sortBy}
+                        onChange={(val) => setSortBy(val as typeof sortBy)}
+                        icon={ArrowUpDown}
+                        options={[
+                            { label: "İsme Göre", value: "name", icon: User },
+                            { label: "Devam Oranına Göre", value: "attendance", icon: BookOpen },
+                            { label: "Video Tamamlamaya Göre", value: "video", icon: Video },
+                            { label: "Sınav Ortalamasına Göre", value: "exam", icon: FileText }
+                        ]}
+                        className="flex-1 sm:flex-none"
+                    />
                     <span className="text-xs text-[#A0AEC0] font-bold shrink-0">{filtered.length} öğrenci</span>
                 </div>
             </div>

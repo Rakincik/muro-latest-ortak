@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { questionApi, courseApi, type QuestionDto, type CourseDto } from "@/lib/api";
 import { compressImage } from "@/lib/imageUtils";
@@ -244,6 +245,11 @@ export default function QuestionsPage() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
     const [confirmConfig, setConfirmConfig] = useState<{open: boolean, title: string, message: string, onConfirm: () => void}>({ open: false, title: "", message: "", onConfirm: () => {} });
+
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Form Modal State
     const [showForm, setShowForm] = useState(false);
@@ -572,8 +578,8 @@ export default function QuestionsPage() {
             {lightboxUrl && <ImagePreview url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
 
             {/* Ask Form Modal */}
-            {showForm && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-[#0A1931]/60 transition-all" onClick={() => { setShowForm(false); audio.clear(); }}>
+            {showForm && mounted && createPortal(
+                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-[#0A1931]/60 backdrop-blur-sm transition-all" onClick={() => { setShowForm(false); audio.clear(); }}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                         {/* Gradient Header */}
                         <div className="relative overflow-hidden px-6 py-5 bg-gradient-to-br from-[#1B3B6F] to-[#0A1931] shrink-0">
@@ -753,7 +759,8 @@ export default function QuestionsPage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
         </>

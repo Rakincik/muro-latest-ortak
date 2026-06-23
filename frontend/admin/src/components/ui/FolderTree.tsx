@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Folder, MoreVertical, Plus, Edit2, Trash2, BookOpen } from 'lucide-react';
 import { mediaLibraryApi, type MediaFolderDto } from '@/lib/api';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 interface FolderNodeProps {
     folder: MediaFolderDto;
@@ -77,35 +78,39 @@ const FolderNode: React.FC<FolderNodeProps> = ({ folder, level, activeFolderId, 
                 </div>
 
                 {/* Inline Actions */}
-                <div className="flex items-center gap-1.5 ml-auto">
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onAction('createSub', folder); }}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
-                        title="Alt Klasör Ekle"
-                    >
-                        <Plus size={18} />
-                    </button>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onAction('rename', folder); }}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
-                        title="Yeniden Adlandır"
-                    >
-                        <Edit2 size={18} />
-                    </button>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onAction('assign', folder); }}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
-                        title="Derse Tanımla"
-                    >
-                        <BookOpen size={18} />
-                    </button>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onAction('delete', folder); }}
-                        className="p-1.5 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-100 transition-colors"
-                        title="Sil"
-                    >
-                        <Trash2 size={18} />
-                    </button>
+                <div className="flex items-center gap-1 ml-auto shrink-0">
+                    <Tooltip content="Alt Klasör Ekle">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onAction('createSub', folder); }}
+                            className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                            <Plus size={16} />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Yeniden Adlandır">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onAction('rename', folder); }}
+                            className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Derse Tanımla">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onAction('assign', folder); }}
+                            className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                            <BookOpen size={16} />
+                        </button>
+                    </Tooltip>
+                    <Tooltip content="Sil">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onAction('delete', folder); }}
+                            className="p-1 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-100 transition-colors"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -168,13 +173,14 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
             {/* Header */}
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900">Klasörler</h2>
-                <button 
-                    onClick={() => onAction('createSub', null)}
-                    className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Yeni Klasör"
-                >
-                    <Plus size={18} />
-                </button>
+                <Tooltip content="Yeni Klasör" position="bottom">
+                    <button 
+                        onClick={() => onAction('createSub', null)}
+                        className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                        <Plus size={18} />
+                    </button>
+                </Tooltip>
             </div>
 
             {/* Tree */}

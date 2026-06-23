@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { studentSupportApi, type StudentTicketDto } from "@/lib/api";
 import {
     Headset, Search, Send, Plus, X, Tag, Clock,
-    MessageSquare, AlertCircle, ChevronDown, Check
+    MessageSquare, AlertCircle, ChevronDown, Check, RefreshCw
 } from "lucide-react";
 
 const statusStyles: Record<string, { bg: string; text: string; dot: string; label: string }> = {
     Open: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: "Açık" },
     Answered: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", label: "Yanıtlandı" },
+    InProgress: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", label: "Yanıtlandı" },
     Closed: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", label: "Çözüldü" },
+    Resolved: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", label: "Çözüldü" },
     "Açık": { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500", label: "Açık" },
     "Yanıtlandı": { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-500", label: "Yanıtlandı" },
     "Çözüldü": { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", label: "Çözüldü" },
@@ -85,6 +88,8 @@ export default function SupportPage() {
     const [tickets, setTickets] = useState<StudentTicketDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selected, setSelected] = useState<StudentTicketDto | null>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     
@@ -93,6 +98,11 @@ export default function SupportPage() {
     const [form, setForm] = useState({ subject: "", category: "Teknik Sorun", message: "" });
     const [sending, setSending] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     
     // Reply
     const [replyText, setReplyText] = useState("");
@@ -111,7 +121,19 @@ export default function SupportPage() {
             .finally(() => setLoading(false));
     }, [token, tenantId]);
 
-    const selected = useMemo(() => tickets.find(t => t.id === selectedId) || null, [tickets, selectedId]);
+    useEffect(() => {
+        if (!token || !tenantId || !selectedId) {
+            setSelected(null);
+            return;
+        }
+        setLoadingDetail(true);
+        studentSupportApi.get(token, tenantId, selectedId)
+            .then(data => {
+                setSelected(data);
+            })
+            .catch(() => setSelected(null))
+            .finally(() => setLoadingDetail(false));
+    }, [token, tenantId, selectedId]);
 
     useEffect(() => {
         if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -121,15 +143,15 @@ export default function SupportPage() {
         return tickets.filter(t => {
             const matchSearch = search === "" || t.subject.toLowerCase().includes(search.toLowerCase());
             const matchStatus = statusFilter === "all" || t.status === statusFilter || 
-                (statusFilter === "Open" && t.status === "Açık") || 
-                (statusFilter === "Answered" && t.status === "Yanıtlandı") || 
-                (statusFilter === "Closed" && t.status === "Çözüldü");
+                (statusFilter === "Open" && (t.status === "Açık" || t.status === "Open")) || 
+                (statusFilter === "Answered" && (t.status === "Yanıtlandı" || t.status === "Answered" || t.status === "InProgress")) || 
+                (statusFilter === "Closed" && (t.status === "Çözüldü" || t.status === "Closed" || t.status === "Resolved"));
             return matchSearch && matchStatus;
         });
     }, [tickets, search, statusFilter]);
 
     const openCount = tickets.filter(t => t.status === "Open" || t.status === "Açık").length;
-    const answeredCount = tickets.filter(t => t.status === "Answered" || t.status === "Yanıtlandı").length;
+    const answeredCount = tickets.filter(t => t.status === "Answered" || t.status === "Yanıtlandı" || t.status === "InProgress").length;
 
     const handleSend = async () => {
         if (!token || !tenantId) return;
@@ -175,6 +197,7 @@ export default function SupportPage() {
                 createdAt: new Date().toISOString()
             };
             const updatedTicket = { ...selected, replies: [...(selected.replies || []), newReply], status: "Open" };
+            setSelected(updatedTicket);
             setTickets(prev => prev.map(t => t.id === selected.id ? updatedTicket : t));
             setReplyText("");
         } catch (e: any) {
@@ -295,30 +318,39 @@ export default function SupportPage() {
                             </div>
 
                             <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-                                {/* Initial Message */}
-                                <div className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1B3B6F] to-blue-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                                        Siz
+                                {loadingDetail ? (
+                                    <div className="flex flex-col justify-center items-center h-full text-sm text-[#A0AEC0] gap-2">
+                                        <RefreshCw size={18} className="animate-spin text-[#1B3B6F]" />
+                                        <span>Yükleniyor...</span>
                                     </div>
-                                    <div className="flex-1 bg-[#F8FAFC] border border-[#E2E8F0]/60 rounded-xl rounded-tl-none p-4 max-w-[85%]">
-                                        <p className="text-sm text-[#0A1931] whitespace-pre-wrap leading-relaxed">{selected.message}</p>
-                                    </div>
-                                </div>
-
-                                {/* Replies */}
-                                {(selected.replies || []).map(r => (
-                                    <div key={r.id} className={`flex gap-3 ${r.isAdmin ? "flex-row-reverse" : ""}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${r.isAdmin ? "bg-emerald-500 text-white" : "bg-gradient-to-br from-[#1B3B6F] to-blue-800 text-white"}`}>
-                                            {r.isAdmin ? "Destek" : "Siz"}
-                                        </div>
-                                        <div className={`flex-1 flex flex-col ${r.isAdmin ? "items-end" : "items-start"}`}>
-                                            <div className={`rounded-xl p-4 max-w-[85%] ${r.isAdmin ? "bg-emerald-50 border border-emerald-100 rounded-tr-none text-emerald-900" : "bg-[#F8FAFC] border border-[#E2E8F0]/60 rounded-tl-none text-[#0A1931]"}`}>
-                                                <p className="text-sm whitespace-pre-wrap leading-relaxed">{r.message}</p>
+                                ) : (
+                                    <>
+                                        {/* Initial Message */}
+                                        <div className="flex gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1B3B6F] to-blue-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                S
                                             </div>
-                                            <p className="text-[10px] text-[#A0AEC0] mt-1.5 mx-1">{new Date(r.createdAt).toLocaleString("tr-TR")}</p>
+                                            <div className="flex-1 bg-[#F8FAFC] border border-[#E2E8F0]/60 rounded-xl rounded-tl-none p-4 max-w-[85%]">
+                                                <p className="text-sm text-[#0A1931] whitespace-pre-wrap leading-relaxed">{selected.message}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+
+                                        {/* Replies */}
+                                        {(selected.replies || []).map(r => (
+                                            <div key={r.id} className={`flex gap-3 ${r.isAdmin ? "flex-row-reverse" : ""}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${r.isAdmin ? "bg-emerald-500 text-white" : "bg-gradient-to-br from-[#1B3B6F] to-blue-800 text-white"}`}>
+                                                    {r.isAdmin ? "D" : "S"}
+                                                </div>
+                                                <div className={`flex-1 flex flex-col ${r.isAdmin ? "items-end" : "items-start"}`}>
+                                                    <div className={`rounded-xl p-4 max-w-[85%] ${r.isAdmin ? "bg-emerald-50 border border-emerald-100 rounded-tr-none text-emerald-900" : "bg-[#F8FAFC] border border-[#E2E8F0]/60 rounded-tl-none text-[#0A1931]"}`}>
+                                                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{r.message}</p>
+                                                    </div>
+                                                    <p className="text-[10px] text-[#A0AEC0] mt-1.5 mx-1">{new Date(r.createdAt).toLocaleString("tr-TR")}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
                             </div>
 
                             {/* Reply Box */}
@@ -354,8 +386,8 @@ export default function SupportPage() {
             </div>
 
             {/* Create Modal */}
-            {showForm && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-[#0A1931]/60 transition-all" onClick={() => setShowForm(false)}>
+            {showForm && mounted && createPortal(
+                <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-[#0A1931]/60 backdrop-blur-sm transition-all" onClick={() => setShowForm(false)}>
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                         <div className="px-6 py-5 bg-gradient-to-br from-[#1B3B6F] to-[#0A1931] flex items-center justify-between relative overflow-hidden">
                             <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
@@ -431,7 +463,8 @@ export default function SupportPage() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

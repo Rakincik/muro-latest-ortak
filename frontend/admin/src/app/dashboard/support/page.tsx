@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
     MessageSquare, Search, CheckCircle, Clock, X,
     Send, RefreshCw, Tag, AlertCircle, Trash2
@@ -9,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { supportApi, type TicketDto, type TicketReplyDto } from "@/lib/api";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string; icon: React.ElementType }> = {
     "Açık": { label: "Açık", bg: "bg-amber-50", text: "text-amber-700", icon: Clock },
@@ -17,6 +19,8 @@ const STATUS_MAP: Record<string, { label: string; bg: string; text: string; icon
     "Open": { label: "Açık", bg: "bg-amber-50", text: "text-amber-700", icon: Clock },
     "Answered": { label: "Yanıtlandı", bg: "bg-blue-50", text: "text-blue-700", icon: MessageSquare },
     "Closed": { label: "Çözüldü", bg: "bg-emerald-50", text: "text-emerald-700", icon: CheckCircle },
+    "InProgress": { label: "Yanıtlandı", bg: "bg-blue-50", text: "text-blue-700", icon: MessageSquare },
+    "Resolved": { label: "Çözüldü", bg: "bg-emerald-50", text: "text-emerald-700", icon: CheckCircle },
 };
 function getStatus(s: string) { return STATUS_MAP[s] ?? { label: s, bg: "bg-[#E2E8F0]/20", text: "text-[#A9A9A9]", icon: AlertCircle }; }
 
@@ -27,19 +31,48 @@ const PRIORITY_MAP: Record<string, { label: string; dot: string }> = {
     urgent: { label: "Acil", dot: "bg-red-700" },
 };
 
+const STATUS_OPTIONS = [
+    { label: "Açık", value: "Open", icon: Clock },
+    { label: "Yanıtlandı", value: "InProgress", icon: MessageSquare },
+    { label: "Çözüldü", value: "Closed", icon: CheckCircle }
+];
+
+const normalizeStatus = (status: string) => {
+    if (status === "Açık" || status === "Open") return "Open";
+    if (status === "Yanıtlandı" || status === "Answered" || status === "InProgress") return "InProgress";
+    if (status === "Çözüldü" || status === "Closed" || status === "Resolved") return "Closed";
+    return "Open";
+};
+
 export default function SupportPage() {
+    const router = useRouter();
     const { token, currentTenantId: tenantId } = useAuth();
     const { success, error: toastError } = useToast();
 
     const [tickets, setTickets] = useState<TicketDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<TicketDto | null>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
     const [replyText, setReplyText] = useState("");
     const [replying, setReplying] = useState(false);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const chatRef = useRef<HTMLDivElement>(null);
+
+    const handleSelectTicket = async (ticket: TicketDto) => {
+        if (!token || !tenantId) return;
+        setSelected(ticket);
+        setLoadingDetail(true);
+        try {
+            const detail = await supportApi.get(token, tenantId, ticket.id);
+            setSelected(detail);
+        } catch {
+            toastError("Hata", "Talep detayları yüklenemedi.");
+        } finally {
+            setLoadingDetail(false);
+        }
+    };
 
     const load = useCallback(async () => {
         if (!token || !tenantId) return;
@@ -63,13 +96,16 @@ export default function SupportPage() {
 
     const filtered = tickets.filter(t => {
         const matchSearch = !search || t.subject.toLowerCase().includes(search.toLowerCase()) || (t.userFullName && t.userFullName.toLowerCase().includes(search.toLowerCase()));
-        const matchStatus = statusFilter === "all" || t.status === statusFilter;
+        const matchStatus = statusFilter === "all" || 
+            (statusFilter === "Open" && (t.status === "Open" || t.status === "Açık")) ||
+            (statusFilter === "InProgress" && (t.status === "Answered" || t.status === "Yanıtlandı" || t.status === "InProgress")) ||
+            (statusFilter === "Closed" && (t.status === "Closed" || t.status === "Çözüldü" || t.status === "Resolved"));
         return matchSearch && matchStatus;
     });
 
     const open = tickets.filter(t => t.status === "Açık" || t.status === "Open").length;
-    const answered = tickets.filter(t => t.status === "Yanıtlandı" || t.status === "Answered").length;
-    const closed = tickets.filter(t => t.status === "Çözüldü" || t.status === "Closed").length;
+    const answered = tickets.filter(t => t.status === "Yanıtlandı" || t.status === "Answered" || t.status === "InProgress").length;
+    const closed = tickets.filter(t => t.status === "Çözüldü" || t.status === "Closed" || t.status === "Resolved").length;
 
     const handleReply = async () => {
         if (!token || !tenantId || !selected || !replyText.trim()) return;
@@ -92,9 +128,11 @@ export default function SupportPage() {
     const handleStatusChange = async (ticketId: string, newStatus: string) => {
         if (!token || !tenantId) return;
         try {
-            const updated = await supportApi.updateStatus(token, tenantId, ticketId, newStatus);
-            setTickets(prev => prev.map(t => t.id === ticketId ? updated : t));
-            if (selected?.id === ticketId) setSelected(updated);
+            await supportApi.updateStatus(token, tenantId, ticketId, newStatus);
+            setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t));
+            if (selected?.id === ticketId) {
+                setSelected(prev => prev ? { ...prev, status: newStatus } : null);
+            }
             success("Durum güncellendi");
         } catch { toastError("Hata", "Durum güncellenemedi."); }
     };
@@ -165,11 +203,11 @@ export default function SupportPage() {
                                 className="w-full pl-8 pr-3 py-2 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20" />
                         </div>
                         <div className="flex gap-1">
-                            {["all", "Open", "Answered", "Closed"].map(s => (
+                            {["all", "Open", "InProgress", "Closed"].map(s => (
                                 <button key={s}
                                     onClick={() => setStatusFilter(s)}
                                     className={`flex-1 text-[10px] font-semibold py-1 rounded-lg transition-all ${statusFilter === s ? "bg-purple-600 text-white" : "bg-[#E2E8F0]/40 text-[#A9A9A9] hover:bg-[#E2E8F0]"}`}>
-                                    {s === "all" ? "Tümü" : s === "Open" ? "Açık" : s === "Answered" ? "Yanıtlandı" : "Çözüldü"}
+                                    {s === "all" ? "Tümü" : s === "Open" ? "Açık" : s === "InProgress" ? "Yanıtlandı" : "Çözüldü"}
                                 </button>
                             ))}
                         </div>
@@ -186,7 +224,7 @@ export default function SupportPage() {
                             const st = getStatus(t.status);
                             const prio = PRIORITY_MAP[t.priority] ?? PRIORITY_MAP.normal;
                             return (
-                                <button key={t.id} onClick={() => setSelected(t)}
+                                <button key={t.id} onClick={() => handleSelectTicket(t)}
                                     className={`w-full text-left p-3 hover:bg-[#E2E8F0]/20 transition-colors ${selected?.id === t.id ? "bg-purple-50 border-l-2 border-purple-500" : ""}`}>
                                     <div className="flex items-start justify-between gap-2 mb-1">
                                         <p className="text-sm font-semibold text-[#0A1931] truncate">{t.subject}</p>
@@ -222,7 +260,13 @@ export default function SupportPage() {
                                     <div className="min-w-0">
                                         <h2 className="text-base font-bold text-[#0A1931] truncate">{selected.subject}</h2>
                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                            <span className="text-xs text-[#A9A9A9]">{selected.userFullName}</span>
+                                            <span 
+                                                onClick={() => router.push(`/dashboard/users?userId=${selected.userId}`)}
+                                                className="text-xs font-semibold text-purple-600 hover:text-purple-800 hover:underline cursor-pointer transition-colors"
+                                                title="Öğrencinin Profiline Git"
+                                            >
+                                                {selected.userFullName}
+                                            </span>
                                             <span className="text-[#A0AEC0]">·</span>
                                             <span className="text-[11px] text-[#A0AEC0] flex items-center gap-1"><Tag size={10} />{selected.category}</span>
                                             <span className="text-[#A0AEC0]">·</span>
@@ -230,16 +274,13 @@ export default function SupportPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 ml-auto shrink-0">
-                                    <select
-                                        value={selected.status}
-                                        onChange={e => handleStatusChange(selected.id, e.target.value)}
-                                        className="text-xs bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-lg px-2 py-1.5 focus:outline-none"
-                                    >
-                                        <option value="Open">Açık</option>
-                                        <option value="Answered">Yanıtlandı</option>
-                                        <option value="Closed">Çözüldü</option>
-                                    </select>
+                                <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                                    <CustomSelect
+                                        value={normalizeStatus(selected.status)}
+                                        onChange={val => handleStatusChange(selected.id, String(val))}
+                                        options={STATUS_OPTIONS}
+                                        className="w-[125px]"
+                                    />
                                     <button onClick={() => setDeleteTarget(selected.id)}
                                         className="p-1.5 rounded-lg hover:bg-red-50 text-[#A0AEC0] hover:text-red-500">
                                         <Trash2 size={14} />
@@ -252,34 +293,74 @@ export default function SupportPage() {
 
                             {/* Chat messages */}
                             <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
-                                {/* Original message */}
-                                <div className="flex gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-[#E2E8F0] flex items-center justify-center shrink-0 text-xs font-bold text-[#1B3B6F]">
-                                        {selected.userFullName?.[0] ?? "?"}
+                                {loadingDetail ? (
+                                    <div className="flex flex-col justify-center items-center h-full text-sm text-[#A0AEC0] gap-2">
+                                        <RefreshCw size={18} className="animate-spin text-purple-600" />
+                                        <span>Yükleniyor...</span>
                                     </div>
-                                    <div className="flex-1">
-                                        <div className="bg-[#E2E8F0]/40 rounded-xl rounded-tl-none p-3 max-w-[85%]">
-                                            <p className="text-sm text-[#0A1931]">{selected.body}</p>
-                                        </div>
-                                        <p className="text-[10px] text-[#A0AEC0] mt-1 ml-1">{new Date(selected.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</p>
-                                    </div>
-                                </div>
-                                {/* Replies */}
-                                {(selected.messages ?? []).map((r: TicketReplyDto) => {
-                                    const isAdminReply = r.senderId !== selected.userId;
-                                    return (
-                                    <div key={r.id} className={`flex gap-3 ${isAdminReply ? "flex-row-reverse" : ""}`}>
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${isAdminReply ? "bg-purple-600 text-white" : "bg-[#E2E8F0] text-[#1B3B6F]"}`}>
-                                            {r.senderName?.[0] ?? "?"}
-                                        </div>
-                                        <div className={`flex-1 ${isAdminReply ? "flex flex-col items-end" : ""}`}>
-                                            <div className={`rounded-xl p-3 max-w-[85%] ${isAdminReply ? "bg-purple-600 text-white rounded-tr-none" : "bg-[#E2E8F0]/40 text-[#0A1931] rounded-tl-none"}`}>
-                                                <p className="text-sm">{r.body}</p>
+                                ) : (
+                                    <>
+                                        {/* Original message */}
+                                        <div className="flex gap-3">
+                                            <div 
+                                                onClick={() => router.push(`/dashboard/users?userId=${selected.userId}`)}
+                                                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#1B3B6F] to-blue-800 flex items-center justify-center shrink-0 text-xs font-bold text-white hover:opacity-90 cursor-pointer transition-all active:scale-95"
+                                                title="Profilini Gör"
+                                            >
+                                                {selected.userFullName?.[0] ?? "?"}
                                             </div>
-                                            <p className="text-[10px] text-[#A0AEC0] mt-1 mx-1">{new Date(r.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</p>
+                                            <div className="flex-1">
+                                                <p 
+                                                    onClick={() => router.push(`/dashboard/users?userId=${selected.userId}`)}
+                                                    className="text-[11px] font-semibold text-[#5A6A7A] hover:text-[#1B3B6F] cursor-pointer transition-colors mb-1 inline-block"
+                                                    title="Profilini Gör"
+                                                >
+                                                    {selected.userFullName}
+                                                </p>
+                                                <div className="bg-[#F8FAFC] border border-[#E2E8F0]/60 rounded-xl rounded-tl-none p-3 max-w-[85%]">
+                                                    <p className="text-sm text-[#0A1931]">{selected.body}</p>
+                                                </div>
+                                                <p className="text-[10px] text-[#A0AEC0] mt-1 ml-1">{new Date(selected.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                )})}
+                                        {/* Replies */}
+                                        {(selected.messages ?? []).map((r: TicketReplyDto) => {
+                                            const isAdminReply = !!r.isAdmin;
+                                            return (
+                                            <div key={r.id} className={`flex gap-3 ${isAdminReply ? "flex-row-reverse" : ""}`}>
+                                                <div 
+                                                    onClick={() => !isAdminReply && router.push(`/dashboard/users?userId=${selected.userId}`)}
+                                                    className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                                                        isAdminReply 
+                                                            ? "bg-emerald-500 text-white" 
+                                                            : "bg-gradient-to-br from-[#1B3B6F] to-blue-800 text-white hover:opacity-90 cursor-pointer transition-all active:scale-95"
+                                                    }`}
+                                                    title={isAdminReply ? undefined : "Profilini Gör"}
+                                                >
+                                                    {r.senderName?.[0] ?? "?"}
+                                                </div>
+                                                <div className={`flex-1 ${isAdminReply ? "flex flex-col items-end" : ""}`}>
+                                                    <p 
+                                                        onClick={() => !isAdminReply && router.push(`/dashboard/users?userId=${selected.userId}`)}
+                                                        className={`text-[11px] font-semibold text-[#5A6A7A] mb-1 mx-1 ${
+                                                            isAdminReply 
+                                                                ? "" 
+                                                                : "hover:text-[#1B3B6F] cursor-pointer transition-colors"
+                                                        }`}
+                                                        title={isAdminReply ? undefined : "Profilini Gör"}
+                                                    >
+                                                        {isAdminReply ? "Destek Ekibi" : r.senderName}
+                                                    </p>
+                                                    <div className={`rounded-xl p-3 max-w-[85%] ${isAdminReply ? "bg-emerald-50 border border-emerald-100 rounded-tr-none text-emerald-900" : "bg-[#F8FAFC] border border-[#E2E8F0]/60 rounded-tl-none text-[#0A1931]"}`}>
+                                                        <p className="text-sm">{r.body}</p>
+                                                    </div>
+                                                    <p className="text-[10px] text-[#A0AEC0] mt-1 mx-1">{new Date(r.createdAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</p>
+                                                </div>
+                                            </div>
+                                            );
+                                        })}
+                                    </>
+                                )}
                             </div>
 
                             {/* Reply box */}

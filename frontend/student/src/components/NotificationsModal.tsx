@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { notificationApi, type NotificationDto } from "@/lib/api";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -49,6 +50,7 @@ interface Props {
 }
 
 export default function NotificationsModal({ onClose, onUnreadCountUpdate }: Props) {
+    const router = useRouter();
     const { token, currentTenantId: tenantId } = useAuth();
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -83,16 +85,28 @@ export default function NotificationsModal({ onClose, onUnreadCountUpdate }: Pro
         },
     });
 
-    const markRead = async (id: string) => {
-        if (!token || !tenantId) return;
-        await notificationApi.markRead(token, tenantId, id);
-        setNotifications(prev => {
-            const newItems = prev.map(n => n.id === id ? { ...n, isRead: true } : n);
-            if (onUnreadCountUpdate) {
-                onUnreadCountUpdate(newItems.filter(n => !n.isRead).length);
-            }
-            return newItems;
-        });
+
+
+    const handleNotifClick = async (n: NotificationDto) => {
+        if (!n.isRead && token && tenantId) {
+            try {
+                await notificationApi.markRead(token, tenantId, n.id);
+                setNotifications(prev => {
+                    const newItems = prev.map(x => x.id === n.id ? { ...x, isRead: true } : x);
+                    if (onUnreadCountUpdate) {
+                        onUnreadCountUpdate(newItems.filter(x => !x.isRead).length);
+                    }
+                    return newItems;
+                });
+            } catch { /* sessiz */ }
+        }
+
+        const typeParts = n.type?.split(":");
+        const courseId = typeParts?.[1];
+        if (courseId) {
+            onClose();
+            router.push(`/dashboard/courses/${courseId}`);
+        }
     };
 
     const markAllRead = async () => {
@@ -165,16 +179,21 @@ export default function NotificationsModal({ onClose, onUnreadCountUpdate }: Pro
                                     </div>
                                     <div className="space-y-3">
                                         {items.map(n => {
-                                            const accent = TYPE_ACCENT[n.type ?? ""] ?? "border-slate-200 bg-white hover:bg-slate-50";
+                                            const typeParts = n.type?.split(":");
+                                            const cleanType = typeParts?.[0] || "";
+                                            const courseId = typeParts?.[1];
+                                            const accent = TYPE_ACCENT[cleanType] ?? "border-slate-200 bg-white hover:bg-slate-50";
+                                            const isClickable = !n.isRead || !!courseId;
                                             return (
                                                 <div
                                                     key={n.id}
-                                                    onClick={() => !n.isRead && markRead(n.id)}
+                                                    onClick={() => handleNotifClick(n)}
                                                     className={`p-4 rounded-2xl flex items-start gap-4 transition-all duration-300
-                                                        ${!n.isRead ? `border shadow-sm cursor-pointer ${accent}` : "bg-white border border-slate-100 opacity-60 hover:opacity-100"}`}
+                                                        ${!n.isRead ? `border shadow-sm ${accent}` : "bg-white border border-slate-100 opacity-60 hover:opacity-100"}
+                                                        ${isClickable ? "cursor-pointer" : ""}`}
                                                 >
                                                     <span className="text-2xl shrink-0">
-                                                        {TYPE_ICON[n.type ?? ""] ?? "🔔"}
+                                                        {TYPE_ICON[cleanType] ?? "🔔"}
                                                     </span>
                                                     <div className="flex-1 min-w-0 pt-1">
                                                         <div className="flex items-start justify-between gap-2 mb-1">

@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { courseApi, getFileUrl, type CourseDto } from "@/lib/api";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, Layers, Clock, Activity, CheckCircle2 } from "lucide-react";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 export default function CoursesPage() {
     const { token, currentTenantId: tenantId } = useAuth();
@@ -61,16 +62,17 @@ export default function CoursesPage() {
                         onChange={e => setSearch(e.target.value)}
                         className="px-4 py-2 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-full sm:w-56 transition-all shadow-sm"
                     />
-                    <select
+                    <CustomSelect
                         value={statusFilter}
-                        onChange={e => setStatusFilter(e.target.value as any)}
-                        className="px-4 py-2 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] shadow-sm cursor-pointer"
-                    >
-                        <option value="all">Tüm Dersler</option>
-                        <option value="not_started">Başlamadıklarım</option>
-                        <option value="in_progress">Devam Edenler</option>
-                        <option value="completed">Tamamlananlar</option>
-                    </select>
+                        onChange={(val) => setStatusFilter(val as any)}
+                        icon={Layers}
+                        options={[
+                            { label: "Tüm Dersler", value: "all", icon: Layers },
+                            { label: "Başlamadıklarım", value: "not_started", icon: Clock },
+                            { label: "Devam Edenler", value: "in_progress", icon: Activity },
+                            { label: "Tamamlananlar", value: "completed", icon: CheckCircle2 }
+                        ]}
+                    />
                     <div className="flex bg-[#E2E8F0]/30 p-1 rounded-xl">
                         <button
                             onClick={() => setViewMode("list")}

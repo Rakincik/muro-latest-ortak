@@ -146,7 +146,7 @@ public class WebhookHandlerService : IWebhookHandlerService
                     enrolledUserIds,
                     "📚 Ders Sona Erdi",
                     $"\"{session.Title}\" dersi sona erdi." + (session.RecordingEnabled ? " Kayıt kısa süre içinde hazır olacak." : ""),
-                    "SessionEnded"
+                    $"SessionEnded:{session.CourseId}"
                 ));
 
                 _logger.LogInformation("meeting-ended bildirimi {Count} öğrenciye gönderildi. SessionId: {SessionId}",
@@ -262,7 +262,7 @@ public class WebhookHandlerService : IWebhookHandlerService
                 evt.EnrolledUserIds,
                 "📹 Ders Kaydı Hazır",
                 $"\"{evt.SessionTitle ?? session.Title}\" dersinin kaydı izlemeye hazır.",
-                "RecordingReady"
+                $"RecordingReady:{session.CourseId}"
             ));
 
             _logger.LogInformation("Recording-ready bildirimi {Count} öğrenciye gönderildi. Session: {SessionId}",

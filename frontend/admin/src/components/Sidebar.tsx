@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import NotificationBell from "@/components/NotificationBell";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { tenantApi, type TenantBrandingDto } from "@/lib/api";
 import {
     LayoutDashboard, Users, FolderTree, BookOpen, FileText,
@@ -81,7 +82,17 @@ const roleTranslations: Record<string, string> = {
     "Teacher": "Öğretmen"
 };
 
-export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }) {
+export default function Sidebar({ 
+    isOpen, 
+    onClose, 
+    isCollapsed = false, 
+    onToggleCollapse 
+}: { 
+    isOpen?: boolean; 
+    onClose?: () => void; 
+    isCollapsed?: boolean; 
+    onToggleCollapse?: () => void; 
+}) {
     const pathname = usePathname();
     const { user, logout, currentTenantId, switchTenant } = useAuth();
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
@@ -120,7 +131,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose
                     onClick={onClose}
                 />
             )}
-            <aside className={`w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 ease-in-out lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <aside className={`w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${isCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0'}`}>
                 {/* Logo + Bell */}
                 <div className="px-6 py-7 flex items-center justify-between relative">
                     <img 
@@ -128,8 +139,18 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose
                         alt={brandName} 
                         className="w-36 h-auto object-contain drop-shadow-md" 
                     />
-                    <div className="hidden lg:block">
+                    <div className="hidden lg:flex items-center gap-1.5">
                         <NotificationBell />
+                        {onToggleCollapse && (
+                            <Tooltip content="Menüyü Gizle" position="bottom">
+                                <button
+                                    onClick={onToggleCollapse}
+                                    className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-white hover:bg-white/10 transition-colors"
+                                >
+                                    <ChevronRight size={18} className="rotate-180" />
+                                </button>
+                            </Tooltip>
+                        )}
                     </div>
                     <button 
                         onClick={onClose}
@@ -269,13 +290,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose
                         </p>
                         <p className="text-[11px] text-[#A9A9A9] truncate">{user?.role ? (roleTranslations[user.role] || user.role) : ""}</p>
                     </div>
-                    <button
-                        onClick={logout}
-                        className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-red-400 hover:bg-red-400/10 transition-all"
-                        title="Çıkış Yap"
-                    >
-                        <LogOut size={16} />
-                    </button>
+                    <Tooltip content="Çıkış Yap">
+                        <button
+                            onClick={logout}
+                            className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-red-400 hover:bg-red-400/10 transition-all"
+                        >
+                            <LogOut size={16} />
+                        </button>
+                    </Tooltip>
                 </div>
             </div>
         </aside>

@@ -14,12 +14,10 @@ namespace MURO.API.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
-        private readonly IAuditService _auditService;
 
-    public UsersController(IUserService userService, IAuditService auditService)
+    public UsersController(IUserService userService)
     {
         _userService = userService;
-                _auditService = auditService;
     }
 
     
@@ -51,9 +49,6 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<UserListDto>> CreateUser([FromBody] CreateUserRequest request)
     {
         var user = await _userService.CreateUserAsync(request);
-        var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "Create", "User", user.Id.ToString(), $"{request.FirstName} {request.LastName}", $"Rol: {request.Role}", ip);
         return Created($"/api/v1/users/{user.Id}", user);
     }
 
@@ -62,9 +57,6 @@ public class UsersController : ControllerBase
     public async Task<ActionResult<BulkImportResultDto>> BulkCreateUsers([FromBody] BulkCreateUserRequest request)
     {
         var result = await _userService.BulkCreateUsersAsync(request.Users);
-        var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "BulkCreate", "User", null, null, $"{result.ImportedCount} kullanıcı oluşturuldu", ip);
         return Ok(result);
     }
 
@@ -78,8 +70,6 @@ public class UsersController : ControllerBase
             return Forbid();
 
         var user = await _userService.UpdateUserAsync(id, request, actorRole);
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "Update", "User", id.ToString(), $"{user.FirstName} {user.LastName}", null, ip);
         return Ok(user);
     }
 
@@ -87,10 +77,7 @@ public class UsersController : ControllerBase
     [HttpPost("{id:guid}/delete")]
     public async Task<IActionResult> DeleteUser(Guid id)
     {
-        var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         await _userService.DeleteUserAsync(id);
-        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "Delete", "User", id.ToString(), null, null, ip);
         return NoContent();
     }
 
@@ -98,10 +85,7 @@ public class UsersController : ControllerBase
     [HttpPost("bulk-delete")]
     public async Task<IActionResult> BulkDeleteUsers([FromBody] List<Guid> userIds)
     {
-        var actorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         await _userService.BulkDeleteUsersAsync(userIds);
-        await _auditService.LogAsync(actorId != null ? Guid.Parse(actorId) : null, null, "BulkDelete", "User", null, null, $"{userIds.Count} kullanıcı silindi", ip);
         return NoContent();
     }
 

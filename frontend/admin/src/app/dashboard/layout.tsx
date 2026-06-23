@@ -10,6 +10,7 @@ import { useAdminHub } from "@/hooks/useAdminHub";
 import { useToast } from "@/components/toast";
 import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
 import NotificationBell from "@/components/NotificationBell";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 const routeRoles: Record<string, string[]> = {
     "/dashboard/users": ["Admin", "SuperAdmin", "Assistant"],
@@ -50,7 +51,27 @@ export default function DashboardLayout({
     const router = useRouter();
     const { toast } = useToast();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const pathname = usePathname();
+
+    // Sync isSidebarCollapsed with localStorage and handle auto-expand on other routes
+    useEffect(() => {
+        if (pathname === "/dashboard/media") {
+            const stored = localStorage.getItem("sidebar-collapsed");
+            if (stored === "true") {
+                setIsSidebarCollapsed(true);
+            }
+        } else {
+            setIsSidebarCollapsed(false);
+        }
+    }, [pathname]);
+
+    const setCollapsedState = (collapsed: boolean) => {
+        setIsSidebarCollapsed(collapsed);
+        if (pathname === "/dashboard/media") {
+            localStorage.setItem("sidebar-collapsed", String(collapsed));
+        }
+    };
 
     useAdminHub({
         onLiveSessionUpdate: useCallback((session: Record<string, unknown>) => {
@@ -106,8 +127,25 @@ export default function DashboardLayout({
     return (
         <GlobalUploadProvider>
             <div className="flex min-h-screen bg-[#F8FAFC]">
-                <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-                <div className="flex-1 flex flex-col min-w-0 lg:ml-[260px]">
+                <Sidebar 
+                    isOpen={isSidebarOpen} 
+                    onClose={() => setIsSidebarOpen(false)} 
+                    isCollapsed={isSidebarCollapsed}
+                    onToggleCollapse={pathname === "/dashboard/media" ? () => setCollapsedState(true) : undefined}
+                />
+                
+                {isSidebarCollapsed && pathname === "/dashboard/media" && (
+                    <Tooltip content="Menüyü Göster" position="right" className="hidden lg:inline-flex fixed left-0 top-6 z-40">
+                        <button
+                            onClick={() => setCollapsedState(false)}
+                            className="p-2 text-[#A9A9A9] hover:text-white bg-[#0A1931] hover:bg-[#1B3B6F] rounded-r-xl shadow-md border-y border-r border-[#1B3B6F]/20 hover:scale-105 hover:pl-3.5 transition-all flex items-center justify-center animate-fade-in"
+                        >
+                            <Menu size={18} />
+                        </button>
+                    </Tooltip>
+                )}
+
+                <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[260px]'}`}>
                     {/* Mobile Header */}
                     <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-sm">
                         <div className="flex items-center gap-3">

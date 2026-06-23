@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen, X } from "lucide-react";
+import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen, X, Layers, CheckCircle2, Clock, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { mediaLibraryApi, type MediaFolderDto, type MediaAssetDto } from "@/lib/api";
 import { useToast } from "@/components/toast";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
@@ -10,6 +10,7 @@ import { FolderTree } from "@/components/ui/FolderTree";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { VideoPlayerModal } from "@/components/ui/VideoPlayerModal";
 import { useGlobalUpload } from "@/components/ui/GlobalUploadManager";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 import { API_URL } from "@/lib/api";
 import { Tooltip } from "@/components/ui/Tooltip";
@@ -19,6 +20,14 @@ const getFileUrl = (path: string | null) => {
     if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
     const baseUrl = API_URL.replace("/api/v1", "");
     return `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
+};
+
+const getStatusLabel = (status: string | null) => {
+    if (!status) return "";
+    if (status === 'Ready') return 'Hazır';
+    if (status === 'Uploading') return 'Yükleniyor';
+    if (status === 'Processing') return 'İşleniyor';
+    return 'Hata';
 };
 
 const FallbackImage = ({ src }: { src: string }) => {
@@ -86,7 +95,7 @@ export default function MediaLibraryPage() {
     const [currentPage, setCurrentPage] = useState(1);
 
     // Sorting state
-    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "longest" | "shortest">("az");
+    const [sortBy, setSortBy] = useState<"newest" | "oldest" | "az" | "za" | "longest" | "shortest" | "statusAsc" | "statusDesc">("az");
     const [statusFilter, setStatusFilter] = useState<"all" | "Ready" | "Processing" | "Failed">("all");
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
@@ -387,6 +396,16 @@ export default function MediaLibraryPage() {
         }
     };
 
+    const handleHeaderSortClick = (column: 'title' | 'status' | 'duration') => {
+        if (column === 'title') {
+            setSortBy(prev => prev === 'az' ? 'za' : 'az');
+        } else if (column === 'status') {
+            setSortBy(prev => prev === 'statusAsc' ? 'statusDesc' : 'statusAsc');
+        } else if (column === 'duration') {
+            setSortBy(prev => prev === 'shortest' ? 'longest' : 'shortest');
+        }
+    };
+
     const handleBulkDelete = async () => {
         setConfirmModal({
             isOpen: true,
@@ -442,13 +461,17 @@ export default function MediaLibraryPage() {
                 case "oldest":
                     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
                 case "az":
-                    return a.title.localeCompare(b.title);
+                    return a.title.localeCompare(b.title, "tr");
                 case "za":
-                    return b.title.localeCompare(a.title);
+                    return b.title.localeCompare(a.title, "tr");
                 case "longest":
                     return (b.durationSeconds || 0) - (a.durationSeconds || 0);
                 case "shortest":
                     return (a.durationSeconds || 0) - (b.durationSeconds || 0);
+                case "statusAsc":
+                    return getStatusLabel(a.status).localeCompare(getStatusLabel(b.status), "tr");
+                case "statusDesc":
+                    return getStatusLabel(b.status).localeCompare(getStatusLabel(a.status), "tr");
                 default:
                     return 0;
             }
@@ -460,7 +483,7 @@ export default function MediaLibraryPage() {
     const totalPages = pageSize === "all" ? 1 : Math.ceil(filteredAssets.length / pageSize);
 
     return (
-        <div className="max-w-[1600px] mx-auto min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] flex flex-col md:flex-row md:overflow-hidden bg-white">
+        <div className="min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] flex flex-col md:flex-row md:overflow-hidden bg-white -m-4 lg:-m-8">
             {/* Left Pane (25%): Folder Tree */}
             <div className={`w-full md:w-[25%] md:min-w-[240px] md:max-w-[320px] h-64 md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col ${isSidebarVisible ? 'flex' : 'hidden'}`}>
                 <FolderTree 
@@ -481,39 +504,60 @@ export default function MediaLibraryPage() {
                 {/* Header Section */}
 
                 {/* Header Section & Toolbar */}
-                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                    {/* Breadcrumbs & Title */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center flex-wrap gap-y-1 gap-x-1.5 text-xs font-medium text-gray-500 mb-1.5 min-w-0">
-                            {breadcrumbs.map((crumb, idx) => (
-                                <div key={idx} className="flex items-center">
+                <div className="flex flex-col mb-6 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm gap-4">
+                    {/* Row 1: Breadcrumbs/Title & Action Buttons */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+                        {/* Breadcrumbs & Title */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center flex-wrap gap-y-1 gap-x-1.5 text-xs font-medium text-gray-500 mb-1.5 min-w-0">
+                                {breadcrumbs.map((crumb, idx) => (
+                                    <div key={idx} className="flex items-center">
+                                        <button 
+                                            onClick={() => handleTreeSelect(crumb.id, breadcrumbs.slice(0, idx + 1))}
+                                            className={`hover:text-blue-600 transition-colors whitespace-nowrap ${idx === breadcrumbs.length - 1 ? 'text-gray-900 font-bold' : ''}`}
+                                        >
+                                            {crumb.name}
+                                        </button>
+                                        {idx < breadcrumbs.length - 1 && <ChevronRight size={14} className="mx-1 text-gray-400" />}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2 min-w-0">
+                                <Tooltip content={isSidebarVisible ? "Klasör Panelini Gizle" : "Klasör Panelini Göster"}>
                                     <button 
-                                        onClick={() => handleTreeSelect(crumb.id, breadcrumbs.slice(0, idx + 1))}
-                                        className={`hover:text-blue-600 transition-colors whitespace-nowrap ${idx === breadcrumbs.length - 1 ? 'text-gray-900 font-bold' : ''}`}
+                                        onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                                        className={`p-1.5 rounded-lg border transition-all ${isSidebarVisible ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'} flex items-center justify-center shrink-0`}
                                     >
-                                        {crumb.name}
+                                        <Folder size={16} />
                                     </button>
-                                    {idx < breadcrumbs.length - 1 && <ChevronRight size={14} className="mx-1 text-gray-400" />}
-                                </div>
-                            ))}
+                                </Tooltip>
+                                <h1 className="text-xl font-bold text-gray-900 tracking-tight truncate" title={currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}>
+                                    {currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}
+                                </h1>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 min-w-0">
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 w-full sm:w-auto shrink-0">
                             <button 
-                                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                                className={`p-1.5 rounded-lg border transition-all ${isSidebarVisible ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'} flex items-center justify-center shrink-0`}
-                                title={isSidebarVisible ? "Klasör Panelini Gizle" : "Klasör Panelini Göster"}
+                                onClick={() => setIsCreateFolderModalOpen(true)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-sm font-medium transition-all"
                             >
-                                <Folder size={16} />
+                                <FolderPlus size={16} /> <span>Yeni Klasör</span>
                             </button>
-                            <h1 className="text-xl font-bold text-gray-900 tracking-tight truncate" title={currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}>
-                                {currentFolderId ? breadcrumbs[breadcrumbs.length - 1]?.name : "Ana Klasör"}
-                            </h1>
+                            <button 
+                                onClick={() => setIsUploadModalOpen(true)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm"
+                            >
+                                <UploadCloud size={16} /> <span>Video Yükle</span>
+                            </button>
                         </div>
                     </div>
 
-                    {/* Actions & Filters */}
-                    <div className="flex flex-wrap items-center justify-start xl:justify-end gap-2.5 w-full xl:w-auto">
-                        <div className="relative w-full sm:w-48">
+                    {/* Row 2: Search, Filters, Sort, View Toggle */}
+                    <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                        {/* Search Input */}
+                        <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                             <input
                                 type="text"
@@ -524,61 +568,54 @@ export default function MediaLibraryPage() {
                             />
                         </div>
 
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value as any)}
-                            className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
-                        >
-                            <option value="all">Tüm Durumlar</option>
-                            <option value="Ready">Hazır</option>
-                            <option value="Processing">Yükleniyor/İşleniyor</option>
-                            <option value="Failed">Hata</option>
-                        </select>
+                        {/* Filters Group */}
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <CustomSelect
+                                value={statusFilter}
+                                onChange={(val) => setStatusFilter(val as any)}
+                                icon={Layers}
+                                options={[
+                                    { label: "Tüm Durumlar", value: "all", icon: Layers },
+                                    { label: "Hazır", value: "Ready", icon: CheckCircle2 },
+                                    { label: "Yükleniyor/İşleniyor", value: "Processing", icon: Clock },
+                                    { label: "Hata", value: "Failed", icon: AlertTriangle }
+                                ]}
+                            />
 
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as any)}
-                            className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
-                        >
-                            <option value="az">A'dan Z'ye</option>
-                            <option value="newest">En Yeni</option>
-                            <option value="oldest">En Eski</option>
-                            <option value="za">Z'den A'ya</option>
-                            <option value="longest">En Uzun</option>
-                            <option value="shortest">En Kısa</option>
-                        </select>
+                            <CustomSelect
+                                value={sortBy}
+                                onChange={(val) => setSortBy(val as any)}
+                                icon={ArrowUpDown}
+                                options={[
+                                    { label: "A'dan Z'ye", value: "az", icon: ArrowUpDown },
+                                    { label: "En Yeni", value: "newest", icon: Clock },
+                                    { label: "En Eski", value: "oldest", icon: Clock },
+                                    { label: "Z'den A'ya", value: "za", icon: ArrowUpDown },
+                                    { label: "En Uzun", value: "longest", icon: FileVideo },
+                                    { label: "En Kısa", value: "shortest", icon: FileVideo },
+                                    { label: "Durum (Hazır Önce)", value: "statusAsc", icon: CheckCircle2 },
+                                    { label: "Durum (Hata Önce)", value: "statusDesc", icon: AlertTriangle }
+                                ]}
+                            />
 
-                        <select
-                            value={pageSize}
-                            onChange={(e) => setPageSize(e.target.value === "all" ? "all" : Number(e.target.value))}
-                            className="px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 text-gray-700 font-medium transition-all"
-                        >
-                            <option value={24}>24 Göster</option>
-                            <option value={36}>36 Göster</option>
-                            <option value={48}>48 Göster</option>
-                            <option value="all">Tümünü Göster</option>
-                        </select>
+                            <CustomSelect
+                                value={pageSize}
+                                onChange={(val) => setPageSize(val === "all" ? "all" : Number(val))}
+                                icon={ListIcon}
+                                options={[
+                                    { label: "24 Göster", value: 24, icon: ListIcon },
+                                    { label: "36 Göster", value: 36, icon: ListIcon },
+                                    { label: "48 Göster", value: 48, icon: ListIcon },
+                                    { label: "Tümünü Göster", value: "all", icon: Layers }
+                                ]}
+                            />
 
-                        <div className="h-9 w-px bg-gray-200 hidden sm:block" />
+                            <div className="h-9 w-px bg-gray-200 hidden sm:block" />
 
-                        <div className="flex items-center p-1 bg-gray-100 rounded-xl">
-                            <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}><Grid size={16} /></button>
-                            <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}><ListIcon size={16} /></button>
-                        </div>
-
-                        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                            <button 
-                                onClick={() => setIsCreateFolderModalOpen(true)}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-sm font-medium transition-all"
-                            >
-                                <FolderPlus size={16} /> <span className="hidden sm:inline">Yeni Klasör</span>
-                            </button>
-                            <button 
-                                onClick={() => setIsUploadModalOpen(true)}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm"
-                            >
-                                <UploadCloud size={16} /> <span className="hidden sm:inline">Video Yükle</span>
-                            </button>
+                            <div className="flex items-center p-1 bg-gray-100 rounded-xl">
+                                <button onClick={() => setViewMode("grid")} className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}><Grid size={16} /></button>
+                                <button onClick={() => setViewMode("list")} className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white shadow-sm text-blue-600" : "text-gray-500 hover:text-gray-700"}`}><ListIcon size={16} /></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -602,9 +639,51 @@ export default function MediaLibraryPage() {
                                                     <th className="px-3 py-3 w-10 text-center">
                                                         <input type="checkbox" onChange={toggleAll} checked={selectedAssetIds.length === paginatedAssets.length && paginatedAssets.length > 0} className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                                                     </th>
-                                                    <th className="px-3 py-3 font-medium">Video Adı</th>
-                                                    <th className="px-3 py-3 font-medium w-28">Durum</th>
-                                                    <th className="px-3 py-3 font-medium w-20">Süre</th>
+                                                    <th 
+                                                        onClick={() => handleHeaderSortClick('title')}
+                                                        className="px-3 py-3 font-medium cursor-pointer select-none hover:bg-gray-100/70 hover:text-gray-900 transition-colors group"
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <span>Video Adı</span>
+                                                            {sortBy === "az" ? (
+                                                                <ArrowUp size={14} className="text-blue-600 shrink-0" />
+                                                            ) : sortBy === "za" ? (
+                                                                <ArrowDown size={14} className="text-blue-600 shrink-0" />
+                                                            ) : (
+                                                                <ArrowUpDown size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                                            )}
+                                                        </div>
+                                                    </th>
+                                                    <th 
+                                                        onClick={() => handleHeaderSortClick('status')}
+                                                        className="px-3 py-3 font-medium w-28 cursor-pointer select-none hover:bg-gray-100/70 hover:text-gray-900 transition-colors group"
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <span>Durum</span>
+                                                            {sortBy === "statusAsc" ? (
+                                                                <ArrowUp size={14} className="text-blue-600 shrink-0" />
+                                                            ) : sortBy === "statusDesc" ? (
+                                                                <ArrowDown size={14} className="text-blue-600 shrink-0" />
+                                                            ) : (
+                                                                <ArrowUpDown size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                                            )}
+                                                        </div>
+                                                    </th>
+                                                    <th 
+                                                        onClick={() => handleHeaderSortClick('duration')}
+                                                        className="px-3 py-3 font-medium w-20 cursor-pointer select-none hover:bg-gray-100/70 hover:text-gray-900 transition-colors group"
+                                                    >
+                                                        <div className="flex items-center gap-1">
+                                                            <span>Süre</span>
+                                                            {sortBy === "shortest" ? (
+                                                                <ArrowUp size={14} className="text-blue-600 shrink-0" />
+                                                            ) : sortBy === "longest" ? (
+                                                                <ArrowDown size={14} className="text-blue-600 shrink-0" />
+                                                            ) : (
+                                                                <ArrowUpDown size={14} className="text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                                            )}
+                                                        </div>
+                                                    </th>
                                                     <th className="px-3 py-3 font-medium text-right w-32">İşlemler</th>
                                                 </tr>
                                             </thead>

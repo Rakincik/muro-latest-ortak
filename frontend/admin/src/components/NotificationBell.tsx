@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Bell, X, CheckCheck } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { notificationApi, type NotificationDto } from "@/lib/api";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -16,6 +17,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function NotificationBell() {
+    const router = useRouter();
     const { token, currentTenantId: tenantId } = useAuth();
     const [unread, setUnread] = useState(0);
     const [items, setItems] = useState<NotificationDto[]>([]);
@@ -140,7 +142,7 @@ export default function NotificationBell() {
                                     onClick={() => handleNotifClick(n)}
                                     className={`px-4 py-3 flex items-start gap-3 transition-colors cursor-pointer ${!n.isRead ? "bg-[#E2E8F0]/30" : "hover:bg-[#E2E8F0]/20"}`}
                                 >
-                                    <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${TYPE_COLORS[n.type ?? ""] ?? "bg-[#A0AEC0]"}`} />
+                                    <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${TYPE_COLORS[(n.type ?? "").split(":")[0]] ?? "bg-[#A0AEC0]"}`} />
                                     <div className="flex-1 min-w-0">
                                         <p className={`text-xs font-semibold truncate ${n.isRead ? "text-[#A9A9A9]" : "text-[#0A1931]"}`}>{n.title}</p>
                                         <p className="text-[11px] text-[#A0AEC0] line-clamp-2 mt-0.5">{n.body}</p>
@@ -170,7 +172,7 @@ export default function NotificationBell() {
                     <div className="absolute inset-0 bg-[#0A1931]/40 backdrop-blur-sm transition-opacity duration-300" onClick={() => setSelectedNotif(null)} />
                     <div className="relative w-full max-w-md bg-white rounded-2xl shadow-[0_20px_50px_rgba(10,25,49,0.15)] animate-dropdown overflow-hidden flex flex-col">
                         {/* Decorative Top Accent */}
-                        <div className={`h-1.5 w-full ${TYPE_COLORS[selectedNotif.type ?? ""] ?? "bg-[#1B3B6F]"}`} />
+                        <div className={`h-1.5 w-full ${TYPE_COLORS[(selectedNotif.type ?? "").split(":")[0]] ?? "bg-[#1B3B6F]"}`} />
                         
                         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]/50 bg-white">
                             <div className="flex items-center gap-2.5">
@@ -197,12 +199,32 @@ export default function NotificationBell() {
                                 <span className="text-[11px] font-semibold text-[#A0AEC0] bg-[#E2E8F0]/40 px-2.5 py-1.5 rounded-md">
                                     {new Date(selectedNotif.createdAt).toLocaleString("tr-TR", { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                                 </span>
-                                <button 
-                                    onClick={() => setSelectedNotif(null)}
-                                    className="text-[12px] font-bold text-[#1B3B6F] bg-[#1B3B6F]/5 hover:bg-[#1B3B6F]/10 px-4 py-2 rounded-lg transition-colors"
-                                >
-                                    Kapat
-                                </button>
+                                <div className="flex gap-2">
+                                    {(() => {
+                                        const typeParts = selectedNotif.type?.split(":");
+                                        const courseId = typeParts?.[1];
+                                        if (courseId) {
+                                            return (
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedNotif(null);
+                                                        router.push(`/dashboard/courses?courseId=${courseId}`);
+                                                    }}
+                                                    className="text-[12px] font-bold text-white bg-[#1B3B6F] hover:bg-[#0A1931] px-4 py-2 rounded-lg transition-colors flex items-center gap-1 shadow-sm"
+                                                >
+                                                    Derse Git
+                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                    <button 
+                                        onClick={() => setSelectedNotif(null)}
+                                        className="text-[12px] font-bold text-[#1B3B6F] bg-[#1B3B6F]/5 hover:bg-[#1B3B6F]/10 px-4 py-2 rounded-lg transition-colors"
+                                    >
+                                        Kapat
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

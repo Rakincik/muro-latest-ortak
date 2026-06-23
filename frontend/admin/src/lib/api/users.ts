@@ -11,6 +11,9 @@ export const userApi = {
         return api<PagedUsersResult>(`/users?${qs}`, { token, tenantId });
     },
 
+    get: (token: string, tenantId: string, id: string) =>
+        api<UserDto>(`/users/${id}`, { token, tenantId }),
+
     create: (token: string, tenantId: string, data: CreateUserRequest) =>
         api<UserDto>('/users', { method: 'POST', token, tenantId, body: JSON.stringify(data) }),
 

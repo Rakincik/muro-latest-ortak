@@ -200,6 +200,19 @@ export default function CoursesPage() {
         } catch { /* ignore */ }
     }, [token, tenantId]);
 
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const courseIdParam = params.get("courseId");
+            if (courseIdParam && courses.length > 0 && !detail) {
+                const matchedCourse = courses.find(c => c.id === courseIdParam);
+                if (matchedCourse) {
+                    openDetail(matchedCourse);
+                }
+            }
+        }
+    }, [courses, detail, openDetail]);
+
     // ── CRUD Handlers ─────────────────────────────────────────────────────────
     const handleDelete = useCallback(async (id: string) => {
         if (!token || !tenantId) return;
@@ -787,10 +800,11 @@ export default function CoursesPage() {
                         <CustomSelect 
                             value={statusFilter}
                             onChange={(val) => { setStatusFilter(val as string); setCoursePage(0); }}
+                            icon={Layers}
                             options={[
-                                { label: "Tüm Durumlar", value: "all" },
-                                { label: "Yayında", value: "published" },
-                                { label: "Taslak", value: "draft" }
+                                { label: "Tüm Durumlar", value: "all", icon: Layers },
+                                { label: "Yayında", value: "published", icon: Eye },
+                                { label: "Taslak", value: "draft", icon: FileText }
                             ]}
                         />
                     </div>
@@ -799,11 +813,12 @@ export default function CoursesPage() {
                         <CustomSelect 
                             value={sortBy}
                             onChange={(val) => setSortBy(val as any)}
+                            icon={ArrowUpDown}
                             options={[
-                                { label: "Tarihe Göre", value: "date" },
-                                { label: "İsme Göre", value: "name" },
-                                { label: "Oturum Sayısı", value: "sessions" },
-                                { label: "Duruma Göre", value: "status" }
+                                { label: "Tarihe Göre", value: "date", icon: Cal },
+                                { label: "İsme Göre", value: "name", icon: ArrowUpDown },
+                                { label: "Oturum Sayısı", value: "sessions", icon: Radio },
+                                { label: "Duruma Göre", value: "status", icon: Layers }
                             ]}
                         />
                     </div>
@@ -1021,11 +1036,12 @@ export default function CoursesPage() {
                                     setCoursesPerPage(Number(val));
                                     setCoursePage(0);
                                 }}
+                                icon={ListIcon}
                                 options={[
-                                    { label: "15 Göster", value: 15 },
-                                    { label: "30 Göster", value: 30 },
-                                    { label: "60 Göster", value: 60 },
-                                    { label: "Tümünü Göster", value: 999999 }
+                                    { label: "15 Göster", value: 15, icon: ListIcon },
+                                    { label: "30 Göster", value: 30, icon: ListIcon },
+                                    { label: "60 Göster", value: 60, icon: ListIcon },
+                                    { label: "Tümünü Göster", value: 999999, icon: Layers }
                                 ]}
                             />
                         </div>

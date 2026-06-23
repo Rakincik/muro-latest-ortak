@@ -62,8 +62,14 @@ public class SupportService : ISupportService
 
             return new TicketDetailDto(t.Id, t.Subject, t.Body, t.Status.ToString(), t.Priority, t.Category,
                 t.UserId, $"{t.User.FirstName} {t.User.LastName}",
-                t.Messages.Select(m => new TicketMessageDto(m.Id, m.SenderId,
-                    $"{m.Sender.FirstName} {m.Sender.LastName}", m.Body, m.CreatedAt)).ToList(),
+                t.Messages.Select(m => new TicketMessageDto(
+                    m.Id, 
+                    m.SenderId,
+                    $"{m.Sender.FirstName} {m.Sender.LastName}", 
+                    m.Body, 
+                    m.CreatedAt,
+                    m.Sender.Role == UserRole.Admin || m.Sender.Role == UserRole.SuperAdmin || m.Sender.Role == UserRole.Assistant
+                )).ToList(),
                 t.CreatedAt);
         }, TimeSpan.FromMinutes(3));
     }
@@ -108,7 +114,8 @@ public class SupportService : ISupportService
         await _cache.RemoveByPrefixAsync($"support:");
 
         var sender = await _context.Users.FindAsync(senderId);
-        return new TicketMessageDto(msg.Id, senderId, $"{sender?.FirstName} {sender?.LastName}", msg.Body, msg.CreatedAt);
+        var isAdmin = sender?.Role == UserRole.Admin || sender?.Role == UserRole.SuperAdmin || sender?.Role == UserRole.Assistant;
+        return new TicketMessageDto(msg.Id, senderId, $"{sender?.FirstName} {sender?.LastName}", msg.Body, msg.CreatedAt, isAdmin);
     }
 
     public async Task UpdateTicketStatusAsync(Guid ticketId, string status)

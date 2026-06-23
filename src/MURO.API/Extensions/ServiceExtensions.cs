@@ -17,6 +17,9 @@ public static class ServiceExtensions
     public static IServiceCollection AddMuroBusinessServices(this IServiceCollection services)
     {
         // --- Core Services ---
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, MURO.API.Services.CurrentUserService>();
+
         services.AddScoped<IAuthLoginService, AuthLoginService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();

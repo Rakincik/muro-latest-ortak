@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { notificationApi, type NotificationDto } from "@/lib/api";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -45,6 +46,7 @@ const TYPE_ACCENT: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
+    const router = useRouter();
     const { token, currentTenantId: tenantId } = useAuth();
     const [notifications, setNotifications] = useState<NotificationDto[]>([]);
     const [loading, setLoading] = useState(true);
@@ -72,10 +74,21 @@ export default function NotificationsPage() {
         },
     });
 
-    const markRead = async (id: string) => {
-        if (!token || !tenantId) return;
-        await notificationApi.markRead(token, tenantId, id);
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+
+
+    const handleNotifClick = async (n: NotificationDto) => {
+        if (!n.isRead && token && tenantId) {
+            try {
+                await notificationApi.markRead(token, tenantId, n.id);
+                setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, isRead: true } : x));
+            } catch { /* sessiz */ }
+        }
+
+        const typeParts = n.type?.split(":");
+        const courseId = typeParts?.[1];
+        if (courseId) {
+            router.push(`/dashboard/courses/${courseId}`);
+        }
     };
 
     const markAllRead = async () => {
@@ -141,16 +154,21 @@ export default function NotificationsPage() {
 
                                 <div className="space-y-2">
                                     {items.map(n => {
-                                        const accent = TYPE_ACCENT[n.type ?? ""] ?? "border-[#1B3B6F]/20 bg-white/[0.02]";
+                                        const typeParts = n.type?.split(":");
+                                        const cleanType = typeParts?.[0] || "";
+                                        const courseId = typeParts?.[1];
+                                        const accent = TYPE_ACCENT[cleanType] ?? "border-[#1B3B6F]/20 bg-white/[0.02]";
+                                        const isClickable = !n.isRead || !!courseId;
                                         return (
                                             <div
                                                 key={n.id}
-                                                onClick={() => !n.isRead && markRead(n.id)}
-                                                className={`glass-card p-4 flex items-start gap-4 cursor-pointer transition-all
-                                                    ${!n.isRead ? `border ${accent}` : "opacity-50 hover:opacity-70"}`}
+                                                onClick={() => handleNotifClick(n)}
+                                                className={`glass-card p-4 flex items-start gap-4 transition-all
+                                                    ${!n.isRead ? `border ${accent}` : "opacity-50 hover:opacity-70"}
+                                                    ${isClickable ? "cursor-pointer" : ""}`}
                                             >
                                                 <span className="text-xl shrink-0 mt-0.5">
-                                                    {TYPE_ICON[n.type ?? ""] ?? "🔔"}
+                                                    {TYPE_ICON[cleanType] ?? "🔔"}
                                                 </span>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between gap-2 mb-1">

@@ -12,7 +12,7 @@ export const supportApi = {
     get: (token: string, tenantId: string, id: string) =>
         api<TicketDto>(`/support/tickets/${id}`, { token, tenantId }),
     reply: (token: string, tenantId: string, ticketId: string, message: string) =>
-        api<TicketReplyDto>(`/support/tickets/${ticketId}/reply`, { method: 'POST', token, tenantId, body: JSON.stringify({ message }) }),
+        api<TicketReplyDto>(`/support/tickets/${ticketId}/reply`, { method: 'POST', token, tenantId, body: JSON.stringify({ body: message }) }),
     updateStatus: (token: string, tenantId: string, ticketId: string, status: string) =>
         api<TicketDto>(`/support/tickets/${ticketId}/status`, { method: 'PUT', token, tenantId, body: JSON.stringify({ status }) }),
     delete: (token: string, tenantId: string, id: string) =>

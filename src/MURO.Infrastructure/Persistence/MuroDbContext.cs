@@ -1,11 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using MURO.Domain.Entities;
+using MURO.Application.Interfaces;
 
 namespace MURO.Infrastructure.Persistence;
 
 public class MuroDbContext : DbContext
 {
-    public MuroDbContext(DbContextOptions<MuroDbContext> options) : base(options) { }
+    private readonly ICurrentUserService? _currentUserService;
+
+    public MuroDbContext(DbContextOptions<MuroDbContext> options, ICurrentUserService? currentUserService = null) 
+        : base(options) 
+    {
+        _currentUserService = currentUserService;
+    }
 
     // Core
     public DbSet<User> Users => Set<User>();
@@ -451,5 +458,142 @@ public class MuroDbContext : DbContext
         modelBuilder.Entity<Assignment>().HasQueryFilter(e => !e.IsDeleted);
     }
 
+    public override int SaveChanges()
+    {
+        var auditEntries = OnBeforeSaveChanges();
+        var result = base.SaveChanges();
+        OnAfterSaveChanges(auditEntries);
+        return result;
+    }
 
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        var auditEntries = OnBeforeSaveChanges();
+        var result = base.SaveChanges(acceptAllChangesOnSuccess);
+        OnAfterSaveChanges(auditEntries);
+        return result;
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var auditEntries = OnBeforeSaveChanges();
+        var result = await base.SaveChangesAsync(cancellationToken);
+        await OnAfterSaveChangesAsync(auditEntries);
+        return result;
+    }
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        var auditEntries = OnBeforeSaveChanges();
+        var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        await OnAfterSaveChangesAsync(auditEntries);
+        return result;
+    }
+
+    private List<AuditEntry> OnBeforeSaveChanges()
+    {
+        ChangeTracker.DetectChanges();
+        var auditEntries = new List<AuditEntry>();
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.Entity is AuditLog || entry.Entity is SecurityEvent ||
+                entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
+            {
+                continue;
+            }
+
+            var auditEntry = new AuditEntry(entry)
+            {
+                TableName = entry.Entity.GetType().Name,
+                UserId = _currentUserService?.UserId,
+                UserName = _currentUserService?.UserName,
+                IpAddress = _currentUserService?.IpAddress
+            };
+
+            auditEntries.Add(auditEntry);
+
+            foreach (var property in entry.Properties)
+            {
+                string propertyName = property.Metadata.Name;
+                if (property.Metadata.IsPrimaryKey())
+                {
+                    auditEntry.KeyValues[propertyName] = property.CurrentValue;
+                    continue;
+                }
+
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        auditEntry.NewValues[propertyName] = property.CurrentValue;
+                        break;
+
+                    case EntityState.Deleted:
+                        auditEntry.OldValues[propertyName] = property.OriginalValue;
+                        break;
+
+                    case EntityState.Modified:
+                        if (property.IsModified)
+                        {
+                            auditEntry.OldValues[propertyName] = property.OriginalValue;
+                            auditEntry.NewValues[propertyName] = property.CurrentValue;
+                        }
+                        break;
+                }
+            }
+        }
+
+        return auditEntries;
+    }
+
+    private async Task OnAfterSaveChangesAsync(List<AuditEntry> auditEntries)
+    {
+        if (auditEntries == null || auditEntries.Count == 0)
+            return;
+
+        foreach (var auditEntry in auditEntries)
+        {
+            if (auditEntry.Entry.State == EntityState.Added)
+            {
+                foreach (var property in auditEntry.Entry.Properties)
+                {
+                    if (property.Metadata.IsPrimaryKey())
+                    {
+                        auditEntry.KeyValues[property.Metadata.Name] = property.CurrentValue;
+                    }
+                }
+            }
+
+            var log = auditEntry.ToAuditLog();
+            AuditLogs.Add(log);
+        }
+
+        await base.SaveChangesAsync();
+    }
+
+    private void OnAfterSaveChanges(List<AuditEntry> auditEntries)
+    {
+        if (auditEntries == null || auditEntries.Count == 0)
+            return;
+
+        foreach (var auditEntry in auditEntries)
+        {
+            if (auditEntry.Entry.State == EntityState.Added)
+            {
+                foreach (var property in auditEntry.Entry.Properties)
+                {
+                    if (property.Metadata.IsPrimaryKey())
+                    {
+                        auditEntry.KeyValues[property.Metadata.Name] = property.CurrentValue;
+                    }
+                }
+            }
+
+            var log = auditEntry.ToAuditLog();
+            AuditLogs.Add(log);
+        }
+
+        base.SaveChanges();
+    }
 }
+

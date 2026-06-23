@@ -644,8 +644,27 @@ export const studentSupportApi = {
             category: data.category,
             priority: data.priority || 'Normal'
         }) }),
+    get: async (token: string, tenantId: string, id: string): Promise<StudentTicketDto> => {
+        const detail = await api<any>(`/support/tickets/${id}`, { token, tenantId });
+        return {
+            id: detail.id,
+            subject: detail.subject,
+            message: detail.body, // Map backend 'body' to frontend 'message'
+            category: detail.category,
+            priority: detail.priority,
+            status: detail.status,
+            createdAt: detail.createdAt,
+            replies: (detail.messages || []).map((m: any) => ({
+                id: m.id,
+                authorName: m.senderName,
+                message: m.body, // Map backend 'body' to frontend 'message'
+                isAdmin: m.senderId !== detail.userId,
+                createdAt: m.createdAt
+            }))
+        };
+    },
     reply: (token: string, tenantId: string, ticketId: string, message: string) =>
-        api('/support/' + ticketId + '/replies', { method: 'POST', token, tenantId, body: JSON.stringify({ body: message }) }),
+        api('/support/tickets/' + ticketId + '/reply', { method: 'POST', token, tenantId, body: JSON.stringify({ body: message }) }),
 };
 
 // ── Tenant Branding API ──────────────────────────────────────────────────────

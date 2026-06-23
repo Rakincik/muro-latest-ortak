@@ -10,7 +10,6 @@ public class AuditLog
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? UserId { get; set; }
     public string? UserName { get; set; }
-    public Guid? TenantId { get; set; }
     public string Action { get; set; } = string.Empty;  // Create, Update, Delete
     public string EntityType { get; set; } = string.Empty; // User, Course, Session, etc.
     public string? EntityId { get; set; }

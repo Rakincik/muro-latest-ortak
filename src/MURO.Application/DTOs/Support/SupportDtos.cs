@@ -13,7 +13,7 @@ public record TicketDetailDto(
 );
 
 public record TicketMessageDto(
-    Guid Id, Guid SenderId, string SenderName, string Body, DateTime CreatedAt
+    Guid Id, Guid SenderId, string SenderName, string Body, DateTime CreatedAt, bool IsAdmin
 );
 
 public record CreateTicketRequest(string Subject, string Body, string Priority, string Category);

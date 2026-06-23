@@ -83,7 +83,7 @@ public class LiveMeetingService : ILiveMeetingService
                     enrolledUserIds,
                     "🔴 Canlı Ders Başladı",
                     $"\"{session.Title}\" dersi şu an canlı! Hemen katıl.",
-                    "SessionStarted"
+                    $"SessionStarted:{courseId}"
                 ));
             }
 
@@ -149,7 +149,7 @@ public class LiveMeetingService : ILiveMeetingService
                 enrolledUserIds2,
                 "🔴 Canlı Ders Başladı",
                 $"\"{session.Title}\" dersi şu an canlı! Hemen katıl.",
-                "SessionStarted"
+                $"SessionStarted:{courseId}"
             ));
         }
 
@@ -283,7 +283,7 @@ public class LiveMeetingService : ILiveMeetingService
                 enrolledUserIds,
                 "📚 Ders Sona Erdi",
                 $"\"{session.Title}\" dersi sona erdi." + (session.RecordingEnabled ? " Kayıt kısa süre içinde hazır olacak." : ""),
-                "SessionEnded"
+                $"SessionEnded:{courseId}"
             ));
         }
     }
