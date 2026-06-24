@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  # --- MURO Worker (FFmpeg — GPU/NVENC + QSV Mode) ---
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      network: host
+    container_name: muro101_worker
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Ffmpeg__Path=ffmpeg
+      - ConnectionStrings__DefaultConnection=Host=${DB_HOST};Port=${DB_PORT:-5434};Database=${DB_NAME:-muro_prod};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD}
+      - ConnectionStrings__Redis=${REDIS_HOST}:${REDIS_PORT:-6381},password=${REDIS_PASSWORD},abortConnect=false
+      - Storage__HlsOutputDir=/app/wwwroot/hls
+      - Worker__NvencSlots=${WORKER_NVENC_SLOTS:-3}
+      - Worker__QsvSlots=${WORKER_QSV_SLOTS:-2}
+      - Worker__CpuSlots=${WORKER_CPU_SLOTS:-0}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=video,compute,utility
+    volumes:
+      - /mnt/storage/muro/hls:/app/wwwroot/hls
+      - /mnt/storage/muro/uploads:/app/wwwroot/uploads
+      - muro101_logs:/app/logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, video]
+    devices:
+      - /dev/dri/renderD129:/dev/dri/renderD129
+    group_add:
+      - render
+      - video
+
+  # --- Nginx HLS Server ---
+  nginx:
+    image: nginx:alpine
+    container_name: muro_hls_server
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - /mnt/storage/muro/hls:/usr/share/nginx/html/hls:ro
+
+volumes:
+  muro101_logs:
+    driver: local
