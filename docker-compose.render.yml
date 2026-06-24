@@ -15,22 +15,13 @@ services:
       - ConnectionStrings__DefaultConnection=Host=${DB_HOST};Port=${DB_PORT:-5434};Database=${DB_NAME:-muro_prod};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD}
       - ConnectionStrings__Redis=${REDIS_HOST}:${REDIS_PORT:-6381},password=${REDIS_PASSWORD},abortConnect=false
       - Storage__HlsOutputDir=/app/wwwroot/hls
-      - Worker__NvencSlots=${WORKER_NVENC_SLOTS:-3}
-      - Worker__QsvSlots=${WORKER_QSV_SLOTS:-2}
-      - Worker__CpuSlots=${WORKER_CPU_SLOTS:-0}
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=video,compute,utility
+      - Worker__NvencSlots=${WORKER_NVENC_SLOTS:-0}
+      - Worker__QsvSlots=${WORKER_QSV_SLOTS:-0}
+      - Worker__CpuSlots=${WORKER_CPU_SLOTS:-6}
     volumes:
       - /mnt/storage/muro/hls:/app/wwwroot/hls
       - /mnt/storage/muro/uploads:/app/wwwroot/uploads
       - muro101_logs:/app/logs
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu, video]
 
 
   # --- Nginx HLS Server ---
