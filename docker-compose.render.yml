@@ -31,8 +31,7 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu, video]
-    devices:
-      - /dev/dri/renderD129:/dev/dri/renderD129
+
 
   # --- Nginx HLS Server ---
   nginx:
