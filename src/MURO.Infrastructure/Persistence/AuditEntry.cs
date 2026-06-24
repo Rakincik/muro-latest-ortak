@@ -11,6 +11,7 @@ namespace MURO.Infrastructure.Persistence;
 public class AuditEntry
 {
     public EntityEntry Entry { get; }
+    public EntityState State { get; }
     public Guid? UserId { get; set; }
     public string? UserName { get; set; }
     public string? IpAddress { get; set; }
@@ -22,6 +23,7 @@ public class AuditEntry
     public AuditEntry(EntityEntry entry)
     {
         Entry = entry;
+        State = entry.State;
     }
 
     public AuditLog ToAuditLog()
@@ -36,11 +38,11 @@ public class AuditEntry
         };
 
         // Action type
-        if (Entry.State == EntityState.Added)
+        if (State == EntityState.Added)
         {
             audit.Action = "Create";
         }
-        else if (Entry.State == EntityState.Deleted)
+        else if (State == EntityState.Deleted)
         {
             audit.Action = "Delete";
         }
@@ -62,7 +64,7 @@ public class AuditEntry
 
         // Build formatted changes log
         var detailsBuilder = new StringBuilder();
-        if (Entry.State == EntityState.Added)
+        if (State == EntityState.Added)
         {
             detailsBuilder.AppendLine("Yeni Kayıt Oluşturuldu:");
             foreach (var kvp in NewValues)
@@ -77,7 +79,7 @@ public class AuditEntry
                 }
             }
         }
-        else if (Entry.State == EntityState.Deleted)
+        else if (State == EntityState.Deleted)
         {
             detailsBuilder.AppendLine("Kayıt Silindi:");
             foreach (var kvp in OldValues)
