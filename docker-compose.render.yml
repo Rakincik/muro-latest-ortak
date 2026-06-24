@@ -33,9 +33,6 @@ services:
               capabilities: [gpu, video]
     devices:
       - /dev/dri/renderD129:/dev/dri/renderD129
-    group_add:
-      - render
-      - video
 
   # --- Nginx HLS Server ---
   nginx:
