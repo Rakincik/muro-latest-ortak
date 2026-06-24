@@ -106,6 +106,10 @@ services:
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_prod};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
       - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
       - Storage__HlsOutputDir=/app/wwwroot/hls
+      # Xeon E5-2650 v4 sunucusunda GPU/QSV olmadığı için transcode işlemini CPU'ya yönlendiriyoruz
+      - Worker__NvencSlots=0
+      - Worker__QsvSlots=0
+      - Worker__CpuSlots=6
     volumes:
       - /mnt/storage/muro/hls:/app/wwwroot/hls
       - /mnt/storage/muro/uploads:/app/wwwroot/uploads
