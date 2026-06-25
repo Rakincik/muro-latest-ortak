@@ -583,3 +583,28 @@ iframe {
   background-color: white !important;
 }
 
+/* ── Plyr Custom Theme Overrides ── */
+:root {
+  --plyr-color-main: #1B3B6F;
+  --plyr-video-background: #0A1931;
+  --plyr-menu-background: #0A1931;
+  --plyr-menu-color: #E2E8F0;
+  --plyr-menu-border-color: rgba(226, 232, 240, 0.1);
+  --plyr-tooltip-background: #1B3B6F;
+  --plyr-tooltip-color: #ffffff;
+}
+
+.plyr--video .plyr__controls {
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(10, 25, 49, 0.9));
+  padding-top: 30px;
+}
+
+.plyr__menu__container .plyr__control--forward {
+  color: #E2E8F0;
+}
+
+.plyr__menu__container .plyr__control--forward:hover {
+  background: #1B3B6F;
+}
+
+

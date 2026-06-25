@@ -52,7 +52,7 @@ function VideoPlayerModal({ rec, onClose }: { rec: RecordingDto; onClose: () => 
             const Plyr = (await import("plyr")).default;
             await import("plyr/dist/plyr.css");
             player = new Plyr(video, {
-                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                 settings: ['captions', 'quality', 'speed']
             });
         };

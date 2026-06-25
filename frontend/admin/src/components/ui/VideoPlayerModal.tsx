@@ -51,7 +51,7 @@ export function VideoPlayerModal({ asset, onClose }: VideoPlayerModalProps) {
                 : undefined;
 
             const plyrOptions: any = {
-                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                 settings: ['captions', 'quality', 'speed'],
                 speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
                 previewThumbnails: vttPath ? { enabled: true, src: vttPath } : { enabled: false },
