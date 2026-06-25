@@ -18,6 +18,7 @@ services:
       - Worker__NvencSlots=${WORKER_NVENC_SLOTS:-0}
       - Worker__QsvSlots=${WORKER_QSV_SLOTS:-0}
       - Worker__CpuSlots=${WORKER_CPU_SLOTS:-6}
+      - PleskApiUrl=${PLESK_API_URL:-https://online.monopoluzem.com.tr}
     volumes:
       - /mnt/storage/muro/hls:/app/wwwroot/hls
       - /mnt/storage/muro/uploads:/app/wwwroot/uploads

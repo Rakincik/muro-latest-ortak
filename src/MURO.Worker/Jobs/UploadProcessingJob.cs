@@ -19,6 +19,7 @@ public class UploadProcessingJob : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<UploadProcessingJob> _logger;
+    private readonly IConfiguration _config;
     private readonly string _hlsOutputDir;
 
     private readonly int _nvencSlots;
@@ -36,6 +37,7 @@ public class UploadProcessingJob : BackgroundService
         ILogger<UploadProcessingJob> logger)
     {
         _scopeFactory = scopeFactory;
+        _config = config;
         _logger = logger;
         _hlsOutputDir = config["Storage:HlsOutputDir"] ?? Path.Combine("wwwroot", "hls");
         Directory.CreateDirectory(_hlsOutputDir);
@@ -155,21 +157,26 @@ public class UploadProcessingJob : BackgroundService
 
         if (asset.FilePath!.Contains("/api/v1/uploads/"))
         {
-            var uri = new Uri(asset.FilePath);
-            var fileName = Path.GetFileName(uri.LocalPath);
+            string fileName = Path.GetFileName(asset.FilePath);
             localMp4Path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", fileName);
             _logger.LogInformation("[{Pipeline}] Lokal dosya kontrol ediliyor: {Path}", pipeline, localMp4Path);
         }
 
-        if (!File.Exists(localMp4Path) &&
-            (asset.FilePath!.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-             asset.FilePath!.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+        if (!File.Exists(localMp4Path))
         {
-            _logger.LogInformation("[{Pipeline}] Video indiriliyor: {Url}", pipeline, asset.FilePath);
+            string downloadUrl = asset.FilePath;
+            if (!downloadUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !downloadUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                var pleskApiUrl = _config["PleskApiUrl"] ?? _config["ApiUrl"] ?? "https://online.monopoluzem.com.tr";
+                downloadUrl = pleskApiUrl.TrimEnd('/') + "/" + downloadUrl.TrimStart('/');
+            }
+
+            _logger.LogInformation("[{Pipeline}] Video indiriliyor: {Url}", pipeline, downloadUrl);
             var client = httpFactory.CreateClient("bbb-download");
             try
             {
-                var response = await client.GetAsync(asset.FilePath, HttpCompletionOption.ResponseHeadersRead, ct);
+                var response = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
                 response.EnsureSuccessStatusCode();
 
                 var tempDir = Path.Combine(Path.GetTempPath(), "muro_processing");
@@ -183,7 +190,7 @@ public class UploadProcessingJob : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[{Pipeline}] İndirme hatası: {Url}", pipeline, asset.FilePath);
+                _logger.LogError(ex, "[{Pipeline}] İndirme hatası: {Url}", pipeline, downloadUrl);
                 await MarkFailedAsync(db, asset, ct);
                 return;
             }
