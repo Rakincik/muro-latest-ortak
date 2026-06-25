@@ -62,23 +62,24 @@ export default function CoursesPage() {
     return (
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="hidden md:block">
                     <h1 className="text-2xl font-bold text-[#0A1931]">Derslerim</h1>
                     <p className="text-[#A9A9A9] text-sm mt-1">{courses.length} kurs kayıtlı</p>
                 </div>
-                <div className="flex items-center flex-wrap gap-2">
+                <div className="flex items-center gap-2 w-full overflow-x-auto pb-2 hide-scrollbar md:flex-wrap md:w-auto md:pb-0">
                     <input
                         type="text"
                         placeholder="Kurs ara..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="px-4 py-2 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-full sm:w-56 transition-all shadow-sm"
+                        className="px-4 py-2 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-44 shrink-0 md:w-56 transition-all shadow-sm"
                     />
                     <CustomSelect
                         value={statusFilter}
                         onChange={(val) => setStatusFilter(val as any)}
                         icon={Layers}
+                        className="shrink-0"
                         options={[
                             { label: "Tüm Dersler", value: "all", icon: Layers },
                             { label: "Başlamadıklarım", value: "not_started", icon: Clock },
@@ -90,6 +91,7 @@ export default function CoursesPage() {
                         value={sortBy}
                         onChange={(val) => setSortBy(val as any)}
                         icon={ArrowUpDown}
+                        className="shrink-0"
                         options={[
                             { label: "Tarihe Göre", value: "date", icon: Clock },
                             { label: "İsme Göre", value: "name", icon: ArrowUpDown },
@@ -97,7 +99,7 @@ export default function CoursesPage() {
                             { label: "Duruma Göre", value: "completion", icon: CheckCircle2 }
                         ]}
                     />
-                    <div className="flex bg-[#E2E8F0]/30 p-1 rounded-xl">
+                    <div className="flex bg-[#E2E8F0]/30 p-1 rounded-xl shrink-0">
                         <button
                             onClick={() => setViewMode("list")}
                             className={`p-1.5 rounded-lg transition-colors ${viewMode === "list" ? "bg-white shadow-sm text-[#1B3B6F]" : "text-[#A0AEC0] hover:text-[#0A1931]"}`}

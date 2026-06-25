@@ -464,6 +464,49 @@ html {
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --mobile-tab-height: 64px;
+  --mobile-header-height: 56px;
+}
+
+/* Safe area helper classes */
+.pt-safe {
+  padding-top: var(--sat);
+}
+.pb-safe {
+  padding-bottom: var(--sab);
+}
+.pl-safe {
+  padding-left: var(--sal);
+}
+.pr-safe {
+  padding-right: var(--sar);
+}
+
+/* Hide scrollbar utility */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Mobile Header style */
+.mobile-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(var(--mobile-header-height) + var(--sat));
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  padding-top: var(--sat);
+  z-index: 55;
 }
 
 /* Prevent pull-to-refresh in native app */
@@ -698,7 +741,7 @@ body {
   .main-content {
     margin-left: 0;
     padding: 16px;
-    padding-top: calc(16px + var(--sat));
+    padding-top: calc(var(--mobile-header-height) + 16px + var(--sat));
     padding-bottom: calc(16px + var(--sab) + var(--mobile-tab-height));
   }
 

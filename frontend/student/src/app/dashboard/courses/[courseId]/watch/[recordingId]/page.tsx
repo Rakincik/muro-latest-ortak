@@ -128,7 +128,7 @@ export default function WatchPage() {
                     .filter((cm: CourseMediaDto) => cm.type !== "Exam")
                     .map((cm: CourseMediaDto) => {
                         const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);
-                        const matchSession = sessions.find(s => s.id === cm.sessionId);
+                        const matchSession = sessions.find((s: any) => s.id === cm.sessionId);
                         return {
                             id: cm.id,
                             sessionId: cm.sessionId || cm.id,
@@ -136,13 +136,13 @@ export default function WatchPage() {
                             courseId: cm.courseId,
                             courseTitle: courseData?.title || '',
                             playbackUrl: matchRec?.playbackUrl || '',
-                            hlsPath: cm.mediaAsset?.hlsPath,
-                            thumbnailPath: cm.mediaAsset?.thumbnailPath,
+                            hlsPath: cm.mediaAsset?.hlsPath || null,
+                            thumbnailPath: cm.mediaAsset?.thumbnailPath || null,
                             durationSeconds: cm.mediaAsset?.durationSeconds || matchRec?.durationSeconds || 0,
                             participantsCount: 0,
                             status: "Ready",
                             createdAt: cm.createdAt,
-                            scheduledStart: cm.sessionScheduledStart || undefined,
+                            scheduledStart: cm.sessionScheduledStart || null,
                             type: cm.type === 'Video' || cm.mediaAsset?.hlsPath ? 'Video' : 'Recording',
                             videoUrl: matchSession?.videoUrl || null,
                             mediaAssetId: cm.mediaAssetId || matchRec?.mediaAssetId || null
@@ -268,7 +268,7 @@ export default function WatchPage() {
                 </div>
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="text-white/40 hover:text-white/80 transition-colors p-1 md:hidden"
+                    className="text-white/40 hover:text-white/80 transition-colors p-1 lg:hidden"
                     title="İçerik panelini aç/kapa"
                 >
                     <List size={16} />
@@ -378,8 +378,8 @@ export default function WatchPage() {
                     </div>
                 </div>
 
-                {/* ── Sidebar (responsive) ── */}
-                <div className={`bg-[#12121A] border-l border-white/5 flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-80 max-md:fixed max-md:inset-y-12 max-md:right-0 max-md:z-40 max-md:w-72 max-md:shadow-2xl' : 'w-0 overflow-hidden border-l-0'}`}>
+                {/* ── Sidebar (responsive bottom sheet on mobile) ── */}
+                <div className={`bg-[#12121A] border-l border-white/5 flex flex-col shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-80 max-lg:fixed max-lg:bottom-0 max-lg:left-0 max-lg:right-0 max-lg:z-50 max-lg:w-full max-lg:h-[60vh] max-lg:rounded-t-[2rem] max-lg:border-t max-lg:border-white/10 max-lg:translate-y-0 max-lg:shadow-[0_-10px_30px_rgba(0,0,0,0.5)]' : 'w-0 overflow-hidden border-l-0 max-lg:fixed max-lg:bottom-0 max-lg:left-0 max-lg:right-0 max-lg:z-50 max-lg:w-full max-lg:h-[60vh] max-lg:translate-y-full'}`}>
                     {/* Sidebar Tabs */}
                     <div className="flex border-b border-white/5">
                         <button
@@ -519,7 +519,7 @@ export default function WatchPage() {
                 {/* Mobile sidebar backdrop */}
                 {sidebarOpen && (
                     <div
-                        className="fixed inset-0 bg-black/50 z-30 md:hidden"
+                        className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm"
                         onClick={() => setSidebarOpen(false)}
                     />
                 )}

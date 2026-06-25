@@ -11,13 +11,46 @@ import { useCapacitorPush } from "@/hooks/useCapacitorPush";
 import { useDeepLink } from "@/hooks/useDeepLink";
 import { useStudentHub } from "@/hooks/useStudentHub";
 import { useToast } from "@/components/ToastProvider";
+import { Bell } from "lucide-react";
+import { notificationApi } from "@/lib/api";
+import NotificationsModal from "@/components/NotificationsModal";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, token, currentTenantId: tenantId } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotifications, setShowNotifications] = useState(false);
     const { showToast } = useToast();
+
+    useEffect(() => {
+        if (!token || !tenantId) return;
+        notificationApi.unreadCount(token, tenantId)
+            .then(setUnreadCount)
+            .catch(() => {});
+    }, [token, tenantId]);
+
+    const getPageTitle = (path: string) => {
+        if (!path) return "ÖĞRENCİ PORTALI";
+        if (path === "/dashboard") return "ANA SAYFA";
+        if (path.startsWith("/dashboard/courses")) {
+            if (path.includes("/watch/")) return "DERS İZLE";
+            return "DERSLERİM";
+        }
+        if (path.startsWith("/dashboard/live")) return "CANLI DERSLER";
+        if (path.startsWith("/dashboard/calendar")) return "TAKVİM";
+        if (path.startsWith("/dashboard/assignments")) return "ÖDEVLERİM";
+        if (path.startsWith("/dashboard/exams")) return "SINAVLARIM";
+        if (path.startsWith("/dashboard/notes")) return "NOTLARIM";
+        if (path.startsWith("/dashboard/attendance")) return "DEVAM TAKİBİM";
+        if (path.startsWith("/dashboard/podcast")) return "PODCAST";
+        if (path.startsWith("/dashboard/questions")) return "SORU SOR";
+        if (path.startsWith("/dashboard/support")) return "TEKNİK DESTEK";
+        if (path.startsWith("/dashboard/profile")) return "PROFİL";
+        if (path.startsWith("/dashboard/notifications")) return "BİLDİRİMLER";
+        return "ÖĞRENCİ PORTALI";
+    };
 
     // Initialize push notifications on native platforms
     useCapacitorPush();
@@ -131,19 +164,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <div className="min-h-screen bg-[#f8fafc]">
-            {/* Mobile hamburger button */}
-            <button
-                onClick={() => setSidebarOpen(true)}
-                className="md:hidden fixed top-4 left-4 z-[60] w-10 h-10 rounded-xl bg-[#0A1931] border border-[#1B3B6F]/30 flex items-center justify-center shadow-lg"
-                style={{
-                    display: sidebarOpen ? 'none' : undefined,
-                    top: 'calc(16px + env(safe-area-inset-top, 0px))',
-                }}
-            >
-                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-5 h-5">
-                    <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
+            {/* Mobile Header Bar */}
+            <header className="mobile-header md:hidden">
+                <button
+                    onClick={() => setSidebarOpen(true)}
+                    className="w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] flex items-center justify-center text-[#0A1931] shadow-sm active:scale-95 transition-all"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                        <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                
+                <h1 className="text-sm font-bold text-[#0A1931] tracking-wider truncate max-w-[60%]">
+                    {getPageTitle(pathname)}
+                </h1>
+                
+                <button
+                    onClick={() => setShowNotifications(true)}
+                    className="relative w-10 h-10 rounded-xl bg-white border border-[#E2E8F0] flex items-center justify-center text-[#A0AEC0] active:scale-95 transition-all"
+                    title="Bildirimler"
+                >
+                    <Bell size={18} className="text-[#0A1931]" />
+                    {unreadCount > 0 && (
+                        <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border border-white shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" />
+                    )}
+                </button>
+            </header>
 
             {/* Mobile overlay */}
             {sidebarOpen && (
@@ -170,6 +216,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Mobile bottom tab bar */}
             <MobileTabBar />
+
+            {/* Notifications Modal */}
+            {showNotifications && (
+                <NotificationsModal 
+                    onClose={() => setShowNotifications(false)} 
+                    onUnreadCountUpdate={setUnreadCount}
+                />
+            )}
         </div>
     );
 }

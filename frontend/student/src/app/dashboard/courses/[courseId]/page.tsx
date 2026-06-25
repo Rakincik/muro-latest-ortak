@@ -153,7 +153,7 @@ export default function CourseDetailPage() {
                 // Map CourseMediaDto to RecordingDto for the player and sidebar
                 const mappedRecordings: RecordingDto[] = readyCourseMedias.map((cm: CourseMediaDto) => {
                     const matchRec = typedRecs.find(r => r.sessionId === cm.sessionId);
-                    const matchSession = sess.find(s => s.id === cm.sessionId);
+                    const matchSession = sess.find((s: any) => s.id === cm.sessionId);
                     return {
                         id: cm.id, // Using CourseMedia ID as the unique key
                         sessionId: cm.sessionId || cm.id,
@@ -161,13 +161,13 @@ export default function CourseDetailPage() {
                         courseId: cm.courseId,
                         courseTitle: courseData?.title || '',
                         playbackUrl: matchRec?.playbackUrl || '', // Get from recordings!
-                        hlsPath: cm.mediaAsset?.hlsPath,
-                        thumbnailPath: cm.mediaAsset?.thumbnailPath,
+                        hlsPath: cm.mediaAsset?.hlsPath || null,
+                        thumbnailPath: cm.mediaAsset?.thumbnailPath || null,
                         durationSeconds: cm.mediaAsset?.durationSeconds || matchRec?.durationSeconds || 0,
                         participantsCount: 0,
                         status: "Ready", // Assume ready if it's in course medias
                         createdAt: cm.createdAt,
-                        scheduledStart: cm.sessionScheduledStart || undefined,
+                        scheduledStart: cm.sessionScheduledStart || null,
                         type: cm.examId ? 'Exam' : (cm.type === 'Video' || cm.mediaAsset?.hlsPath ? 'Video' : 'Recording'),
                         examId: cm.examId || undefined,
                         videoUrl: matchSession?.videoUrl || null,

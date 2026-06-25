@@ -22,11 +22,11 @@ export default function AttendancePage() {
 
     return (
         <div className="max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold text-[#0A1931] mb-2">📅 Devam Takibim</h1>
-            <p className="text-[#A9A9A9] text-sm mb-8">Ders katılım geçmişin</p>
+            <h1 className="text-2xl font-bold text-[#0A1931] mb-2 hidden md:block">📅 Devam Takibim</h1>
+            <p className="text-[#A9A9A9] text-sm mb-8 hidden md:block">Ders katılım geçmişin</p>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-3 gap-4 mb-8 pt-4 md:pt-0">
                 <div className="stat-card text-center">
                     <p className="text-3xl font-bold gradient-text">{loading ? "..." : records.length}</p>
                     <p className="text-[#A9A9A9] text-xs mt-1">Toplam Ders</p>
@@ -59,7 +59,7 @@ export default function AttendancePage() {
                 </div>
             )}
 
-            {/* Table */}
+            {/* Table or Cards */}
             {loading ? (
                 <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
@@ -72,39 +72,67 @@ export default function AttendancePage() {
                     <p className="text-[#A0AEC0]">Henüz kayıtlı ders katılımın yok.</p>
                 </div>
             ) : (
-                <div className="glass-card overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-[#1B3B6F]/20">
-                                <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Ders</th>
-                                <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Kurs</th>
-                                <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Giriş</th>
-                                <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Süre</th>
-                                <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Durum</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {records.map((r) => (
-                                <tr key={r.sessionId} className="border-b border-[#1B3B6F]/20 hover:bg-white/2 transition-colors">
-                                    <td className="px-5 py-3 text-[#0A1931] text-xs font-medium">{r.sessionTitle}</td>
-                                    <td className="px-5 py-3 text-[#A9A9A9] text-xs">{r.courseTitle}</td>
-                                    <td className="px-5 py-3 text-[#A9A9A9] text-xs">
-                                        {new Date(r.joinedAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                    </td>
-                                    <td className="px-5 py-3 text-[#A0AEC0] text-xs">
-                                        {r.durationMinutes ? `${r.durationMinutes} dk` : "-"}
-                                    </td>
-                                    <td className="px-5 py-3">
-                                        {r.durationMinutes && r.durationMinutes > 0
-                                            ? <span className="px-2 py-0.5 bg-green-500/15 text-green-400 rounded-full text-xs">✓ Katıldı</span>
-                                            : <span className="px-2 py-0.5 bg-red-500/15 text-red-400 rounded-full text-xs">✗ Katılmadı</span>
-                                        }
-                                    </td>
+                <>
+                    {/* Desktop Table View */}
+                    <div className="glass-card overflow-hidden hidden md:block">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-[#1B3B6F]/20">
+                                    <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Ders</th>
+                                    <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Kurs</th>
+                                    <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Giriş</th>
+                                    <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Süre</th>
+                                    <th className="text-left text-[#A9A9A9] font-medium px-5 py-3">Durum</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {records.map((r) => (
+                                    <tr key={r.sessionId} className="border-b border-[#1B3B6F]/20 hover:bg-white/2 transition-colors">
+                                        <td className="px-5 py-3 text-[#0A1931] text-xs font-medium">{r.sessionTitle}</td>
+                                        <td className="px-5 py-3 text-[#A9A9A9] text-xs">{r.courseTitle}</td>
+                                        <td className="px-5 py-3 text-[#A9A9A9] text-xs">
+                                            {new Date(r.joinedAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                        </td>
+                                        <td className="px-5 py-3 text-[#A0AEC0] text-xs">
+                                            {r.durationMinutes ? `${r.durationMinutes} dk` : "-"}
+                                        </td>
+                                        <td className="px-5 py-3">
+                                            {r.durationMinutes && r.durationMinutes > 0
+                                                ? <span className="px-2 py-0.5 bg-green-500/15 text-green-400 rounded-full text-xs">✓ Katıldı</span>
+                                                : <span className="px-2 py-0.5 bg-red-500/15 text-red-400 rounded-full text-xs">✗ Katılmadı</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile Card List View */}
+                    <div className="flex flex-col gap-3 md:hidden">
+                        {records.map((r) => {
+                            const isAttended = r.durationMinutes && r.durationMinutes > 0;
+                            return (
+                                <div key={r.sessionId} className="glass-card p-4 flex flex-col gap-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-[#0A1931]">{r.sessionTitle}</h3>
+                                            <p className="text-xs text-[#A9A9A9] mt-0.5">{r.courseTitle}</p>
+                                        </div>
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 ${isAttended ? 'bg-green-500/15 text-green-500 border border-green-500/20' : 'bg-red-500/15 text-red-500 border border-red-500/20'}`}>
+                                            {isAttended ? "✓ Katıldı" : "✗ Katılmadı"}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="border-t border-[#E2E8F0] pt-2 flex items-center justify-between text-[11px] text-[#A9A9A9]">
+                                        <span>Giriş: {new Date(r.joinedAt).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                                        <span className="font-semibold text-[#0A1931]">Süre: {r.durationMinutes ? `${r.durationMinutes} dk` : "-"}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
     );
