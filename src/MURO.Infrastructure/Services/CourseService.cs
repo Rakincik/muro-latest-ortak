@@ -72,7 +72,7 @@ public class CourseService : ICourseService
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
                     c.CourseMedias.Count, c.CourseGroups.Count,
-                    c.Order, c.StartDate, c.CreatedAt,
+                    c.Order, c.StartDate, c.CreatedAt, c.UpdatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null))
                 .ToListAsync();
@@ -116,7 +116,7 @@ public class CourseService : ICourseService
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
                     c.CourseMedias.Count, c.CourseGroups.Count,
-                    c.Order, c.StartDate, c.CreatedAt,
+                    c.Order, c.StartDate, c.CreatedAt, c.UpdatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null))
                 .ToListAsync();
@@ -168,7 +168,7 @@ public class CourseService : ICourseService
 
             return new CourseDetailDto(
                 course.Id, course.Title, course.Description, course.ThumbnailUrl,
-                course.CourseType.ToString(), course.IsPublished, course.Order, course.StartDate, course.CreatedAt,
+                course.CourseType.ToString(), course.IsPublished, course.Order, course.StartDate, course.CreatedAt, course.UpdatedAt,
                 course.Sessions.Select(s => new SessionDto(
                     s.Id, s.Title, s.Description, s.Order, s.VideoUrl,
                     s.DurationMinutes, s.IsFree,
@@ -205,7 +205,7 @@ public class CourseService : ICourseService
         await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
-            course.CourseType.ToString(), course.IsPublished, 0, 0, course.Order, course.StartDate, course.CreatedAt, course.InstructorId, null);
+            course.CourseType.ToString(), course.IsPublished, 0, 0, course.Order, course.StartDate, course.CreatedAt, course.UpdatedAt, course.InstructorId, null);
     }
 
     public async Task<CourseListDto> UpdateCourseAsync(Guid courseId, UpdateCourseRequest request)
@@ -229,12 +229,13 @@ public class CourseService : ICourseService
         if (request.InstructorId != Guid.Empty && request.InstructorId != null) course.InstructorId = request.InstructorId;
         else if (request.InstructorId == Guid.Empty) course.InstructorId = null;
 
+        course.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
             course.CourseType.ToString(), course.IsPublished, course.CourseMedias.Count,
-            course.CourseGroups.Count, course.Order, course.StartDate, course.CreatedAt,
+            course.CourseGroups.Count, course.Order, course.StartDate, course.CreatedAt, course.UpdatedAt,
             course.InstructorId,
             course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null);
     }

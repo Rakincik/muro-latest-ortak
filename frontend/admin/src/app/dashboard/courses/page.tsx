@@ -62,7 +62,7 @@ interface CourseGroup { id: string; name: string; mode: string; }
 
 interface MappedCourse {
     id: string; title: string; description: string; type: string; thumbnailUrl: string | null;
-    sessionCount: number; isPublished: boolean; createdAt: string; color: string;
+    sessionCount: number; isPublished: boolean; createdAt: string; updatedAt: string | null; color: string;
     sessions: MappedSession[]; groups: CourseGroup[]; groupCount: number; order: number;
     instructorId: string | null; instructorName: string | null;
 }
@@ -104,7 +104,9 @@ const mapCourse = (c: CourseListDto, sessions: MappedSession[] = [], detail?: Co
     id: c.id, title: c.title, description: c.description ?? "",
     type: c.courseType ?? "Online", thumbnailUrl: c.thumbnailUrl ? getFileUrl(c.thumbnailUrl) : null,
     sessionCount: c.sessionCount, isPublished: c.isPublished,
-    createdAt: c.createdAt.split("T")[0], color: "#6366f1",
+    createdAt: c.createdAt.split("T")[0], 
+    updatedAt: c.updatedAt ? c.updatedAt.split("T")[0] : null,
+    color: "#6366f1",
     sessions, groups: detail?.groups?.map(g => ({ id: g.groupId, name: g.groupName, mode: g.mode })) ?? [],
     groupCount: c.groupCount ?? 0, order: c.order ?? 0,
     instructorId: c.instructorId ?? detail?.instructorId ?? null,
@@ -143,7 +145,7 @@ export default function CoursesPage() {
     const [viewMode, setViewMode] = useState<"grid" | "list">("list");
     const [vodModalOpen, setVodModalOpen] = useState(false);
     const [statusFilter, setStatusFilter] = useState("all");
-    const [sortBy, setSortBy] = useState<"name" | "date" | "sessions" | "status">("date");
+    const [sortBy, setSortBy] = useState<"name" | "date" | "sessions" | "status" | "updatedAt">("date");
     const [courseSortDesc, setCourseSortDesc] = useState(true);
     const [coursePage, setCoursePage] = useState(0);
     const [coursesPerPage, setCoursesPerPage] = useState(15);
@@ -432,7 +434,7 @@ export default function CoursesPage() {
         finally { setAttendanceLoading(false); }
     }, [token, tenantId]);
 
-    const handleSort = useCallback((col: "name" | "date" | "sessions" | "status") => {
+    const handleSort = useCallback((col: "name" | "date" | "sessions" | "status" | "updatedAt") => {
         if (sortBy === col) {
             setCourseSortDesc(prev => !prev);
         } else {
@@ -452,6 +454,11 @@ export default function CoursesPage() {
         else if (sortBy === "status") result = [...result].sort((a, b) => {
             const val = a.isPublished === b.isPublished ? 0 : a.isPublished ? -1 : 1;
             return courseSortDesc ? val : -val;
+        });
+        else if (sortBy === "updatedAt") result = [...result].sort((a, b) => {
+            const dateA = a.updatedAt || a.createdAt;
+            const dateB = b.updatedAt || b.createdAt;
+            return courseSortDesc ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
         });
         else result = [...result].sort((a, b) => courseSortDesc ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt));
         return result;
@@ -932,6 +939,7 @@ export default function CoursesPage() {
                         <button key="sessions" onClick={() => handleSort("sessions")} className="flex items-center justify-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-center uppercase">OTURUM <ArrowUpDown size={12} className={sortBy === "sessions" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
                         <button key="status" onClick={() => handleSort("status")} className="flex items-center justify-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-center uppercase">DURUM <ArrowUpDown size={12} className={sortBy === "status" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
                         <button key="date" onClick={() => handleSort("date")} className="flex items-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-left uppercase">OLUŞTURMA TARİHİ <ArrowUpDown size={12} className={sortBy === "date" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
+                        <button key="updatedAt" onClick={() => handleSort("updatedAt")} className="flex items-center gap-1.5 hover:text-[#1B3B6F] transition-colors w-full text-left uppercase">SON DÜZENLEME <ArrowUpDown size={12} className={sortBy === "updatedAt" ? "text-[#1B3B6F]" : "opacity-30"} /></button>,
                         <span key="actions" className="flex justify-end w-full uppercase">İŞLEM</span>
                     ]}
                     renderDesktopRow={co => (
@@ -951,6 +959,7 @@ export default function CoursesPage() {
                                 }
                             </td>
                             <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{co.createdAt}</td>
+                            <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{co.updatedAt || "—"}</td>
                             <td className="px-5 py-3 text-right">
                                 <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                     <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }}

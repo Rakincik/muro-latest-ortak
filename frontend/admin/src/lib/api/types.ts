@@ -9,6 +9,7 @@ export interface CourseListDto {
     groupCount: number;
     order: number;
     createdAt: string;
+    updatedAt?: string | null;
     instructorId?: string | null;
     instructorName?: string | null;
 }
@@ -38,6 +39,7 @@ export interface CourseDetailDto {
     isPublished: boolean;
     order: number;
     createdAt: string;
+    updatedAt?: string | null;
     sessions: SessionDto[];
     groups: { groupId: string; groupName: string; mode: string }[];
     instructorId?: string | null;

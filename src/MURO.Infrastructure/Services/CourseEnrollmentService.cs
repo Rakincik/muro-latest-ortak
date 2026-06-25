@@ -114,7 +114,7 @@ public class CourseEnrollmentService : ICourseEnrollmentService
             .Select(cs => new MURO.Application.DTOs.Courses.CourseListDto(
                 cs.Course.Id, cs.Course.Title, cs.Course.Description, cs.Course.ThumbnailUrl,
                 cs.Course.CourseType.ToString(), cs.Course.IsPublished, 0, 0,
-                cs.Course.Order, cs.Course.StartDate, cs.Course.CreatedAt,
+                cs.Course.Order, cs.Course.StartDate, cs.Course.CreatedAt, cs.Course.UpdatedAt,
                 cs.Course.InstructorId, null
             ))
             .ToListAsync();

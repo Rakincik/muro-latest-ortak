@@ -12,6 +12,7 @@ public record CourseListDto(
     int Order,
     DateTime? StartDate,
     DateTime CreatedAt,
+    DateTime? UpdatedAt,
     Guid? InstructorId,
     string? InstructorName
 );
@@ -26,6 +27,7 @@ public record CourseDetailDto(
     int Order,
     DateTime? StartDate,
     DateTime CreatedAt,
+    DateTime? UpdatedAt,
     List<SessionDto> Sessions,
     List<CourseGroupDto> Groups,
     Guid? InstructorId,

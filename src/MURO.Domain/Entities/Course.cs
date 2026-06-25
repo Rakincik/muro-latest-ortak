@@ -19,6 +19,7 @@ public class Course : ISoftDeletable
     public int Order { get; set; } = 0;
     public DateTime? StartDate { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation
     public User? Instructor { get; set; }
