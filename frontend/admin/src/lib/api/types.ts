@@ -626,6 +626,7 @@ export interface MediaFolderDto {
     createdAt: string;
     subFolderCount: number;
     mediaAssetCount: number;
+    path?: { id: string; name: string }[];
 }
 
 export interface CourseMediaDto {

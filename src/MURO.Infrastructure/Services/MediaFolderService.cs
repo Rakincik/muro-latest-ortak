@@ -17,8 +17,56 @@ public class MediaFolderService : IMediaFolderService
         _mediaService = mediaService;
     }
 
-    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null)
+    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null, string? search = null)
     {
+        if (!string.IsNullOrEmpty(search))
+        {
+            var searchLower = search.ToLower();
+            var matchedFolders = await _context.MediaFolders
+                .Where(f => f.Name.ToLower().Contains(searchLower))
+                .OrderBy(f => f.Name)
+                .Select(f => new {
+                    f.Id,
+                    f.Name,
+                    f.ParentFolderId,
+                    f.CreatedAt,
+                    SubFolderCount = f.SubFolders.Count,
+                    MediaAssetCount = f.MediaAssets.Count
+                })
+                .ToListAsync();
+
+            var allFoldersLookup = await _context.MediaFolders
+                .Select(f => new { f.Id, f.Name, f.ParentFolderId })
+                .ToDictionaryAsync(f => f.Id);
+
+            var result = new List<MediaFolderDto>();
+            foreach (var f in matchedFolders)
+            {
+                var pathList = new List<FolderMinDto>();
+                var currentId = f.ParentFolderId;
+                var visited = new HashSet<Guid>();
+                while (currentId.HasValue && allFoldersLookup.TryGetValue(currentId.Value, out var parent))
+                {
+                    if (!visited.Add(parent.Id)) break;
+                    pathList.Insert(0, new FolderMinDto(parent.Id, parent.Name));
+                    currentId = parent.ParentFolderId;
+                }
+                pathList.Add(new FolderMinDto(f.Id, f.Name));
+
+                result.Add(new MediaFolderDto(
+                    f.Id,
+                    f.Name,
+                    f.ParentFolderId,
+                    f.CreatedAt,
+                    f.SubFolderCount,
+                    f.MediaAssetCount,
+                    pathList
+                ));
+            }
+
+            return result;
+        }
+
         var folders = await _context.MediaFolders
             .Where(f => f.ParentFolderId == parentFolderId)
             .OrderBy(f => f.Name)
@@ -28,7 +76,8 @@ public class MediaFolderService : IMediaFolderService
                 f.ParentFolderId,
                 f.CreatedAt,
                 f.SubFolders.Count,
-                f.MediaAssets.Count
+                f.MediaAssets.Count,
+                null
             ))
             .ToListAsync();
 

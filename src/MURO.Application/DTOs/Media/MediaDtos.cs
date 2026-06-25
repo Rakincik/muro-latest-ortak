@@ -17,9 +17,11 @@ public record UpdateMediaAssetRequest(
 
 // ─── Virtual Folders ────────────────────────────────────────────────────────
 
+public record FolderMinDto(Guid Id, string Name);
+
 public record MediaFolderDto(
     Guid Id, string Name, Guid? ParentFolderId, DateTime CreatedAt,
-    int SubFolderCount, int MediaAssetCount
+    int SubFolderCount, int MediaAssetCount, System.Collections.Generic.List<FolderMinDto>? Path = null
 );
 
 public record CreateMediaFolderRequest(string Name, Guid? ParentFolderId);

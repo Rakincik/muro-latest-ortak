@@ -2,10 +2,18 @@ import { api as fetchApi } from './core';
 import type { MediaFolderDto, MediaAssetDto, CourseMediaDto } from './types';
 
 // --- Media Folders ---
-export const getFolders = async (parentFolderId?: string): Promise<MediaFolderDto[]> => {
+export const getFolders = async (parentFolderId?: string, search?: string): Promise<MediaFolderDto[]> => {
     let url = '/media-folders';
+    const params = new URLSearchParams();
     if (parentFolderId) {
-        url += `?parentFolderId=${parentFolderId}`;
+        params.append('parentFolderId', parentFolderId);
+    }
+    if (search) {
+        params.append('search', search);
+    }
+    const queryString = params.toString();
+    if (queryString) {
+        url += `?${queryString}`;
     }
     return fetchApi(url);
 };
@@ -39,7 +47,7 @@ export const getAssets = async (folderId?: string): Promise<MediaAssetDto[]> => 
     if (folderId) {
         url += `&folderId=${folderId}`;
     }
-    const res = await fetchApi(url);
+    const res = await fetchApi(url) as any;
     return res.items || [];
 };
 
