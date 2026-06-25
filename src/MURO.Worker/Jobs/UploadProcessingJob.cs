@@ -158,10 +158,12 @@ public class UploadProcessingJob : BackgroundService
             var uri = new Uri(asset.FilePath);
             var fileName = Path.GetFileName(uri.LocalPath);
             localMp4Path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", fileName);
-            _logger.LogInformation("[{Pipeline}] Lokal dosya: {Path}", pipeline, localMp4Path);
+            _logger.LogInformation("[{Pipeline}] Lokal dosya kontrol ediliyor: {Path}", pipeline, localMp4Path);
         }
-        else if (asset.FilePath!.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                 asset.FilePath!.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+
+        if (!File.Exists(localMp4Path) &&
+            (asset.FilePath!.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+             asset.FilePath!.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
         {
             _logger.LogInformation("[{Pipeline}] Video indiriliyor: {Url}", pipeline, asset.FilePath);
             var client = httpFactory.CreateClient("bbb-download");
