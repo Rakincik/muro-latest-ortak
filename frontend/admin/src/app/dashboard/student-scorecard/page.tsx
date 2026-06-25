@@ -77,12 +77,12 @@ function ScorecardPanel({ user, classAvg, sessions, onClose }: {
     const [loadingHistory, setLoadingHistory] = useState(false);
 
     useEffect(() => {
-        if (activeTab === "history" && !history && !loadingHistory) {
+        if (activeTab === "history" && !history && !loadingHistory && token && tenantId) {
             setLoadingHistory(true);
             analyticsAdminApi.studentAcademicHistory(token, tenantId, user.id)
                 .then(setHistory).catch(console.error).finally(() => setLoadingHistory(false));
         }
-    }, [activeTab, token, tenantId, user.id]);
+    }, [activeTab, token, tenantId, user.id, history, loadingHistory]);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -314,6 +314,13 @@ export default function StudentScorecardPage() {
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<UserDto | null>(null);
     const [sortBy, setSortBy] = useState<"name" | "attendance" | "video" | "exam">("name");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(15);
+
+    // Reset page on search or sort change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, sortBy]);
 
     // Load users + sessions
     useEffect(() => {
@@ -326,22 +333,6 @@ export default function StudentScorecardPage() {
             const students = u.filter(x => x.role === "Student" || x.role === "student");
             setUsers(students);
             setSessions(sess);
-
-            // Load scorecards for all students
-            if (students.length > 0) {
-                setLoadingCards(true);
-                Promise.all(
-                    students.slice(0, 50).map(s =>
-                        analyticsAdminApi.studentScorecard(token, tenantId, s.id)
-                            .then(card => ({ userId: s.id, card }))
-                            .catch(() => null)
-                    )
-                ).then(results => {
-                    const map = new Map<string, StudentScorecardDto>();
-                    results.forEach(r => { if (r) map.set(r.userId, r.card); });
-                    setScorecards(map);
-                }).finally(() => setLoadingCards(false));
-            }
         }).catch(console.error).finally(() => setLoading(false));
     }, [token, tenantId]);
 
@@ -374,8 +365,8 @@ export default function StudentScorecardPage() {
     // Filter + sort
     const filtered = useMemo(() => {
         let list = users.filter(u => !search ||
-            `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
-            u.email.toLowerCase().includes(search.toLowerCase()));
+            `${u.firstName} ${u.lastName}`.toLocaleLowerCase("tr").includes(search.toLocaleLowerCase("tr")) ||
+            u.email.toLocaleLowerCase("tr").includes(search.toLocaleLowerCase("tr")));
 
         if (sortBy !== "name") {
             list = [...list].sort((a, b) => {
@@ -392,6 +383,38 @@ export default function StudentScorecardPage() {
         }
         return list;
     }, [users, search, sortBy, scorecards]);
+
+    // Paginated list
+    const paginated = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filtered.slice(startIndex, startIndex + itemsPerPage);
+    }, [filtered, currentPage, itemsPerPage]);
+
+    // Load scorecards for visible (paginated) students
+    useEffect(() => {
+        if (!token || !tenantId || paginated.length === 0) return;
+
+        // Check if there are any students in the current page whose scorecard isn't loaded yet
+        const missingIds = paginated.map(u => u.id).filter(id => !scorecards.has(id));
+        if (missingIds.length === 0) return;
+
+        setLoadingCards(true);
+        Promise.all(
+            missingIds.map(id =>
+                analyticsAdminApi.studentScorecard(token, tenantId, id)
+                    .then(card => ({ userId: id, card }))
+                    .catch(() => null)
+            )
+        ).then(results => {
+            setScorecards(prev => {
+                const next = new Map(prev);
+                results.forEach(r => {
+                    if (r) next.set(r.userId, r.card);
+                });
+                return next;
+            });
+        }).catch(console.error).finally(() => setLoadingCards(false));
+    }, [token, tenantId, paginated, scorecards]);
 
     // CSV export
     const exportCSV = useCallback(() => {
@@ -490,7 +513,7 @@ export default function StudentScorecardPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((u, idx) => {
+                            {paginated.map((u, idx) => {
                                 const c = scorecards.get(u.id);
                                 const lastSession = sessions.filter(s => s.userId === u.id).sort((a, b) => new Date(b.loginAt).getTime() - new Date(a.loginAt).getTime())[0];
                                 return (
@@ -550,6 +573,98 @@ export default function StudentScorecardPage() {
                     </table>
                 )}
             </div>
+
+            {/* Pagination Controls */}
+            {filtered.length > 0 && (
+                <div className="bg-white rounded-xl border border-[#E2E8F0]/60 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[#A0AEC0] font-medium">Sayfa başına göster:</span>
+                        <select
+                            value={itemsPerPage}
+                            onChange={(e) => {
+                                setItemsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl text-xs font-bold text-[#0A1931] px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10"
+                        >
+                            {[10, 15, 25, 50].map(size => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
+                        <span className="text-xs text-[#A0AEC0]">
+                            {`${Math.min((currentPage - 1) * itemsPerPage + 1, filtered.length)}-${Math.min(currentPage * itemsPerPage, filtered.length)} / ${filtered.length} kayıt`}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[#1B3B6F] hover:bg-[#E2E8F0]/20 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        
+                        {(() => {
+                            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+                            const pages: (number | string)[] = [];
+                            const maxVisible = 5;
+                            
+                            if (totalPages <= maxVisible) {
+                                for (let i = 1; i <= totalPages; i++) pages.push(i);
+                            } else {
+                                pages.push(1);
+                                if (currentPage > 3) {
+                                    pages.push("...");
+                                }
+                                
+                                const start = Math.max(2, currentPage - 1);
+                                const end = Math.min(totalPages - 1, currentPage + 1);
+                                
+                                for (let i = start; i <= end; i++) {
+                                    pages.push(i);
+                                }
+                                
+                                if (currentPage < totalPages - 2) {
+                                    pages.push("...");
+                                }
+                                pages.push(totalPages);
+                            }
+
+                            return pages.map((pageNum, idx) => {
+                                if (pageNum === "...") {
+                                    return <span key={`ell-${idx}`} className="px-2 text-xs text-[#A0AEC0]">...</span>;
+                                }
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setCurrentPage(pageNum as number)}
+                                        className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
+                                            currentPage === pageNum
+                                                ? "bg-[#1B3B6F] text-white shadow-md shadow-[#1B3B6F]/20"
+                                                : "bg-white border border-[#E2E8F0] text-[#0A1931] hover:bg-[#E2E8F0]/20"
+                                        }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            });
+                        })()}
+
+                        <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filtered.length / itemsPerPage)))}
+                            disabled={currentPage === Math.ceil(filtered.length / itemsPerPage)}
+                            className="p-2 rounded-xl bg-white border border-[#E2E8F0] text-[#1B3B6F] hover:bg-[#E2E8F0]/20 disabled:opacity-50 disabled:pointer-events-none transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {selected && <ScorecardPanel user={selected} classAvg={classAvg} sessions={sessions} onClose={() => setSelected(null)} />}
         </div>
