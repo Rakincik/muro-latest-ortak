@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { courseApi, getFileUrl, type CourseDto } from "@/lib/api";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutGrid, List, Layers, Clock, Activity, CheckCircle2 } from "lucide-react";
+import { LayoutGrid, List, Layers, Clock, Activity, CheckCircle2, ArrowUpDown } from "lucide-react";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
 export default function CoursesPage() {
@@ -14,6 +14,7 @@ export default function CoursesPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
+    const [sortBy, setSortBy] = useState<"date" | "name" | "sessions" | "completion">("date");
     const [currentPage, setCurrentPage] = useState(1);
     const [viewMode, setViewMode] = useState<"grid" | "list">("list");
     const pageSize = 12;
@@ -26,25 +27,37 @@ export default function CoursesPage() {
             .finally(() => setLoading(false));
     }, [token, tenantId]);
 
-    // Arama veya filtre değiştiğinde ilk sayfaya dön
+    // Arama, filtre veya sıralama değiştiğinde ilk sayfaya dön
     useEffect(() => {
         setCurrentPage(1);
-    }, [search, statusFilter]);
+    }, [search, statusFilter, sortBy]);
 
-    const filtered = courses.filter(c => {
-        const matchSearch = c.title.toLowerCase().includes(search.toLowerCase());
-        let matchStatus = true;
-        const comp = c.completionPercentage ?? 0;
-        
-        if (statusFilter === "completed") matchStatus = comp >= 100;
-        else if (statusFilter === "in_progress") matchStatus = comp > 0 && comp < 100;
-        else if (statusFilter === "not_started") matchStatus = comp === 0;
-        
-        return matchSearch && matchStatus;
-    });
+    const filteredAndSorted = useMemo(() => {
+        const result = courses.filter(c => {
+            const matchSearch = c.title.toLocaleLowerCase('tr').includes(search.toLocaleLowerCase('tr'));
+            let matchStatus = true;
+            const comp = c.completionPercentage ?? 0;
+            
+            if (statusFilter === "completed") matchStatus = comp >= 100;
+            else if (statusFilter === "in_progress") matchStatus = comp > 0 && comp < 100;
+            else if (statusFilter === "not_started") matchStatus = comp === 0;
+            
+            return matchSearch && matchStatus;
+        });
 
-    const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-    const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+        if (sortBy === "name") {
+            return [...result].sort((a, b) => a.title.localeCompare(b.title, 'tr'));
+        } else if (sortBy === "sessions") {
+            return [...result].sort((a, b) => b.sessionCount - a.sessionCount);
+        } else if (sortBy === "completion") {
+            return [...result].sort((a, b) => (b.completionPercentage ?? 0) - (a.completionPercentage ?? 0));
+        }
+
+        return result;
+    }, [courses, search, statusFilter, sortBy]);
+
+    const totalPages = Math.ceil(filteredAndSorted.length / pageSize) || 1;
+    const paginated = filteredAndSorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     return (
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8">
@@ -54,7 +67,7 @@ export default function CoursesPage() {
                     <h1 className="text-2xl font-bold text-[#0A1931]">Derslerim</h1>
                     <p className="text-[#A9A9A9] text-sm mt-1">{courses.length} kurs kayıtlı</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center flex-wrap gap-2">
                     <input
                         type="text"
                         placeholder="Kurs ara..."
@@ -71,6 +84,17 @@ export default function CoursesPage() {
                             { label: "Başlamadıklarım", value: "not_started", icon: Clock },
                             { label: "Devam Edenler", value: "in_progress", icon: Activity },
                             { label: "Tamamlananlar", value: "completed", icon: CheckCircle2 }
+                        ]}
+                    />
+                    <CustomSelect
+                        value={sortBy}
+                        onChange={(val) => setSortBy(val as any)}
+                        icon={ArrowUpDown}
+                        options={[
+                            { label: "Tarihe Göre", value: "date", icon: Clock },
+                            { label: "İsme Göre", value: "name", icon: ArrowUpDown },
+                            { label: "Oturum Sayısı", value: "sessions", icon: Layers },
+                            { label: "Duruma Göre", value: "completion", icon: CheckCircle2 }
                         ]}
                     />
                     <div className="flex bg-[#E2E8F0]/30 p-1 rounded-xl">
@@ -100,7 +124,7 @@ export default function CoursesPage() {
                         </div>
                     ))}
                 </div>
-            ) : filtered.length === 0 ? (
+            ) : filteredAndSorted.length === 0 ? (
                 <div className="text-center py-20">
                     <p className="text-5xl mb-4">📭</p>
                     <p className="text-[#A0AEC0] text-lg font-medium">Kurs bulunamadı</p>
