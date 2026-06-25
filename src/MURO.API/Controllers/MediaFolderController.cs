@@ -60,4 +60,11 @@ public class MediaFolderController : ControllerBase
             return BadRequest(new { error = "NON_EMPTY_FOLDER" });
         }
     }
+
+    [HttpGet("{id}/courses")]
+    public async Task<IActionResult> GetFolderCourses(Guid id)
+    {
+        var courses = await _folderService.GetAssignedCourseIdsAsync(id);
+        return Ok(courses);
+    }
 }

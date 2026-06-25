@@ -36,9 +36,18 @@ export function CourseSelectorModal({ onClose, onSelect, initialSelectedCourseId
         }
     };
 
-    const filteredCourses = courses.filter(c => 
-        c.title.toLocaleLowerCase('tr').includes(searchQuery.toLocaleLowerCase('tr'))
-    );
+    const initialSelectedSet = React.useMemo(() => new Set(initialSelectedCourseIds), [initialSelectedCourseIds]);
+
+    const filteredCourses = courses
+        .filter(c => c.title.toLocaleLowerCase('tr').includes(searchQuery.toLocaleLowerCase('tr')))
+        .sort((a, b) => {
+            const aSelected = initialSelectedSet.has(a.id) ? 1 : 0;
+            const bSelected = initialSelectedSet.has(b.id) ? 1 : 0;
+            if (aSelected !== bSelected) {
+                return bSelected - aSelected;
+            }
+            return a.title.localeCompare(b.title, 'tr');
+        });
 
     const handleConfirm = () => {
         // Find which courses were added and which were removed

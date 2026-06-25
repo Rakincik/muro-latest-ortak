@@ -197,4 +197,20 @@ public class MediaFolderService : IMediaFolderService
         _context.MediaFolders.Remove(folder);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<List<Guid>> GetAssignedCourseIdsAsync(Guid folderId)
+    {
+        var assetIds = await _context.MediaAssets
+            .Where(ma => ma.FolderId == folderId)
+            .Select(ma => ma.Id)
+            .ToListAsync();
+
+        if (!assetIds.Any()) return new List<Guid>();
+
+        return await _context.CourseMedias
+            .Where(cm => cm.MediaAssetId.HasValue && assetIds.Contains(cm.MediaAssetId.Value))
+            .Select(cm => cm.CourseId)
+            .Distinct()
+            .ToListAsync();
+    }
 }

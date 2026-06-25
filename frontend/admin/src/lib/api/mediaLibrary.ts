@@ -42,6 +42,10 @@ export const deleteFolder = async (id: string, force: boolean = false): Promise<
     });
 };
 
+export const getFolderCourses = async (id: string): Promise<string[]> => {
+    return fetchApi(`/media-folders/${id}/courses`);
+};
+
 export const getAssets = async (folderId?: string): Promise<MediaAssetDto[]> => {
     let url = '/media/assets?pageSize=100';
     if (folderId) {
@@ -136,6 +140,7 @@ export const mediaLibraryApi = {
     createFolder,
     updateFolder,
     deleteFolder,
+    getFolderCourses,
     getAssets,
     getAsset,
     createAsset,

@@ -172,8 +172,10 @@ export default function MediaLibraryPage() {
             setIsRenameModalOpen(true);
         } else if (action === 'assign' && folder) {
             setCourseAssignTarget({ id: folder.id, type: 'folder' });
-            setInitialCourseIds([]);
-            setIsCourseModalOpen(true);
+            mediaLibraryApi.getFolderCourses(folder.id)
+                .then(courseIds => setInitialCourseIds(courseIds))
+                .catch(() => setInitialCourseIds([]))
+                .finally(() => setIsCourseModalOpen(true));
         } else if (action === 'delete' && folder) {
             handleRemoveFolder(folder);
         }
