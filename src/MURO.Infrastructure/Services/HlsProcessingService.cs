@@ -87,7 +87,7 @@ public class HlsProcessingService : IHlsProcessingService
             $"-y -ss 30 -i \"{sourceMp4Path}\" -vframes 1 -q:v 2 \"{thumbPath}\"",
             null, null, ct);
 
-        if (!thumbResult && !File.Exists(thumbPath))
+        if (!thumbResult || !File.Exists(thumbPath))
         {
             // 30. saniye yok ise ilk kareden al
             await RunFfmpegAsync(
