@@ -4,7 +4,7 @@ namespace MURO.API.Middleware;
 
 /// <summary>
 /// 3 katmanlı rate limiting:
-/// 1. Global → 300 istek/dakika/IP (DDoS koruması)
+/// 1. Global → 350 istek/dakika/IP (DDoS koruması)
 /// 2. Auth   → 10 istek/dakika/IP (brute-force koruması)
 /// 3. API    → 200 istek/dakika/kullanıcı (abuse koruması)
 /// 
@@ -38,13 +38,13 @@ public static class RateLimitingConfig
                 }, ct);
             };
 
-            // ── 1. GLOBAL: Her IP için 300 istek/dakika ─────────────────────
+            // ── 1. GLOBAL: Her IP için 350 istek/dakika ─────────────────────
             options.AddPolicy(GlobalPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: GetClientIp(context),
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 300,
+                        PermitLimit = 350,
                         Window = TimeSpan.FromMinutes(1),
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         QueueLimit = 0
