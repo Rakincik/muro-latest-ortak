@@ -47,7 +47,7 @@ export const getFolderCourses = async (id: string): Promise<string[]> => {
 };
 
 export const getAssets = async (folderId?: string): Promise<MediaAssetDto[]> => {
-    let url = '/media/assets?pageSize=100';
+    let url = '/media/assets?pageSize=10000';
     if (folderId) {
         url += `&folderId=${folderId}`;
     }
