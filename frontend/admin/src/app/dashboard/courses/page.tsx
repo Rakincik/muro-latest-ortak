@@ -514,54 +514,61 @@ export default function CoursesPage() {
                         <div className="absolute inset-0 bg-gradient-to-br from-[#1B3B6F] via-violet-600 to-blue-700" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/90 via-transparent to-white/5" />
-                    <div className="relative p-6 sm:p-8 md:p-10 flex flex-col md:flex-row items-center gap-5 sm:gap-6 md:gap-8">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-2xl md:rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
-                            {c.thumbnailUrl ? (
-                                <img src={c.thumbnailUrl} alt="Cover" className="w-full h-full object-cover" />
-                            ) : (
-                                <BookOpen className="text-white w-8 h-8 md:w-10 md:h-10" />
-                            )}
-                        </div>
-                        <div className="flex-1 text-center md:text-left">
-                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2 sm:mb-3">
-                                {c.isPublished
-                                    ? <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 md:px-3 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/20">✓ Yayında</span>
-                                    : <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 md:px-3 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/20">Taslak</span>
-                                }
+                    <div className="relative p-4 sm:p-8 md:p-10 flex flex-col md:flex-row items-stretch md:items-center gap-4 sm:gap-6 md:gap-8">
+                        {/* Header: Icon + Title info */}
+                        <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto flex-1 text-left md:text-left">
+                            <div className="w-12 h-12 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl md:rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
+                                {c.thumbnailUrl ? (
+                                    <img src={c.thumbnailUrl} alt="Cover" className="w-full h-full object-cover" />
+                                ) : (
+                                    <BookOpen className="text-white w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" />
+                                )}
                             </div>
-                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight mb-1 sm:mb-2">{c.title}</h1>
-                            <p className="text-[11px] sm:text-sm font-medium text-white/60 max-w-xl leading-relaxed">{c.description}</p>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    {c.isPublished
+                                        ? <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 md:px-3 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/20">✓ Yayında</span>
+                                        : <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 md:px-3 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/20">Taslak</span>
+                                    }
+                                </div>
+                                <h1 className="text-lg sm:text-2xl md:text-4xl font-black text-white tracking-tight mb-0.5 truncate">{c.title}</h1>
+                                <p className="text-[10px] sm:text-sm font-medium text-white/60 max-w-xl line-clamp-1 md:line-clamp-none">{c.description}</p>
+                            </div>
                         </div>
-                        <div className="flex flex-col w-full md:w-auto gap-3 shrink-0">
-                            <div className="grid grid-cols-1 gap-3">
-                                <div className="p-3 md:p-4 rounded-xl md:rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 text-center min-w-[120px]">
-                                    <Users className="text-white/40 mx-auto mb-1 md:mb-2 w-4 h-4 md:w-5 md:h-5" />
-                                    <p className="text-lg md:text-xl font-black text-white tabular-nums">{c.groupCount}</p>
-                                    <p className="text-[8px] md:text-[9px] font-bold text-white/40 uppercase tracking-widest">Kayıtlı Grup</p>
+
+                        {/* Actions & Stats Row */}
+                        <div className="flex flex-row md:flex-col w-full md:w-auto gap-3 shrink-0 items-center md:items-stretch justify-between">
+                            <div className="p-2 sm:p-4 rounded-xl md:rounded-3xl bg-white/5 backdrop-blur-md border border-white/10 text-center flex md:flex-col items-center justify-center gap-2 md:gap-0 shrink-0">
+                                <Users className="text-white/40 w-4 h-4 md:w-5 md:h-5 md:mb-1.5" />
+                                <div className="text-left md:text-center">
+                                    <p className="text-sm md:text-xl font-black text-white leading-none mb-0.5">{c.groupCount}</p>
+                                    <p className="text-[8px] md:text-[9px] font-bold text-white/40 uppercase tracking-widest leading-none">Kayıtlı Grup</p>
                                 </div>
                             </div>
-                            {(() => {
-                                const liveSession = c.sessions.find(s => s.status === "live");
-                                return liveSession ? (
-                                    <div className="flex flex-col gap-2 w-full">
-                                        {canJoinLive && (
-                                            <button onClick={() => handleJoinSession(c.id, liveSession.id)} 
-                                                className="w-full px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-black bg-emerald-500 text-white rounded-xl md:rounded-[1.25rem] hover:bg-emerald-600 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 border border-emerald-400/30">
-                                                <Radio size={16} className="animate-pulse" /> DERSE KATIL
+                            <div className="flex-1 w-full md:w-auto">
+                                {(() => {
+                                    const liveSession = c.sessions.find(s => s.status === "live");
+                                    return liveSession ? (
+                                        <div className="flex flex-col gap-2 w-full">
+                                            {canJoinLive && (
+                                                <button onClick={() => handleJoinSession(c.id, liveSession.id)} 
+                                                    className="w-full px-3 py-2 sm:px-6 sm:py-4 text-xs md:text-sm font-black bg-emerald-500 text-white rounded-xl md:rounded-[1.25rem] hover:bg-emerald-600 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(16,185,129,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 border border-emerald-400/30 whitespace-nowrap">
+                                                    <Radio size={14} className="animate-pulse shrink-0" /> DERSE KATIL
+                                                </button>
+                                            )}
+                                            <button onClick={() => handleEndSession(c.id, liveSession.id)} 
+                                                className="w-full px-3 py-2 sm:px-6 sm:py-4 text-xs md:text-sm font-black bg-[#E50914] text-white rounded-xl md:rounded-[1.25rem] hover:bg-red-700 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(229,9,20,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 border border-red-500/30 whitespace-nowrap">
+                                                <StopCircle size={14} className="shrink-0" /> DERSİ SONLANDIR
                                             </button>
-                                        )}
-                                        <button onClick={() => handleEndSession(c.id, liveSession.id)} 
-                                            className="w-full px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-black bg-[#E50914] text-white rounded-xl md:rounded-[1.25rem] hover:bg-red-700 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(229,9,20,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 border border-red-500/30">
-                                            <StopCircle size={16} /> DERSİ SONLANDIR
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => setLiveStartModal({ courseId: c.id, courseName: c.title })} 
+                                            className="w-full px-3 py-3 sm:px-6 sm:py-4 text-xs md:text-sm font-black bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl md:rounded-[1.25rem] hover:from-red-600 hover:to-rose-700 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(239,68,68,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 animate-pulse-slow border border-red-400/30 whitespace-nowrap">
+                                            <Radio size={14} className="animate-pulse shrink-0" /> CANLI DERS BAŞLAT
                                         </button>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => setLiveStartModal({ courseId: c.id, courseName: c.title })} 
-                                        className="w-full px-4 py-3 md:px-6 md:py-4 text-xs md:text-sm font-black bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl md:rounded-[1.25rem] hover:from-red-600 hover:to-rose-700 transition-all shadow-lg md:shadow-[0_8px_25px_rgba(239,68,68,0.35)] flex items-center justify-center gap-2 md:gap-2.5 active:scale-95 animate-pulse-slow border border-red-400/30">
-                                        <Radio size={16} className="animate-pulse" /> CANLI DERS BAŞLAT
-                                    </button>
-                                );
-                            })()}
+                                    );
+                                })()}
+                            </div>
                         </div>
                     </div>
                 </div>
