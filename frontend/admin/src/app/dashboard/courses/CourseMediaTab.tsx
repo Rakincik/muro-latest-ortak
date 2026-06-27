@@ -249,9 +249,19 @@ export function CourseMediaTab({
         }
     };
 
+    const isReorderEnabled = filter === 'all' && pageSize === -1;
+
     const combinedMedias = useMemo(() => {
-        return [...medias];
-    }, [medias]);
+        const list = [...medias];
+        if (!isReorderEnabled) {
+            list.sort((a, b) => {
+                const titleA = a.type === "Exam" ? (a.examTitle || "") : a.type === "Session" ? (a.sessionTitle || "") : (a.mediaAsset?.title || "");
+                const titleB = b.type === "Exam" ? (b.examTitle || "") : b.type === "Session" ? (b.sessionTitle || "") : (b.mediaAsset?.title || "");
+                return titleA.localeCompare(titleB, "tr", { numeric: true, sensitivity: "base" });
+            });
+        }
+        return list;
+    }, [medias, isReorderEnabled]);
 
     const filteredMedias = combinedMedias.filter(media => {
         const isRecording = media.type === "Session" || !!recordings.find(r => r.mediaAssetId && r.mediaAssetId === media?.mediaAsset?.id);
@@ -262,7 +272,6 @@ export function CourseMediaTab({
 
     const totalPages = Math.ceil(filteredMedias.length / pageSize);
     const paginatedMedias = pageSize === -1 ? filteredMedias : filteredMedias.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-    const isReorderEnabled = filter === 'all' && pageSize === -1;
 
     // Reset to page 1 if filter or page size changes
     useEffect(() => {
