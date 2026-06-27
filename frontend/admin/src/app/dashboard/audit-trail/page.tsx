@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import {
     Shield, Search, ChevronLeft, ChevronRight,
     User, FileText, Trash2, Edit3, Plus, RefreshCw, Clock, Globe,
-    AlertTriangle, X, Activity, Eye, Lock, Smartphone, Monitor
+    AlertTriangle, X, Activity, Eye, Lock, Smartphone, Monitor,
+    ArrowRight
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { auditApi, securityApi } from "@/lib/api/audits";
@@ -37,6 +38,197 @@ const parseUserAgent = (ua?: string) => {
         browser: res.browser.name ? `${res.browser.name} ${res.browser.version || ""}` : "Bilinmiyor",
         device: res.device.type === "mobile" || res.device.type === "tablet" ? "Mobile" : "Desktop"
     };
+};
+
+// Çeviri ve Formatlama Yardımcıları
+const keyTranslations: Record<string, string> = {
+    LastPosition: "İzleme Noktası (Video)",
+    WatchedSeconds: "Toplam İzlenen Süre",
+    UpdatedAt: "İlerleme Zamanı",
+    CompletionPercentage: "Tamamlanma Oranı",
+    CompletedAt: "Tamamlanma Tarihi",
+    FirstName: "Ad",
+    LastName: "Soyad",
+    Email: "E-Posta",
+    Role: "Kullanıcı Rolü",
+    IsActive: "Hesap Durumu",
+    PhoneNumber: "Telefon Numarası",
+    Title: "Başlık",
+    Description: "Açıklama",
+    Price: "Fiyat",
+    IsPublished: "Yayın Durumu",
+    Name: "Adı / Başlığı",
+    Status: "Durum",
+    Subject: "Konu",
+    ExamType: "Sınav Tipi",
+    StartDate: "Başlangıç Tarihi",
+    Duration: "Süre",
+    MaxScore: "Maksimum Puan",
+    DeviceInfo: "Cihaz Bilgisi",
+    IpAddress: "IP Adresi",
+    LoginAt: "Giriş Zamanı",
+    UserAgent: "Tarayıcı Detayı",
+    UserId: "Kullanıcı ID",
+    CreatedAt: "Kayıt Tarihi",
+};
+
+const formatAuditValue = (key: string, value: any): string => {
+    if (value === null || value === undefined || value === "") return "Boş";
+    
+    const strVal = String(value).trim();
+
+    if (["LastPosition", "WatchedSeconds", "Duration"].includes(key)) {
+        const totalSeconds = parseInt(strVal, 10);
+        if (!isNaN(totalSeconds)) {
+            const hrs = Math.floor(totalSeconds / 3600);
+            const mins = Math.floor((totalSeconds % 3600) / 60);
+            const secs = totalSeconds % 60;
+            return `${hrs > 0 ? `${hrs}sa ` : ""}${mins > 0 ? `${mins}dk ` : ""}${secs}sn`;
+        }
+    }
+
+    if (key === "UserAgent") {
+        const parsedUA = parseUserAgent(strVal);
+        return `${parsedUA.os} - ${parsedUA.browser} (${parsedUA.device})`;
+    }
+
+    // Tarih formatlama
+    if (Date.parse(strVal) && (strVal.includes("-") || strVal.includes("/")) && strVal.length > 10) {
+        try {
+            return new Date(strVal).toLocaleString("tr-TR");
+        } catch (e) {
+            return strVal;
+        }
+    }
+
+    if (strVal.toLowerCase() === "true") return "Aktif / Evet";
+    if (strVal.toLowerCase() === "false") return "Pasif / Hayır";
+
+    return strVal;
+};
+
+const renderChangesGrid = (changes: Array<{ label: string; oldVal: string; newVal: string }>) => {
+    return (
+        <div className="mt-3 space-y-2">
+            {changes.map((change, idx) => {
+                const isCreate = change.oldVal === "-" || change.oldVal === "Boş" || change.oldVal === "";
+                const isDelete = change.newVal === "Boş" || change.newVal === "" || change.newVal === null;
+                
+                let indicatorColor = "bg-blue-500";
+                let newValueStyle = "bg-blue-50/50 text-blue-700 border-blue-100/50 font-bold";
+                
+                if (isCreate) {
+                    indicatorColor = "bg-emerald-500 animate-pulse";
+                    newValueStyle = "bg-emerald-50 text-emerald-700 border-emerald-100/50 font-bold";
+                } else if (isDelete) {
+                    indicatorColor = "bg-rose-500";
+                    newValueStyle = "bg-rose-50 text-rose-700 border-rose-100/50 line-through";
+                }
+
+                return (
+                    <div 
+                        key={idx} 
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-50/40 hover:bg-slate-50 border border-slate-100/70 rounded-xl transition-all duration-200 shadow-sm"
+                    >
+                        {/* Sol Taraf: Alan Etiketi */}
+                        <div className="flex items-center gap-2.5">
+                            <span className={`w-1.5 h-5 rounded-full ${indicatorColor} shrink-0`} />
+                            <span className="text-xs font-bold text-slate-800 tracking-tight">{change.label}</span>
+                        </div>
+
+                        {/* Sağ Taraf: Karşılaştırmalı Değerler */}
+                        <div className="flex items-center gap-2 text-[11px] font-mono shrink-0">
+                            {!isCreate && (
+                                <>
+                                    <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg border border-slate-200/40 max-w-[160px] truncate shadow-sm">
+                                        {change.oldVal}
+                                    </span>
+                                    <ArrowRight size={12} className="text-slate-400 shrink-0" />
+                                </>
+                            )}
+                            <span className={`px-2.5 py-1 rounded-lg border max-w-[160px] truncate shadow-sm ${newValueStyle}`}>
+                                {change.newVal}
+                            </span>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const RenderLogDetails = ({ details }: { details: string }) => {
+    if (!details) return null;
+
+    let parsed: any = null;
+    try {
+        if (details.trim().startsWith("{") || details.trim().startsWith("[")) {
+            parsed = JSON.parse(details);
+        }
+    } catch (e) {
+        // silent fail
+    }
+
+    // JSON formatındaki yeni kayıtlar
+    if (parsed && parsed.changes) {
+        const changesObj = parsed.changes;
+        const keys = Object.keys(changesObj);
+
+        if (keys.length === 0) {
+            return (
+                <div className="mt-2 text-xs text-slate-500 italic">
+                    (Detaylı alan değişikliği tespit edilmedi)
+                </div>
+            );
+        }
+
+        const changes = keys.map((key) => {
+            const change = changesObj[key];
+            return {
+                label: keyTranslations[key] || key,
+                oldVal: formatAuditValue(key, change.old),
+                newVal: formatAuditValue(key, change.new),
+            };
+        });
+
+        return renderChangesGrid(changes);
+    }
+
+    // Eski düz metin logları (Geriye dönük uyumluluk için regex ile ayrıştırma)
+    const lines = details.split("\n").map(line => line.trim());
+    const parsedChanges: Array<{ label: string; oldVal: string; newVal: string }> = [];
+
+    lines.forEach(line => {
+        const matchUpdate = line.match(/^-\s+([^:]+):\s+'(.*)'\s+➔\s+'(.*)'$/) || line.match(/^-\s+([^:]+):\s+(.+)\s+➔\s+(.+)$/);
+        const matchCreate = line.match(/^-\s+([^:]+):\s+'(.*)'$/) || line.match(/^-\s+([^:]+):\s+(.+)$/);
+
+        if (matchUpdate) {
+            const [, key, oldVal, newVal] = matchUpdate;
+            parsedChanges.push({
+                label: keyTranslations[key.trim()] || key.trim(),
+                oldVal: formatAuditValue(key.trim(), oldVal),
+                newVal: formatAuditValue(key.trim(), newVal),
+            });
+        } else if (matchCreate) {
+            const [, key, val] = matchCreate;
+            parsedChanges.push({
+                label: keyTranslations[key.trim()] || key.trim(),
+                oldVal: "-",
+                newVal: formatAuditValue(key.trim(), val),
+            });
+        }
+    });
+
+    if (parsedChanges.length > 0) {
+        return renderChangesGrid(parsedChanges);
+    }
+
+    // Basit düz metinler (Örn: "Tutar: 100 TL")
+    return (
+        <div className="mt-2 p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+            {details}
+        </div>
+    );
 };
 
 export default function AuditTrailPage() {
@@ -381,9 +573,7 @@ export default function AuditTrailPage() {
                                                                             </div>
                                                                             {log.entityName && <p className="text-sm font-bold text-[#0A1931] mb-1.5">{log.entityName}</p>}
                                                                             {log.details && (
-                                                                                <div className="mt-2 p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
-                                                                                    {log.details}
-                                                                                </div>
+                                                                                <RenderLogDetails details={log.details} />
                                                                             )}
                                                                             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                                                                                 <p className="text-[10px] text-[#A0AEC0] font-mono flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">

@@ -140,6 +140,67 @@ public class BbbWebhookController : ControllerBase
                                 RecordingUrl = _configuration["Bbb:Url"]?.Replace("/bigbluebutton/api", $"/playback/presentation/2.3/{recordId}") ?? $"https://canli.monopoluzem.com.tr/playback/presentation/2.3/{recordId}"
                             });
                         }
+                        else if (id == "user-joined" || id == "user-left" || id == "meeting-ended")
+                        {
+                            string extMeetingId = "";
+                            string extUserId = "";
+                            string meetingId = "";
+                            string userId = "";
+
+                            if (dataNode.TryGetProperty("attributes", out var attrNode))
+                            {
+                                if (attrNode.TryGetProperty("meeting", out var meetingNode))
+                                {
+                                    if (meetingNode.TryGetProperty("external-meeting-id", out var p1)) extMeetingId = p1.GetString() ?? "";
+                                    else if (meetingNode.TryGetProperty("externalMeetingId", out var p2)) extMeetingId = p2.GetString() ?? "";
+                                    else if (meetingNode.TryGetProperty("external_meeting_id", out var p3)) extMeetingId = p3.GetString() ?? "";
+
+                                    if (meetingNode.TryGetProperty("meeting-id", out var m1)) meetingId = m1.GetString() ?? "";
+                                    else if (meetingNode.TryGetProperty("meetingId", out var m2)) meetingId = m2.GetString() ?? "";
+                                    else if (meetingNode.TryGetProperty("meeting_id", out var m3)) meetingId = m3.GetString() ?? "";
+                                }
+
+                                if (attrNode.TryGetProperty("user", out var userNode))
+                                {
+                                    if (userNode.TryGetProperty("external-user-id", out var u1)) extUserId = u1.GetString() ?? "";
+                                    else if (userNode.TryGetProperty("externalUserId", out var u2)) extUserId = u2.GetString() ?? "";
+                                    else if (userNode.TryGetProperty("external_user_id", out var u3)) extUserId = u3.GetString() ?? "";
+
+                                    if (userNode.TryGetProperty("user-id", out var us1)) userId = us1.GetString() ?? "";
+                                    else if (userNode.TryGetProperty("userId", out var us2)) userId = us2.GetString() ?? "";
+                                    else if (userNode.TryGetProperty("user_id", out var us3)) userId = us3.GetString() ?? "";
+                                }
+                            }
+
+                            var rawMeetingId = !string.IsNullOrEmpty(extMeetingId) ? extMeetingId : meetingId;
+                            var rawUserId = !string.IsNullOrEmpty(extUserId) ? extUserId : userId;
+
+                            Guid parsedSessionId = Guid.Empty;
+                            Guid parsedUserId = Guid.Empty;
+
+                            if (!string.IsNullOrEmpty(rawMeetingId))
+                            {
+                                var cleanMeetingId = rawMeetingId;
+                                if (cleanMeetingId.StartsWith("monopol_"))
+                                {
+                                    cleanMeetingId = cleanMeetingId.Substring("monopol_".Length);
+                                }
+                                Guid.TryParse(cleanMeetingId, out parsedSessionId);
+                            }
+
+                            if (!string.IsNullOrEmpty(rawUserId))
+                            {
+                                Guid.TryParse(rawUserId, out parsedUserId);
+                            }
+
+                            payload.Events.Add(new BbbEvent
+                            {
+                                EventType = id,
+                                MeetingId = rawMeetingId,
+                                SessionId = parsedSessionId,
+                                UserId = parsedUserId
+                            });
+                        }
                     }
                 }
             }

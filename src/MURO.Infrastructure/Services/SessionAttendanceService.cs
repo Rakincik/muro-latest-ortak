@@ -104,6 +104,12 @@ public class SessionAttendanceService : ISessionAttendanceService
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"attendance:");
 
+        var session = await _context.Sessions.FindAsync(sessionId);
+        if (session != null)
+        {
+            await _cache.RemoveAsync($"analytics:courseattendance:{session.CourseId}");
+        }
+
         var u = await _context.Users.FindAsync(userId)
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
         return MapDto(attendance, u);
@@ -114,6 +120,7 @@ public class SessionAttendanceService : ISessionAttendanceService
     {
         var attendance = await _context.SessionAttendances
             .Include(sa => sa.User)
+            .Include(sa => sa.Session)
             .FirstOrDefaultAsync(sa => sa.SessionId == sessionId && sa.UserId == userId)
             ?? throw new KeyNotFoundException("Katılım kaydı bulunamadı.");
 
@@ -121,6 +128,11 @@ public class SessionAttendanceService : ISessionAttendanceService
         attendance.DurationMinutes = (int)(attendance.LeftAt.Value - attendance.JoinedAt).TotalMinutes;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"attendance:");
+
+        if (attendance.Session != null)
+        {
+            await _cache.RemoveAsync($"analytics:courseattendance:{attendance.Session.CourseId}");
+        }
 
         return MapDto(attendance, attendance.User);
     }

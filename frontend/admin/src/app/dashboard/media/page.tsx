@@ -487,7 +487,7 @@ export default function MediaLibraryPage() {
     return (
         <div className="min-h-[calc(100vh-64px)] md:h-[calc(100vh-64px)] flex flex-col md:flex-row md:overflow-hidden bg-white -m-4 lg:-m-8">
             {/* Left Pane (25%): Folder Tree */}
-            <div className={`w-full md:w-[25%] md:min-w-[240px] md:max-w-[320px] h-64 md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col ${isSidebarVisible ? 'flex' : 'hidden'}`}>
+            <div className={`w-full md:w-[25%] md:min-w-[280px] md:max-w-[360px] h-64 md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col ${isSidebarVisible ? 'flex' : 'hidden'}`}>
                 <FolderTree 
                     activeFolderId={currentFolderId}
                     onSelect={handleTreeSelect}

@@ -100,6 +100,21 @@ const getFileUrl = (path: string | null) => {
     return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
+const formatDisplayDate = (dateStr?: string | null): string => {
+    if (!dateStr) return "—";
+    const parts = dateStr.split("-");
+    if (parts.length === 3 && parts[0].length === 4) {
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    try {
+        const d = new Date(dateStr);
+        if (!isNaN(d.getTime())) {
+            return d.toLocaleDateString("tr-TR");
+        }
+    } catch {}
+    return dateStr;
+};
+
 const mapCourse = (c: CourseListDto, sessions: MappedSession[] = [], detail?: CourseDetailDto): MappedCourse => ({
     id: c.id, title: c.title, description: c.description ?? "",
     type: c.courseType ?? "Online", thumbnailUrl: c.thumbnailUrl ? getFileUrl(c.thumbnailUrl) : null,
@@ -592,7 +607,7 @@ export default function CoursesPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="p-5 rounded-2xl bg-[#E2E8F0]/20 border border-[#E2E8F0]/60">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mb-1">Oluşturulma</p>
-                                        <p className="text-sm font-bold text-[#0A1931]">{c.createdAt}</p>
+                                        <p className="text-sm font-bold text-[#0A1931]">{formatDisplayDate(c.createdAt)}</p>
                                     </div>
                                     <div className="p-5 rounded-2xl bg-[#E2E8F0]/20 border border-[#E2E8F0]/60">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mb-1">Kayıt Sayısı</p>
@@ -958,8 +973,8 @@ export default function CoursesPage() {
                                     : <span className="inline-block px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg uppercase">Taslak</span>
                                 }
                             </td>
-                            <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{co.createdAt}</td>
-                            <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{co.updatedAt || "—"}</td>
+                            <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{formatDisplayDate(co.createdAt)}</td>
+                            <td className="px-5 py-3 text-xs font-medium text-[#A0AEC0]">{formatDisplayDate(co.updatedAt)}</td>
                             <td className="px-5 py-3 text-right">
                                 <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                     <button onClick={e => { e.stopPropagation(); openDetail(co, "settings"); }}

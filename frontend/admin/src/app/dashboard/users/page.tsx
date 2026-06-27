@@ -35,6 +35,18 @@ const rc: Record<string, { bg: string; text: string; avatar: string; hero: strin
 };
 const roleIcons: Record<string, typeof Shield> = { Admin: Shield, SuperAdmin: Shield, Instructor: Briefcase, Student: GraduationCap, Accountant: Briefcase, Assistant: Briefcase, Eğitmen: Briefcase, Öğrenci: GraduationCap, Muhasebe: Briefcase, Asistan: Briefcase };
 const roleLabel: Record<string, string> = { Student: "Öğrenci", Instructor: "Eğitmen", Admin: "Admin", Accountant: "Muhasebe", Assistant: "Asistan", SuperAdmin: "Süper Admin", Öğrenci: "Öğrenci", Eğitmen: "Eğitmen", Muhasebe: "Muhasebe", Asistan: "Asistan" };
+const roleRank: Record<string, number> = {
+    SuperAdmin: 100,
+    Admin: 90,
+    Instructor: 80,
+    Eğitmen: 80,
+    Assistant: 70,
+    Asistan: 70,
+    Accountant: 60,
+    Muhasebe: 60,
+    Student: 50,
+    Öğrenci: 50
+};
 // groupOptions artık API'den dinamik olarak çekiliyor
 const PER_PAGE_OPTIONS = [10, 50, 100];
 type SortField = "name" | "role" | "group" | "status" | "phone" | "createdAt" | "lastLogin"; type SortDir = "asc" | "desc";
@@ -209,7 +221,41 @@ export default function UsersPage() {
             const mg = groupFilter === "all" || (u.groupNames && u.groupNames.includes(groupFilter));
             return ms && mr && md && mg;
         });
-        r.sort((a, b) => { let c = 0; switch (sortField) { case "name": c = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`); break; case "role": c = a.role.localeCompare(b.role); break; case "group": c = a.groupNames.length - b.groupNames.length; if (c === 0) c = (a.groupNames[0] || "zzz").localeCompare(b.groupNames[0] || "zzz"); break; case "status": c = Number(b.isActive) - Number(a.isActive); break; case "phone": c = (a.phone || "").localeCompare(b.phone || ""); break; case "createdAt": c = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break; case "lastLogin": c = new Date(a.lastLoginAt || 0).getTime() - new Date(b.lastLoginAt || 0).getTime(); break; default: c = 0; } return sortDir === "desc" ? -c : c; });
+        r.sort((a, b) => { 
+            let c = 0; 
+            switch (sortField) { 
+                case "name": 
+                    c = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "tr-TR"); 
+                    break; 
+                case "role": 
+                    const rankA = roleRank[a.role] ?? 0;
+                    const rankB = roleRank[b.role] ?? 0;
+                    c = rankA - rankB;
+                    if (c === 0) {
+                        c = `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`, "tr-TR");
+                    }
+                    break; 
+                case "group": 
+                    c = a.groupNames.length - b.groupNames.length; 
+                    if (c === 0) c = (a.groupNames[0] || "zzz").localeCompare(b.groupNames[0] || "zzz", "tr-TR"); 
+                    break; 
+                case "status": 
+                    c = Number(b.isActive) - Number(a.isActive); 
+                    break; 
+                case "phone": 
+                    c = (a.phone || "").localeCompare(b.phone || "", "tr-TR"); 
+                    break; 
+                case "createdAt": 
+                    c = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); 
+                    break; 
+                case "lastLogin": 
+                    c = new Date(a.lastLoginAt || 0).getTime() - new Date(b.lastLoginAt || 0).getTime(); 
+                    break; 
+                default: 
+                    c = 0; 
+            } 
+            return sortDir === "desc" ? -c : c; 
+        });
         return r;
     }, [users, search, roleFilter, statusFilter, groupFilter, sortField, sortDir]);
 

@@ -86,7 +86,7 @@ const FolderNode: React.FC<FolderNodeProps> = ({
                     </button>
                     <Folder size={16} className={isActive ? 'text-blue-600 shrink-0' : 'text-gray-400 shrink-0'} />
                     <Tooltip content={folder.name} className="min-w-0 flex-1" position="top">
-                        <span className="truncate text-sm select-none block w-full">{folder.name}</span>
+                        <span className="text-sm select-none block w-full break-words whitespace-normal leading-tight pr-2 py-0.5">{folder.name}</span>
                     </Tooltip>
                 </div>
 
@@ -283,7 +283,7 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
                                             <Folder size={16} className={isActive ? 'text-blue-600 shrink-0' : 'text-gray-400 shrink-0'} />
-                                            <span className="truncate text-sm font-medium select-none block flex-1">{folder.name}</span>
+                                            <span className="text-sm font-medium select-none block flex-1 break-words whitespace-normal leading-tight pr-2 py-0.5">{folder.name}</span>
                                             
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0">
                                                 <Tooltip content="Alt Klasör Ekle">

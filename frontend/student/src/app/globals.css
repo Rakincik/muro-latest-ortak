@@ -2,6 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  color-scheme: only light;
   --sidebar-width: 260px;
   --corp-deep: #0A1931;
   --corp-blue: #1B3B6F;
@@ -17,6 +18,7 @@
 }
 
 body {
+  color-scheme: only light !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: #f8fafc;
   color: #0A1931;

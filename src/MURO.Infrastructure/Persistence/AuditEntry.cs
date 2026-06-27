@@ -62,66 +62,65 @@ public class AuditEntry
         // Retrieve display name of the modified object
         audit.EntityName = GetEntityDisplayName();
 
-        // Build formatted changes log
-        var detailsBuilder = new StringBuilder();
+        // Build formatted changes log (JSON)
+        var changesDict = new Dictionary<string, object>();
+        
         if (State == EntityState.Added)
         {
-            detailsBuilder.AppendLine("Yeni Kayıt Oluşturuldu:");
+            var properties = new Dictionary<string, object?>();
             foreach (var kvp in NewValues)
             {
                 if (kvp.Key == "PasswordHash")
                 {
-                    detailsBuilder.AppendLine($"- {kvp.Key}: [Şifrelenmiş Değer]");
+                    properties[kvp.Key] = new { old = (string?)null, @new = "[Şifrelenmiş Değer]" };
                 }
-                else if (kvp.Value != null && !string.IsNullOrWhiteSpace(kvp.Value.ToString()))
+                else if (kvp.Value != null)
                 {
-                    detailsBuilder.AppendLine($"- {kvp.Key}: '{kvp.Value}'");
+                    properties[kvp.Key] = new { old = (string?)null, @new = kvp.Value.ToString() };
                 }
             }
+            changesDict["action"] = "Create";
+            changesDict["changes"] = properties;
         }
         else if (State == EntityState.Deleted)
         {
-            detailsBuilder.AppendLine("Kayıt Silindi:");
+            var properties = new Dictionary<string, object?>();
             foreach (var kvp in OldValues)
             {
                 if (kvp.Key == "PasswordHash") continue;
-                if (kvp.Value != null && !string.IsNullOrWhiteSpace(kvp.Value.ToString()))
+                if (kvp.Value != null)
                 {
-                    detailsBuilder.AppendLine($"- {kvp.Key}: '{kvp.Value}'");
+                    properties[kvp.Key] = new { old = kvp.Value.ToString(), @new = (string?)null };
                 }
             }
+            changesDict["action"] = "Delete";
+            changesDict["changes"] = properties;
         }
         else // Modified
         {
-            detailsBuilder.AppendLine("Değiştirilen Alanlar:");
-            bool hasChanges = false;
+            var properties = new Dictionary<string, object?>();
             foreach (var kvp in NewValues)
             {
                 var propName = kvp.Key;
                 OldValues.TryGetValue(propName, out var oldValue);
                 var newValue = kvp.Value;
 
-                // Ignore unmodified properties
                 if (Equals(oldValue, newValue)) continue;
 
-                hasChanges = true;
                 if (propName == "PasswordHash")
                 {
-                    detailsBuilder.AppendLine($"- {propName}: [Şifre Değiştirildi]");
+                    properties[propName] = new { old = "[Eski Şifre]", @new = "[Şifre Değiştirildi]" };
                 }
                 else
                 {
-                    detailsBuilder.AppendLine($"- {propName}: '{oldValue}' ➔ '{newValue}'");
+                    properties[propName] = new { old = oldValue?.ToString(), @new = newValue?.ToString() };
                 }
             }
-
-            if (!hasChanges)
-            {
-                detailsBuilder.AppendLine("(Detaylı alan değişikliği tespit edilmedi)");
-            }
+            changesDict["action"] = "Update";
+            changesDict["changes"] = properties;
         }
 
-        audit.Details = detailsBuilder.ToString().TrimEnd();
+        audit.Details = JsonSerializer.Serialize(changesDict);
 
         return audit;
     }
