@@ -464,7 +464,7 @@ export default function CoursesPage() {
             const mst = statusFilter === "all" || (statusFilter === "published" ? c.isPublished : !c.isPublished);
             return ms && mst;
         });
-        if (sortBy === "name") result = [...result].sort((a, b) => courseSortDesc ? b.title.localeCompare(a.title, "tr") : a.title.localeCompare(b.title, "tr"));
+        if (sortBy === "name") result = [...result].sort((a, b) => courseSortDesc ? b.title.localeCompare(a.title, "tr", { numeric: true, sensitivity: "base" }) : a.title.localeCompare(b.title, "tr", { numeric: true, sensitivity: "base" }));
         else if (sortBy === "sessions") result = [...result].sort((a, b) => courseSortDesc ? b.sessionCount - a.sessionCount : a.sessionCount - b.sessionCount);
         else if (sortBy === "status") result = [...result].sort((a, b) => {
             const val = a.isPublished === b.isPublished ? 0 : a.isPublished ? -1 : 1;

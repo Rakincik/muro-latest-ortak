@@ -46,7 +46,7 @@ export function CourseSelectorModal({ onClose, onSelect, initialSelectedCourseId
             if (aSelected !== bSelected) {
                 return bSelected - aSelected;
             }
-            return a.title.localeCompare(b.title, 'tr');
+            return a.title.localeCompare(b.title, 'tr', { numeric: true, sensitivity: 'base' });
         });
 
     const handleConfirm = () => {

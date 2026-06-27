@@ -463,9 +463,9 @@ export default function MediaLibraryPage() {
                 case "oldest":
                     return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
                 case "az":
-                    return a.title.localeCompare(b.title, "tr");
+                    return a.title.localeCompare(b.title, "tr", { numeric: true, sensitivity: "base" });
                 case "za":
-                    return b.title.localeCompare(a.title, "tr");
+                    return b.title.localeCompare(a.title, "tr", { numeric: true, sensitivity: "base" });
                 case "longest":
                     return (b.durationSeconds || 0) - (a.durationSeconds || 0);
                 case "shortest":
