@@ -511,6 +511,12 @@ html {
   z-index: 55;
 }
 
+@media (min-width: 768px) {
+  .mobile-header {
+    display: none !important;
+  }
+}
+
 /* Prevent pull-to-refresh in native app */
 body {
   overscroll-behavior: none;

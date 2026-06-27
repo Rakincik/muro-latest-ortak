@@ -80,7 +80,7 @@ export default function StudentDashboardPage() {
     return (
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 space-y-6">
             {/* ── Hero Welcome ── */}
-            <div className="hero-continue pt-16 sm:pt-8 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10">
+            <div className="hero-continue pt-16 sm:pt-10 pb-10 sm:pb-10 px-6 sm:px-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10">
                 <div className="relative z-10">
                     <p className="text-white/50 text-sm font-medium mb-1">{greeting}</p>
                     <h1 className="text-3xl font-bold text-white mb-2">{user?.firstName} {user?.lastName}</h1>
