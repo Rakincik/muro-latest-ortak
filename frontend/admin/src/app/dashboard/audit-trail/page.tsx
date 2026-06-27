@@ -70,12 +70,33 @@ const keyTranslations: Record<string, string> = {
     UserAgent: "Tarayıcı Detayı",
     UserId: "Kullanıcı ID",
     CreatedAt: "Kayıt Tarihi",
+    FilePath: "Dosya Yolu",
+    HlsPath: "HLS Yayın Yolu",
+    ThumbnailPath: "Önizleme Resmi",
+    VttPath: "Video Alt Yazı Dosyası",
+    VideoUrl: "Video Bağlantısı",
+    PlaybackUrl: "Oynatma Bağlantısı",
+    FileUrl: "Dosya Adresi",
+    Password: "Şifre",
+    PasswordHash: "Şifre Özeti (Hash)",
+    PasswordSalt: "Şifre Tuzu (Salt)"
 };
 
 const formatAuditValue = (key: string, value: any): string => {
     if (value === null || value === undefined || value === "") return "Boş";
     
     const strVal = String(value).trim();
+    const keyLower = key.toLowerCase();
+
+    // Güvenlik: Şifre ve sistem dosya yollarını UI üzerinde asla gösterme
+    const sensitiveKeys = [
+        "filepath", "hlspath", "thumbnailpath", "vttpath", "videourl", "playbackurl", "fileurl", "url", "path",
+        "file_path", "hls_path", "thumbnail_path", "vtt_path", "video_url", "playback_url", "file_url",
+        "password", "passwordhash", "passwordsalt", "securitystamp", "concurrencystamp"
+    ];
+    if (sensitiveKeys.includes(keyLower)) {
+        return "[Dosya / Güvenlik Yolu Gizlendi]";
+    }
 
     if (["LastPosition", "WatchedSeconds", "Duration"].includes(key)) {
         const totalSeconds = parseInt(strVal, 10);
