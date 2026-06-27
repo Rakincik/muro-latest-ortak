@@ -40,6 +40,60 @@ const parseUserAgent = (ua?: string) => {
     };
 };
 
+const formatActionLabel = (action: string): string => {
+    const translations: Record<string, string> = {
+        Create: "Oluşturuldu",
+        Update: "Güncellendi",
+        Delete: "Silindi",
+        BulkCreate: "Toplu Eklendi",
+        BulkDelete: "Toplu Silindi",
+        Submit: "Gönderildi / Teslim Edildi",
+        Grade: "Puanlandı / Değerlendirildi",
+        StatusChange: "Durumu Değiştirildi",
+        Clone: "Kopyalandı (Klonlandı)",
+        AddMember: "Üye Eklendi",
+        RemoveMember: "Üye Çıkarıldı",
+        BulkSend: "Toplu Gönderildi",
+        Generate: "AI ile Üretildi",
+        Ask: "Soru Soruldu",
+        Answer: "Cevaplandı",
+        DeleteAnswer: "Cevap Silindi",
+        UpdateStatus: "Statü Güncellendi",
+        AddNote: "Not Eklendi",
+        DeleteNote: "Not Silindi",
+        StartLive: "Canlı Ders Başlatıldı",
+        ForceDelete: "Kalıcı Olarak Silindi",
+        AssignRole: "Rol Atandı",
+        RemoveRole: "Rol Kaldırıldı",
+        Login: "Giriş Yaptı",
+        Logout: "Çıkış Yaptı",
+    };
+    return translations[action] || `İşlem Yaptı (${action})`;
+};
+
+const formatEntityLabel = (entityType: string): string => {
+    const translations: Record<string, string> = {
+        User: "Kullanıcı",
+        Course: "Ders",
+        Lesson: "İçerik/Video",
+        Group: "Grup",
+        Settings: "Sistem Ayarları",
+        Transaction: "Ödeme/İşlem",
+        Plan: "Abonelik Planı",
+        Assignment: "Ödev",
+        Exam: "Sınav/Quiz",
+        Notification: "Bildirim",
+        Podcast: "Podcast",
+        Question: "Soru",
+        Ticket: "Destek Talebi",
+        FAQ: "Sıkça Sorulan Soru",
+        VideoNote: "Video Notu",
+        Package: "Paket",
+        Session: "Canlı Ders Oturumu",
+    };
+    return translations[entityType] || entityType;
+};
+
 // Çeviri ve Formatlama Yardımcıları
 const keyTranslations: Record<string, string> = {
     LastPosition: "İzleme Noktası (Video)",
@@ -589,7 +643,7 @@ export default function AuditTrailPage() {
                                                                             <div className="flex items-center gap-2 mb-2.5">
                                                                                 <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-lg ${aMeta.bg} ${aMeta.text} shadow-sm`}>
                                                                                     <AIcon size={12} />
-                                                                                    {eMeta.labelTR} {aMeta.labelTR}
+                                                                                    {formatEntityLabel(log.entityType)} {formatActionLabel(log.action)}
                                                                                 </span>
                                                                             </div>
                                                                             {log.entityName && <p className="text-sm font-bold text-[#0A1931] mb-1.5">{log.entityName}</p>}
