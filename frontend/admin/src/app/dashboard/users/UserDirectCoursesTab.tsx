@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { userApi, courseApi, type CourseListDto } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
@@ -11,9 +12,9 @@ import { Tooltip } from "@/components/ui/Tooltip";
 export function UserDirectCoursesTab({ userId, userRole }: { userId: string; userRole?: string }) {
     const { token, currentTenantId: tenantId } = useAuth();
     const { success, error: toastError } = useToast();
-    const [courses, setCourses] = useState<CourseListDto[]>([]);
+    const [courses, setCourses] = useState<(CourseListDto & { expiresAt?: string | null })[]>([]);
     const [loading, setLoading] = useState(true);
-    const [removeTarget, setRemoveTarget] = useState<CourseListDto | null>(null);
+    const [removeTarget, setRemoveTarget] = useState<(CourseListDto & { expiresAt?: string | null }) | null>(null);
     const [addModalOpen, setAddModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     
@@ -176,7 +177,12 @@ export function UserDirectCoursesTab({ userId, userRole }: { userId: string; use
                             {courses.map((c) => (
                                 <tr key={c.id} className="border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10">
                                     <td className="px-6 py-4">
-                                        <p className="text-sm font-bold text-[#0A1931]">{c.title}</p>
+                                        <Link 
+                                            href={`/dashboard/courses?courseId=${c.id}`}
+                                            className="text-sm font-bold text-[#0A1931] hover:text-indigo-600 transition-colors cursor-pointer hover:underline decoration-indigo-400 decoration-2"
+                                        >
+                                            {c.title}
+                                        </Link>
                                     </td>
                                     <td className="px-6 py-4">
                                         <p className="text-xs font-medium text-[#A0AEC0]">{c.courseType}</p>
