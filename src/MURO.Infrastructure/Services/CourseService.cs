@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MURO.Application.DTOs;
@@ -48,8 +49,36 @@ public class CourseService : ICourseService
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = search.ToLower();
-                query = query.Where(c => c.Title.ToLower().Contains(s) || (c.Description != null && c.Description.ToLower().Contains(s)));
+                var trCulture = new CultureInfo("tr-TR");
+                var s = search.ToLower(trCulture)
+                    .Replace("ı", "i")
+                    .Replace("i", "i")
+                    .Replace("ö", "o")
+                    .Replace("ü", "u")
+                    .Replace("ş", "s")
+                    .Replace("ğ", "g")
+                    .Replace("ç", "c");
+
+                query = query.Where(c => 
+                    c.Title.ToLower()
+                        .Replace("ı", "i")
+                        .Replace("İ", "i")
+                        .Replace("ö", "o")
+                        .Replace("ü", "u")
+                        .Replace("ş", "s")
+                        .Replace("ğ", "g")
+                        .Replace("ç", "c")
+                        .Contains(s) 
+                    || (c.Description != null && c.Description.ToLower()
+                        .Replace("ı", "i")
+                        .Replace("İ", "i")
+                        .Replace("ö", "o")
+                        .Replace("ü", "u")
+                        .Replace("ş", "s")
+                        .Replace("ğ", "g")
+                        .Replace("ç", "c")
+                        .Contains(s))
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(courseType) && Enum.TryParse<CourseType>(courseType, true, out var ct))
@@ -98,8 +127,36 @@ public class CourseService : ICourseService
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = search.ToLower();
-                query = query.Where(c => c.Title.ToLower().Contains(s) || (c.Description != null && c.Description.ToLower().Contains(s)));
+                var trCulture = new CultureInfo("tr-TR");
+                var s = search.ToLower(trCulture)
+                    .Replace("ı", "i")
+                    .Replace("i", "i")
+                    .Replace("ö", "o")
+                    .Replace("ü", "u")
+                    .Replace("ş", "s")
+                    .Replace("ğ", "g")
+                    .Replace("ç", "c");
+
+                query = query.Where(c => 
+                    c.Title.ToLower()
+                        .Replace("ı", "i")
+                        .Replace("İ", "i")
+                        .Replace("ö", "o")
+                        .Replace("ü", "u")
+                        .Replace("ş", "s")
+                        .Replace("ğ", "g")
+                        .Replace("ç", "c")
+                        .Contains(s) 
+                    || (c.Description != null && c.Description.ToLower()
+                        .Replace("ı", "i")
+                        .Replace("İ", "i")
+                        .Replace("ö", "o")
+                        .Replace("ü", "u")
+                        .Replace("ş", "s")
+                        .Replace("ğ", "g")
+                        .Replace("ç", "c")
+                        .Contains(s))
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(courseType) && Enum.TryParse<CourseType>(courseType, true, out var ct))
