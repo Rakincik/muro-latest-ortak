@@ -592,7 +592,9 @@ export function CourseMediaTab({
                                                 <>
                                                     {media.mediaAsset?.durationSeconds ? `${Math.floor(media.mediaAsset.durationSeconds / 60)} dk` : 'Süre bilinmiyor'} 
                                                     <span className="w-1 h-1 rounded-full bg-[#E2E8F0]" /> 
-                                                    <span className={media.mediaAsset?.status === 'Ready' ? 'text-emerald-500' : 'text-amber-500'}>{media.mediaAsset?.status}</span>
+                                                    <span className={media.mediaAsset?.status === 'Ready' ? 'text-emerald-500' : 'text-amber-500'}>
+                                                        {media.mediaAsset?.status === 'Ready' ? 'Hazır' : media.mediaAsset?.status === 'Processing' ? 'İşleniyor' : media.mediaAsset?.status}
+                                                    </span>
                                                 </>
                                             )}
                                         </p>
