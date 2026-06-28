@@ -265,16 +265,20 @@ export function CourseMediaTab({
             
             if (a.type === "Session" && a.sessionId) {
                 const sess = sessions.find(s => s.id === a.sessionId);
-                dateA = sess?.scheduledStart || "";
+                dateA = sess?.scheduledStart || a.createdAt || "";
             } else if (a.type === "Video" && a.mediaAsset) {
-                dateA = a.mediaAsset.createdAt || "";
+                dateA = a.mediaAsset.createdAt || a.createdAt || "";
+            } else {
+                dateA = a.createdAt || "";
             }
             
             if (b.type === "Session" && b.sessionId) {
                 const sess = sessions.find(s => s.id === b.sessionId);
-                dateB = sess?.scheduledStart || "";
+                dateB = sess?.scheduledStart || b.createdAt || "";
             } else if (b.type === "Video" && b.mediaAsset) {
-                dateB = b.mediaAsset.createdAt || "";
+                dateB = b.mediaAsset.createdAt || b.createdAt || "";
+            } else {
+                dateB = b.createdAt || "";
             }
             
             if (dateA && dateB) {
