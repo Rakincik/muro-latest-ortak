@@ -272,6 +272,25 @@ var app = builder.Build();
 // 0. Forwarded Headers — IP adreslerini proxy'den (Docker/Nginx) çözümle
 app.UseForwardedHeaders();
 
+// 0.0 CORS Header Deduplicator — (LiteSpeed/ASP.NET Core çakışmalarını önler)
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var corsHeader = context.Response.Headers["Access-Control-Allow-Origin"];
+        if (corsHeader.Count > 0)
+        {
+            var values = corsHeader.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Distinct().ToList();
+            if (values.Count > 1 || corsHeader.ToString().Contains(','))
+            {
+                context.Response.Headers["Access-Control-Allow-Origin"] = values.First();
+            }
+        }
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
 // 0.1 Response Compression — tüm response'lara Brotli/Gzip uygula
 app.UseResponseCompression();
 
