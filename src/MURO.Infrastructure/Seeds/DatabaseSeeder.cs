@@ -61,6 +61,32 @@ public static class DatabaseSeeder
             db.Users.Update(student);
         }
 
+        // ── Rüstem SuperAdmin ────────────────────────────────────────────────
+        var rustemEmail = "rustemakincik@on7yazilim.com";
+        var rustem = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == rustemEmail);
+        if (rustem == null)
+        {
+            rustem = new User
+            {
+                Id           = Guid.NewGuid(),
+                FirstName    = "Rüstem",
+                LastName     = "Akıncık",
+                Email        = rustemEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                Role         = UserRole.SuperAdmin,
+                IsActive     = true,
+                CreatedAt    = DateTime.UtcNow,
+            };
+            db.Users.Add(rustem);
+        }
+        else
+        {
+            rustem.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
+            rustem.IsActive     = true;
+            rustem.Role         = UserRole.SuperAdmin;
+            db.Users.Update(rustem);
+        }
+
         await db.SaveChangesAsync();
     }
 }

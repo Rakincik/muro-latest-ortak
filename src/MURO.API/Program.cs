@@ -467,17 +467,10 @@ app.MapHub<AdminHub>("/hubs/admin");
             
             // SuperAdmin seed — her ortamda çalışır (migration sonrası)
             var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            // await SuperAdminSeeder.SeedAsync(db, seedLogger);
             
-            if (app.Environment.IsDevelopment())
-            {
-                await MURO.Infrastructure.Seeds.DatabaseSeeder.SeedAsync(db);
-                Log.Information("Database migration ve seeding tamamlandı.");
-            }
-            else
-            {
-                Log.Information("Database migration tamamlandı (Production — seed atlandı).");
-            }
+            // Geçici olarak her ortamda DatabaseSeeder'ı çalıştırıyoruz
+            await MURO.Infrastructure.Seeds.DatabaseSeeder.SeedAsync(db);
+            Log.Information("Database migration ve seeding tamamlandı.");
             break;
         }
         catch (Exception ex) when (
