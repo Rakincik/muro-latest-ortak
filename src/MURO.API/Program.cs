@@ -247,7 +247,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(allowedOrigins)
+            .AllowCredentials()
             .WithHeaders("Authorization", "Content-Type", "X-Tenant-Id", "X-Requested-With", "X-Correlation-Id")
             .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
