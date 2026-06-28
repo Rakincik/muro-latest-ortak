@@ -247,10 +247,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.AllowAnyOrigin()
             .WithHeaders("Authorization", "Content-Type", "X-Tenant-Id", "X-Requested-With", "X-Correlation-Id")
             .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .AllowCredentials()
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });
 });
@@ -280,6 +279,8 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 
 // 1. Güvenlik header'ları — her response'a eklenir
 app.UseMiddleware<SecurityHeadersMiddleware>();
+
+app.UseCors("AllowFrontend");
 
 // 2. Exception handler — stack trace sızıntısını engeller
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -318,7 +319,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowFrontend");
 app.UseResponseCaching();
 app.UseOutputCache(); // Enterprise Caching Middleware
 var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
