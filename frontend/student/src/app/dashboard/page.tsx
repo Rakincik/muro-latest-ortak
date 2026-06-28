@@ -120,7 +120,7 @@ export default function StudentDashboardPage() {
                         <Play size={16} className="text-[#1B3B6F]" /> Öğrenmeye Devam Et
                     </h2>
                     <div className="flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pb-2 select-none">
-                        {stats.continueWatching.map((video) => (
+                        {stats.continueWatching.slice(0, 3).map((video) => (
                             <button
                                 key={video.mediaAssetId}
                                 onClick={() => handleResumeVideo(video)}
