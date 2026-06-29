@@ -1656,7 +1656,7 @@ function LiveStartModal({
                         <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Ders Konusu <span className="text-red-500">*</span></label>
                         <input type="text" value={topic} onChange={e => setTopic(e.target.value)} autoFocus placeholder="Örn: Limit ve Süreklilik Soru Çözümü"
                             className="w-full px-4 py-3 text-sm font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-4 focus:ring-[#0A1931]/5 focus:border-[#A0AEC0] transition-all" />
-                        <p className="text-[10px] text-[#A0AEC0] mt-2">Dersin konusu aynı zamanda ders kaydının da ismi olacaktır.</p>
+                        <p className="text-[10px] text-[#A0AEC0] mt-2">Dersin konusu aynı zamanda ders kaydının da ismi olacaktır <b>(Güncel tarih otomatik eklenecektir)</b>.</p>
                     </div>
 
                     <div>
