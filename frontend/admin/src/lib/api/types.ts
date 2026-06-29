@@ -216,11 +216,14 @@ export interface CourseAttendanceDto {
     totalSessions: number;
     totalEnrolled: number;
     avgAttendanceRate: number;
+    riskStudentCount: number;
+    enrolledStudents: { userId: string; fullName: string }[];
     sessions: {
         sessionId: string;
         sessionTitle: string;
         scheduledStart: string | null;
-        totalAttendees: number;
+        presentCount: number;
+        totalEnrolled: number;
         attendanceRate: number;
         presentStudentIds: string[];
     }[];
@@ -648,6 +651,7 @@ export interface CourseMediaDto {
     sessionId?: string;
     sessionTitle?: string;
     type: string;
+    createdAt?: string;
 }
 
 export interface CourseStudentListDto {

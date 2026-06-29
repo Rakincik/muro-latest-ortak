@@ -50,6 +50,7 @@ function VideoPlayerModal({ rec, onClose }: { rec: RecordingDto; onClose: () => 
 
         const initPlyr = async () => {
             const Plyr = (await import("plyr")).default;
+            // @ts-ignore
             await import("plyr/dist/plyr.css");
             player = new Plyr(video, {
                 controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
@@ -118,7 +119,7 @@ function VideoPlayerModal({ rec, onClose }: { rec: RecordingDto; onClose: () => 
                     {rec.hlsPath ? (
                         <video ref={videoRef} className="w-full h-full object-contain outline-none bg-black" crossOrigin="anonymous" />
                     ) : isBBB ? (
-                        <iframe src={rec.playbackUrl} className="w-full h-full border-0" allowFullScreen />
+                        <iframe src={rec.playbackUrl || undefined} className="w-full h-full border-0" allowFullScreen />
                     ) : (
                         <div className="absolute inset-0 flex items-center justify-center bg-[#09090B] z-10 p-6 text-center">
                             <div className="flex flex-col items-center gap-3 text-[#A0AEC0]">

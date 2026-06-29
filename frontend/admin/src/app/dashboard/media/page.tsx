@@ -52,7 +52,7 @@ export default function MediaLibraryPage() {
     const [newFolderName, setNewFolderName] = useState("");
 
     const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
-    const [renameTarget, setRenameTarget] = useState<{ id: string, type: 'folder' | 'asset', currentName: string, currentTags?: string } | null>(null);
+    const [renameTarget, setRenameTarget] = useState<{ id: string, type: 'folder' | 'asset', currentName: string, currentTags?: string, parentFolderId?: string | null } | null>(null);
     const [newName, setNewName] = useState("");
     const [newTags, setNewTags] = useState("");
     
@@ -167,7 +167,7 @@ export default function MediaLibraryPage() {
             setCurrentFolderId(folder?.id || null);
             setIsCreateFolderModalOpen(true);
         } else if (action === 'rename' && folder) {
-            setRenameTarget({ id: folder.id, type: 'folder', currentName: folder.name });
+            setRenameTarget({ id: folder.id, type: 'folder', currentName: folder.name, parentFolderId: folder.parentFolderId });
             setNewName(folder.name);
             setIsRenameModalOpen(true);
         } else if (action === 'assign' && folder) {
@@ -303,7 +303,7 @@ export default function MediaLibraryPage() {
 
         try {
             if (renameTarget.type === 'folder') {
-                await mediaLibraryApi.updateFolder(renameTarget.id, { name: newName });
+                await mediaLibraryApi.updateFolder(renameTarget.id, { name: newName, parentFolderId: renameTarget.parentFolderId || undefined });
                 success("Klasör adı güncellendi");
             } else {
                 await mediaLibraryApi.updateAsset(renameTarget.id, { title: newName, tags: newTags });

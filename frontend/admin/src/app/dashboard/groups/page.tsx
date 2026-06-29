@@ -64,34 +64,34 @@ function GroupTreeItem({
     const isEmpty = group.memberCount === 0;
     return (
         <div
-            className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer group transition-all border ${selected ? "bg-blue-50/50 border-blue-200 ring-1 ring-blue-500/20" : "bg-transparent border-transparent hover:bg-[#F0F4F8]"}`}
+            className={`flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer group transition-colors ${selected ? "bg-[#F8FAFC]" : "hover:bg-slate-50"}`}
             onClick={onSelect}
         >
             <button onClick={e => { e.stopPropagation(); onToggle(); }} 
-                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? `w-6 h-6 rounded-lg ${selected ? "bg-blue-600 text-white shadow-md hover:bg-blue-700" : "bg-white text-[#1B3B6F] border border-[#E2E8F0] shadow-sm hover:border-[#A0AEC0]"}` : "w-6 text-transparent"}`}>
-                {hasChildren ? (expanded ? <ChevronDown size={14} strokeWidth={3.5} /> : <ChevronRight size={14} strokeWidth={3.5} />) : <span className="w-4" />}
+                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? `w-5 h-5 rounded ${selected ? "text-[#0A1931]" : "text-[#64748B] hover:text-[#0A1931]"}` : "w-5 text-transparent"}`}>
+                {hasChildren ? (expanded ? <ChevronDown size={14} strokeWidth={3} /> : <ChevronRight size={14} strokeWidth={3} />) : <span className="w-4" />}
             </button>
             <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: group.color ?? "#94a3b8" }} />
             <div className="flex-1 min-w-0 py-0.5">
                 <p className="text-sm font-bold tracking-tight truncate text-[#0A1931]">{group.name}</p>
-                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.memberCount} öğrenci</span>
-                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-white text-[#475569] border border-[#E2E8F0]"}`}>{group.courseCount} ders</span>
-                    {group.educationType && <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] shadow-sm ${selected ? "bg-indigo-100 text-indigo-700 border border-indigo-200" : "bg-indigo-50 text-indigo-700 border border-indigo-100"}`}>{getEducationIcon(group.educationType, 12)} {group.educationType}</span>}
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] ${selected ? "bg-blue-50 text-blue-700" : "text-[#64748B] group-hover:bg-white"}`}><Users size={10} /> {group.memberCount}</span>
+                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] ${selected ? "bg-emerald-50 text-emerald-700" : "text-[#64748B] group-hover:bg-white"}`}><BookOpen size={10} /> {group.courseCount}</span>
+                    {group.educationType && <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] ${selected ? "bg-indigo-50 text-indigo-700" : "text-indigo-600 group-hover:bg-white"}`}>{getEducationIcon(group.educationType, 12)}</span>}
                 </div>
             </div>
             {isEmpty && <Tooltip content="Boş grup"><span className={`text-amber-400 ${selected ? "opacity-100" : "opacity-80"}`}><AlertTriangle size={12} /></span></Tooltip>}
-            <div className="hidden group-hover:flex items-center gap-1">
+            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
                 <Tooltip content="Alt Grup Ekle"><button onClick={e => { e.stopPropagation(); onAddSubgroup(); }}
-                    className="p-1.5 rounded-lg transition-colors text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50">
+                    className="p-1.5 rounded text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50">
                     <Plus size={12} />
                 </button></Tooltip>
                 <Tooltip content="Düzenle"><button onClick={e => { e.stopPropagation(); onEdit(); }}
-                    className="p-1.5 rounded-lg transition-colors text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/50">
+                    className="p-1.5 rounded text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#F0F4F8]">
                     <Edit3 size={12} />
                 </button></Tooltip>
                 <Tooltip content="Sil"><button onClick={e => { e.stopPropagation(); onDelete(); }}
-                    className="p-1.5 rounded-lg transition-colors text-[#A0AEC0] hover:text-red-600 hover:bg-red-50">
+                    className="p-1.5 rounded text-[#A0AEC0] hover:text-red-600 hover:bg-red-50">
                     <Trash2 size={12} />
                 </button></Tooltip>
             </div>
@@ -156,6 +156,30 @@ export default function GroupsPage() {
     const [assignCourseSelection, setAssignCourseSelection] = useState<Set<string>>(new Set());
     const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
     const [loadingCourses, setLoadingCourses] = useState(false);
+
+    // Inline Creation
+    const [inlineCreateParent, setInlineCreateParent] = useState<string | null>(null);
+    const [inlineCreateName, setInlineCreateName] = useState("");
+
+    const handleInlineCreate = async (parentId: string) => {
+        if (!inlineCreateName.trim() || !token || !tenantId) {
+            setInlineCreateParent(null);
+            return;
+        }
+        try {
+            await groupsApi.create(token, tenantId, {
+                name: inlineCreateName,
+                parentGroupId: parentId,
+                color: COLOR_PRESETS[0]
+            });
+            success("Oluşturuldu", "Alt grup başarıyla eklendi.");
+            setInlineCreateParent(null);
+            setInlineCreateName("");
+            loadGroups();
+        } catch {
+            toastError("Hata", "Grup oluşturulamadı.");
+        }
+    };
 
     const loadGroups = useCallback(async () => {
         if (!token || !tenantId) return;
@@ -400,7 +424,7 @@ export default function GroupsPage() {
     const handleExpirationDateChange = async (g: GroupListDto, date: string) => {
         if (!token || !tenantId) return;
         try {
-            await groupsApi.update(token, tenantId, g.id, { expirationDate: date ? new Date(date).toISOString() : null });
+            await groupsApi.update(token, tenantId, g.id, { expirationDate: date ? new Date(date).toISOString() : undefined });
             success("Tarih Güncellendi", "Grubun son kullanma tarihi güncellendi.");
             setGroups(p => p.map(x => x.id === g.id ? { ...x, expirationDate: date ? new Date(date).toISOString() : null } : x));
             if (detail?.id === g.id) {
@@ -454,16 +478,43 @@ export default function GroupsPage() {
     const emptyGroups = groups.filter(g => g.memberCount === 0).length;
 
     const renderTree = (items: GroupListDto[], depth = 0) =>
-        items.map(g => {
+        items.map((g, index) => {
             const children = getChildren(g.id);
             const isExpanded = expanded.has(g.id);
+            const isLast = index === items.length - 1;
             return (
-                <div key={g.id} style={{ marginLeft: depth * 16 }}>
-                    <GroupTreeItem group={g} selected={selectedId === g.id} expanded={isExpanded}
-                        hasChildren={children.length > 0} onSelect={() => setSelectedId(g.id)}
-                        onToggle={() => toggle(g.id)} onEdit={() => openEdit(g)} onDelete={() => setDeleteTarget(g.id)}
-                        onAddSubgroup={() => openCreateSubgroup(g.id)} />
-                    {isExpanded && children.length > 0 && renderTree(children, depth + 1)}
+                <div key={g.id} className="relative">
+                    {/* Vertical Guide Line for children */}
+                    {depth > 0 && (
+                        <div className={`absolute left-0 top-0 w-px bg-slate-200 ${isLast && children.length === 0 && inlineCreateParent !== g.id ? 'h-6' : 'h-full'}`} style={{ marginLeft: `${(depth - 1) * 20 + 20}px` }} />
+                    )}
+                    {/* Horizontal Guide Line */}
+                    {depth > 0 && (
+                        <div className="absolute top-6 h-px bg-slate-200 w-3" style={{ left: `${(depth - 1) * 20 + 20}px` }} />
+                    )}
+                    <div style={{ marginLeft: depth * 20 }} className="relative z-10 my-0.5">
+                        <GroupTreeItem group={g} selected={selectedId === g.id} expanded={isExpanded}
+                            hasChildren={children.length > 0} onSelect={() => setSelectedId(g.id)}
+                            onToggle={() => toggle(g.id)} onEdit={() => openEdit(g)} onDelete={() => setDeleteTarget(g.id)}
+                            onAddSubgroup={() => { setInlineCreateParent(g.id); setExpanded(new Set([...expanded, g.id])); }} />
+                        
+                        {inlineCreateParent === g.id && (
+                            <div className="flex items-center gap-2 mt-1 mb-2 relative">
+                                <div className="absolute -left-5 top-1/2 -translate-y-1/2 w-4 h-px bg-slate-200" />
+                                <div className="absolute -left-5 -top-4 bottom-1/2 w-px bg-slate-200" />
+                                <input autoFocus value={inlineCreateName} onChange={e => setInlineCreateName(e.target.value)} 
+                                    onKeyDown={e => { if(e.key === 'Enter') handleInlineCreate(g.id); else if(e.key === 'Escape') {setInlineCreateParent(null); setInlineCreateName("");} }} 
+                                    placeholder="Alt grup adı (Enter ile kaydet)..." 
+                                    className="flex-1 text-xs font-medium text-[#0A1931] bg-white border border-[#E2E8F0] shadow-sm rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                                <button onClick={() => setInlineCreateParent(null)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md"><X size={14} /></button>
+                            </div>
+                        )}
+                    </div>
+                    {isExpanded && children.length > 0 && (
+                        <div className="relative">
+                            {renderTree(children, depth + 1)}
+                        </div>
+                    )}
                 </div>
             );
         });

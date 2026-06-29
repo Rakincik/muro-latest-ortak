@@ -7,21 +7,24 @@ import { ExamResultDto } from "@/lib/api/types";
 interface Props {
     result: ExamResultDto;
     examTitle: string;
+    examType?: string;
     onClose: () => void;
 }
 
 export default function StudentScorecardModal({ result, examTitle, onClose }: Props) {
     const [openSection, setOpenSection] = useState<string | null>(null);
 
+    const anyResult = result as any;
+
     // Mock ranks if not provided by backend yet
-    const ranks = result.ranks || {
+    const ranks = anyResult.ranks || {
         classRank: 3, classTotal: 25,
         institutionRank: 14, institutionTotal: 150,
         generalRank: 1342, generalTotal: 5000,
         percentile: 26.8
     };
 
-    const isAboveAvg = result.averageScore != null ? result.score > result.averageScore : true;
+    const isAboveAvg = anyResult.averageScore != null ? result.score > anyResult.averageScore : true;
 
     // Prepare chart data
     const chartData = result.sectionResults ? Object.values(result.sectionResults).map((sec: any) => ({
@@ -33,8 +36,8 @@ export default function StudentScorecardModal({ result, examTitle, onClose }: Pr
 
     // Group question results by section
     const questionsBySection: Record<string, any[]> = {};
-    if (result.questionResults && result.questionResults.length > 0) {
-        result.questionResults.forEach((q: any) => {
+    if (anyResult.questionResults && anyResult.questionResults.length > 0) {
+        anyResult.questionResults.forEach((q: any) => {
             const secName = q.sectionName || "Genel";
             if (!questionsBySection[secName]) questionsBySection[secName] = [];
             questionsBySection[secName].push(q);

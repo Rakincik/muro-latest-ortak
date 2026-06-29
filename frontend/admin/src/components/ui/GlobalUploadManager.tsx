@@ -15,6 +15,7 @@ interface UploadTask {
     status: 'pending' | 'uploading' | 'processing' | 'success' | 'error';
     courseId: string | null;
     folderId?: string;
+    durationSeconds?: number;
     error?: string;
     assetId?: string;
     assetStatus?: string;

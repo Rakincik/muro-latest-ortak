@@ -378,7 +378,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm text-[#1B3B6F]">
-                                            <span className="font-semibold text-[#0A1931]">{t.studentName}</span>{" "}
+                                            <span className="font-semibold text-[#0A1931]">{t.userFullName}</span>{" "}
                                             — {t.subject}
                                         </p>
                                     </div>

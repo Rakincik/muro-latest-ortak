@@ -14,8 +14,10 @@ let _isNative = false;
 const init = async () => {
     if (_Haptics !== null) return;
     try {
+        // @ts-ignore
         const { Capacitor } = await import("@capacitor/core");
         if (Capacitor.isNativePlatform()) {
+            // @ts-ignore
             const mod = await import("@capacitor/haptics");
             _Haptics = mod.Haptics;
             _isNative = true;

@@ -208,9 +208,9 @@ export default function CalendarPage() {
                     startDate: newStart.toISOString(),
                     endDate: newEnd.toISOString(),
                     eventType: dragEvent.eventType,
-                    description: dragEvent.description,
-                    courseId: dragEvent.courseId,
-                    groupId: dragEvent.groupId,
+                    description: dragEvent.description || undefined,
+                    courseId: dragEvent.courseId || undefined,
+                    groupId: dragEvent.groupId || undefined,
                 });
                 setEvents(prev => prev.map(e => e.id === dragEvent.id ? updated : e));
                 success("Etkinlik Taşındı", `${dragEvent.title} yeni tarihine alındı.`);
@@ -654,14 +654,14 @@ export default function CalendarPage() {
                 </div>
             </div>
 
-            {showForm && <EventFormModal event={editEvent} defaultDate={selectedDate} defaultTime={defaultTime} droppedCourse={droppedCourse} courses={courses} groups={groups} isQuickForm={quickFormMode} onClose={() => { setShowForm(false); setEditEvent(null); setDefaultTime(null); setDroppedCourse(null); setQuickFormMode(false); }} onSave={handleSave} />}
+            {showForm && <EventFormModal event={editEvent} defaultDate={selectedDate} defaultTime={defaultTime} droppedCourse={droppedCourse} courses={courses} groups={groups} isQuickForm={quickFormMode} isInstructor={isInstructor} onClose={() => { setShowForm(false); setEditEvent(null); setDefaultTime(null); setDroppedCourse(null); setQuickFormMode(false); }} onSave={handleSave} />}
             <ConfirmDialog open={deleteTarget !== null} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} title="Etkinliği Sil" message="Bu etkinlik kalıcı olarak silinecek." />
         </div>
     );
 }
 
-function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, courses, groups, isQuickForm, onClose, onSave }: {
-    event: CalendarEventDto | null; defaultDate: string | null; defaultTime: string | null; droppedCourse: CourseListDto | null; courses: CourseListDto[]; groups: GroupListDto[]; isQuickForm?: boolean; onClose: () => void; onSave: (d: CreateCalendarEventRequest) => void;
+function EventFormModal({ event, defaultDate, defaultTime, droppedCourse, courses, groups, isQuickForm, isInstructor, onClose, onSave }: {
+    event: CalendarEventDto | null; defaultDate: string | null; defaultTime: string | null; droppedCourse: CourseListDto | null; courses: CourseListDto[]; groups: GroupListDto[]; isQuickForm?: boolean; isInstructor?: boolean; onClose: () => void; onSave: (d: CreateCalendarEventRequest) => void;
 }) {
     const [form, setForm] = useState({
         title: event?.title || (droppedCourse ? `${droppedCourse.title} — Canlı Ders` : ""),

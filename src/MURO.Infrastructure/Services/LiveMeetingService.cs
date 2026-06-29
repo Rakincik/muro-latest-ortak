@@ -101,7 +101,7 @@ public class LiveMeetingService : ILiveMeetingService
             ModeratorPw: moderatorPw,
             RecordingEnabled: session.RecordingEnabled,
             WelcomeMessage: $"Hoş geldiniz! {session.Course.Title} — {session.Title}",
-            DurationMinutes: session.DurationMinutes,
+            DurationMinutes: 0, // 0 = Sınırsız (Otomatik kapanmayı engeller)
             LogoutURL: _config["Bbb:Defaults:LogoutURL"],
             SessionId: session.Id.ToString(),
             CourseId: courseId.ToString().ToString()

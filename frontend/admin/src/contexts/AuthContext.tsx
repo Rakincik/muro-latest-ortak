@@ -14,6 +14,7 @@ const DEV_MODE = false;
 const DEV_USER: UserDto = {
     id: "dev-admin-001",
     email: "admin@muro.com",
+    username: "admin",
     firstName: "Admin",
     lastName: "Kullanıcı",
     phone: null,

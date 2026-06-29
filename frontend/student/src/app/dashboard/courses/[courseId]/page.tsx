@@ -176,18 +176,29 @@ export default function CourseDetailPage() {
                     };
                 });
 
-                // Sıralamayı admin sırası ve tarihe göre (eskiden yeniye) düzenle
+                // Sıralamayı tarihe göre (eskiden yeniye) düzenle (Özellikle BBB dersleri için)
                 mappedRecordings.sort((a, b) => {
+                    const dateA = a.scheduledStart;
+                    const dateB = b.scheduledStart;
+                    
+                    // İki öğenin de planlanmış bir tarihi varsa (BBB Dersleri), mutlaka tarihe göre sırala
+                    if (dateA && dateB) {
+                        const cmp = dateA.localeCompare(dateB);
+                        if (cmp !== 0) return cmp;
+                    }
+                    
+                    // Eğer tarih yoksa veya aynıysa admin sırasına göre sırala
                     if (a.orderIndex !== b.orderIndex) {
                         return (a.orderIndex || 0) - (b.orderIndex || 0);
                     }
-                    const dateA = a.scheduledStart || a.createdAt || "";
-                    const dateB = b.scheduledStart || b.createdAt || "";
-                    if (dateA && dateB) {
-                        return dateA.localeCompare(dateB);
+                    
+                    const fallbackDateA = dateA || a.createdAt || "";
+                    const fallbackDateB = dateB || b.createdAt || "";
+                    if (fallbackDateA && fallbackDateB) {
+                        const cmp = fallbackDateA.localeCompare(fallbackDateB);
+                        if (cmp !== 0) return cmp;
                     }
-                    if (dateA) return -1;
-                    if (dateB) return 1;
+                    
                     return a.id.localeCompare(b.id);
                 });
                 

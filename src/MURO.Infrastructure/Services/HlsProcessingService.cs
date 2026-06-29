@@ -175,16 +175,24 @@ public class HlsProcessingService : IHlsProcessingService
 
         var ok = await RunFfmpegAsync(ffmpegArgs, assetId, duration > 0 ? duration : null, ct);
 
-        if (!ok)
-            return new HlsProcessResult("", "", false, null, $"FFmpeg {pipelineLabel} işlemi başarısız oldu.");
+        if (!ok || (!File.Exists(playlist480) && !File.Exists(playlistHigh)))
+            return new HlsProcessResult("", "", false, null, $"FFmpeg {pipelineLabel} işlemi başarısız oldu (Çıktı dosyası yok).");
 
         // ── 3. Master Playlist (ABR) ──────────────────────────────────────────
         var master = new System.Text.StringBuilder();
         master.AppendLine("#EXTM3U");
-        master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=700000,RESOLUTION=854x480,NAME=\"480p\"");
-        master.AppendLine("480p/index.m3u8");
-        master.AppendLine($"#EXT-X-STREAM-INF:BANDWIDTH={highBand},RESOLUTION={highRes},NAME=\"{highLabel}\"");
-        master.AppendLine($"{highLabel}/index.m3u8");
+        
+        if (File.Exists(playlist480))
+        {
+            master.AppendLine("#EXT-X-STREAM-INF:BANDWIDTH=700000,RESOLUTION=854x480,NAME=\"480p\"");
+            master.AppendLine("480p/index.m3u8");
+        }
+        
+        if (File.Exists(playlistHigh))
+        {
+            master.AppendLine($"#EXT-X-STREAM-INF:BANDWIDTH={highBand},RESOLUTION={highRes},NAME=\"{highLabel}\"");
+            master.AppendLine($"{highLabel}/index.m3u8");
+        }
         
         await File.WriteAllTextAsync(masterPath, master.ToString(), ct);
 

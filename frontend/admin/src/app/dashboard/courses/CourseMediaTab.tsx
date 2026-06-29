@@ -35,7 +35,7 @@ export function getVideoPlaybackDetails(url: string) {
     
     // Standard video
     const isHls = url.includes(".m3u8") || url.includes("/hls/");
-    return { url, type: (isHls ? "video" : "iframe") as const };
+    return { url, type: (isHls ? "video" : "iframe") as "video" | "iframe" };
 }
 
 export function CourseMediaTab({ 
@@ -107,7 +107,7 @@ export function CourseMediaTab({
         setIsSavingEdit(true);
         try {
             await mediaLibraryApi.updateAsset(mediaAssetId, { title: editingTitle });
-            setMedias(prev => prev.map(m => m.mediaAssetId === mediaAssetId ? { ...m, mediaAsset: { ...m.mediaAsset, title: editingTitle } } : m));
+            setMedias(prev => prev.map(m => m.mediaAssetId === mediaAssetId && m.mediaAsset ? { ...m, mediaAsset: { ...m.mediaAsset, title: editingTitle } } : m));
             setEditingMediaId(null);
             success("Başlık başarıyla güncellendi.");
         } catch {
@@ -791,9 +791,6 @@ function HlsVideoPlayer({ src, mediaId, vttPath }: { src: string; mediaId: strin
         const storageKey = `muro_progress_${mediaId}`;
 
         const initPlyr = async (availableQualities: number[] = []) => {
-            const Plyr = (await import("plyr")).default;
-            await import("plyr/dist/plyr.css");
-            
             const plyrOptions: any = {
                 controls: ['play-large', 'play', 'progress', 'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
                 settings: ['captions', 'quality', 'speed'],
@@ -812,7 +809,7 @@ function HlsVideoPlayer({ src, mediaId, vttPath }: { src: string; mediaId: strin
                     forced: true,
                     onChange: (newQuality: number) => {
                         if (hls) {
-                            window.hls = hls;
+                            (window as any).hls = hls;
                             hls.levels.forEach((level: any, levelIndex: number) => {
                                 if (level.height === newQuality) {
                                     hls.currentLevel = levelIndex;
@@ -853,9 +850,11 @@ function HlsVideoPlayer({ src, mediaId, vttPath }: { src: string; mediaId: strin
             } else {
                 const Hls = (await import("hls.js")).default;
                 if (Hls.isSupported()) {
-                    hls = new Hls();
+                    const hls = new Hls();
                     hls.loadSource(fullSrc);
                     hls.attachMedia(video);
+                    // @ts-ignore
+                    window.hls = hls;
                     hls.on(Hls.Events.MANIFEST_PARSED, (event: any, data: any) => {
                         const qualities = data.levels.map((l: any) => l.height).sort((a: number, b: number) => b - a);
                         initPlyr(qualities);

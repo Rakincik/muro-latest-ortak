@@ -108,7 +108,7 @@ public abstract class AuthServiceBase
         user.Id, user.FirstName, user.LastName, user.Email, user.Username, user.Phone,
         user.Role.ToString(), user.StudentType?.ToString(), user.DemoExpiresAt,
         user.IsActive, user.CreatedAt,
-        new List<UserTenantDto> { new UserTenantDto("monopol", "Monopol", "monopol", user.Role.ToString(), "Active", null) },
+        new List<UserTenantDto> { new UserTenantDto("monopol", "Monopol", "monopol", user.Role.ToString(), "Active", "{\"exams\":true,\"groups\":true,\"packages\":true,\"calendar\":true,\"assignments\":true,\"notifications\":true,\"questions\":true,\"support\":true,\"mediaLibrary\":true,\"podcast\":true,\"analytics\":true,\"examResults\":true,\"studentScorecard\":true,\"attendance\":true,\"accounting\":true}") },
         user.TcNo
     );
 }

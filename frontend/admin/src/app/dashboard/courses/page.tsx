@@ -1006,8 +1006,8 @@ export default function CoursesPage() {
                         <tr key={co.id} onClick={() => openDetail(co)}
                             className="border-b border-[#E2E8F0]/60 last:border-0 hover:bg-[#E2E8F0]/10 cursor-pointer transition-colors group">
                             <td className="px-5 py-3">
-                                <p className="text-sm font-bold text-[#0A1931] truncate max-w-xs">{co.title}</p>
-                                <p className="text-[10px] text-[#A0AEC0] truncate max-w-xs mt-0.5">{co.description || "—"}</p>
+                                <p className="text-sm font-bold text-[#0A1931] line-clamp-2 max-w-md">{co.title}</p>
+                                <p className="text-[10px] text-[#A0AEC0] line-clamp-2 max-w-md mt-0.5">{co.description || "—"}</p>
                             </td>
                             <td className="px-5 py-3 text-center">
                                 <span className="text-sm font-bold text-[#0A1931]">{co.sessionCount}</span>

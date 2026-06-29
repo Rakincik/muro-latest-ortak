@@ -44,7 +44,7 @@ function rateBg(rate: number) {
     return "bg-red-500";
 }
 
-function formatSessionDate(dateStr?: string) {
+function formatSessionDate(dateStr?: string | null) {
     if (!dateStr) return "Tarih Yok";
     return new Date(dateStr).toLocaleDateString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
