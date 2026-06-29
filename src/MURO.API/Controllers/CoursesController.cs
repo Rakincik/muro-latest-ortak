@@ -145,8 +145,8 @@ public class CoursesController : ControllerBase
         await using var stream = new FileStream(filePath, FileMode.Create);
         await file.CopyToAsync(stream);
 
-        var scheme = HttpContext.Request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? HttpContext.Request.Scheme;
         var host = HttpContext.Request.Headers["X-Forwarded-Host"].FirstOrDefault() ?? HttpContext.Request.Host.Value;
+        var scheme = host.Contains("localhost") ? "http" : "https";
         var url = $"{scheme}://{host}/api/v1/uploads/covers/{fileName}";
 
         // Course'un thumbnailUrl'ini güncelle

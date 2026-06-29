@@ -25,8 +25,8 @@ public class UploadController : ControllerBase
         var ext = Path.GetExtension(request.FileName);
         var safeName = $"{fileId}{ext}";
         
-        var scheme = HttpContext.Request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? HttpContext.Request.Scheme;
         var host = HttpContext.Request.Headers["X-Forwarded-Host"].FirstOrDefault() ?? HttpContext.Request.Host.Value;
+        var scheme = host.Contains("localhost") ? "http" : "https";
         
         // Return a dummy endpoint that will accept the PUT request
         var uploadUrl = $"{scheme}://{host}/api/v1/upload/direct/{safeName}";
