@@ -73,4 +73,11 @@ public class CourseMediaController : ControllerBase
         await _courseMediaService.ReorderMediasAsync(courseId, request);
         return Ok();
     }
+    [HttpPut("{courseMediaId:guid}/title")]
+    [Authorize(Roles = "SuperAdmin,Admin,Instructor")]
+    public async Task<IActionResult> UpdateTitle(Guid courseId, Guid courseMediaId, [FromBody] UpdateCourseMediaTitleRequest request)
+    {
+        await _courseMediaService.UpdateCustomTitleAsync(courseId, courseMediaId, request.Title);
+        return NoContent();
+    }
 }

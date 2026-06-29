@@ -32,13 +32,15 @@ public record UpdateMediaFolderRequest(string Name, Guid? ParentFolderId);
 public record CourseMediaDto(
     Guid Id, Guid CourseId, Guid? MediaAssetId, int OrderIndex,
     MediaAssetDto? MediaAsset, Guid? ExamId, string? ExamTitle,
-    Guid? SessionId, string? SessionTitle, string Type
+    Guid? SessionId, string? SessionTitle, string Type,
+    string? CustomTitle
 );
 
 public class AssignMediaToCourseRequest { public Guid MediaAssetId { get; set; } }
 public class AssignExamToCourseRequest { public Guid ExamId { get; set; } }
 public class BulkAssignFolderToCourseRequest { public Guid FolderId { get; set; } }
 public class ReorderCourseMediaRequest { public List<Guid> CourseMediaIds { get; set; } = new(); }
+public class UpdateCourseMediaTitleRequest { public string Title { get; set; } = string.Empty; }
 
 public record VideoProgressDto(
     Guid Id, Guid MediaAssetId, string MediaTitle,

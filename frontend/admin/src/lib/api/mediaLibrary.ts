@@ -137,6 +137,13 @@ export const reorderCourseMedias = async (courseId: string, courseMediaIds: stri
     });
 };
 
+export const updateCourseMediaTitle = async (courseId: string, courseMediaId: string, title: string): Promise<void> => {
+    return fetchApi(`/courses/${courseId}/media/${courseMediaId}/title`, {
+        method: 'PUT',
+        body: JSON.stringify({ title }),
+    });
+};
+
 export interface DiskUsageDto {
     totalSpace: number;
     freeSpace: number;
@@ -168,6 +175,7 @@ export const mediaLibraryApi = {
     removeMediaFromCourse,
     removeItemFromCourse,
     reorderCourseMedias,
+    updateCourseMediaTitle,
     getTranscodeProgress,
     getDiskUsage
 };

@@ -104,12 +104,12 @@ export function CourseMediaTab({
         }
     };
 
-    const handleSaveEdit = async (mediaAssetId: string) => {
+    const handleSaveEdit = async (courseMediaId: string) => {
         if (!editingTitle.trim()) return;
         setIsSavingEdit(true);
         try {
-            await mediaLibraryApi.updateAsset(mediaAssetId, { title: editingTitle });
-            setMedias(prev => prev.map(m => m.mediaAssetId === mediaAssetId && m.mediaAsset ? { ...m, mediaAsset: { ...m.mediaAsset, title: editingTitle } } : m));
+            await mediaLibraryApi.updateCourseMediaTitle(courseId, courseMediaId, editingTitle);
+            setMedias(prev => prev.map(m => m.id === courseMediaId ? { ...m, customTitle: editingTitle } : m));
             setEditingMediaId(null);
             success("Başlık başarıyla güncellendi.");
         } catch {
@@ -273,7 +273,7 @@ export function CourseMediaTab({
                 const sess = sessions.find(s => s.id === a.sessionId);
                 titleA = a.sessionTitle || sess?.title || "";
             } else if (a.type === "Media" && a.mediaAsset) {
-                titleA = a.mediaAsset.title || "";
+                titleA = a.customTitle || a.mediaAsset.title || "";
             } else {
                 titleA = a.examTitle || "";
             }
@@ -282,7 +282,7 @@ export function CourseMediaTab({
                 const sess = sessions.find(s => s.id === b.sessionId);
                 titleB = b.sessionTitle || sess?.title || "";
             } else if (b.type === "Media" && b.mediaAsset) {
-                titleB = b.mediaAsset.title || "";
+                titleB = b.customTitle || b.mediaAsset.title || "";
             } else {
                 titleB = b.examTitle || "";
             }
@@ -642,13 +642,13 @@ export function CourseMediaTab({
                                                     autoFocus
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
-                                                            if (media.mediaAssetId) handleSaveEdit(media.mediaAssetId);
+                                                            handleSaveEdit(media.id);
                                                         }
                                                         if (e.key === 'Escape') setEditingMediaId(null);
                                                     }}
                                                     disabled={isSavingEdit}
                                                 />
-                                                <button onClick={() => media.mediaAssetId && handleSaveEdit(media.mediaAssetId)} disabled={isSavingEdit} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl shrink-0 transition-colors">
+                                                <button onClick={() => handleSaveEdit(media.id)} disabled={isSavingEdit} className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-xl shrink-0 transition-colors">
                                                     {isSavingEdit ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
                                                 </button>
                                                 <button onClick={() => setEditingMediaId(null)} disabled={isSavingEdit} className="p-2 bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 rounded-xl shrink-0 transition-colors">
@@ -660,7 +660,7 @@ export function CourseMediaTab({
                                 ) : (
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                                            <p className="text-[#0A1931] font-bold text-xs sm:text-base line-clamp-2 sm:truncate break-all sm:break-normal leading-tight">{media.type === "Exam" ? media.examTitle : media.type === "Session" ? media.sessionTitle : media.mediaAsset?.title}</p>
+                                            <p className="text-[#0A1931] font-bold text-xs sm:text-base line-clamp-2 sm:truncate break-all sm:break-normal leading-tight">{media.type === "Exam" ? media.examTitle : media.type === "Session" ? media.sessionTitle : (media.customTitle || media.mediaAsset?.title)}</p>
                                             {media.type === "Exam" && (
                                                 <span className="px-1 py-0.5 rounded-md bg-purple-100 text-purple-700 text-[8px] sm:text-[10px] font-black uppercase tracking-wider whitespace-nowrap">
                                                     SINAV
@@ -735,7 +735,7 @@ export function CourseMediaTab({
                                                     <Tooltip content="Başlığı Düzenle"><button 
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setEditingTitle(media.mediaAsset?.title || "");
+                                                            setEditingTitle(media.customTitle || media.mediaAsset?.title || "");
                                                             setEditingMediaId(media.id);
                                                         }}
                                                         className="p-1 sm:p-3 text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all"

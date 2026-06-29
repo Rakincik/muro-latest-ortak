@@ -58,7 +58,8 @@ public class CourseMediaService : ICourseMediaService
                 cm.Exam != null ? cm.Exam.Title : null,
                 cm.SessionId,
                 cm.Session != null ? cm.Session.Title : null,
-                cm.SessionId != null ? "Session" : (cm.ExamId != null ? "Exam" : "Media")
+                cm.SessionId != null ? "Session" : (cm.ExamId != null ? "Exam" : "Media"),
+                cm.CustomTitle
             ))
             .ToListAsync();
 
@@ -68,7 +69,7 @@ public class CourseMediaService : ICourseMediaService
             courseMedias = courseMedias.OrderBy(cm => {
                 if (cm.Type == "Exam") return cm.ExamTitle ?? "";
                 if (cm.Type == "Session") return cm.SessionTitle ?? "";
-                return cm.MediaAsset?.Title ?? "";
+                return cm.CustomTitle ?? cm.MediaAsset?.Title ?? "";
             }, comparer).ToList();
         }
 
@@ -121,7 +122,7 @@ public class CourseMediaService : ICourseMediaService
                 media.Id, media.Title, media.FilePath, media.HlsPath, media.ThumbnailPath, 
                 media.DurationSeconds, media.Status.ToString(), courseId, course.Title, media.FolderId, media.CreatedAt, media.Tags
             ),
-            null, null, null, null, "Media"
+            null, null, null, null, "Media", null
         );
     }
 
@@ -169,7 +170,8 @@ public class CourseMediaService : ICourseMediaService
             exam.Title,
             null,
             null,
-            "Exam"
+            "Exam",
+            null
         );
     }
 
@@ -249,19 +251,28 @@ public class CourseMediaService : ICourseMediaService
 
     public async Task ReorderMediasAsync(Guid courseId, ReorderCourseMediaRequest request)
     {
-        var courseMedias = await _context.CourseMedias
-            .Where(cm => cm.CourseId == courseId )
-            .ToListAsync();
-
+        var medias = await _context.CourseMedias.Where(cm => cm.CourseId == courseId).ToListAsync();
+        
         for (int i = 0; i < request.CourseMediaIds.Count; i++)
         {
-            var media = courseMedias.FirstOrDefault(cm => cm.Id == request.CourseMediaIds[i]);
+            var media = medias.FirstOrDefault(m => m.Id == request.CourseMediaIds[i]);
             if (media != null)
             {
                 media.OrderIndex = i;
             }
         }
+        
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"courses:");
+    }
 
+    public async Task UpdateCustomTitleAsync(Guid courseId, Guid courseMediaId, string customTitle)
+    {
+        var media = await _context.CourseMedias
+            .FirstOrDefaultAsync(cm => cm.CourseId == courseId && cm.Id == courseMediaId)
+            ?? throw new KeyNotFoundException("Kurs i\u00e7eri\u011fi bulunamad\u0131.");
+
+        media.CustomTitle = customTitle;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"courses:");
     }

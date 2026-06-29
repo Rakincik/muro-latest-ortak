@@ -650,7 +650,8 @@ export interface CourseMediaDto {
     examTitle?: string;
     sessionId?: string;
     sessionTitle?: string;
-    type: string;
+    type: 'Media' | 'Exam' | 'Session';
+    customTitle?: string;
     createdAt?: string;
 }
 

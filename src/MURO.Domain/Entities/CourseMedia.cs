@@ -10,6 +10,7 @@ public class CourseMedia
     public Guid? ExamId { get; set; }
     public Guid? SessionId { get; set; }
     public int OrderIndex { get; set; }
+    public string? CustomTitle { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
