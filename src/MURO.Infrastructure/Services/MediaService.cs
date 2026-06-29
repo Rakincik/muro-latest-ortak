@@ -111,13 +111,13 @@ public class MediaService : IMediaService
             .FirstOrDefaultAsync(m => m.Id == assetId )
             ?? throw new KeyNotFoundException("Medya bulunamad\u0131.");
 
+        var cmIds = await _context.CourseMedias.Where(cm => cm.MediaAssetId == assetId).Select(cm => cm.CourseId).ToListAsync();
+        
         // Student erişim kontrolü: kursa grubu üzerinden erişim hakkı var mı?
         if (userId.HasValue)
         {
             var courseIds = new List<Guid>();
             if (a.CourseId.HasValue) courseIds.Add(a.CourseId.Value);
-            
-            var cmIds = await _context.CourseMedias.Where(cm => cm.MediaAssetId == assetId).Select(cm => cm.CourseId).ToListAsync();
             courseIds.AddRange(cmIds);
 
             bool hasAccess = false;
@@ -131,8 +131,14 @@ public class MediaService : IMediaService
                 throw new UnauthorizedAccessException("Bu videoya erişim yetkiniz yok.");
         }
 
+        Guid? resolvedCourseId = a.CourseId;
+        if (!resolvedCourseId.HasValue && cmIds.Any())
+        {
+            resolvedCourseId = cmIds.First();
+        }
+
         return new MediaAssetDto(a.Id, a.Title, a.FilePath, a.HlsPath, a.ThumbnailPath,
-            a.DurationSeconds, a.Status.ToString(), a.CourseId,
+            a.DurationSeconds, a.Status.ToString(), resolvedCourseId,
             a.Course != null ? a.Course.Title : null, a.FolderId, a.CreatedAt, a.Tags);
     }
 
