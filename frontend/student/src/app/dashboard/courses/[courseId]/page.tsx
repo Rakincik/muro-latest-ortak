@@ -185,27 +185,37 @@ export default function CourseDetailPage() {
                         return null;
                     };
                     
-                    const dateA = extractDateFromTitle(a.sessionTitle) || a.scheduledStart || a.createdAt || "";
-                    const dateB = extractDateFromTitle(b.sessionTitle) || b.scheduledStart || b.createdAt || "";
-                    
-                    if (dateA && dateB) {
-                        const cmp = dateA.localeCompare(dateB);
-                        if (cmp !== 0) return cmp;
-                    }
-                    
-                    // Eğer tarih yoksa veya aynıysa admin sırasına göre sırala
+                    // 1. Sıralama önceliği: Admin elle sıralama yaptıysa (orderIndex)
                     if (a.orderIndex !== b.orderIndex) {
                         return (a.orderIndex || 0) - (b.orderIndex || 0);
                     }
                     
-                    // En son çare: İsimleri alfabetik sırala
                     const titleA = a.sessionTitle || "";
                     const titleB = b.sessionTitle || "";
-                    if (titleA && titleB) {
-                        return titleA.localeCompare(titleB, 'tr', { numeric: true });
+                    
+                    // 2. Sıralama önceliği: Title'dan çıkarılan tarihe göre (varsa)
+                    const parsedDateA = extractDateFromTitle(titleA);
+                    const parsedDateB = extractDateFromTitle(titleB);
+                    
+                    if (parsedDateA && parsedDateB && parsedDateA !== parsedDateB) {
+                        return parsedDateA.localeCompare(parsedDateB);
                     }
                     
-                    return 0;
+                    // 3. Sıralama önceliği: Alfabetik (numeric: true ile DERS-2 ve DERS-10'u doğru sıralar)
+                    if (titleA !== titleB) {
+                        return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+                    }
+                    
+                    // 4. En son çare: Oluşturulma tarihi
+                    const fallbackDateA = a.scheduledStart || a.createdAt || "";
+                    const fallbackDateB = b.scheduledStart || b.createdAt || "";
+                    
+                    if (fallbackDateA !== fallbackDateB) {
+                        return fallbackDateA.localeCompare(fallbackDateB);
+                    }
+                    
+                    // 5. ID'ye göre
+                    return (a.id || "").localeCompare(b.id || "");
                 });
                 
                 setRecordings(mappedRecordings);

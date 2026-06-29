@@ -265,11 +265,10 @@ export function CourseMediaTab({
             let titleA = "";
             let titleB = "";
             
-            // Tarihi title'dan çıkarma (örnek: "DEVLET 3 — 28.06.2026" veya "DD.MM.YYYY")
             const extractDateFromTitle = (title: string) => {
                 const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
                 if (match) {
-                    return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`; // YYYY-MM-DD formatına çevir
+                    return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
                 }
                 return null;
             };
@@ -277,10 +276,8 @@ export function CourseMediaTab({
             if (a.type === "Session" && a.sessionId) {
                 const sess = sessions.find(s => s.id === a.sessionId);
                 titleA = a.sessionTitle || sess?.title || "";
-                dateA = extractDateFromTitle(titleA) || sess?.scheduledStart || sess?.createdAt || "";
             } else if (a.type === "Video" && a.mediaAsset) {
                 titleA = a.mediaAsset.title || "";
-                dateA = extractDateFromTitle(titleA) || a.mediaAsset.createdAt || "";
             } else {
                 titleA = a.examTitle || "";
             }
@@ -288,26 +285,47 @@ export function CourseMediaTab({
             if (b.type === "Session" && b.sessionId) {
                 const sess = sessions.find(s => s.id === b.sessionId);
                 titleB = b.sessionTitle || sess?.title || "";
-                dateB = extractDateFromTitle(titleB) || sess?.scheduledStart || sess?.createdAt || "";
             } else if (b.type === "Video" && b.mediaAsset) {
                 titleB = b.mediaAsset.title || "";
-                dateB = extractDateFromTitle(titleB) || b.mediaAsset.createdAt || "";
             } else {
                 titleB = b.examTitle || "";
             }
+            // 3. Sıralama önceliği: Title'dan çıkarılan tarihe göre (varsa)
+            const parsedDateA = extractDateFromTitle(titleA);
+            const parsedDateB = extractDateFromTitle(titleB);
             
-            if (dateA && dateB) {
-                return dateA.localeCompare(dateB);
-            }
-            if (dateA) return -1;
-            if (dateB) return 1;
-            
-            // 3. Sıralama önceliği: İsimlere göre (Tarih yoksa, Alfabetik A-Z)
-            if (titleA && titleB) {
-                return titleA.localeCompare(titleB, 'tr', { numeric: true });
+            if (parsedDateA && parsedDateB && parsedDateA !== parsedDateB) {
+                return parsedDateA.localeCompare(parsedDateB);
             }
             
-            // 4. Sıralama önceliği: ID'ye göre (Son çare)
+            // 4. Sıralama önceliği: Alfabetik (numeric: true ile DERS-2 ve DERS-10'u doğru sıralar)
+            if (titleA !== titleB) {
+                return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+            }
+            
+            // 5. En son çare: Oluşturulma tarihi
+            let fallbackDateA = "";
+            let fallbackDateB = "";
+            
+            if (a.type === "Session" && a.sessionId) {
+                const sess = sessions.find(s => s.id === a.sessionId);
+                fallbackDateA = sess?.scheduledStart || sess?.createdAt || "";
+            } else if (a.type === "Video" && a.mediaAsset) {
+                fallbackDateA = a.mediaAsset.createdAt || "";
+            }
+            
+            if (b.type === "Session" && b.sessionId) {
+                const sess = sessions.find(s => s.id === b.sessionId);
+                fallbackDateB = sess?.scheduledStart || sess?.createdAt || "";
+            } else if (b.type === "Video" && b.mediaAsset) {
+                fallbackDateB = b.mediaAsset.createdAt || "";
+            }
+            
+            if (fallbackDateA !== fallbackDateB) {
+                return fallbackDateA.localeCompare(fallbackDateB);
+            }
+
+            // 6. Sıralama önceliği: ID'ye göre (Son çare)
             return a.id.localeCompare(b.id);
         });
         return list;
