@@ -270,7 +270,7 @@ export function CourseMediaTab({
             if (a.type === "Session" && a.sessionId) {
                 const sess = sessions.find(s => s.id === a.sessionId);
                 titleA = a.sessionTitle || sess?.title || "";
-            } else if (a.type === "Video" && a.mediaAsset) {
+            } else if (a.type === "Media" && a.mediaAsset) {
                 titleA = a.mediaAsset.title || "";
             } else {
                 titleA = a.examTitle || "";
@@ -279,7 +279,7 @@ export function CourseMediaTab({
             if (b.type === "Session" && b.sessionId) {
                 const sess = sessions.find(s => s.id === b.sessionId);
                 titleB = b.sessionTitle || sess?.title || "";
-            } else if (b.type === "Video" && b.mediaAsset) {
+            } else if (b.type === "Media" && b.mediaAsset) {
                 titleB = b.mediaAsset.title || "";
             } else {
                 titleB = b.examTitle || "";
@@ -317,14 +317,14 @@ export function CourseMediaTab({
             if (a.type === "Session" && a.sessionId) {
                 const sess = sessions.find(s => s.id === a.sessionId);
                 fallbackDateA = sess?.scheduledStart || sess?.createdAt || "";
-            } else if (a.type === "Video" && a.mediaAsset) {
+            } else if (a.type === "Media" && a.mediaAsset) {
                 fallbackDateA = a.mediaAsset.createdAt || "";
             }
             
             if (b.type === "Session" && b.sessionId) {
                 const sess = sessions.find(s => s.id === b.sessionId);
                 fallbackDateB = sess?.scheduledStart || sess?.createdAt || "";
-            } else if (b.type === "Video" && b.mediaAsset) {
+            } else if (b.type === "Media" && b.mediaAsset) {
                 fallbackDateB = b.mediaAsset.createdAt || "";
             }
             
