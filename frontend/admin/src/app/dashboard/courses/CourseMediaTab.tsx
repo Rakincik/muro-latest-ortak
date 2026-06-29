@@ -10,6 +10,8 @@ import { LibrarySelectorModal } from "@/components/ui/LibrarySelectorModal";
 import { ExamSelectorModal } from "@/components/ui/ExamSelectorModal";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import Plyr from 'plyr';
+import 'plyr/dist/plyr.css';
 
 export function getVideoPlaybackDetails(url: string) {
     if (!url) return { url: "", type: "video" as const };
