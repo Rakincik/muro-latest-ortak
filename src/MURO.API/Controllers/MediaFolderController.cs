@@ -20,9 +20,9 @@ public class MediaFolderController : ControllerBase
 
 
     [HttpGet]
-    public async Task<IActionResult> GetFolders([FromQuery] Guid? parentFolderId = null, [FromQuery] string? search = null)
+    public async Task<IActionResult> GetFolders([FromQuery] Guid? parentFolderId = null, [FromQuery] string? search = null, [FromQuery] bool all = false)
     {
-        var folders = await _folderService.GetFoldersAsync(parentFolderId, search);
+        var folders = await _folderService.GetFoldersAsync(parentFolderId, search, all);
         return Ok(folders);
     }
 

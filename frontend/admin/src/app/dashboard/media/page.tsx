@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen, X, Layers, CheckCircle2, Clock, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { FolderPlus, FileVideo, ChevronRight, Folder, MoreVertical, Trash2, Edit2, Play, Search, Grid, List as ListIcon, UploadCloud, BookOpen, X, Layers, CheckCircle2, Clock, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown, CornerUpRight } from "lucide-react";
 import { mediaLibraryApi, type MediaFolderDto, type MediaAssetDto } from "@/lib/api";
 import { useToast } from "@/components/toast";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
@@ -60,6 +60,8 @@ export default function MediaLibraryPage() {
     const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
     const [isBulkMoveModalOpen, setIsBulkMoveModalOpen] = useState(false);
     const [bulkMoveFolderId, setBulkMoveFolderId] = useState<string | null>(null);
+    const [moveTargetFolderId, setMoveTargetFolderId] = useState<string | null>(null);
+    const [allFolders, setAllFolders] = useState<MediaFolderDto[]>([]);
 
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
@@ -162,7 +164,7 @@ export default function MediaLibraryPage() {
 
     const triggerTreeRefresh = () => setRefreshTrigger(prev => prev + 1);
 
-    const handleTreeAction = (action: 'rename' | 'delete' | 'assign' | 'createSub', folder: MediaFolderDto | null) => {
+    const handleTreeAction = (action: 'rename' | 'delete' | 'assign' | 'createSub' | 'move', folder: MediaFolderDto | null) => {
         if (action === 'createSub') {
             setCurrentFolderId(folder?.id || null);
             setIsCreateFolderModalOpen(true);
@@ -178,7 +180,19 @@ export default function MediaLibraryPage() {
                 .finally(() => setIsCourseModalOpen(true));
         } else if (action === 'delete' && folder) {
             handleRemoveFolder(folder);
+        } else if (action === 'move' && folder) {
+            openMoveModal(folder.id);
         }
+    };
+
+    const openMoveModal = async (folderId?: string) => {
+        try {
+            const allF = await mediaLibraryApi.getFolders(undefined, undefined, true);
+            setAllFolders(allF);
+        } catch (err) {}
+        
+        setMoveTargetFolderId(folderId || null);
+        setIsBulkMoveModalOpen(true);
     };
 
     const handleCreateFolder = async (e: React.FormEvent) => {
@@ -429,19 +443,36 @@ export default function MediaLibraryPage() {
         });
     };
 
-    const handleBulkMoveSubmit = async (e: React.FormEvent) => {
+    const handleMoveSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            for (const id of selectedAssetIds) {
-                await mediaLibraryApi.updateAsset(id, { folderId: bulkMoveFolderId });
+            if (moveTargetFolderId) {
+                if (moveTargetFolderId === bulkMoveFolderId) {
+                    toastError("Hata", "Klasörü kendi içine taşıyamazsınız.");
+                    return;
+                }
+                const folderToMove = allFolders.find(f => f.id === moveTargetFolderId);
+                if (!folderToMove) return;
+
+                await mediaLibraryApi.updateFolder(moveTargetFolderId, { 
+                    name: folderToMove.name, 
+                    parentFolderId: bulkMoveFolderId || undefined 
+                });
+                success("Klasör taşındı");
+            } else {
+                for (const id of selectedAssetIds) {
+                    await mediaLibraryApi.updateAsset(id, { folderId: bulkMoveFolderId || null });
+                }
+                success("Videolar taşındı");
+                setSelectedAssetIds([]);
             }
-            success("Videolar taşındı");
             setIsBulkMoveModalOpen(false);
-            setSelectedAssetIds([]);
+            setMoveTargetFolderId(null);
+            setBulkMoveFolderId(null);
             triggerTreeRefresh();
             loadData();
         } catch (error) {
-            toastError("Hata", "Videolar taşınamadı");
+            toastError("Hata", "Taşıma işlemi başarısız oldu");
         }
     };
 
@@ -1029,7 +1060,7 @@ export default function MediaLibraryPage() {
                                 <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
                                     <Folder size={20} />
                                 </div>
-                                <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">Videoları Taşı</h2>
+                                <h2 className="text-[17px] font-bold text-gray-900 tracking-tight">{moveTargetFolderId ? 'Klasörü Taşı' : 'Videoları Taşı'}</h2>
                             </div>
                             <button 
                                 type="button" 
@@ -1040,7 +1071,7 @@ export default function MediaLibraryPage() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleBulkMoveSubmit}>
+                        <form onSubmit={handleMoveSubmit}>
                             <div className="mb-6">
                                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Hedef Klasör</label>
                                 <select
@@ -1049,7 +1080,7 @@ export default function MediaLibraryPage() {
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all font-semibold"
                                 >
                                     <option value="">Kök Dizin (Ana Klasör)</option>
-                                    {folders.map(f => (
+                                    {allFolders.filter(f => f.id !== moveTargetFolderId).map(f => (
                                         <option key={f.id} value={f.id}>{f.name}</option>
                                     ))}
                                 </select>
@@ -1080,7 +1111,7 @@ export default function MediaLibraryPage() {
                     <span className="font-medium text-sm">{selectedAssetIds.length} öğe seçildi</span>
                     <div className="h-4 w-px bg-gray-700" />
                     <button onClick={() => { setCourseAssignTarget({ id: '', type: 'bulk', bulkIds: selectedAssetIds }); setIsCourseModalOpen(true); }} className="text-sm font-medium hover:text-blue-400 transition-colors">Derse Tanımla</button>
-                    <button onClick={() => setIsBulkMoveModalOpen(true)} className="text-sm font-medium hover:text-blue-400 transition-colors">Taşı</button>
+                    <button onClick={() => openMoveModal()} className="text-sm font-medium hover:text-blue-400 transition-colors">Taşı</button>
                     <button onClick={handleBulkDelete} className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors">Sil</button>
                     <div className="h-4 w-px bg-gray-700" />
                     <button onClick={() => setSelectedAssetIds([])} className="text-sm font-medium text-gray-400 hover:text-white transition-colors">İptal</button>

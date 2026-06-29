@@ -17,8 +17,23 @@ public class MediaFolderService : IMediaFolderService
         _mediaService = mediaService;
     }
 
-    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null, string? search = null)
+    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null, string? search = null, bool all = false)
     {
+        if (all)
+        {
+            return await _context.MediaFolders
+                .OrderBy(f => f.Name)
+                .Select(f => new MediaFolderDto(
+                    f.Id,
+                    f.Name,
+                    f.ParentFolderId,
+                    f.CreatedAt,
+                    f.SubFolders.Count,
+                    f.MediaAssets.Count,
+                    null
+                ))
+                .ToListAsync();
+        }
         if (!string.IsNullOrEmpty(search))
         {
             var searchLower = search.ToLower();

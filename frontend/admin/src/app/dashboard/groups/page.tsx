@@ -27,7 +27,9 @@ import {
     PiTentDuotone,
     PiNotePencilDuotone,
     PiTargetDuotone,
-    PiFilePlusDuotone
+    PiFilePlusDuotone,
+    PiFolderDuotone,
+    PiFolderOpenDuotone
 } from "react-icons/pi";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -64,35 +66,44 @@ function GroupTreeItem({
     const isEmpty = group.memberCount === 0;
     return (
         <div
-            className={`flex items-center gap-2.5 p-1.5 rounded-lg cursor-pointer group transition-colors ${selected ? "bg-[#F8FAFC]" : "hover:bg-slate-50"}`}
+            className={`flex items-center gap-2 p-1.5 pr-2 rounded-lg cursor-pointer group transition-colors select-none ${selected ? "bg-blue-50 border border-blue-100 shadow-sm" : "border border-transparent hover:bg-slate-50"}`}
             onClick={onSelect}
         >
             <button onClick={e => { e.stopPropagation(); onToggle(); }} 
-                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? `w-5 h-5 rounded ${selected ? "text-[#0A1931]" : "text-[#64748B] hover:text-[#0A1931]"}` : "w-5 text-transparent"}`}>
+                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? `w-5 h-5 rounded ${selected ? "text-blue-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-200/50"}` : "w-5 text-transparent"}`}>
                 {hasChildren ? (expanded ? <ChevronDown size={14} strokeWidth={3} /> : <ChevronRight size={14} strokeWidth={3} />) : <span className="w-4" />}
             </button>
-            <div className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm" style={{ background: group.color ?? "#94a3b8" }} />
-            <div className="flex-1 min-w-0 py-0.5">
-                <p className="text-sm font-bold tracking-tight truncate text-[#0A1931]">{group.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] ${selected ? "bg-blue-50 text-blue-700" : "text-[#64748B] group-hover:bg-white"}`}><Users size={10} /> {group.memberCount}</span>
-                    <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] ${selected ? "bg-emerald-50 text-emerald-700" : "text-[#64748B] group-hover:bg-white"}`}><BookOpen size={10} /> {group.courseCount}</span>
-                    {group.educationType && <span className={`flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-[5px] ${selected ? "bg-indigo-50 text-indigo-700" : "text-indigo-600 group-hover:bg-white"}`}>{getEducationIcon(group.educationType, 12)}</span>}
+            
+            <div className="shrink-0 flex items-center justify-center transition-transform group-hover:scale-110" style={{ color: group.color ?? (selected ? "#3b82f6" : "#94a3b8") }}>
+                {expanded ? <PiFolderOpenDuotone size={18} /> : <PiFolderDuotone size={18} />}
+            </div>
+            
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+                <Tooltip content={group.name}>
+                    <span className={`text-sm truncate block ${selected ? "font-bold text-blue-900" : "font-medium text-slate-700 group-hover:text-slate-900"}`}>{group.name}</span>
+                </Tooltip>
+                
+                {/* Minimal Stats */}
+                <div className={`flex items-center gap-1.5 transition-opacity ${selected ? "opacity-80" : "opacity-40 group-hover:opacity-70"}`}>
+                    <span className="flex items-center gap-0.5 text-[10px] font-semibold"><Users size={10} /> {group.memberCount}</span>
+                    <span className="flex items-center gap-0.5 text-[10px] font-semibold"><BookOpen size={10} /> {group.courseCount}</span>
                 </div>
             </div>
-            {isEmpty && <Tooltip content="Boş grup"><span className={`text-amber-400 ${selected ? "opacity-100" : "opacity-80"}`}><AlertTriangle size={12} /></span></Tooltip>}
-            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+            
+            {isEmpty && <Tooltip content="Boş grup"><span className={`shrink-0 ml-1 text-amber-400 ${selected ? "opacity-100" : "opacity-80"}`}><AlertTriangle size={12} /></span></Tooltip>}
+            
+            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 ml-2 transition-opacity">
                 <Tooltip content="Alt Grup Ekle"><button onClick={e => { e.stopPropagation(); onAddSubgroup(); }}
-                    className="p-1.5 rounded text-[#A0AEC0] hover:text-emerald-600 hover:bg-emerald-50">
-                    <Plus size={12} />
+                    className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50">
+                    <Plus size={14} />
                 </button></Tooltip>
                 <Tooltip content="Düzenle"><button onClick={e => { e.stopPropagation(); onEdit(); }}
-                    className="p-1.5 rounded text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#F0F4F8]">
-                    <Edit3 size={12} />
+                    className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50">
+                    <Edit3 size={14} />
                 </button></Tooltip>
                 <Tooltip content="Sil"><button onClick={e => { e.stopPropagation(); onDelete(); }}
-                    className="p-1.5 rounded text-[#A0AEC0] hover:text-red-600 hover:bg-red-50">
-                    <Trash2 size={12} />
+                    className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50">
+                    <Trash2 size={14} />
                 </button></Tooltip>
             </div>
         </div>

@@ -2,7 +2,7 @@ import { api as fetchApi } from './core';
 import type { MediaFolderDto, MediaAssetDto, CourseMediaDto } from './types';
 
 // --- Media Folders ---
-export const getFolders = async (parentFolderId?: string, search?: string): Promise<MediaFolderDto[]> => {
+export const getFolders = async (parentFolderId?: string, search?: string, all?: boolean): Promise<MediaFolderDto[]> => {
     let url = '/media-folders';
     const params = new URLSearchParams();
     if (parentFolderId) {
@@ -10,6 +10,9 @@ export const getFolders = async (parentFolderId?: string, search?: string): Prom
     }
     if (search) {
         params.append('search', search);
+    }
+    if (all) {
+        params.append('all', 'true');
     }
     const queryString = params.toString();
     if (queryString) {

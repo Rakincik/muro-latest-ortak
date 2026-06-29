@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Folder, Plus, Edit2, Trash2, BookOpen, Search, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, Plus, Edit2, Trash2, BookOpen, Search, X, CornerUpRight } from 'lucide-react';
 import { mediaLibraryApi, type MediaFolderDto } from '@/lib/api';
 import { Tooltip } from '@/components/ui/Tooltip';
 
@@ -11,7 +11,7 @@ interface FolderNodeProps {
     activeFolderId: string | null;
     path: {id: string | null, name: string}[];
     onSelect: (folderId: string | null, path: {id: string | null, name: string}[]) => void;
-    onAction: (action: 'rename' | 'delete' | 'assign' | 'createSub', folder: MediaFolderDto) => void;
+    onAction: (action: 'rename' | 'delete' | 'assign' | 'createSub' | 'move', folder: MediaFolderDto) => void;
     dragOverFolderId: string | null;
     onDragOverFolder: (e: React.DragEvent, folderId: string | null) => void;
     onDragLeaveFolder: (e: React.DragEvent) => void;
@@ -116,6 +116,14 @@ const FolderNode: React.FC<FolderNodeProps> = ({
                             <BookOpen size={16} />
                         </button>
                     </Tooltip>
+                    <Tooltip content="Taşı">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onAction('move', folder); }}
+                            className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                            <CornerUpRight size={16} />
+                        </button>
+                    </Tooltip>
                     <Tooltip content="Sil">
                         <button 
                             onClick={(e) => { e.stopPropagation(); onAction('delete', folder); }}
@@ -164,7 +172,7 @@ const formatBytes = (bytes: number, decimals = 1) => {
 interface FolderTreeProps {
     activeFolderId: string | null;
     onSelect: (folderId: string | null, path: {id: string | null, name: string}[]) => void;
-    onAction: (action: 'rename' | 'delete' | 'assign' | 'createSub', folder: MediaFolderDto | null) => void;
+    onAction: (action: 'rename' | 'delete' | 'assign' | 'createSub' | 'move', folder: MediaFolderDto | null) => void;
     refreshTrigger: number;
     dragOverFolderId: string | null;
     onDragOverFolder: (e: React.DragEvent, folderId: string | null) => void;
@@ -316,6 +324,14 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
                                                         className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
                                                     >
                                                         <Edit2 size={14} />
+                                                    </button>
+                                                </Tooltip>
+                                                <Tooltip content="Taşı">
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); onAction('move', folder); }}
+                                                        className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+                                                    >
+                                                        <CornerUpRight size={14} />
                                                     </button>
                                                 </Tooltip>
                                                 <Tooltip content="Sil">

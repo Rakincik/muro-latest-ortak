@@ -166,8 +166,8 @@ export default function CourseDetailPage() {
                         durationSeconds: cm.mediaAsset?.durationSeconds || matchRec?.durationSeconds || 0,
                         participantsCount: 0,
                         status: "Ready", // Assume ready if it's in course medias
-                        createdAt: cm.createdAt,
-                        scheduledStart: cm.sessionScheduledStart || null,
+                        createdAt: matchSession?.createdAt || cm.mediaAsset?.createdAt || null,
+                        scheduledStart: matchSession?.scheduledStart || null,
                         type: cm.examId ? 'Exam' : (cm.type === 'Video' || cm.mediaAsset?.hlsPath ? 'Video' : 'Recording'),
                         examId: cm.examId || undefined,
                         videoUrl: matchSession?.videoUrl || null,
@@ -178,10 +178,16 @@ export default function CourseDetailPage() {
 
                 // Sıralamayı tarihe göre (eskiden yeniye) düzenle (Özellikle BBB dersleri için)
                 mappedRecordings.sort((a, b) => {
-                    const dateA = a.scheduledStart;
-                    const dateB = b.scheduledStart;
+                    const extractDateFromTitle = (title: string) => {
+                        if (!title) return null;
+                        const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                        if (match) return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
+                        return null;
+                    };
                     
-                    // İki öğenin de planlanmış bir tarihi varsa (BBB Dersleri), mutlaka tarihe göre sırala
+                    const dateA = extractDateFromTitle(a.sessionTitle) || a.scheduledStart || a.createdAt || "";
+                    const dateB = extractDateFromTitle(b.sessionTitle) || b.scheduledStart || b.createdAt || "";
+                    
                     if (dateA && dateB) {
                         const cmp = dateA.localeCompare(dateB);
                         if (cmp !== 0) return cmp;
@@ -192,14 +198,14 @@ export default function CourseDetailPage() {
                         return (a.orderIndex || 0) - (b.orderIndex || 0);
                     }
                     
-                    const fallbackDateA = dateA || a.createdAt || "";
-                    const fallbackDateB = dateB || b.createdAt || "";
-                    if (fallbackDateA && fallbackDateB) {
-                        const cmp = fallbackDateA.localeCompare(fallbackDateB);
-                        if (cmp !== 0) return cmp;
+                    // En son çare: İsimleri alfabetik sırala
+                    const titleA = a.sessionTitle || "";
+                    const titleB = b.sessionTitle || "";
+                    if (titleA && titleB) {
+                        return titleA.localeCompare(titleB, 'tr', { numeric: true });
                     }
                     
-                    return a.id.localeCompare(b.id);
+                    return 0;
                 });
                 
                 setRecordings(mappedRecordings);

@@ -262,23 +262,38 @@ export function CourseMediaTab({
             // 2. Sıralama önceliği: Aynı sıradaysa tarihe göre (eskiden yeniye)
             let dateA = "";
             let dateB = "";
+            let titleA = "";
+            let titleB = "";
+            
+            // Tarihi title'dan çıkarma (örnek: "DEVLET 3 — 28.06.2026" veya "DD.MM.YYYY")
+            const extractDateFromTitle = (title: string) => {
+                const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                if (match) {
+                    return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`; // YYYY-MM-DD formatına çevir
+                }
+                return null;
+            };
             
             if (a.type === "Session" && a.sessionId) {
                 const sess = sessions.find(s => s.id === a.sessionId);
-                dateA = sess?.scheduledStart || a.createdAt || "";
+                titleA = a.sessionTitle || sess?.title || "";
+                dateA = extractDateFromTitle(titleA) || sess?.scheduledStart || sess?.createdAt || "";
             } else if (a.type === "Video" && a.mediaAsset) {
-                dateA = a.mediaAsset.createdAt || a.createdAt || "";
+                titleA = a.mediaAsset.title || "";
+                dateA = extractDateFromTitle(titleA) || a.mediaAsset.createdAt || "";
             } else {
-                dateA = a.createdAt || "";
+                titleA = a.examTitle || "";
             }
             
             if (b.type === "Session" && b.sessionId) {
                 const sess = sessions.find(s => s.id === b.sessionId);
-                dateB = sess?.scheduledStart || b.createdAt || "";
+                titleB = b.sessionTitle || sess?.title || "";
+                dateB = extractDateFromTitle(titleB) || sess?.scheduledStart || sess?.createdAt || "";
             } else if (b.type === "Video" && b.mediaAsset) {
-                dateB = b.mediaAsset.createdAt || b.createdAt || "";
+                titleB = b.mediaAsset.title || "";
+                dateB = extractDateFromTitle(titleB) || b.mediaAsset.createdAt || "";
             } else {
-                dateB = b.createdAt || "";
+                titleB = b.examTitle || "";
             }
             
             if (dateA && dateB) {
@@ -287,7 +302,12 @@ export function CourseMediaTab({
             if (dateA) return -1;
             if (dateB) return 1;
             
-            // 3. Sıralama önceliği: ID'ye göre
+            // 3. Sıralama önceliği: İsimlere göre (Tarih yoksa, Alfabetik A-Z)
+            if (titleA && titleB) {
+                return titleA.localeCompare(titleB, 'tr', { numeric: true });
+            }
+            
+            // 4. Sıralama önceliği: ID'ye göre (Son çare)
             return a.id.localeCompare(b.id);
         });
         return list;
