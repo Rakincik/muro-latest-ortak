@@ -527,7 +527,7 @@ export default function CoursesPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A1931]/90 via-transparent to-white/5" />
                     <div className="relative p-4 sm:p-8 md:p-10 flex flex-col md:flex-row items-stretch md:items-center gap-4 sm:gap-6 md:gap-8">
                         {/* Header: Icon + Title info */}
-                        <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto flex-1 text-left md:text-left">
+                        <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto flex-1 text-left md:text-left min-w-0">
                             <div className="w-12 h-12 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl md:rounded-3xl bg-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl ring-1 ring-white/20 overflow-hidden shrink-0">
                                 {c.thumbnailUrl ? (
                                     <img src={c.thumbnailUrl} alt="Cover" className="w-full h-full object-cover" />
@@ -542,8 +542,8 @@ export default function CoursesPage() {
                                         : <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 md:px-3 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/20">Taslak</span>
                                     }
                                 </div>
-                                <h1 className="text-lg sm:text-2xl md:text-4xl font-black text-white tracking-tight mb-0.5 truncate">{c.title}</h1>
-                                <p className="text-[10px] sm:text-sm font-medium text-white/60 max-w-xl line-clamp-1 md:line-clamp-none">{c.description}</p>
+                                <h1 className="text-lg sm:text-2xl md:text-4xl font-black text-white tracking-tight mb-0.5 truncate" title={c.title}>{c.title}</h1>
+                                <p className="text-[10px] sm:text-sm font-medium text-white/60 max-w-xl truncate" title={c.description}>{c.description}</p>
                             </div>
                         </div>
 
