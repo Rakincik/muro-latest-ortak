@@ -278,7 +278,7 @@ public class AnalyticsService : IAnalyticsService
                 attendedCount, totalSessions, attendanceRate,
                 completedVideos, totalVideos, videoCompletionRate,
                 totalWatchedMinutes, submittedAssignments, avgScore);
-        }, TimeSpan.FromMinutes(2));
+        }, TimeSpan.FromMinutes(10));
     }
 
     public async Task<StudentAcademicHistoryDto> GetStudentAcademicHistoryAsync(Guid studentId)
