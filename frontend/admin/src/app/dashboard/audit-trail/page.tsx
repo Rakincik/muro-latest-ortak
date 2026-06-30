@@ -244,6 +244,12 @@ const RenderLogDetails = ({ details }: { details: string }) => {
         // silent fail
     }
 
+    const ignoredKeys = [
+        "MediaAssetId", "ReplayCount", "SkipCount", "TotalSeconds", 
+        "UserId", "UpdatedAt", "CompletedAt", "Id", "AuditDisplayName",
+        "GroupId", "TenantId", "IsDeleted"
+    ];
+
     // JSON formatındaki yeni kayıtlar
     if (parsed && parsed.changes) {
         const changesObj = parsed.changes;
@@ -257,14 +263,24 @@ const RenderLogDetails = ({ details }: { details: string }) => {
             );
         }
 
-        const changes = keys.map((key) => {
-            const change = changesObj[key];
-            return {
-                label: keyTranslations[key] || key,
-                oldVal: formatAuditValue(key, change.old),
-                newVal: formatAuditValue(key, change.new),
-            };
-        });
+        const changes = keys
+            .filter(key => !ignoredKeys.includes(key))
+            .map((key) => {
+                const change = changesObj[key];
+                return {
+                    label: keyTranslations[key] || key,
+                    oldVal: formatAuditValue(key, change.old),
+                    newVal: formatAuditValue(key, change.new),
+                };
+            });
+
+        if (changes.length === 0) {
+            return (
+                <div className="mt-2 text-xs text-slate-500 italic">
+                    (Detaylı alan değişikliği tespit edilmedi veya gizlendi)
+                </div>
+            );
+        }
 
         return renderChangesGrid(changes);
     }
@@ -279,18 +295,22 @@ const RenderLogDetails = ({ details }: { details: string }) => {
 
         if (matchUpdate) {
             const [, key, oldVal, newVal] = matchUpdate;
-            parsedChanges.push({
-                label: keyTranslations[key.trim()] || key.trim(),
-                oldVal: formatAuditValue(key.trim(), oldVal),
-                newVal: formatAuditValue(key.trim(), newVal),
-            });
+            if (!ignoredKeys.includes(key.trim())) {
+                parsedChanges.push({
+                    label: keyTranslations[key.trim()] || key.trim(),
+                    oldVal: formatAuditValue(key.trim(), oldVal),
+                    newVal: formatAuditValue(key.trim(), newVal),
+                });
+            }
         } else if (matchCreate) {
             const [, key, val] = matchCreate;
-            parsedChanges.push({
-                label: keyTranslations[key.trim()] || key.trim(),
-                oldVal: "-",
-                newVal: formatAuditValue(key.trim(), val),
-            });
+            if (!ignoredKeys.includes(key.trim())) {
+                parsedChanges.push({
+                    label: keyTranslations[key.trim()] || key.trim(),
+                    oldVal: "-",
+                    newVal: formatAuditValue(key.trim(), val),
+                });
+            }
         }
     });
 
