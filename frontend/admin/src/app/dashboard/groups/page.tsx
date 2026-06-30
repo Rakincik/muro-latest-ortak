@@ -503,7 +503,7 @@ export default function GroupsPage() {
                     {depth > 0 && (
                         <div className="absolute top-6 h-px bg-slate-200 w-3" style={{ left: `${(depth - 1) * 20 + 20}px` }} />
                     )}
-                    <div style={{ marginLeft: depth * 20 }} className="relative z-10 my-0.5">
+                    <div style={{ marginLeft: depth * 20 }} className="relative my-0.5">
                         <GroupTreeItem group={g} selected={selectedId === g.id} expanded={isExpanded}
                             hasChildren={children.length > 0} onSelect={() => setSelectedId(g.id)}
                             onToggle={() => toggle(g.id)} onEdit={() => openEdit(g)} onDelete={() => setDeleteTarget(g.id)}
