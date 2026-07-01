@@ -186,11 +186,14 @@ public class AnalyticsService : IAnalyticsService
                 .Distinct()
                 .CountAsync();
 
-            // Oturum bazlı yoklama
-            // FIX: ScheduledStart.HasValue zorunluluğu kaldırıldı. 
-            // Eğer oturumun tarihi yoksa ama durumu Ended veya Live ise (yani yapıldıysa/yapılıyorsa) rapora dahil edilmeli.
+            // Sadece o kursun aktif müfredatında (CourseMedias tablosunda) olan oturumları baz alıyoruz.
+            var activeSessionIds = await _context.CourseMedias.AsNoTracking()
+                .Where(cm => cm.CourseId == courseId && cm.SessionId.HasValue)
+                .Select(cm => cm.SessionId!.Value)
+                .ToListAsync();
+
             var sessions = await _context.Sessions.AsNoTracking()
-                .Where(s => s.CourseId == courseId 
+                .Where(s => activeSessionIds.Contains(s.Id)
                          && !s.IsDeleted 
                          && (s.ScheduledStart.HasValue || s.Status == SessionStatus.Ended || s.Status == SessionStatus.Live) 
                          && s.Description != "Video (VOD)" 
@@ -250,19 +253,22 @@ public class AnalyticsService : IAnalyticsService
             var accessibleCourseIds = await _groupAccessService.GetAccessibleCourseIdsAsync(studentId);
 
             // ── Canlı Ders Devam ──────────────────────────────────────────────
-            // FIX: ScheduledStart.HasValue zorunluluğu kaldırıldı. Tarih atanmamış olsa dahi Ended veya Live olan oturumlar sayılır.
+            // Sadece öğrencinin erişebildiği kursların aktif müfredatında (CourseMedias tablosunda) olan oturumları baz alıyoruz.
+            var activeSessionIds = await _context.CourseMedias.AsNoTracking()
+                .Where(cm => accessibleCourseIds.Contains(cm.CourseId) && cm.SessionId.HasValue)
+                .Select(cm => cm.SessionId!.Value)
+                .ToListAsync();
+
             var totalSessions = await _context.Sessions.AsNoTracking()
-                .CountAsync(s => accessibleCourseIds.Contains(s.CourseId) 
+                .CountAsync(s => activeSessionIds.Contains(s.Id) 
                     && !s.IsDeleted 
                     && ((s.ScheduledStart.HasValue && s.ScheduledStart < DateTime.UtcNow) || s.Status == SessionStatus.Ended || s.Status == SessionStatus.Live) 
                     && s.Description != "Video (VOD)" 
                     && s.Status != SessionStatus.Cancelled);
 
-            // FIX: attendedCount sorgusuna accessibleCourseIds filtresi eklendi.
-            // Ayrıca tarihi null olan ama yapılmış/canlı oturumları da kapsayacak şekilde güncellendi.
             var attendedCount = await _context.SessionAttendances.AsNoTracking()
                 .CountAsync(sa => sa.UserId == studentId
-                    && accessibleCourseIds.Contains(sa.Session.CourseId)
+                    && activeSessionIds.Contains(sa.SessionId)
                     && !sa.Session.IsDeleted
                     && ((sa.Session.ScheduledStart.HasValue && sa.Session.ScheduledStart < DateTime.UtcNow) || sa.Session.Status == SessionStatus.Ended || sa.Session.Status == SessionStatus.Live)
                     && sa.Session.Description != "Video (VOD)"
