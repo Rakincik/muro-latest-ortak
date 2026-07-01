@@ -46,49 +46,88 @@ function IpLocation({ ip }: { ip?: string }) {
     useEffect(() => {
         if (!ip || ip === "Bilinmiyor" || ip.startsWith("127.") || ip.startsWith("192.168") || ip === "::1" || ip === "localhost") return;
         
-        const cached = sessionStorage.getItem(`iploc_${ip}`);
+        // 1. Önbelleği localStorage'dan oku (Kalıcı önbellek)
+        const cached = localStorage.getItem(`iploc_${ip}`);
         if (cached) {
             setLoc(cached);
             return;
         }
 
-        fetch(`https://ipapi.co/${ip}/json/`)
-            .then(res => res.json())
-            .then(data => {
-                if (data) {
-                    const ilce = data.city || "";
-                    const il = data.region || "";
-                    const isp = data.org || "";
-                    
-                    let locationString = "";
-                    if (ilce && il) {
-                        locationString = `${ilce}, ${il}`;
-                    } else {
-                        locationString = il || ilce || "";
-                    }
-                    
-                    let ispFriendly = isp;
-                    if (isp.toLowerCase().includes("superonline")) ispFriendly = "Superonline";
-                    else if (isp.toLowerCase().includes("ttnet") || isp.toLowerCase().includes("telekom")) ispFriendly = "Türk Telekom";
-                    else if (isp.toLowerCase().includes("turkcell")) ispFriendly = "Turkcell Mobil";
-                    else if (isp.toLowerCase().includes("vodafone")) ispFriendly = "Vodafone";
-                    else if (isp.toLowerCase().includes("turknet")) ispFriendly = "TurkNet";
-                    
-                    const finalVal = locationString && ispFriendly 
-                        ? `${locationString} | ${ispFriendly}`
-                        : (locationString || ispFriendly || "");
+        const formatLocation = (city: string, region: string, isp: string) => {
+            const ilce = city || "";
+            const il = region || "";
+            
+            let locationString = "";
+            if (ilce && il) {
+                locationString = `${ilce}, ${il}`;
+            } else {
+                locationString = il || ilce || "";
+            }
+            
+            let ispFriendly = isp || "";
+            if (ispFriendly.toLowerCase().includes("superonline")) ispFriendly = "Superonline";
+            else if (ispFriendly.toLowerCase().includes("ttnet") || ispFriendly.toLowerCase().includes("telekom")) ispFriendly = "Türk Telekom";
+            else if (ispFriendly.toLowerCase().includes("turkcell")) ispFriendly = "Turkcell Mobil";
+            else if (ispFriendly.toLowerCase().includes("vodafone")) ispFriendly = "Vodafone";
+            else if (ispFriendly.toLowerCase().includes("turknet")) ispFriendly = "TurkNet";
+            
+            return locationString && ispFriendly 
+                ? `${locationString} | ${ispFriendly}`
+                : (locationString || ispFriendly || "");
+        };
 
+        // 2. Birinci Sağlayıcı (ipapi.co)
+        fetch(`https://ipapi.co/${ip}/json/`)
+            .then(res => {
+                if (res.status === 429) throw new Error("Rate limit");
+                return res.json();
+            })
+            .then(data => {
+                if (data && !data.error) {
+                    const finalVal = formatLocation(data.city, data.region, data.org);
                     if (finalVal) {
                         setLoc(finalVal);
-                        sessionStorage.setItem(`iploc_${ip}`, finalVal);
+                        localStorage.setItem(`iploc_${ip}`, finalVal);
+                        return;
                     }
                 }
+                throw new Error("Failed validation");
             })
-            .catch(() => {});
+            .catch(() => {
+                // 3. İkinci Sağlayıcı Fallback (freeipapi.com - Çok yüksek limitli)
+                fetch(`https://freeipapi.com/api/json/${ip}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.cityName) {
+                            const finalVal = formatLocation(data.cityName, data.regionName, "");
+                            if (finalVal) {
+                                setLoc(finalVal);
+                                localStorage.setItem(`iploc_${ip}`, finalVal);
+                                return;
+                            }
+                        }
+                        throw new Error("Failed validation");
+                    })
+                    .catch(() => {
+                        // 4. Üçüncü Sağlayıcı Fallback (ipwho.is)
+                        fetch(`https://ipwho.is/${ip}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data && data.success) {
+                                    const finalVal = formatLocation(data.city, data.region, data.connection?.isp);
+                                    if (finalVal) {
+                                        setLoc(finalVal);
+                                        localStorage.setItem(`iploc_${ip}`, finalVal);
+                                    }
+                                }
+                            })
+                            .catch(() => {});
+                    });
+            });
     }, [ip]);
 
     if (!loc) return null;
-    return <span className="text-[#1B3B6F] font-semibold text-[10px] ml-1.5 bg-[#1B3B6F]/5 px-1.5 py-0.5 rounded border border-[#1B3B6F]/10 font-sans shadow-sm">({loc})</span>;
+    return <span className="text-[#1B3B6F] font-semibold text-[10px] ml-1.5 bg-[#1B3B6F]/5 px-1.5 py-0.5 rounded border border-[#1B3B6F]/10 font-sans shadow-sm">( {loc} )</span>;
 }
 
 const formatActionLabel = (action: string): string => {
@@ -907,7 +946,6 @@ export default function AuditTrailPage() {
                                                                             <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                                                                                 <p className="text-[10px] text-[#A0AEC0] font-mono flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">
                                                                                     <Globe size={10}/> IP: {log.ipAddress || "Bilinmiyor"}
-                                                                                    <IpLocation ip={log.ipAddress} />
                                                                                 </p>
                                                                             </div>
                                                                         </>
