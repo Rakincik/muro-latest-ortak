@@ -5,6 +5,8 @@ using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
 using StackExchange.Redis;
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace MURO.Infrastructure.Services;
 
 // Fix #4: IAnalyticsService artık MURO.Application.Interfaces içinde tanımlı.
@@ -14,17 +16,20 @@ public class AnalyticsService : IAnalyticsService
     private readonly ICacheService _cache;
     private readonly IConnectionMultiplexer _redis;
     private readonly IGroupAccessService _groupAccessService;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public AnalyticsService(
         MuroDbContext context, 
         ICacheService cache, 
         IConnectionMultiplexer redis,
-        IGroupAccessService groupAccessService)
+        IGroupAccessService groupAccessService,
+        IServiceScopeFactory scopeFactory)
     {
         _context = context;
         _cache = cache;
         _redis = redis;
         _groupAccessService = groupAccessService;
+        _scopeFactory = scopeFactory;
     }
 
     // ── Admin: Genel dashboard istatistikleri ───────────────────────────────
@@ -246,27 +251,31 @@ public class AnalyticsService : IAnalyticsService
         var cacheKey = $"analytics:scorecard:{studentId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            var user = await _context.Users.AsNoTracking()
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<MuroDbContext>();
+            var groupAccessService = scope.ServiceProvider.GetRequiredService<IGroupAccessService>();
+
+            var user = await context.Users.AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == studentId)
                 ?? throw new KeyNotFoundException("Öğrenci bulunamadı.");
 
-            var accessibleCourseIds = await _groupAccessService.GetAccessibleCourseIdsAsync(studentId);
+            var accessibleCourseIds = await groupAccessService.GetAccessibleCourseIdsAsync(studentId);
 
             // ── Canlı Ders Devam ──────────────────────────────────────────────
             // Sadece öğrencinin erişebildiği kursların aktif müfredatında (CourseMedias tablosunda) olan oturumları baz alıyoruz.
-            var activeSessionIds = await _context.CourseMedias.AsNoTracking()
+            var activeSessionIds = await context.CourseMedias.AsNoTracking()
                 .Where(cm => accessibleCourseIds.Contains(cm.CourseId) && cm.SessionId.HasValue)
                 .Select(cm => cm.SessionId!.Value)
                 .ToListAsync();
 
-            var totalSessions = await _context.Sessions.AsNoTracking()
+            var totalSessions = await context.Sessions.AsNoTracking()
                 .CountAsync(s => activeSessionIds.Contains(s.Id) 
                     && !s.IsDeleted 
                     && ((s.ScheduledStart.HasValue && s.ScheduledStart < DateTime.UtcNow) || s.Status == SessionStatus.Ended || s.Status == SessionStatus.Live) 
                     && s.Description != "Video (VOD)" 
                     && s.Status != SessionStatus.Cancelled);
 
-            var attendedCount = await _context.SessionAttendances.AsNoTracking()
+            var attendedCount = await context.SessionAttendances.AsNoTracking()
                 .CountAsync(sa => sa.UserId == studentId
                     && activeSessionIds.Contains(sa.SessionId)
                     && !sa.Session.IsDeleted
@@ -275,21 +284,21 @@ public class AnalyticsService : IAnalyticsService
                     && sa.Session.Status != SessionStatus.Cancelled);
 
             // ── Video İzleme ──────────────────────────────────────────────────
-            var videoProgress = await _context.VideoProgresses.AsNoTracking()
+            var videoProgress = await context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UserId == studentId)
                 .ToListAsync();
 
             // FIX: Sadece HLS'i hazır olan gerçek video dosyalarını say (PDF, ses dosyası vb. hariç).
-            var totalVideos = await _context.MediaAssets.AsNoTracking()
+            var totalVideos = await context.MediaAssets.AsNoTracking()
                 .CountAsync(m => m.Status == Domain.Enums.MediaStatus.Ready
                     && m.HlsPath != null
                     && ((m.CourseId != null && accessibleCourseIds.Contains(m.CourseId.Value))
                         || m.CourseMedias.Any(cm => accessibleCourseIds.Contains(cm.CourseId))));
 
-            var submittedAssignments = await _context.AssignmentSubmissions.AsNoTracking()
+            var submittedAssignments = await context.AssignmentSubmissions.AsNoTracking()
                 .CountAsync(s => s.UserId == studentId);
 
-            var examScores = await _context.ExamResults.AsNoTracking()
+            var examScores = await context.ExamResults.AsNoTracking()
                 .Where(r => r.UserId == studentId)
                 .Select(r => r.Score)
                 .ToListAsync();
