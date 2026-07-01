@@ -348,28 +348,37 @@ export default function StudentScorecardPage() {
         setCurrentPage(1);
     }, [search, sortBy, sortDesc]);
 
-    // Load users + sessions
-    useEffect(() => {
+    const [classAvgSummary, setClassAvgSummary] = useState<ScorecardSummaryDto | null>(null);
+
+    // Reusable data loading function
+    const loadAllData = useCallback(async () => {
         if (!token || !tenantId) return;
         setLoading(true);
-        Promise.all([
-            notificationApi.allUsers(token, tenantId),
-            analyticsAdminApi.activeSessions(token, tenantId).catch(() => []),
-        ]).then(([u, sess]) => {
+        try {
+            const [u, sess, summary] = await Promise.all([
+                notificationApi.allUsers(token, tenantId),
+                analyticsAdminApi.activeSessions(token, tenantId).catch(() => []),
+                analyticsAdminApi.scorecardSummary(token, tenantId).catch(() => null),
+            ]);
             const students = u.filter(x => x.role === "Student" || x.role === "student");
             setUsers(students);
             setSessions(sess);
-        }).catch(console.error).finally(() => setLoading(false));
+            if (summary) setClassAvgSummary(summary);
+        } catch (e) {
+            console.error("Scorecard data fetch error:", e);
+        } finally {
+            setLoading(false);
+        }
     }, [token, tenantId]);
 
-    // Class averages — from backend summary endpoint
-    const [classAvgSummary, setClassAvgSummary] = useState<ScorecardSummaryDto | null>(null);
     useEffect(() => {
-        if (!token || !tenantId) return;
-        analyticsAdminApi.scorecardSummary(token, tenantId)
-            .then(setClassAvgSummary)
-            .catch(console.error);
-    }, [token, tenantId]);
+        loadAllData();
+    }, [loadAllData]);
+
+    const handleRefresh = useCallback(() => {
+        setScorecards(new Map());
+        loadAllData();
+    }, [loadAllData]);
 
     // Adapt summary to classAvg shape for comparison bars
     const classAvg = useMemo<StudentScorecardDto | null>(() => {
@@ -479,6 +488,9 @@ export default function StudentScorecardPage() {
                     <p className="text-sm text-[#A9A9A9] mt-0.5">Detaylı performans ve aktivite profili</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button onClick={handleRefresh} className="px-3 py-2 text-xs font-bold bg-white border border-[#E2E8F0] rounded-xl text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-1.5">
+                        <RefreshCw size={12} className={loading || loadingCards ? "animate-spin" : ""} /> Yenile
+                    </button>
                     {filtered.length > 0 && (
                         <button onClick={exportCSV} className="px-3 py-2 text-xs font-bold bg-white border border-[#E2E8F0] rounded-xl text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-1.5">
                             <Download size={12} /> CSV İndir

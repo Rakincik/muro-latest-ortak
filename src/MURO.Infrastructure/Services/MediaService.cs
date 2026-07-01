@@ -303,6 +303,10 @@ public class MediaService : IMediaService
 
         await _context.SaveChangesAsync();
 
+        await _cache.RemoveByPrefixAsync($"videoprogress:{userId}:");
+        await _cache.RemoveAsync($"analytics:scorecard:{userId}");
+        await _cache.RemoveAsync($"analytics:admin_dashboard");
+
         var pct = p.TotalSeconds > 0 ? Math.Round(p.WatchedSeconds / (double)p.TotalSeconds * 100, 1) : 0;
         return new VideoProgressDto(p.Id, p.MediaAssetId, title, p.WatchedSeconds, p.TotalSeconds,
             p.LastPosition, pct, p.CompletedAt, p.UpdatedAt);
