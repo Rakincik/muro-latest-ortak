@@ -160,6 +160,7 @@ const formatEntityLabel = (entityType: string): string => {
         Ticket: "Destek Talebi",
         FAQ: "Sıkça Sorulan Soru",
         VideoNote: "Video Notu",
+        VideoProgress: "Video İzleme İlerlemesi",
         Package: "Paket",
         Session: "Canlı Ders Oturumu",
         DeviceSession: "Cihaz Oturumu"
