@@ -352,7 +352,7 @@ public class AnalyticsService : IAnalyticsService
             await Task.WhenAll(examsTask, assignmentsTask);
 
             return new StudentAcademicHistoryDto(examsTask.Result, assignmentsTask.Result);
-        }, TimeSpan.FromMinutes(2));
+        }, TimeSpan.FromHours(1));
     }
 
     public async Task<List<StudentScorecardDto>> GetStudentScorecardsListAsync()

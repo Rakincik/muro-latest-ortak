@@ -36,26 +36,81 @@ public class AuditLogCleanupJob : BackgroundService
 
     private async Task ProcessCleanupAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Checking for old logs to clean up (older than 30 days)...");
+        _logger.LogInformation("Checking for old logs to backup and clean up (older than 14 days)...");
 
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<MuroDbContext>();
 
-        var thresholdDate = DateTime.UtcNow.AddDays(-30);
+        var thresholdDate = DateTime.UtcNow.AddDays(-14);
 
-        // Eski AuditLogs kayıtlarını sil (EF Core 7.0+ ExecuteDeleteAsync ile çok hızlı ve memory dostu)
+        // 1. AuditLogs Yedekleme
+        var logsToBackup = await context.AuditLogs
+            .AsNoTracking()
+            .Where(a => a.CreatedAt < thresholdDate)
+            .Select(a => new { a.Id, a.UserId, a.UserName, a.Action, a.EntityType, a.EntityId, a.EntityName, a.Details, a.IpAddress, a.CreatedAt })
+            .ToListAsync(stoppingToken);
+
+        if (logsToBackup.Any())
+        {
+            try
+            {
+                var backupDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backups", "auditlogs");
+                System.IO.Directory.CreateDirectory(backupDirectory);
+                
+                var fileName = $"audit_logs_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+                var filePath = System.IO.Path.Combine(backupDirectory, fileName);
+                
+                var json = System.Text.Json.JsonSerializer.Serialize(logsToBackup);
+                await System.IO.File.WriteAllTextAsync(filePath, json, stoppingToken);
+                
+                _logger.LogInformation($"Saved {logsToBackup.Count} audit logs to backup file: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to write audit logs backup file.");
+            }
+        }
+
+        // 2. SecurityEvents Yedekleme
+        var securityToBackup = await context.SecurityEvents
+            .AsNoTracking()
+            .Where(s => s.CreatedAt < thresholdDate)
+            .Select(s => new { s.Id, s.EventType, s.UserId, s.IpAddress, s.UserAgent, s.Details, s.CreatedAt })
+            .ToListAsync(stoppingToken);
+
+        if (securityToBackup.Any())
+        {
+            try
+            {
+                var backupDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "backups", "securityevents");
+                System.IO.Directory.CreateDirectory(backupDirectory);
+                
+                var fileName = $"security_events_backup_{DateTime.UtcNow:yyyyMMdd_HHmmss}.json";
+                var filePath = System.IO.Path.Combine(backupDirectory, fileName);
+                
+                var json = System.Text.Json.JsonSerializer.Serialize(securityToBackup);
+                await System.IO.File.WriteAllTextAsync(filePath, json, stoppingToken);
+                
+                _logger.LogInformation($"Saved {securityToBackup.Count} security events to backup file: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to write security events backup file.");
+            }
+        }
+
+        // 3. Veritabanından Silme
         var deletedAuditLogs = await context.AuditLogs
             .Where(a => a.CreatedAt < thresholdDate)
             .ExecuteDeleteAsync(stoppingToken);
             
-        // Eski SecurityEvents kayıtlarını sil
         var deletedSecurityEvents = await context.SecurityEvents
             .Where(s => s.CreatedAt < thresholdDate)
             .ExecuteDeleteAsync(stoppingToken);
 
         if (deletedAuditLogs > 0 || deletedSecurityEvents > 0)
         {
-            _logger.LogInformation($"AuditLogCleanupJob deleted {deletedAuditLogs} audit logs and {deletedSecurityEvents} security events older than 30 days.");
+            _logger.LogInformation($"AuditLogCleanupJob deleted {deletedAuditLogs} audit logs and {deletedSecurityEvents} security events older than 14 days.");
         }
         else
         {

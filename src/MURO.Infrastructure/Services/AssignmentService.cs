@@ -161,6 +161,9 @@ public class AssignmentService : IAssignmentService
         _context.AssignmentSubmissions.Add(submission);
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"assignments:");
+        await _cache.RemoveAsync($"analytics:academichistory:{userId}");
+        await _cache.RemoveAsync($"analytics:scorecard:{userId}");
+        await _cache.RemoveAsync("analytics:scorecards_list");
 
         var user = await _context.Users.FindAsync(userId);
         return new SubmissionDto(submission.Id, userId, $"{user?.FirstName} {user?.LastName}",
@@ -178,6 +181,9 @@ public class AssignmentService : IAssignmentService
         submission.Feedback = request.Feedback;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"assignments:");
+        await _cache.RemoveAsync($"analytics:academichistory:{submission.UserId}");
+        await _cache.RemoveAsync($"analytics:scorecard:{submission.UserId}");
+        await _cache.RemoveAsync("analytics:scorecards_list");
 
         return new SubmissionDto(submission.Id, submission.UserId,
             $"{submission.User.FirstName} {submission.User.LastName}",

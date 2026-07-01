@@ -148,6 +148,9 @@ public class ExamResultService : IExamResultService
 
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"exams:");
+        await _cache.RemoveAsync($"analytics:academichistory:{userId}");
+        await _cache.RemoveAsync($"analytics:scorecard:{userId}");
+        await _cache.RemoveAsync("analytics:scorecards_list");
 
         var user = await _context.Users.FindAsync(userId);
         var fullName = user != null ? $"{user.FirstName} {user.LastName}" : "—";
