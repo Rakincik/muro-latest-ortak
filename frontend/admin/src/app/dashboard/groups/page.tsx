@@ -64,11 +64,14 @@ function GroupTreeItem({
     onSelect: () => void; onToggle: () => void; onEdit: () => void; onDelete: () => void; onAddSubgroup: () => void;
 }) {
     const isEmpty = group.memberCount === 0;
+    const [isHovered, setIsHovered] = useState(false);
     return (
         <div
             className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg cursor-pointer group transition-all duration-200 select-none ${selected ? "bg-blue-50/80 border border-blue-100/80 border-l-4 shadow-sm" : "border border-transparent hover:bg-slate-50"}`}
             style={selected ? { borderLeftColor: group.color ?? "#3b82f6" } : undefined}
             onClick={onSelect}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
         >
             <button onClick={e => { e.stopPropagation(); onToggle(); }} 
                 className={`shrink-0 flex items-center justify-center transition-all duration-300 ${hasChildren ? `w-5 h-5 rounded ${selected ? "text-blue-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-200/50"}` : "w-5 text-transparent"}`}>
@@ -76,7 +79,7 @@ function GroupTreeItem({
             </button>
             
             <div className="shrink-0 flex items-center justify-center transition-transform group-hover:scale-110" style={{ color: group.color ?? (selected ? "#3b82f6" : "#94a3b8") }}>
-                {expanded ? <PiFolderOpenDuotone size={18} /> : <PiFolderDuotone size={18} />}
+                {expanded || isHovered ? <PiFolderOpenDuotone size={18} /> : <PiFolderDuotone size={18} />}
             </div>
             
             <div className="flex-1 min-w-0">
