@@ -324,14 +324,14 @@ export default function CourseAttendancePage() {
                                     <select
                                         value={sortBy}
                                         onChange={(e) => setSortBy(e.target.value as any)}
-                                        className="text-xs bg-white border border-[#E2E8F0] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium text-[#0A1931] cursor-pointer"
+                                        className="text-xs bg-white border border-[#E2E8F0] rounded-xl px-3 py-1.5 font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/10 hover:border-[#1B3B6F]/40 focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/10 cursor-pointer transition-all shadow-sm"
                                     >
-                                        <option value="rate-asc">Devam Oranına Göre (Artan)</option>
-                                        <option value="rate-desc">Devam Oranına Göre (Azalan)</option>
-                                        <option value="name-az">İsim (A - Z)</option>
-                                        <option value="name-za">İsim (Z - A)</option>
+                                        <option value="rate-asc">📉 Devam Oranı (Artan)</option>
+                                        <option value="rate-desc">📈 Devam Oranı (Azalan)</option>
+                                        <option value="name-az">🔤 İsim (A - Z)</option>
+                                        <option value="name-za">🔤 İsim (Z - A)</option>
                                     </select>
-                                    <span className="text-xs font-medium text-[#A0AEC0] bg-white border border-[#E2E8F0] px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+                                    <span className="text-xs font-bold text-[#A0AEC0] bg-white border border-[#E2E8F0] px-3 py-1.5 rounded-xl whitespace-nowrap shadow-sm">
                                         {students.length} Öğrenci
                                     </span>
                                 </div>
