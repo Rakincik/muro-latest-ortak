@@ -135,10 +135,11 @@ export default function CourseAttendancePage() {
     const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(12);
+    const [sortBy, setSortBy] = useState<"rate-asc" | "rate-desc" | "name-az" | "name-za">("rate-asc");
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [selectedCourseId]);
+    }, [selectedCourseId, sortBy]);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -182,12 +183,22 @@ export default function CourseAttendancePage() {
     const students = useMemo(() => {
         if (!report) return [];
         const total = report.sessions.length;
-        return Array.from(studentMap.entries()).map(([id, data]) => {
+        const list = Array.from(studentMap.entries()).map(([id, data]) => {
             const present = Array.from(data.sessions.values()).filter(Boolean).length;
             const rate = total > 0 ? (present / total) * 100 : 0;
             return { id, name: data.name, present, total, rate, sessions: data.sessions };
-        }).sort((a, b) => a.rate - b.rate);
-    }, [studentMap, report]);
+        });
+
+        list.sort((a, b) => {
+            if (sortBy === "rate-asc") return a.rate - b.rate;
+            if (sortBy === "rate-desc") return b.rate - a.rate;
+            if (sortBy === "name-az") return a.name.localeCompare(b.name, "tr");
+            if (sortBy === "name-za") return b.name.localeCompare(a.name, "tr");
+            return 0;
+        });
+
+        return list;
+    }, [studentMap, report, sortBy]);
 
     const paginatedStudents = useMemo(() => {
         const start = (currentPage - 1) * pageSize;
@@ -304,14 +315,26 @@ export default function CourseAttendancePage() {
                     <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
                         {/* Accordion List */}
                         <div className="col-span-1 lg:col-span-7 bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
-                            <div className="px-5 py-4 border-b border-[#E2E8F0]/60 flex items-center justify-between bg-[#f8fafc]">
+                            <div className="px-5 py-4 border-b border-[#E2E8F0]/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-[#f8fafc]">
                                 <h3 className="text-sm font-semibold text-[#0A1931] flex items-center gap-2">
                                     <Users size={16} className="text-[#1B3B6F]" />
                                     Öğrenci Devam Detayları
                                 </h3>
-                                <span className="text-xs font-medium text-[#A0AEC0] bg-[#E2E8F0]/40 px-2 py-1 rounded-md">
-                                    {students.length} Öğrenci
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value as any)}
+                                        className="text-xs bg-white border border-[#E2E8F0] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-100 font-medium text-[#0A1931] cursor-pointer"
+                                    >
+                                        <option value="rate-asc">Devam Oranına Göre (Artan)</option>
+                                        <option value="rate-desc">Devam Oranına Göre (Azalan)</option>
+                                        <option value="name-az">İsim (A - Z)</option>
+                                        <option value="name-za">İsim (Z - A)</option>
+                                    </select>
+                                    <span className="text-xs font-medium text-[#A0AEC0] bg-white border border-[#E2E8F0] px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+                                        {students.length} Öğrenci
+                                    </span>
+                                </div>
                             </div>
                             
                             {students.length === 0 ? (
