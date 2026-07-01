@@ -88,14 +88,7 @@ function GroupTreeItem({
                 </Tooltip>
             </div>
             
-            {/* Minimal Stats (Pushed to the right) */}
-            <div className={`flex items-center gap-1.5 shrink-0 ml-auto transition-opacity ${selected ? "opacity-80" : "opacity-40 group-hover:opacity-70"}`}>
-                <span className="flex items-center gap-0.5 text-[10px] font-semibold"><Users size={10} /> {group.memberCount}</span>
-                <span className="flex items-center gap-0.5 text-[10px] font-semibold"><BookOpen size={10} /> {group.courseCount}</span>
-            </div>
-            
-            {isEmpty && <Tooltip content="Boş grup" position="bottom"><span className={`shrink-0 ml-1 text-amber-400 ${selected ? "opacity-100" : "opacity-80"}`}><AlertTriangle size={12} /></span></Tooltip>}
-            
+            {/* Quick Actions (Shown in the middle on hover) */}
             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 ml-2 transition-opacity">
                 <Tooltip content="Alt Grup Ekle" position="bottom"><button onClick={e => { e.stopPropagation(); onAddSubgroup(); }}
                     className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50">
@@ -109,6 +102,15 @@ function GroupTreeItem({
                     className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50">
                     <Trash2 size={14} />
                 </button></Tooltip>
+            </div>
+
+            {/* Empty Warning */}
+            {isEmpty && <Tooltip content="Boş grup" position="bottom"><span className={`shrink-0 ml-2 text-amber-400 ${selected ? "opacity-100" : "opacity-80"}`}><AlertTriangle size={13} /></span></Tooltip>}
+
+            {/* Minimal Stats (Pinned to the far right, slightly larger and clearer) */}
+            <div className={`flex items-center gap-2 shrink-0 ml-auto transition-opacity ${selected ? "opacity-90" : "opacity-50 group-hover:opacity-85"}`}>
+                <span className="flex items-center gap-0.5 text-[11px] font-bold text-slate-500"><Users size={11} className="text-slate-400" /> {group.memberCount}</span>
+                <span className="flex items-center gap-0.5 text-[11px] font-bold text-slate-500"><BookOpen size={11} className="text-slate-400" /> {group.courseCount}</span>
             </div>
         </div>
     );
