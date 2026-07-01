@@ -63,9 +63,12 @@ public class SupportService : ISupportService
                 .FirstOrDefaultAsync()
                 ?? throw new KeyNotFoundException("Destek talebi bulunamadı.");
 
+            var messagesList = t.Messages.OrderBy(m => m.CreatedAt).ToList();
+            var replies = messagesList.Count > 0 ? messagesList.Skip(1) : messagesList;
+
             return new TicketDetailDto(t.Id, t.Subject, t.Body, t.Status.ToString(), t.Priority, t.Category,
                 t.UserId, $"{t.User.FirstName} {t.User.LastName}",
-                t.Messages.Select(m => new TicketMessageDto(
+                replies.Select(m => new TicketMessageDto(
                     m.Id, 
                     m.SenderId,
                     $"{m.Sender.FirstName} {m.Sender.LastName}", 
