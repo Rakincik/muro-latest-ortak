@@ -348,23 +348,19 @@ export default function StudentScorecardPage() {
         setCurrentPage(1);
     }, [search, sortBy, sortDesc]);
 
-    const [classAvgSummary, setClassAvgSummary] = useState<ScorecardSummaryDto | null>(null);
-
     // Reusable data loading function
     const loadAllData = useCallback(async () => {
         if (!token || !tenantId) return;
         setLoading(true);
         try {
-            const [u, sess, summary, scorecardsList] = await Promise.all([
+            const [u, sess, scorecardsList] = await Promise.all([
                 notificationApi.allUsers(token, tenantId),
                 analyticsAdminApi.activeSessions(token, tenantId).catch(() => []),
-                analyticsAdminApi.scorecardSummary(token, tenantId).catch(() => null),
                 analyticsAdminApi.studentScorecardsList(token, tenantId).catch(() => []),
             ]);
             const students = u.filter(x => x.role === "Student" || x.role === "student");
             setUsers(students);
             setSessions(sess);
-            if (summary) setClassAvgSummary(summary);
 
             const scorecardsMap = new Map<string, StudentScorecardDto>();
             (scorecardsList || []).forEach(card => {
@@ -389,22 +385,38 @@ export default function StudentScorecardPage() {
         loadAllData();
     }, [loadAllData]);
 
-    // Adapt summary to classAvg shape for comparison bars
+    // Calculate class averages directly from the scorecards map
     const classAvg = useMemo<StudentScorecardDto | null>(() => {
-        if (!classAvgSummary) return null;
+        if (scorecards.size === 0) return null;
+
+        const scorecardsArray = Array.from(scorecards.values());
+        const n = scorecardsArray.length;
+
+        const sumAttended = scorecardsArray.reduce((acc, s) => acc + s.attendedSessions, 0);
+        const sumTotalSessions = scorecardsArray.reduce((acc, s) => acc + s.totalSessions, 0);
+        const sumAttendanceRate = scorecardsArray.reduce((acc, s) => acc + s.attendanceRate, 0);
+        const sumCompletedVideos = scorecardsArray.reduce((acc, s) => acc + s.completedVideos, 0);
+        const sumTotalVideos = scorecardsArray.reduce((acc, s) => acc + s.totalVideos, 0);
+        const sumVideoRate = scorecardsArray.reduce((acc, s) => acc + s.videoCompletionRate, 0);
+        const sumWatchedMinutes = scorecardsArray.reduce((acc, s) => acc + s.totalWatchedMinutes, 0);
+        const sumAssignments = scorecardsArray.reduce((acc, s) => acc + s.submittedAssignments, 0);
+
+        const examScores = scorecardsArray.map(s => s.avgExamScore).filter(score => score > 0);
+        const avgExam = examScores.length > 0 ? examScores.reduce((acc, s) => acc + s, 0) / examScores.length : 0;
+
         return {
             userId: "", fullName: "", email: "",
-            attendedSessions: classAvgSummary.avgAttendedSessions,
-            totalSessions: classAvgSummary.avgTotalSessions,
-            attendanceRate: classAvgSummary.avgAttendanceRate,
-            completedVideos: classAvgSummary.avgCompletedVideos,
-            totalVideos: classAvgSummary.avgTotalVideos,
-            videoCompletionRate: classAvgSummary.avgVideoCompletionRate,
-            totalWatchedMinutes: classAvgSummary.avgTotalWatchedMinutes,
-            submittedAssignments: classAvgSummary.avgSubmittedAssignments,
-            avgExamScore: classAvgSummary.avgExamScore,
+            attendedSessions: sumAttended / n,
+            totalSessions: sumTotalSessions / n,
+            attendanceRate: sumAttendanceRate / n,
+            completedVideos: sumCompletedVideos / n,
+            totalVideos: sumTotalVideos / n,
+            videoCompletionRate: sumVideoRate / n,
+            totalWatchedMinutes: Math.round(sumWatchedMinutes / n),
+            submittedAssignments: sumAssignments / n,
+            avgExamScore: avgExam,
         };
-    }, [classAvgSummary]);
+    }, [scorecards]);
 
     // Filter + sort
     const filtered = useMemo(() => {
