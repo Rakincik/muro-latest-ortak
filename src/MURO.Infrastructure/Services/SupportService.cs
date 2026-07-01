@@ -102,7 +102,7 @@ public class SupportService : ISupportService
             ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
             
         ticket.User = user;
-        _ = _telegramBotService.SendNewTicketNotificationAsync(ticket);
+        await _telegramBotService.SendNewTicketNotificationAsync(ticket);
 
         return new TicketListDto(ticket.Id, ticket.Subject, ticket.Status.ToString(),
             ticket.Priority, ticket.Category, $"{user.FirstName} {user.LastName}", 0, ticket.CreatedAt);
@@ -128,7 +128,7 @@ public class SupportService : ISupportService
 
         if (!isAdmin)
         {
-            _ = _telegramBotService.SendReplyToTicketAsync(ticketId, msg.Body);
+            await _telegramBotService.SendReplyToTicketAsync(ticketId, msg.Body);
         }
 
         return new TicketMessageDto(msg.Id, senderId, $"{sender?.FirstName} {sender?.LastName}", msg.Body, msg.CreatedAt, isAdmin);
