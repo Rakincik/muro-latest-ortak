@@ -1,0 +1,176 @@
+# ============================================
+# MURO LMS Demo — Docker Compose (Subdomain)
+# ============================================
+# Subdomains:
+#   omr.muro.click      → Student Frontend (:3002)
+#   omr-adm.muro.click   → Admin Frontend   (:3001)
+#   omr-api.muro.click   → API Backend      (:5292)
+# ============================================
+# Kullanım:
+#   cp .env.3u .env
+#   docker compose -f docker-compose.demo.yml up -d --build
+# ============================================
+
+services:
+  # --- PostgreSQL 16 ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: muro_omr_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-muro_demo}
+      POSTGRES_USER: ${DB_USER:-muro_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - muro_omr_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-muro_user} -d ${DB_NAME:-muro_demo}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - muro_omr_network
+
+  # --- Redis 7 ---
+  redis:
+    image: redis:7-alpine
+    container_name: muro_omr_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-muro_redis_2024}
+    volumes:
+      - muro_omr_redisdata:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-muro_redis_2024}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - muro_omr_network
+
+  # --- MURO API (.NET 8 + FFmpeg) ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: muro_omr_api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5297:5292"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5292
+      - Storage__HlsOutputDir=/app/wwwroot/hls
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_demo};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
+      - Jwt__Secret=${JWT_SECRET:?JWT_SECRET is required}
+      - Jwt__Issuer=MURO
+      - Jwt__Audience=MURO
+      - Bbb__Url=${BBB_URL:-https://bbb.gikart.com.tr/bigbluebutton/api}
+      - Bbb__Secret=${BBB_SECRET:-placeholder}
+      - Bbb__WebhookSharedSecret=${BBB_WEBHOOK_SECRET:-placeholder}
+      - Bbb__DefaultAttendeePw=attendee123
+      - Bbb__DefaultModeratorPw=moderator123
+      - Bbb__Defaults__LogoutURL=${ADMIN_URL:-https://omr-adm.muro.click}/dashboard/courses
+      - Cors__AllowedOrigins__0=https://omr.muro.click
+      - Cors__AllowedOrigins__1=https://omr-adm.muro.click
+      - Cors__AllowedOrigins__2=https://omr-api.muro.click
+      - Cors__AllowedOrigins__3=http://omr.muro.click
+      - Cors__AllowedOrigins__4=http://omr-adm.muro.click
+      - Cors__AllowedOrigins__5=http://omr-api.muro.click
+      - Tenant__BaseDomain=${BASE_DOMAIN:-muro.click}
+      - Gemini__ApiKey=${GEMINI_API_KEY:-}
+      - Webhook__Secret=${WEBHOOK_SECRET:-CHANGE_THIS}
+    volumes:
+      - muro_omr_hls:/app/wwwroot/hls
+      - muro_omr_podcasts:/app/wwwroot/podcasts
+      - muro_omr_uploads:/app/wwwroot/uploads
+      - muro_omr_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - muro_omr_network
+
+  # --- MURO Worker (FFmpeg — CPU mode) ---
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: muro_omr_worker
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Ffmpeg__Path=ffmpeg
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_demo};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
+      - Storage__HlsOutputDir=/app/wwwroot/hls
+      - Worker__NvencSlots=0
+      - Worker__QsvSlots=0
+      - Worker__CpuSlots=4
+    volumes:
+      - muro_omr_hls:/app/wwwroot/hls
+      - muro_omr_uploads:/app/wwwroot/uploads
+      - muro_omr_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - muro_omr_network
+
+  # --- Admin Frontend (Next.js) ---
+  admin:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://omr-api.muro.click/api/v1
+    container_name: muro_omr_admin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4006:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+    networks:
+      - muro_omr_network
+
+  # --- Student Frontend (Next.js) ---
+  student:
+    build:
+      context: ./frontend/student
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://omr-api.muro.click/api/v1
+    container_name: muro_omr_student
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3007:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - HOSTNAME=0.0.0.0
+    networks:
+      - muro_omr_network
+
+volumes:
+  muro_omr_pgdata:
+    driver: local
+  muro_omr_redisdata:
+    driver: local
+  muro_omr_hls:
+    driver: local
+  muro_omr_podcasts:
+    driver: local
+  muro_omr_uploads:
+    driver: local
+  muro_omr_logs:
+    driver: local
+
+networks:
+  muro_omr_network:
+    driver: bridge

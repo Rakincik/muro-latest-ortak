@@ -87,7 +87,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     if (isDev) {
                         window.location.href = `http://localhost:3001/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
                     } else {
-                        window.location.href = "/admin/dashboard";
+                        const currentHost = window.location.hostname;
+                        let adminHost = currentHost;
+                        if (currentHost.startsWith("3u.")) {
+                          adminHost = currentHost.replace("3u.", "3u-ad.");
+                        } else if (currentHost.split('.').length > 2) {
+                           const parts = currentHost.split('.');
+                           parts[0] = parts[0] + '-adm';
+                           adminHost = parts.join('.');
+                        } else {
+                           adminHost = "admin." + currentHost;
+                        }
+                        window.location.href = `https://${adminHost}/dashboard`;
                     }
                 }
             }

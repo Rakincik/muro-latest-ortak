@@ -36,13 +36,30 @@ export default function StudentLoginPage() {
         if (r) localStorage.setItem("muro_refresh", r);
 
         const isDev = window.location.hostname === "localhost";
+        let targetUrl = "";
+        
         if (isDev) {
-          // Dev: farklı port, token'ı URL ile aktar (localStorage paylaşılmıyor)
-          window.location.href = `http://localhost:3001/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
+          targetUrl = `http://localhost:3001/dashboard`;
         } else {
-          // Production: aynı domain, localStorage paylaşılıyor — direkt yönlendir
-          window.location.href = "/admin/dashboard";
+          // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click
+          const currentHost = window.location.hostname;
+          let adminHost = currentHost;
+          
+          if (currentHost.startsWith("3u.")) {
+            adminHost = currentHost.replace("3u.", "3u-ad.");
+          } else if (currentHost.split('.').length > 2) {
+             const parts = currentHost.split('.');
+             parts[0] = parts[0] + '-adm';
+             adminHost = parts.join('.');
+          } else {
+             adminHost = "admin." + currentHost;
+          }
+          
+          targetUrl = `https://${adminHost}/dashboard`;
         }
+
+        // Token'ı URL ile aktar (Subdomain'ler arası localStorage paylaşılmaz)
+        window.location.href = `${targetUrl}?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
       } else {
         router.push("/dashboard");
       }
@@ -105,7 +122,7 @@ export default function StudentLoginPage() {
         {/* Logo — tenant branding */}
         <div className="text-center mb-8">
           <img 
-            src="/monopol_logo.png" 
+            src="/icon.png" 
             alt={brandName} 
             className="w-64 h-auto mx-auto object-contain drop-shadow-lg" 
           />

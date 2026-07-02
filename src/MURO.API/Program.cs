@@ -247,10 +247,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(_ => true)
+            .AllowCredentials()
             .WithHeaders("Authorization", "Content-Type", "X-Tenant-Id", "X-Requested-With", "X-Correlation-Id")
             .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .AllowCredentials()
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });
 });
@@ -272,6 +272,25 @@ var app = builder.Build();
 // 0. Forwarded Headers — IP adreslerini proxy'den (Docker/Nginx) çözümle
 app.UseForwardedHeaders();
 
+// 0.0 CORS Header Deduplicator — (LiteSpeed/ASP.NET Core çakışmalarını önler)
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var corsHeader = context.Response.Headers["Access-Control-Allow-Origin"];
+        if (corsHeader.Count > 0)
+        {
+            var values = corsHeader.ToString().Split(',', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).Distinct().ToList();
+            if (values.Count > 1 || corsHeader.ToString().Contains(','))
+            {
+                context.Response.Headers["Access-Control-Allow-Origin"] = values.First();
+            }
+        }
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
 // 0.1 Response Compression — tüm response'lara Brotli/Gzip uygula
 app.UseResponseCompression();
 
@@ -280,6 +299,8 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 
 // 1. Güvenlik header'ları — her response'a eklenir
 app.UseMiddleware<SecurityHeadersMiddleware>();
+
+app.UseCors("AllowFrontend");
 
 // 2. Exception handler — stack trace sızıntısını engeller
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -318,7 +339,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowFrontend");
 app.UseResponseCaching();
 app.UseOutputCache(); // Enterprise Caching Middleware
 var contentTypeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
@@ -467,17 +487,10 @@ app.MapHub<AdminHub>("/hubs/admin");
             
             // SuperAdmin seed — her ortamda çalışır (migration sonrası)
             var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            // await SuperAdminSeeder.SeedAsync(db, seedLogger);
             
-            if (app.Environment.IsDevelopment())
-            {
-                await MURO.Infrastructure.Seeds.DatabaseSeeder.SeedAsync(db);
-                Log.Information("Database migration ve seeding tamamlandı.");
-            }
-            else
-            {
-                Log.Information("Database migration tamamlandı (Production — seed atlandı).");
-            }
+            // Geçici olarak her ortamda DatabaseSeeder'ı çalıştırıyoruz
+            await MURO.Infrastructure.Seeds.DatabaseSeeder.SeedAsync(db);
+            Log.Information("Database migration ve seeding tamamlandı.");
             break;
         }
         catch (Exception ex) when (
