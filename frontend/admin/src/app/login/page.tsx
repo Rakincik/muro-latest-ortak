@@ -101,7 +101,7 @@ export default function AdminLoginPage() {
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
           <img 
-            src="/icon.png" 
+            src="/logo.png" 
             alt={brandName} 
             className="w-48 sm:w-64 max-w-[80%] h-auto mx-auto object-contain drop-shadow-lg transition-all" 
           />

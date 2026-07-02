@@ -135,7 +135,7 @@ export default function Sidebar({
                 {/* Logo + Bell */}
                 <div className="px-6 py-7 flex items-center justify-between relative">
                     <img 
-                        src="/icon.png" 
+                        src="/logo.png" 
                         alt={brandName} 
                         className="w-36 h-auto object-contain drop-shadow-md" 
                     />

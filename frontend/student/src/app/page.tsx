@@ -122,7 +122,7 @@ export default function StudentLoginPage() {
         {/* Logo — tenant branding */}
         <div className="text-center mb-8">
           <img 
-            src="/icon.png" 
+            src="/logo.png" 
             alt={brandName} 
             className="w-64 h-auto mx-auto object-contain drop-shadow-lg" 
           />
