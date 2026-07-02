@@ -156,7 +156,7 @@ export default function StudentLoginPage() {
               </p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">Şifre (E-posta Adresi)</label>
+              <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">Şifre</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -164,7 +164,7 @@ export default function StudentLoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full px-4 py-3 pr-12 bg-[#1B3B6F]/15 border border-[#1B3B6F]/30 rounded-xl text-white placeholder-[#A9A9A9] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F] focus:border-transparent transition-all text-sm"
-                  placeholder="E-posta adresinizi girin"
+                  placeholder="••••••••"
                 />
                 <button
                   type="button"
@@ -174,9 +174,6 @@ export default function StudentLoginPage() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="mt-1.5 text-[11px] text-[#A0AEC0]/70 italic leading-relaxed">
-                * Şifre olarak sisteme kayıtlı e-posta adresinizi giriniz.
-              </p>
             </div>
             <button
               type="submit"
