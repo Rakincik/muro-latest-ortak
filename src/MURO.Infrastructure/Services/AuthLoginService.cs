@@ -22,8 +22,19 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
     {
+        var lookupEmail = request.Email?.Trim();
+        var phoneWithoutZero = lookupEmail;
+        if (!string.IsNullOrEmpty(lookupEmail) && lookupEmail.StartsWith("0") && lookupEmail.Length > 1)
+        {
+            phoneWithoutZero = lookupEmail.Substring(1);
+        }
+
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == request.Email || u.Username == request.Email);
+            .FirstOrDefaultAsync(u => u.Email == lookupEmail 
+                                   || u.Username == lookupEmail 
+                                   || u.Username == phoneWithoutZero
+                                   || (u.Phone != null && u.Phone == lookupEmail)
+                                   || (u.Phone != null && u.Phone == phoneWithoutZero));
 
         if (user?.LockoutUntil.HasValue == true && user.LockoutUntil > DateTime.UtcNow)
         {
