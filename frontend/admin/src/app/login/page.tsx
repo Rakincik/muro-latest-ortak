@@ -100,11 +100,9 @@ export default function AdminLoginPage() {
 
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
-          <img 
-            src="/logo.png" 
-            alt={brandName} 
-            className="w-48 sm:w-64 max-w-[80%] h-auto mx-auto object-contain drop-shadow-lg transition-all" 
-          />
+          <h1 className="text-3xl font-extrabold text-white tracking-wider font-outfit uppercase">
+            {brandName}
+          </h1>
         </div>
 
         {/* Card */}

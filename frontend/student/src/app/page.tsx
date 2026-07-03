@@ -121,11 +121,9 @@ export default function StudentLoginPage() {
 
         {/* Logo — tenant branding */}
         <div className="text-center mb-8">
-          <img 
-            src="/logo.png" 
-            alt={brandName} 
-            className="w-64 h-auto mx-auto object-contain drop-shadow-lg" 
-          />
+          <h1 className="text-3xl font-extrabold text-white tracking-wider font-outfit uppercase">
+            {brandName}
+          </h1>
         </div>
 
         {/* Card */}

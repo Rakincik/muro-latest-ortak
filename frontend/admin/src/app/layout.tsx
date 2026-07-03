@@ -5,11 +5,8 @@ import { ToastProvider } from "@/components/toast";
 import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
 
 export const metadata: Metadata = {
-  title: "Dereceuzem",
+  title: "muro",
   description: "Derece Uzaktan Eğitim Platformu",
-  icons: {
-    icon: "/favicon.png",
-  },
 };
 
 export default function RootLayout({

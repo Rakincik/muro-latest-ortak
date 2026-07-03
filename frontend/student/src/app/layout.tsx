@@ -7,7 +7,7 @@ import OfflineIndicator from "@/components/OfflineIndicator";
 import NativeFeatures from "@/components/NativeFeatures";
 
 export const metadata: Metadata = {
-  title: "Dereceuzem",
+  title: "muro",
   description: "Derece Uzaktan Eğitim Platformu",
   viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no",
   other: {
@@ -16,9 +16,6 @@ export const metadata: Metadata = {
     "apple-mobile-web-app-status-bar-style": "black-translucent",
   },
   themeColor: "#0A1931",
-  icons: {
-    icon: "/favicon.png",
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
