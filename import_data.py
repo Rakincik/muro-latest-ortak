@@ -308,8 +308,8 @@ def main():
                 course_id = str(uuid.uuid4())
                 course_map[c_name] = course_id
                 cur.execute(
-                    'INSERT INTO "Courses" ("Id", "Title", "IsDeleted", "IsPublished", "CourseType", "Mode", "CreatedAt") VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                    (course_id, c_name, False, True, 'Online', 'Offline', datetime.datetime.utcnow())
+                    'INSERT INTO "Courses" ("Id", "Title", "IsDeleted", "IsPublished", "CourseType", "Mode", "Order", "CreatedAt") VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+                    (course_id, c_name, False, True, 'Online', 'Offline', 0, datetime.datetime.utcnow())
                 )
                 courses_created += 1
         print(f"      -> Created: {courses_created}, Skipped: {courses_skipped}")
