@@ -143,11 +143,16 @@ networks:
 volumes:
   muro_demo_pgdata:
     external: true
+    name: 3u_muro_demo_pgdata
   muro_demo_redisdata:
     external: true
+    name: 3u_muro_demo_redisdata
   muro_demo_hls:
     external: true
+    name: 3u_muro_demo_hls
   muro_demo_uploads:
     external: true
+    name: 3u_muro_demo_uploads
   muro_demo_logs:
     external: true
+    name: 3u_muro_demo_logs
