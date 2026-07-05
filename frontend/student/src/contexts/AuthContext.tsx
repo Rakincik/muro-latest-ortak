@@ -64,6 +64,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const init = async () => {
+            if (typeof window !== "undefined") {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get("action") === "logout") {
+                    localStorage.removeItem("muro_student_token");
+                    localStorage.removeItem("muro_student_refresh");
+                    localStorage.removeItem("muro_token");
+                    localStorage.removeItem("muro_refresh");
+                    localStorage.removeItem("muro_tenantId");
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    setToken(null);
+                    setUser(null);
+                    setCurrentTenantId(null);
+                    return;
+                }
+            }
+
             const saved = localStorage.getItem("muro_student_token");
             if (saved) {
                 try {

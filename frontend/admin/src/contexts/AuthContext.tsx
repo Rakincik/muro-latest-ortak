@@ -231,9 +231,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             // Eğer localhost ise 3000 portuna yönlendir (öğrenci portu)
             if (currentHost === "localhost") {
-                window.location.href = "http://localhost:3000/";
+                window.location.href = "http://localhost:3000/?action=logout";
             } else {
-                window.location.href = `https://${studentHost}/`;
+                window.location.href = `https://${studentHost}/?action=logout`;
             }
         }
     };
