@@ -9,7 +9,7 @@ export const getApiUrl = () => {
     }
     
     // Subdomain patterns:
-    // ogrenci-akm.on7medya.com -> api-akm.on7medya.com
+    // admin-akm.on7medya.com -> api-akm.on7medya.com
     if (hostname.endsWith(".on7medya.com")) {
         const parts = hostname.split(".");
         const sub = parts[0]; 
@@ -17,12 +17,23 @@ export const getApiUrl = () => {
         return `https://api-${tenant}.on7medya.com/api/v1`;
     }
 
-    // 3u.muro.click -> 3u-ap.muro.click
+    // muro.click subdomains (handles both -adm/-api and -ad/-ap formats)
     if (hostname.endsWith(".muro.click")) {
         const parts = hostname.split(".");
         const sub = parts[0]; 
-        const tenant = sub.replace("-ad", "").replace("-ap", "");
-        return `https://${tenant}-ap.muro.click/api/v1`;
+        
+        if (sub.endsWith("-adm")) {
+            const tenant = sub.substring(0, sub.length - 4);
+            return `https://${tenant}-api.muro.click/api/v1`;
+        }
+        if (sub.endsWith("-ad")) {
+            const tenant = sub.substring(0, sub.length - 3);
+            return `https://${tenant}-ap.muro.click/api/v1`;
+        }
+        if (sub === "3u") {
+            return `https://3u-ap.muro.click/api/v1`;
+        }
+        return `https://${sub}-api.muro.click/api/v1`;
     }
     
     // {tenant}.okinar.com -> {tenant}-api.okinar.com
@@ -34,12 +45,34 @@ export const getApiUrl = () => {
     }
     
     // Generic fallback:
-    // {tenant}.domain.com -> {tenant}-api.domain.com
+    // {tenant}-ad.domain.com -> {tenant}-api.domain.com
     const domain = hostname.split(".").slice(1).join(".");
     const sub = hostname.split(".")[0];
-    const tenant = sub.replace("-adm", "").replace("-api", "").replace("-ad", "").replace("admin-", "").replace("ogrenci-", "");
     
-    return `https://${tenant}-api.${domain}/api/v1`;
+    let tenant = sub;
+    let apiSuffix = "-api";
+    
+    if (sub.endsWith("-adm")) {
+        tenant = sub.substring(0, sub.length - 4);
+        apiSuffix = "-api";
+    } else if (sub.endsWith("-ad")) {
+        tenant = sub.substring(0, sub.length - 3);
+        apiSuffix = "-ap";
+    } else if (sub.endsWith("-api")) {
+        tenant = sub.substring(0, sub.length - 4);
+        apiSuffix = "-api";
+    } else if (sub.endsWith("-ap")) {
+        tenant = sub.substring(0, sub.length - 3);
+        apiSuffix = "-ap";
+    } else if (sub.startsWith("admin-")) {
+        tenant = sub.substring(6);
+        apiSuffix = "-api";
+    } else if (sub.startsWith("ogrenci-")) {
+        tenant = sub.substring(8);
+        apiSuffix = "-api";
+    }
+    
+    return `https://${tenant}${apiSuffix}.${domain}/api/v1`;
 };
 
 export const API_URL = getApiUrl();
