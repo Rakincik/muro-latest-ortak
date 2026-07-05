@@ -36,6 +36,8 @@ export default function SelectTenantPage() {
                 let studentHost = currentHost;
                 if (currentHost.startsWith("3u-ad.")) {
                     studentHost = currentHost.replace("3u-ad.", "3u.");
+                } else if (currentHost.includes("-adm.")) {
+                    studentHost = currentHost.replace("-adm.", ".");
                 } else if (currentHost.includes("-ad.")) {
                     studentHost = currentHost.replace("-ad.", ".");
                 } else if (currentHost.startsWith("admin.")) {
@@ -48,7 +50,7 @@ export default function SelectTenantPage() {
                     window.location.href = `https://${studentHost}/`;
                 }
             } else {
-                router.replace("/login");
+                router.replace("/");
             }
         }
     }, [user, isLoading, router]);
