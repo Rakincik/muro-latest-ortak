@@ -216,7 +216,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Subdomain deployment — login is at root, no /admin prefix needed.
         if (typeof window !== "undefined") {
-            window.location.href = "/login";
+            const currentHost = window.location.hostname;
+            let studentHost = currentHost;
+            
+            if (currentHost.startsWith("3u-ad.")) {
+              studentHost = currentHost.replace("3u-ad.", "3u.");
+            } else if (currentHost.includes("-adm.")) {
+               studentHost = currentHost.replace("-adm.", ".");
+            } else if (currentHost.includes("-ad.")) {
+               studentHost = currentHost.replace("-ad.", ".");
+            } else if (currentHost.startsWith("admin.")) {
+               studentHost = currentHost.replace("admin.", "");
+            }
+            
+            // Eğer localhost ise 3000 portuna yönlendir (öğrenci portu)
+            if (currentHost === "localhost") {
+                window.location.href = "http://localhost:3000/";
+            } else {
+                window.location.href = `https://${studentHost}/`;
+            }
         }
     };
 

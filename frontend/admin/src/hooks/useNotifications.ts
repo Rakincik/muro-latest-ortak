@@ -8,6 +8,7 @@ import {
 } from "@microsoft/signalr";
 import { useAuth } from "@/contexts/AuthContext";
 import { type NotificationDto } from "@/lib/api";
+import { API_BASE } from "@/lib/api/core";
 
 interface UseNotificationsOptions {
     onReceive: (notif: NotificationDto) => void;
@@ -30,12 +31,8 @@ export function useNotifications({ onReceive }: UseNotificationsOptions) {
     const connect = useCallback(() => {
         if (!token || connectionRef.current) return;
 
-        const API_URL =
-            process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ??
-            "http://localhost:5292";
-
         const connection = new HubConnectionBuilder()
-            .withUrl(`${API_URL}/hubs/notifications?access_token=${token}`, {
+            .withUrl(`${API_BASE}/hubs/notifications?access_token=${token}`, {
                 accessTokenFactory: () => token,
             })
             .withAutomaticReconnect()

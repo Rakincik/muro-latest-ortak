@@ -31,7 +31,25 @@ export default function SelectTenantPage() {
     // Login olmamışsa login'e yönlendir
     useEffect(() => {
         if (!isLoading && !user) {
-            router.replace("/login");
+            if (typeof window !== "undefined") {
+                const currentHost = window.location.hostname;
+                let studentHost = currentHost;
+                if (currentHost.startsWith("3u-ad.")) {
+                    studentHost = currentHost.replace("3u-ad.", "3u.");
+                } else if (currentHost.includes("-ad.")) {
+                    studentHost = currentHost.replace("-ad.", ".");
+                } else if (currentHost.startsWith("admin.")) {
+                    studentHost = currentHost.replace("admin.", "");
+                }
+                
+                if (currentHost === "localhost") {
+                    window.location.href = "http://localhost:3000/";
+                } else {
+                    window.location.href = `https://${studentHost}/`;
+                }
+            } else {
+                router.replace("/login");
+            }
         }
     }, [user, isLoading, router]);
 

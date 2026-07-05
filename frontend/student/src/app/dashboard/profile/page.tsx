@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, type UserTenantDto } from "@/lib/api";
+import { api, type UserTenantDto, API_URL } from "@/lib/api";
 import { lightTap } from "@/hooks/useHaptics";
 import { Camera, Lock, LogOut, User2, Shield, Building2, Calendar, Upload, ClipboardList, FileText, BookMarked, CalendarCheck, Mic2, MessageCircleQuestion, Headset, ArrowRight, Layers } from "lucide-react";
 
@@ -56,7 +56,7 @@ export default function ProfilePage() {
         try {
             const fd = new FormData();
             fd.append("avatar", file);
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me/avatar`, {
+            const res = await fetch(`${API_URL}/users/me/avatar`, {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}`, "X-Tenant-Id": currentTenantId ?? "" },
                 body: fd,

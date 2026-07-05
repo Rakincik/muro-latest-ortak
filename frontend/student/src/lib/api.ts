@@ -1,4 +1,49 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5292/api/v1";
+export const getApiUrl = () => {
+    if (typeof window === "undefined") {
+        return process.env.INTERNAL_API_URL || "http://localhost:5292/api/v1";
+    }
+    const hostname = window.location.hostname;
+    
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+        return "http://localhost:5292/api/v1";
+    }
+    
+    // Subdomain patterns:
+    // ogrenci-akm.on7medya.com -> api-akm.on7medya.com
+    if (hostname.endsWith(".on7medya.com")) {
+        const parts = hostname.split(".");
+        const sub = parts[0]; 
+        const tenant = sub.replace("admin-", "").replace("ogrenci-", "").replace("api-", "");
+        return `https://api-${tenant}.on7medya.com/api/v1`;
+    }
+
+    // 3u.muro.click -> 3u-ap.muro.click
+    if (hostname.endsWith(".muro.click")) {
+        const parts = hostname.split(".");
+        const sub = parts[0]; 
+        const tenant = sub.replace("-ad", "").replace("-ap", "");
+        return `https://${tenant}-ap.muro.click/api/v1`;
+    }
+    
+    // {tenant}.okinar.com -> {tenant}-api.okinar.com
+    if (hostname.endsWith(".okinar.com")) {
+        const parts = hostname.split(".");
+        const sub = parts[0]; 
+        const tenant = sub.replace("-api", "").replace("-admin", "");
+        return `https://${tenant}-api.okinar.com/api/v1`;
+    }
+    
+    // Generic fallback:
+    // {tenant}.domain.com -> {tenant}-api.domain.com
+    const domain = hostname.split(".").slice(1).join(".");
+    const sub = hostname.split(".")[0];
+    const tenant = sub.replace("-adm", "").replace("-api", "").replace("-ad", "").replace("admin-", "").replace("ogrenci-", "");
+    
+    return `https://${tenant}-api.${domain}/api/v1`;
+};
+
+export const API_URL = getApiUrl();
+export const API_BASE = API_URL.replace("/api/v1", "");
 
 interface FetchOptions extends RequestInit {
     token?: string;

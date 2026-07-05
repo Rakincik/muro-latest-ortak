@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { questionApi, courseApi, type QuestionDto, type CourseDto } from "@/lib/api";
+import { questionApi, courseApi, type QuestionDto, type CourseDto, API_BASE } from "@/lib/api";
 import { compressImage } from "@/lib/imageUtils";
 import {
     MessageSquare, Search, Send, Plus, X, Mic, MicOff, Trash2,
@@ -16,11 +16,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 const getFileUrl = (path: string | null) => {
     if (!path) return "";
     if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
-    let hostname = "localhost";
-    if (typeof window !== "undefined") {
-        hostname = window.location.hostname;
-    }
-    const base = process.env.NEXT_PUBLIC_API_URL?.replace("localhost", hostname).replace("/api/v1", "") || `http://${hostname}:5292`;
+    const base = API_BASE;
     return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 

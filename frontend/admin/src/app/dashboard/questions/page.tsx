@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { questionApi, type QuestionDto } from "@/lib/api";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { API_BASE } from "@/lib/api/core";
 
 interface Question {
     id: string;
@@ -28,11 +29,7 @@ interface Question {
 const getFileUrl = (path: string | null) => {
     if (!path) return "";
     if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
-    let hostname = "localhost";
-    if (typeof window !== "undefined") {
-        hostname = window.location.hostname;
-    }
-    const base = process.env.NEXT_PUBLIC_API_URL?.replace("localhost", hostname).replace("/api/v1", "") || `http://${hostname}:5292`;
+    const base = API_BASE;
     let cleanPath = path.startsWith("/") ? path : `/${path}`;
     if (cleanPath.startsWith('/uploads')) {
         cleanPath = `/api/v1${cleanPath}`;

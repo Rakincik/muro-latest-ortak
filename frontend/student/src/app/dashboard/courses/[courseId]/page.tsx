@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, getDownloadUrl, getVideoPlaybackDetails, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto } from "@/lib/api";
+import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, getDownloadUrl, getVideoPlaybackDetails, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto, API_URL } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -106,7 +106,7 @@ export default function CourseDetailPage() {
         // Fetch course detail (includes sessions array)
         const fetchCourse = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/courses/${courseId}`, { headers });
+                const res = await fetch(`${API_URL}/courses/${courseId}`, { headers });
                 if (res.ok) return await res.json();
             } catch { /* ignore */ }
             return null;

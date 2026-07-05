@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE } from "@/lib/api";
 
 interface StudentHubCallbacks {
     onLiveSessionStarted?: (data: { sessionTitle: string; courseTitle: string; courseId: string; sessionId: string }) => void;
@@ -23,7 +24,7 @@ export function useStudentHub(callbacks: StudentHubCallbacks) {
     useEffect(() => {
         if (!token) return;
 
-        const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292";
+        const apiBase = API_BASE;
         const connection = new HubConnectionBuilder()
             .withUrl(`${apiBase}/hubs/notifications`, {
                 accessTokenFactory: () => token,

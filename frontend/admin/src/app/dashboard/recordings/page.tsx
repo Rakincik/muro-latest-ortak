@@ -10,6 +10,7 @@ import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { recordingApi, type RecordingDto } from "@/lib/api";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { API_BASE } from "@/lib/api/core";
 
 // â”€â”€â”€ Status badge helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -43,7 +44,7 @@ function VideoPlayerModal({ rec, onClose }: { rec: RecordingDto; onClose: () => 
         const video = videoRef.current;
         if (!video) return;
         
-        const src = `${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292"}${rec.hlsPath}`;
+        const src = `${API_BASE}${rec.hlsPath}`;
 
         let hls: any = null;
         let player: any = null;

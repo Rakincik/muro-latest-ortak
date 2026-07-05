@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { HubConnectionBuilder, LogLevel } from "@microsoft/signalr";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE } from "@/lib/api/core";
 
 interface AdminHubCallbacks {
     onDashboardUpdate?: (stats: Record<string, unknown>) => void;
@@ -26,7 +27,7 @@ export function useAdminHub(callbacks: AdminHubCallbacks) {
     useEffect(() => {
         if (!token) return;
 
-        const apiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5292").replace("/api/v1", "");
+        const apiBase = API_BASE;
         const connection = new HubConnectionBuilder()
             .withUrl(`${apiBase}/hubs/admin`, {
                 accessTokenFactory: () => token,

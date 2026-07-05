@@ -13,7 +13,7 @@ import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { sessionApi, courseApi, recordingApi, userApi, mediaLibraryApi, type CourseListDto, type SessionDto, type CourseDetailDto, type RecordingDto, type GroupSummaryDto, type CourseMaterialDto, type UserDto } from "@/lib/api";
-import { API_URL } from "@/lib/api/core";
+import { API_URL, API_BASE } from "@/lib/api/core";
 import { VideoUploaderModal } from "@/components/ui/VideoUploaderModal";
 import { CourseMediaTab } from "./CourseMediaTab";
 import { CourseStudentTab } from "./CourseStudentTab";
@@ -97,7 +97,7 @@ const mapSession = (s: SessionDto): MappedSession => ({
 const getFileUrl = (path: string | null) => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
-    const base = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292";
+    const base = API_BASE;
     return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
@@ -1348,7 +1348,7 @@ function DocsTab({ courseId }: { courseId: string }) {
     const getFileUrl = (path: string) => {
         if (!path) return "#";
         if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
-        const base = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292";
+        const base = API_BASE;
         let cleanPath = path.startsWith("/") ? path : `/${path}`;
         if (cleanPath.startsWith('/uploads')) {
             cleanPath = `/api/v1${cleanPath}`;

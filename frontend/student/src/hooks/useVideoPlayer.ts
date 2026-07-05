@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { videoApi, type VideoNoteDto, type RecordingDto } from "@/lib/api";
+import { videoApi, type VideoNoteDto, type RecordingDto, API_URL } from "@/lib/api";
 
 /**
  * Custom hook — video player state management.
@@ -150,7 +150,7 @@ export function useVideoPlayer(
             const delta = elapsed - lastSentElapsedRef.current;
             if (delta < 5) return;
 
-            const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5292/api/v1";
+            const apiBase = API_URL;
             const body = JSON.stringify({
                 watchedSeconds: delta,
                 totalSeconds: selectedRec.durationSeconds || 0,

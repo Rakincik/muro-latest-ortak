@@ -6,6 +6,7 @@ import Hls from 'hls.js';
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 import type { MediaAssetDto } from '@/lib/api';
+import { API_BASE } from '@/lib/api/core';
 
 interface VideoPlayerModalProps {
     asset: MediaAssetDto | null;
@@ -33,13 +34,7 @@ export function VideoPlayerModal({ asset, onClose }: VideoPlayerModalProps) {
         }
 
         if (videoSrc.startsWith('/')) {
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5292/api/v1";
-            try {
-                const backendHost = baseUrl.replace('/api/v1', '');
-                videoSrc = `${backendHost}${videoSrc}`;
-            } catch (e) {
-                console.error(e);
-            }
+            videoSrc = `${API_BASE}${videoSrc}`;
         }
 
         let hls: Hls | null = null;

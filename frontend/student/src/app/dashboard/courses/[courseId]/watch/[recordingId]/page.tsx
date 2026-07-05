@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, sessionRecordingApi, videoApi, getFileUrl, getVideoPlaybackDetails, type RecordingDto, type VideoNoteDto, type CourseMediaDto } from "@/lib/api";
+import { courseApi, sessionRecordingApi, videoApi, getFileUrl, getVideoPlaybackDetails, type RecordingDto, type VideoNoteDto, type CourseMediaDto, API_URL } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PremiumPlayer } from "@/components/video/PremiumPlayer";
@@ -106,7 +106,7 @@ export default function WatchPage() {
             setLoading(true);
             try {
                 const headers = { "Authorization": `Bearer ${token}`, "X-Tenant-Id": tenantId };
-                const courseRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/courses/${courseId}`, { headers });
+                const courseRes = await fetch(`${API_URL}/courses/${courseId}`, { headers });
                 const courseData = courseRes.ok ? await courseRes.json() : null;
                 if (courseData) setCourseTitle(courseData.title || "");
 

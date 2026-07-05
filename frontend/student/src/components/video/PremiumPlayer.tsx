@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Plyr, APITypes, PlyrProps } from "plyr-react";
 import Hls from "hls.js";
+import { API_BASE } from "@/lib/api";
 
 interface PremiumPlayerProps {
     src: string;
@@ -29,7 +30,7 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
 
     // Tam URL'yi oluştur
     const fullSrc = currentSrc.startsWith("/") 
-        ? `${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292"}${currentSrc}`
+        ? `${API_BASE}${currentSrc}`
         : currentSrc;
 
     const isHls = fullSrc.includes(".m3u8");
@@ -189,7 +190,7 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
     };
 
     const posterFullUrl = poster 
-        ? (poster.startsWith("/") ? `${process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") || "http://localhost:5292"}${poster}` : poster)
+        ? (poster.startsWith("/") ? `${API_BASE}${poster}` : poster)
         : undefined;
 
     return (
