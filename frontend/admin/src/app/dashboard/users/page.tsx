@@ -742,7 +742,7 @@ export default function UsersPage() {
                                             <div className="bg-[#F8FAFC] p-4 rounded-xl text-left border border-[#E2E8F0]/60 space-y-3">
                                                 <div className="flex items-start gap-3">
                                                     <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} className="text-emerald-500" /></div> 
-                                                    <p className="text-xs text-[#64748B] font-medium leading-relaxed">Şifreler otomatik olarak <strong className="text-[#0A1931]">TC + Numaranın Son 2 Hanesi</strong> olarak atanır.</p>
+                                                    <p className="text-xs text-[#64748B] font-medium leading-relaxed">Şifreler otomatik olarak <strong className="text-[#0A1931]">isim.telefonunson2hanesi.soyismininilkharfi (Örn: volkan.51.c)</strong> olarak atanır.</p>
                                                 </div>
                                                 <div className="flex items-start gap-3">
                                                     <div className="mt-0.5 w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><AlertTriangle size={12} strokeWidth={3} className="text-rose-500" /></div> 
@@ -1011,7 +1011,9 @@ export default function UsersPage() {
                                 <div className="text-xs bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-800 font-semibold flex items-center justify-between">
                                     <span>Varsayılan Öğrenci Şifresi:</span>
                                     <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-300 select-all tracking-wider text-sm font-bold">
-                                        {f.email || "(E-posta girin)"}
+                                        {f.firstName && f.lastName && f.phone ? 
+                                            `${(f.firstName || "").trim().split(" ")[0].toLowerCase().replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ö/g, "o").replace(/ç/g, "c")}.${(f.phone || "").replace(/\D/g, "").slice(-2)}.${(f.lastName || "").trim().toLowerCase().replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ö/g, "o").replace(/ç/g, "c").charAt(0)}` 
+                                            : "(Ad, Soyad ve Telefon girin)"}
                                     </span>
                                 </div>
                             )}

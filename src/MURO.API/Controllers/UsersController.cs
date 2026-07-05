@@ -171,9 +171,12 @@ public class UsersController : ControllerBase
 
             var tc = u.TC?.Trim() ?? "";
 
-            // Calculated password: tc + . + last 2 digits of phone
+            // Calculated password: name.last2digitsofphone.firstletterofsurname (e.g. volkan.51.c)
+            var cleanFirst = NormalizeString(u.Ad?.Trim().Split(' ')[0] ?? "");
+            var cleanLast = NormalizeString(u.Soyad?.Trim() ?? "");
+            var lastChar = cleanLast.Length > 0 ? cleanLast.Substring(0, 1) : "x";
             var lastTwo = phone.Length >= 2 ? phone.Substring(phone.Length - 2) : "00";
-            var password = $"{tc}.{lastTwo}";
+            var password = $"{cleanFirst}.{lastTwo}.{lastChar}";
 
             requests.Add(new CreateUserRequest(
                 u.Ad.Trim(),
@@ -210,6 +213,18 @@ public class UsersController : ControllerBase
             skippedCount = importResult.FailedCount,
             details = importResult.Details
         });
+    }
+
+    private static string NormalizeString(string str)
+    {
+        if (string.IsNullOrWhiteSpace(str)) return "";
+        return str.Trim().ToLowerInvariant()
+            .Replace("ı", "i")
+            .Replace("ğ", "g")
+            .Replace("ü", "u")
+            .Replace("ş", "s")
+            .Replace("ö", "o")
+            .Replace("ç", "c");
     }
 }
 

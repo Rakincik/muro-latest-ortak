@@ -177,7 +177,11 @@ public class UserService : IUserService
         string password = request.Password;
         if (isStudent && string.IsNullOrWhiteSpace(password))
         {
-            password = !string.IsNullOrWhiteSpace(email) ? email : "123456";
+            var cleanFirst = NormalizeString(request.FirstName?.Trim().Split(' ')[0] ?? "");
+            var cleanLast = NormalizeString(request.LastName?.Trim() ?? "");
+            var lastChar = cleanLast.Length > 0 ? cleanLast.Substring(0, 1) : "x";
+            var lastTwo = (cleanedPhone ?? "").Length >= 2 ? (cleanedPhone ?? "").Substring((cleanedPhone ?? "").Length - 2) : "00";
+            password = $"{cleanFirst}.{lastTwo}.{lastChar}";
         }
 
         var tcCheck = request.TcNo?.Trim();
@@ -678,5 +682,17 @@ public class UserService : IUserService
         }
         
         return digits;
+    }
+
+    private static string NormalizeString(string str)
+    {
+        if (string.IsNullOrWhiteSpace(str)) return "";
+        return str.Trim().ToLowerInvariant()
+            .Replace("ı", "i")
+            .Replace("ğ", "g")
+            .Replace("ü", "u")
+            .Replace("ş", "s")
+            .Replace("ö", "o")
+            .Replace("ç", "c");
     }
 }
