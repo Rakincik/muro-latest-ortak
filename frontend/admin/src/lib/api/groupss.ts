@@ -14,7 +14,7 @@ export const groupsApi = {
         invalidateCacheByPrefix('groups:');
         return res;
     },
-    update: async (token: string, tenantId: string, id: string, data: { name?: string; description?: string; color?: string; educationType?: string; expirationDate?: string }) => {
+    update: async (token: string, tenantId: string, id: string, data: { name?: string; description?: string; parentGroupId?: string | null; color?: string; educationType?: string; expirationDate?: string }) => {
         const res = await api<GroupListDto>(`/groups/${id}`, { method: 'PUT', token, tenantId, body: JSON.stringify(data) });
         invalidateCacheByPrefix('groups:');
         return res;

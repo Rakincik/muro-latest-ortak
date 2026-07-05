@@ -303,7 +303,7 @@ export default function GroupsPage() {
         if (!token || !tenantId || !formName.trim() || !formType) return;
         setFormSaving(true);
         try {
-            const data = { name: formName.trim(), description: formDesc || undefined, color: formColor, parentGroupId: formParent || undefined, educationType: formType || undefined, expirationDate: formExpirationDate ? new Date(formExpirationDate).toISOString() : undefined };
+            const data = { name: formName.trim(), description: formDesc || undefined, color: formColor, parentGroupId: formParent || null, educationType: formType || undefined, expirationDate: formExpirationDate ? new Date(formExpirationDate).toISOString() : undefined };
             if (editGroup) {
                 await groupsApi.update(token, tenantId, editGroup.id, data);
                 success("Güncellendi", `${formName} grubu güncellendi.`);

@@ -150,12 +150,29 @@ public class GroupService : IGroupService
         if (request.Color != null) group.Color = request.Color;
         if (request.EducationType != null) group.EducationType = request.EducationType;
         if (request.ExpirationDate != null) group.ExpirationDate = request.ExpirationDate;
+        if (request.ParentGroupId == groupId)
+            throw new ArgumentException("Grup kendi kendisinin alt grubu olamaz.");
+
         if (request.ParentGroupId.HasValue)
         {
-            if (request.ParentGroupId == groupId)
-                throw new ArgumentException("Grup kendi kendisinin alt grubu olamaz.");
-            group.ParentId = request.ParentGroupId;
+            var currentParentId = request.ParentGroupId.Value;
+            var visited = new System.Collections.Generic.HashSet<Guid> { groupId };
+            while (currentParentId != Guid.Empty)
+            {
+                if (visited.Contains(currentParentId))
+                {
+                    throw new ArgumentException("Döngüsel grup ilişkisi oluşturulamaz.");
+                }
+                visited.Add(currentParentId);
+
+                var parent = await _context.Groups.AsNoTracking()
+                    .FirstOrDefaultAsync(g => g.Id == currentParentId);
+                if (parent == null) break;
+                currentParentId = parent.ParentId ?? Guid.Empty;
+            }
         }
+
+        group.ParentId = request.ParentGroupId;
 
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"groups:");
