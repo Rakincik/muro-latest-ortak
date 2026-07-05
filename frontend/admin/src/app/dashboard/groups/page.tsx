@@ -28,6 +28,7 @@ import {
     PiNotePencilDuotone,
     PiTargetDuotone,
     PiFilePlusDuotone,
+    PiFileArrowDownDuotone,
     PiFolderDuotone,
     PiFolderOpenDuotone
 } from "react-icons/pi";
@@ -174,6 +175,25 @@ export default function GroupsPage() {
     const [assignCourseSelection, setAssignCourseSelection] = useState<Set<string>>(new Set());
     const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
     const [loadingCourses, setLoadingCourses] = useState(false);
+    const [exportingExcel, setExportingExcel] = useState(false);
+
+    const handleExportExcel = async () => {
+        if (!detail || !token || !tenantId) return;
+        const userIds = detail.members.map(m => m.userId);
+        if (userIds.length === 0) {
+            toastError("Bilgi", "Bu grupta indirilecek öğrenci bulunmuyor.");
+            return;
+        }
+        setExportingExcel(true);
+        try {
+            await userApi.exportExcel(token, tenantId, userIds);
+            success("Başarılı", "Excel dosyası başarıyla indirildi.");
+        } catch {
+            toastError("Hata", "Excel dosyası indirilemedi.");
+        } finally {
+            setExportingExcel(false);
+        }
+    };
 
     // Inline Creation
     const [inlineCreateParent, setInlineCreateParent] = useState<string | null>(null);
@@ -726,6 +746,10 @@ export default function GroupsPage() {
                                                     className="px-3 py-1.5 text-xs bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-lg flex items-center gap-1.5 hover:bg-[#F8FAFC] font-bold">
                                                     <PiFilePlusDuotone size={16} /> Excel ile Toplu Kayıt
                                                 </button>
+                                                 <button onClick={handleExportExcel} disabled={exportingExcel}
+                                                     className="px-3 py-1.5 text-xs bg-white text-emerald-600 border border-emerald-200 rounded-lg flex items-center gap-1.5 hover:bg-emerald-50 font-bold disabled:opacity-50">
+                                                     {exportingExcel ? <Loader2 size={16} className="animate-spin" /> : <PiFileArrowDownDuotone size={16} />} Excel ile İndir
+                                                 </button>
                                                 <button onClick={() => { setBulkAddSelection(new Set()); setAddMemberOpen(true); }}
                                                     className="px-3 py-1.5 text-xs bg-[#0A1931] text-white rounded-lg flex items-center gap-1.5 hover:bg-[#1B3B6F] font-bold">
                                                     <UserPlus size={12} /> Öğrenci Ekle

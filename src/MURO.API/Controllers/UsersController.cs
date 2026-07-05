@@ -133,7 +133,8 @@ public class UsersController : ControllerBase
             KayitTarihi = u.CreatedAt.ToString("dd.MM.yyyy"),
             Ad = u.FirstName,
             Soyad = u.LastName ?? "",
-            KullaniciAdi = u.Email,
+            KullaniciAdi = u.Username ?? u.Email,
+            Sifre = u.Password ?? "",
             Eposta = u.Email,
             TC = u.TcNo ?? "",
             Telefon = u.Phone ?? ""
@@ -254,6 +255,7 @@ public class UserExportDto
     public string Ad { get; set; } = string.Empty;
     public string Soyad { get; set; } = string.Empty;
     public string KullaniciAdi { get; set; } = string.Empty;
+    public string Sifre { get; set; } = string.Empty;
     public string Eposta { get; set; } = string.Empty;
     public string TC { get; set; } = string.Empty;
     public string Telefon { get; set; } = string.Empty;
