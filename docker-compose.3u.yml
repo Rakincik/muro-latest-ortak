@@ -1,0 +1,153 @@
+# ============================================
+# MURO LMS 3U — Docker Compose (Subdomain)
+# ============================================
+# Subdomains:
+#   3u.muro.click      → Student Frontend (:3002)
+#   3u-ad.muro.click   → Admin Frontend   (:3001)
+#   3u-ap.muro.click   → API Backend      (:5292)
+# ============================================
+
+services:
+  # --- PostgreSQL 16 ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: muro_3u_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-muro_demo}
+      POSTGRES_USER: ${DB_USER:-muro_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - muro_demo_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-muro_user} -d ${DB_NAME:-muro_demo}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - muro_3u_network
+
+  # --- Redis 7 ---
+  redis:
+    image: redis:7-alpine
+    container_name: muro_3u_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-muro_redis_2024}
+    volumes:
+      - muro_demo_redisdata:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-muro_redis_2024}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - muro_3u_network
+
+  # --- MURO API (.NET 8 + FFmpeg) ---
+  api:
+    image: muro-api:latest
+    container_name: muro_3u_api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5292:5292"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_demo};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
+      - Jwt__Key=${JWT_KEY:?JWT_KEY is required}
+      - Jwt__Issuer=MURO.API
+      - Jwt__Audience=MURO.Clients
+      - BunnyCdn__ApiKey=${BUNNY_API_KEY}
+      - BunnyCdn__StorageZoneName=${BUNNY_STORAGE_ZONE}
+      - BunnyCdn__PullZoneUrl=${BUNNY_PULL_ZONE}
+      - BunnyCdn__LibraryId=${BUNNY_LIBRARY_ID}
+      - BunnyCdn__StreamApiKey=${BUNNY_STREAM_API_KEY}
+      - App__StorageMode=Local
+      - Storage__LocalDirectory=/app/wwwroot
+      - Email__Host=${EMAIL_HOST}
+      - Email__Port=${EMAIL_PORT}
+      - Email__Username=${EMAIL_USERNAME}
+      - Email__Password=${EMAIL_PASSWORD}
+      - Email__SenderEmail=${EMAIL_SENDER}
+      - Email__SenderName=3U Uzem
+    volumes:
+      - muro_demo_hls:/app/wwwroot/hls
+      - muro_demo_uploads:/app/wwwroot/uploads
+      - muro_demo_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - muro_3u_network
+
+  # --- MURO Worker (FFmpeg — CPU mode) ---
+  worker:
+    image: muro-worker:latest
+    container_name: muro_3u_worker
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Ffmpeg__Path=ffmpeg
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${DB_NAME:-muro_demo};Username=${DB_USER:-muro_user};Password=${DB_PASSWORD:?DB_PASSWORD is required}
+      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD:-muro_redis_2024},abortConnect=false
+      - Storage__HlsOutputDir=/app/wwwroot/hls
+      - Worker__NvencSlots=0
+      - Worker__QsvSlots=0
+      - Worker__CpuSlots=4
+    volumes:
+      - muro_demo_hls:/app/wwwroot/hls
+      - muro_demo_uploads:/app/wwwroot/uploads
+      - muro_demo_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - muro_3u_network
+
+  # --- Admin Frontend (Next.js) ---
+  admin:
+    image: muro-admin:latest
+    container_name: muro_3u_admin
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+    networks:
+      - muro_3u_network
+
+  # --- Student Frontend (Next.js) ---
+  student:
+    image: muro-student:latest
+    container_name: muro_3u_student
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - HOSTNAME=0.0.0.0
+    networks:
+      - muro_3u_network
+
+networks:
+  muro_3u_network:
+    name: muro_3u_network
+
+volumes:
+  muro_demo_pgdata:
+    external: true
+  muro_demo_redisdata:
+    external: true
+  muro_demo_hls:
+    external: true
+  muro_demo_uploads:
+    external: true
+  muro_demo_logs:
+    external: true
