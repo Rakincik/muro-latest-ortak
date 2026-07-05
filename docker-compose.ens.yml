@@ -49,9 +49,7 @@ services:
 
   # --- MURO API (.NET 8 + FFmpeg) ---
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
+    image: muro-api:latest
     container_name: muro_ens_api
     restart: unless-stopped
     ports:
@@ -95,9 +93,7 @@ services:
 
   # --- MURO Worker (FFmpeg — CPU mode) ---
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
+    image: muro-worker:latest
     container_name: muro_ens_worker
     restart: unless-stopped
     environment:
@@ -123,11 +119,7 @@ services:
 
   # --- Admin Frontend (Next.js) ---
   admin:
-    build:
-      context: ./frontend/admin
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: https://ens-api.muro.click/api/v1
+    image: muro-admin:latest
     container_name: muro_ens_admin
     restart: unless-stopped
     ports:
@@ -141,11 +133,7 @@ services:
 
   # --- Student Frontend (Next.js) ---
   student:
-    build:
-      context: ./frontend/student
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: https://ens-api.muro.click/api/v1
+    image: muro-student:latest
     container_name: muro_ens_student
     restart: unless-stopped
     ports:
