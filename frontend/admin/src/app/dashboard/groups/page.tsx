@@ -35,7 +35,7 @@ import {
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { groupsApi, courseApi, notificationApi, userApi, type GroupListDto, type GroupDetailDto, type CourseListDto } from "@/lib/api";
+import { groupsApi, courseApi, notificationApi, userApi, analyticsAdminApi, type GroupListDto, type GroupDetailDto, type CourseListDto, type DashboardStatsDto } from "@/lib/api";
 import { PremiumTabs } from "@/components/ui/PremiumTabs";
 import { KpiGrid } from "@/components/ui/KpiGrid";
 import { BulkRegisterModal } from "./BulkRegisterModal";
@@ -176,6 +176,7 @@ export default function GroupsPage() {
     const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
     const [loadingCourses, setLoadingCourses] = useState(false);
     const [exportingExcel, setExportingExcel] = useState(false);
+    const [stats, setStats] = useState<DashboardStatsDto | null>(null);
 
     const handleExportExcel = async () => {
         if (!detail || !token || !tenantId) return;
@@ -230,11 +231,18 @@ export default function GroupsPage() {
                 setSelectedId(list[0].id);
                 setExpanded(new Set([list[0].id]));
             }
+            // Fetch stats too to keep total counts synchronized
+            analyticsAdminApi.stats(token, tenantId).then(setStats).catch(() => {});
         } catch { toastError("Hata", "Gruplar yüklenemedi."); }
         finally { setLoading(false); }
     }, [token, tenantId]);
 
     useEffect(() => { loadGroups(true); }, [loadGroups]);
+
+    useEffect(() => {
+        if (!token || !tenantId) return;
+        analyticsAdminApi.stats(token, tenantId).then(setStats).catch(() => {});
+    }, [token, tenantId]);
 
     useEffect(() => {
         if (!selectedId || !token || !tenantId) return;
@@ -601,8 +609,8 @@ export default function GroupsPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 shrink-0">
                 {[
                     { label: "Toplam Grup", value: groups.length, icon: FolderTree, colorClass: "text-indigo-600", bgClass: "bg-indigo-50" },
-                    { label: "Toplam Öğrenci", value: totalMembers, icon: Users, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
-                    { label: "Ders Ataması", value: totalCourses, icon: BookOpen, colorClass: "text-emerald-600", bgClass: "bg-emerald-50" },
+                    { label: "Toplam Öğrenci", value: stats ? stats.activeStudents : 0, icon: Users, colorClass: "text-blue-600", bgClass: "bg-blue-50" },
+                    { label: "Ders Ataması", value: stats ? stats.totalCourses : 0, icon: BookOpen, colorClass: "text-emerald-600", bgClass: "bg-emerald-50" },
                     { label: "Boş Grup", value: emptyGroups, icon: AlertTriangle, colorClass: emptyGroups > 0 ? "text-amber-600" : "text-teal-600", bgClass: emptyGroups > 0 ? "bg-amber-50" : "bg-teal-50" },
                 ].map((k, i) => (
                     <div key={i} className="bg-white border border-[#E2E8F0] rounded-xl p-2.5 flex items-center gap-3 shadow-sm">
