@@ -33,8 +33,24 @@ export default function CoursesPage() {
     }, [search, statusFilter, sortBy]);
 
     const filteredAndSorted = useMemo(() => {
+        const normalizeText = (text: string) => {
+            if (!text) return "";
+            return text
+                .toLocaleLowerCase("tr")
+                .replace(/ı/g, "i")
+                .replace(/ğ/g, "g")
+                .replace(/ü/g, "u")
+                .replace(/ş/g, "s")
+                .replace(/ö/g, "o")
+                .replace(/ç/g, "c")
+                .trim();
+        };
+
+        const searchWords = normalizeText(search).split(/\s+/).filter(Boolean);
+
         const result = courses.filter(c => {
-            const matchSearch = c.title.toLocaleLowerCase('tr').includes(search.toLocaleLowerCase('tr'));
+            const normalizedTitle = normalizeText(c.title);
+            const matchSearch = searchWords.every(word => normalizedTitle.includes(word));
             let matchStatus = true;
             const comp = c.completionPercentage ?? 0;
             
