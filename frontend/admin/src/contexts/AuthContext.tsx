@@ -153,6 +153,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // 🔒 DevTools and Right Click Protection: Restricted to SuperAdmin only
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const handleContextMenu = (e: MouseEvent) => {
+            if (user?.role === "SuperAdmin") return;
+            e.preventDefault();
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (user?.role === "SuperAdmin") return;
+
+            // Block F12
+            if (e.key === "F12") {
+                e.preventDefault();
+                return;
+            }
+
+            // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (Developer tools)
+            if (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase())) {
+                e.preventDefault();
+                return;
+            }
+
+            // Block Ctrl+U (View source)
+            if (e.ctrlKey && e.key.toUpperCase() === "U") {
+                e.preventDefault();
+                return;
+            }
+            
+            // Block Ctrl+S (Save page)
+            if (e.ctrlKey && e.key.toUpperCase() === "S") {
+                e.preventDefault();
+                return;
+            }
+        };
+
+        window.addEventListener("contextmenu", handleContextMenu);
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("contextmenu", handleContextMenu);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [user]);
+
     // Proactive refresh...
     useEffect(() => {
         if (!token || DEV_MODE) return;
