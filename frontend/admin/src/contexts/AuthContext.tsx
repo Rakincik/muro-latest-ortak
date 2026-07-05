@@ -204,36 +204,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = () => {
-        setToken(null);
-        setUser(null);
-        setCurrentTenantId(null);
-        localStorage.removeItem("muro_token");
-        localStorage.removeItem("muro_refresh");
-        localStorage.removeItem("muro_tenantId");
-        localStorage.removeItem("muro_student_token");
-        localStorage.removeItem("muro_student_refresh");
-        clearCache();
-        
-        // Subdomain deployment — login is at root, no /admin prefix needed.
-        if (typeof window !== "undefined") {
-            const currentHost = window.location.hostname;
-            let studentHost = currentHost;
+        try {
+            console.log("LOGOUT BUTTON CLICKED - STARTING LOGOUT PROCESS");
+            setToken(null);
+            setUser(null);
+            setCurrentTenantId(null);
+            localStorage.removeItem("muro_token");
+            localStorage.removeItem("muro_refresh");
+            localStorage.removeItem("muro_tenantId");
+            localStorage.removeItem("muro_student_token");
+            localStorage.removeItem("muro_student_refresh");
             
-            if (currentHost.startsWith("3u-ad.")) {
-              studentHost = currentHost.replace("3u-ad.", "3u.");
-            } else if (currentHost.includes("-adm.")) {
-               studentHost = currentHost.replace("-adm.", ".");
-            } else if (currentHost.includes("-ad.")) {
-               studentHost = currentHost.replace("-ad.", ".");
-            } else if (currentHost.startsWith("admin.")) {
-               studentHost = currentHost.replace("admin.", "");
+            try {
+                clearCache();
+            } catch (cacheErr) {
+                console.warn("clearCache error:", cacheErr);
             }
             
-            // Eğer localhost ise 3000 portuna yönlendir (öğrenci portu)
-            if (currentHost === "localhost") {
-                window.location.href = "http://localhost:3000/?action=logout";
-            } else {
-                window.location.href = `https://${studentHost}/?action=logout`;
+            // Subdomain deployment — login is at root, no /admin prefix needed.
+            if (typeof window !== "undefined") {
+                const currentHost = window.location.hostname;
+                let studentHost = currentHost;
+                
+                if (currentHost.startsWith("3u-ad.")) {
+                  studentHost = currentHost.replace("3u-ad.", "3u.");
+                } else if (currentHost.includes("-adm.")) {
+                   studentHost = currentHost.replace("-adm.", ".");
+                } else if (currentHost.includes("-ad.")) {
+                   studentHost = currentHost.replace("-ad.", ".");
+                } else if (currentHost.startsWith("admin.")) {
+                   studentHost = currentHost.replace("admin.", "");
+                }
+                
+                console.log("LOGOUT REDIRECTING TO:", studentHost);
+                // Eğer localhost ise 3000 portuna yönlendir (öğrenci portu)
+                if (currentHost === "localhost") {
+                    window.location.href = "http://localhost:3000/?action=logout";
+                } else {
+                    window.location.href = `https://${studentHost}/?action=logout`;
+                }
+            }
+        } catch (err) {
+            console.error("LOGOUT FAIL ERROR:", err);
+            if (typeof window !== "undefined") {
+                alert("Çıkış Yapılamadı! Hata: " + (err as Error).message);
             }
         }
     };
