@@ -127,15 +127,13 @@ services:
   # --- Admin Frontend (Next.js) ---
   admin:
     build:
-
-    volumes:
-
-      - ./logo.png:/app/public/logo.png
       context: ./frontend/admin
       dockerfile: Dockerfile
       network: host
       args:
         NEXT_PUBLIC_API_URL: ${SITE_URL:-http://192.168.1.115:5292}/api/v1
+    volumes:
+      - ./logo.png:/app/public/logo.png
     container_name: muro101_admin
     restart: unless-stopped
     ports:
@@ -150,15 +148,13 @@ services:
   # --- Student Frontend (Next.js) ---
   student:
     build:
-
-    volumes:
-
-      - ./logo.png:/app/public/logo.png
       context: ./frontend/student
       dockerfile: Dockerfile
       network: host
       args:
         NEXT_PUBLIC_API_URL: ${SITE_URL:-https://yourdomain.com}/api/v1
+    volumes:
+      - ./logo.png:/app/public/logo.png
     container_name: muro101_student
     restart: unless-stopped
     ports:
