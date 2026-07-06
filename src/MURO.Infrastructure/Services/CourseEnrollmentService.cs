@@ -44,30 +44,48 @@ public class CourseEnrollmentService : ICourseEnrollmentService
         var groupExists = await _context.Groups.AnyAsync(g => g.Id == groupId);
         if (!groupExists) throw new KeyNotFoundException("Grup bulunamadı.");
 
-        if (assignments == null || !assignments.Any()) return;
-
-        var courseIds = assignments.Select(a => a.CourseId).ToList();
-        var existingCourseIds = await _context.CourseGroups
-            .Where(cg => cg.GroupId == groupId && courseIds.Contains(cg.CourseId))
-            .Select(cg => cg.CourseId)
+        // Get all current course-group assignments in DB
+        var currentAssignments = await _context.CourseGroups
+            .Where(cg => cg.GroupId == groupId)
             .ToListAsync();
 
-        foreach (var assignment in assignments)
-        {
-            if (existingCourseIds.Contains(assignment.CourseId))
-                continue;
+        var newAssignments = assignments ?? new List<CourseGroupAssignmentItem>();
+        var newCourseIds = newAssignments.Select(a => a.CourseId).ToList();
 
+        // 1. Remove assignments that are no longer in the request
+        var toRemove = currentAssignments.Where(ca => !newCourseIds.Contains(ca.CourseId)).ToList();
+        if (toRemove.Any())
+        {
+            _context.CourseGroups.RemoveRange(toRemove);
+        }
+
+        // 2. Add or Update the rest
+        foreach (var assignment in newAssignments)
+        {
             if (!Enum.TryParse<CourseMode>(assignment.Mode, true, out var courseMode))
                 throw new ArgumentException($"Geçersiz mod: {assignment.Mode}");
 
-            _context.CourseGroups.Add(new CourseGroup
+            var existing = currentAssignments.FirstOrDefault(ca => ca.CourseId == assignment.CourseId);
+            if (existing != null)
             {
-                Id = Guid.NewGuid(),
-                CourseId = assignment.CourseId,
-                GroupId = groupId,
-                Mode = courseMode,
-                AssignedAt = DateTime.UtcNow
-            });
+                // Update mode if it changed
+                if (existing.Mode != courseMode)
+                {
+                    existing.Mode = courseMode;
+                }
+            }
+            else
+            {
+                // Add new assignment
+                _context.CourseGroups.Add(new CourseGroup
+                {
+                    Id = Guid.NewGuid(),
+                    CourseId = assignment.CourseId,
+                    GroupId = groupId,
+                    Mode = courseMode,
+                    AssignedAt = DateTime.UtcNow
+                });
+            }
         }
 
         await _context.SaveChangesAsync();
