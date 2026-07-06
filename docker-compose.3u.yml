@@ -114,7 +114,7 @@ services:
 
     volumes:
 
-      - ./logo_3u.png:/app/public/logo.png
+      - /opt/3u/logo.png:/app/public/logo.png
     container_name: muro_3u_admin
     restart: unless-stopped
     ports:
@@ -132,7 +132,7 @@ services:
 
     volumes:
 
-      - ./logo_3u.png:/app/public/logo.png
+      - /opt/3u/logo.png:/app/public/logo.png
     container_name: muro_3u_student
     restart: unless-stopped
     ports:
