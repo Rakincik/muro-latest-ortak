@@ -123,7 +123,7 @@ services:
 
     volumes:
 
-      - ./logo.png:/app/public/logo.png
+      - ./logo_mng.png:/app/public/logo.png
     container_name: muro_mng_admin
     restart: unless-stopped
     ports:
@@ -141,7 +141,7 @@ services:
 
     volumes:
 
-      - ./logo.png:/app/public/logo.png
+      - ./logo_mng.png:/app/public/logo.png
     container_name: muro_mng_student
     restart: unless-stopped
     ports:
