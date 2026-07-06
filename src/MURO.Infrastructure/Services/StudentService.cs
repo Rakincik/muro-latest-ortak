@@ -24,13 +24,14 @@ public class StudentService : IStudentService
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var accessibleCourseIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
+            var liveAccessibleCourseIds = await _groupAccess.GetLiveAccessibleCourseIdsAsync(userId);
 
             // 1) Scheduled sessions from the student's courses
             var sessionEvents = await _context.Sessions
                 .AsNoTracking()
                 .Include(s => s.Course)
                 .Where(s => s.Course.IsPublished 
-                         && accessibleCourseIds.Contains(s.CourseId)
+                         && liveAccessibleCourseIds.Contains(s.CourseId)
                          && s.ScheduledStart >= from 
                          && s.ScheduledStart <= to)
                 .OrderBy(s => s.ScheduledStart)

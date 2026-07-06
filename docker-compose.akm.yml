@@ -120,6 +120,10 @@ services:
   # --- Admin Frontend (Next.js) ---
   admin:
     image: muro-admin:latest
+
+    volumes:
+
+      - ./logo.png:/app/public/logo.png
     container_name: muro_akm_admin
     restart: unless-stopped
     ports:
@@ -134,6 +138,10 @@ services:
   # --- Student Frontend (Next.js) ---
   student:
     image: muro-student:latest
+
+    volumes:
+
+      - ./logo.png:/app/public/logo.png
     container_name: muro_akm_student
     restart: unless-stopped
     ports:

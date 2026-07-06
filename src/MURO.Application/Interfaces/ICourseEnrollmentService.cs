@@ -12,4 +12,5 @@ public interface ICourseEnrollmentService
     Task UpdateStudentExpirationAsync(Guid courseId, Guid userId, DateTime? expiresAt);
     Task<List<CourseStudentListDto>> GetEnrolledStudentsAsync(Guid courseId);
     Task<List<CourseListDto>> GetDirectCoursesByUserAsync(Guid userId);
+    Task BulkAssignToGroupAsync(Guid groupId, List<MURO.Application.DTOs.Groups.CourseGroupAssignmentItem> assignments);
 }

@@ -63,3 +63,7 @@ public record UpdateGroupRequest(
 public record AddGroupMembersRequest(List<Guid> UserIds);
 
 public record MoveMembersRequest(Guid ToGroupId, List<Guid> UserIds);
+
+public record CourseGroupAssignmentItem(Guid CourseId, string Mode);
+
+public record BulkAssignCoursesToGroupRequest(List<CourseGroupAssignmentItem> Assignments);

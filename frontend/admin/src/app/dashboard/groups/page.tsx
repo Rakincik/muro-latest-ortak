@@ -172,7 +172,7 @@ export default function GroupsPage() {
     // Course assignment
     const [assignCourseOpen, setAssignCourseOpen] = useState(false);
     const [assignCourseSearch, setAssignCourseSearch] = useState("");
-    const [assignCourseSelection, setAssignCourseSelection] = useState<Set<string>>(new Set());
+    const [assignCourseSelection, setAssignCourseSelection] = useState<Record<string, 'Online' | 'Offline'>>({});
     const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([]);
     const [loadingCourses, setLoadingCourses] = useState(false);
     const [exportingExcel, setExportingExcel] = useState(false);
@@ -431,16 +431,16 @@ export default function GroupsPage() {
 
     // Assign multiple courses
     const handleAssignCourses = async () => {
-        if (!selectedId || !token || !tenantId || assignCourseSelection.size === 0) return;
+        if (!selectedId || !token || !tenantId || Object.keys(assignCourseSelection).length === 0) return;
         try {
-            await Promise.all(
-                Array.from(assignCourseSelection).map(courseId => 
-                    groupsApi.assignCourse(token, tenantId, selectedId, courseId, "Online")
-                )
-            );
+            const assignments = Object.entries(assignCourseSelection).map(([courseId, mode]) => ({
+                courseId,
+                mode
+            }));
+            await groupsApi.bulkAssignCourses(token, tenantId, selectedId, assignments);
             setAssignCourseOpen(false); 
             setAssignCourseSearch("");
-            setAssignCourseSelection(new Set());
+            setAssignCourseSelection({});
             const d = await groupsApi.get(token, tenantId, selectedId);
             setDetail(d);
             success("Atandı", "Seçili dersler gruba atandı.");
@@ -1233,7 +1233,7 @@ export default function GroupsPage() {
             {/* ── Assign Course Modal ── */}
             {assignCourseOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-fade-in-up border border-[#E2E8F0]">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden animate-fade-in-up border border-[#E2E8F0]">
                         <div className="flex items-center justify-between p-6 border-b border-[#E2E8F0]/60 bg-[#E2E8F0]/15">
                             <h2 className="text-xl font-black text-[#0A1931]">Ders Ata</h2>
                             <button onClick={() => { setAssignCourseOpen(false); setAssignCourseSearch(""); }} className="p-2 text-[#A0AEC0] hover:text-[#0A1931] rounded-xl"><X size={20} /></button>
@@ -1250,46 +1250,87 @@ export default function GroupsPage() {
                                 />
                             </div>
 
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                            <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                                 {loadingCourses ? (
                                     <div className="flex flex-col items-center justify-center py-10">
                                         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
                                         <p className="text-sm font-medium text-[#64748B]">Dersler yükleniyor...</p>
                                     </div>
-                                ) : (
-                                    <>
-                                        {allCourses
-                                            .filter(c => !detail?.courses.some(dc => dc.courseId === c.id))
-                                            .filter(c => !assignCourseSearch || c.title.toLocaleLowerCase('tr').includes(assignCourseSearch.toLocaleLowerCase('tr')))
-                                            .map(c => {
-                                                const isSelected = assignCourseSelection.has(c.id);
+                                ) : (() => {
+                                    const assignedCourseIds = new Set(detail?.courses.map(dc => dc.courseId) || []);
+                                    const assignedList = allCourses.filter(c => assignedCourseIds.has(c.id));
+                                    const unassignedList = allCourses.filter(c => !assignedCourseIds.has(c.id));
+
+                                    const filteredAssigned = assignedList.filter(c => !assignCourseSearch || c.title.toLocaleLowerCase('tr').includes(assignCourseSearch.toLocaleLowerCase('tr')));
+                                    const filteredUnassigned = unassignedList.filter(c => !assignCourseSearch || c.title.toLocaleLowerCase('tr').includes(assignCourseSearch.toLocaleLowerCase('tr')));
+
+                                    return (
+                                        <>
+                                            {/* ── Assigned Courses (Locked at the top) ── */}
+                                            {filteredAssigned.map(c => {
+                                                const assignedCourse = detail?.courses.find(dc => dc.courseId === c.id);
+                                                const modeLabel = assignedCourse?.mode === "Both" ? "Online" : (assignedCourse?.mode || "Offline");
+                                                return (
+                                                    <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl border border-[#E2E8F0]/40 bg-[#F8FAFC] opacity-75 cursor-not-allowed select-none">
+                                                        <input type="checkbox" checked={true} disabled className="w-4 h-4 rounded border-[#E2E8F0] text-gray-400 bg-gray-100" />
+                                                        <p className="text-sm font-bold text-[#0A1931]/60 flex-1">{c.title}</p>
+                                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${modeLabel === "Online" ? "bg-blue-50 text-blue-600 border border-blue-200" : "bg-amber-50 text-amber-600 border border-amber-200"}`}>
+                                                            Atandı ({modeLabel})
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* ── Unassigned Courses (Selectable below) ── */}
+                                            {filteredUnassigned.map(c => {
+                                                const isSelected = !!assignCourseSelection[c.id];
+                                                const currentMode = assignCourseSelection[c.id] || 'Online';
                                                 return (
                                                     <div key={c.id} 
                                                         onClick={() => {
-                                                            const newSel = new Set(assignCourseSelection);
-                                                            if (isSelected) newSel.delete(c.id);
-                                                            else newSel.add(c.id);
+                                                            const newSel = { ...assignCourseSelection };
+                                                            if (isSelected) {
+                                                                delete newSel[c.id];
+                                                            } else {
+                                                                newSel[c.id] = 'Online';
+                                                            }
                                                             setAssignCourseSelection(newSel);
                                                         }}
                                                         className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? "border-indigo-500 bg-indigo-50/50" : "border-[#E2E8F0]/60 hover:border-indigo-200 hover:bg-indigo-50/30"}`}>
                                                         <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-[#E2E8F0] text-indigo-600" />
                                                         <p className="text-sm font-bold text-[#0A1931] flex-1">{c.title}</p>
+                                                        
+                                                        {isSelected && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const newSel = { ...assignCourseSelection };
+                                                                    newSel[c.id] = currentMode === 'Online' ? 'Offline' : 'Online';
+                                                                    setAssignCourseSelection(newSel);
+                                                                }}
+                                                                className={`text-[10px] font-black px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1 shadow-sm ${currentMode === 'Online' ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "bg-gray-400 hover:bg-gray-500 text-white"}`}
+                                                            >
+                                                                {currentMode === 'Online' ? 'ONLINE (Canlı + Video)' : 'OFFLINE (Sadece Video)'}
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 );
-                                        })}
-                                        {allCourses.filter(c => !detail?.courses.some(dc => dc.courseId === c.id)).filter(c => !assignCourseSearch || c.title.toLocaleLowerCase('tr').includes(assignCourseSearch.toLocaleLowerCase('tr'))).length === 0 && (
-                                            <p className="text-center text-sm text-[#A0AEC0] py-4">Aramanıza uygun ders bulunamadı.</p>
-                                        )}
-                                    </>
-                                )}
+                                            })}
+
+                                            {filteredAssigned.length === 0 && filteredUnassigned.length === 0 && (
+                                                <p className="text-center text-sm text-[#A0AEC0] py-4">Aramanıza uygun ders bulunamadı.</p>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </div>
                         </div>
                         <div className="px-6 py-4 border-t border-[#E2E8F0]/60 bg-[#E2E8F0]/15 flex justify-end gap-2">
-                            <button onClick={() => { setAssignCourseOpen(false); setAssignCourseSearch(""); setAssignCourseSelection(new Set()); }}
+                            <button onClick={() => { setAssignCourseOpen(false); setAssignCourseSearch(""); setAssignCourseSelection({}); }}
                                 className="px-5 py-2.5 text-sm font-bold text-[#A9A9A9] border border-[#E2E8F0] rounded-xl hover:bg-white transition-colors">İptal</button>
-                            <button onClick={handleAssignCourses} disabled={assignCourseSelection.size === 0}
+                            <button onClick={handleAssignCourses} disabled={Object.keys(assignCourseSelection).length === 0}
                                 className="px-5 py-2.5 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] disabled:opacity-40 transition-colors">
-                                {assignCourseSelection.size > 0 ? `${assignCourseSelection.size} Dersi Ata` : "Ders Seçiniz"}
+                                {Object.keys(assignCourseSelection).length > 0 ? `${Object.keys(assignCourseSelection).length} Dersi Ata` : "Ders Seçiniz"}
                             </button>
                         </div>
                     </div>

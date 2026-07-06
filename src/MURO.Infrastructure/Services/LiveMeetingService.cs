@@ -175,9 +175,9 @@ public class LiveMeetingService : ILiveMeetingService
         {
             if (checkGroupAccess)
             {
-                var hasAccess = await _groupAccess.CanAccessCourseAsync(userId, courseId);
-                if (!hasAccess)
-                    throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
+                var liveAccess = await _groupAccess.GetLiveAccessibleCourseIdsAsync(userId);
+                if (!liveAccess.Contains(courseId))
+                    throw new UnauthorizedAccessException("Bu derse canlı katılım yetkiniz bulunmamaktadır.");
             }
             else
             {
@@ -197,9 +197,9 @@ public class LiveMeetingService : ILiveMeetingService
 
         if (checkGroupAccess)
         {
-            var hasAccess = await _groupAccess.CanAccessCourseAsync(userId, courseId);
-            if (!hasAccess)
-                throw new UnauthorizedAccessException("Bu derse erişim yetkiniz yok.");
+            var liveAccess = await _groupAccess.GetLiveAccessibleCourseIdsAsync(userId);
+            if (!liveAccess.Contains(courseId))
+                throw new UnauthorizedAccessException("Bu derse canlı katılım yetkiniz bulunmamaktadır.");
         }
         else
         {

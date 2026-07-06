@@ -3,6 +3,7 @@ using MURO.Application.Interfaces;
 using MURO.Domain.Entities;
 using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
+using MURO.Application.DTOs.Groups;
 
 namespace MURO.Infrastructure.Services;
 
@@ -33,6 +34,42 @@ public class CourseEnrollmentService : ICourseEnrollmentService
             GroupId = groupId,
             Mode = courseMode
         });
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"groups:");
+        await _cache.RemoveByPrefixAsync($"courses:");
+    }
+
+    public async Task BulkAssignToGroupAsync(Guid groupId, List<CourseGroupAssignmentItem> assignments)
+    {
+        var groupExists = await _context.Groups.AnyAsync(g => g.Id == groupId);
+        if (!groupExists) throw new KeyNotFoundException("Grup bulunamadı.");
+
+        if (assignments == null || !assignments.Any()) return;
+
+        var courseIds = assignments.Select(a => a.CourseId).ToList();
+        var existingCourseIds = await _context.CourseGroups
+            .Where(cg => cg.GroupId == groupId && courseIds.Contains(cg.CourseId))
+            .Select(cg => cg.CourseId)
+            .ToListAsync();
+
+        foreach (var assignment in assignments)
+        {
+            if (existingCourseIds.Contains(assignment.CourseId))
+                continue;
+
+            if (!Enum.TryParse<CourseMode>(assignment.Mode, true, out var courseMode))
+                throw new ArgumentException($"Geçersiz mod: {assignment.Mode}");
+
+            _context.CourseGroups.Add(new CourseGroup
+            {
+                Id = Guid.NewGuid(),
+                CourseId = assignment.CourseId,
+                GroupId = groupId,
+                Mode = courseMode,
+                AssignedAt = DateTime.UtcNow
+            });
+        }
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"groups:");
         await _cache.RemoveByPrefixAsync($"courses:");

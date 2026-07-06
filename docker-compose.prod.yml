@@ -127,6 +127,10 @@ services:
   # --- Admin Frontend (Next.js) ---
   admin:
     build:
+
+    volumes:
+
+      - ./logo.png:/app/public/logo.png
       context: ./frontend/admin
       dockerfile: Dockerfile
       network: host
@@ -146,6 +150,10 @@ services:
   # --- Student Frontend (Next.js) ---
   student:
     build:
+
+    volumes:
+
+      - ./logo.png:/app/public/logo.png
       context: ./frontend/student
       dockerfile: Dockerfile
       network: host

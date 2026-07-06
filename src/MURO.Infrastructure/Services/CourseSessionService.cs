@@ -174,7 +174,7 @@ public class CourseSessionService : ICourseSessionService
 
     public async Task<List<UpcomingSessionDto>> GetUpcomingSessionsByUserAsync(Guid userId)
     {
-        var accessibleIds = await _groupAccess.GetAccessibleCourseIdsAsync(userId);
+        var accessibleIds = await _groupAccess.GetLiveAccessibleCourseIdsAsync(userId);
 
         var sessions = await _context.Sessions
             .Where(s => s.Course.IsPublished

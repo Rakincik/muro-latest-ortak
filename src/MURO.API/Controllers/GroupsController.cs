@@ -16,12 +16,14 @@ namespace MURO.API.Controllers;
 public class GroupsController : ControllerBase
 {
     private readonly IGroupService _groupService;
-        private readonly IBackgroundJobQueue _jobQueue;
+    private readonly IBackgroundJobQueue _jobQueue;
+    private readonly ICourseEnrollmentService _enrollmentService;
 
-    public GroupsController(IGroupService groupService, IBackgroundJobQueue jobQueue)
+    public GroupsController(IGroupService groupService, IBackgroundJobQueue jobQueue, ICourseEnrollmentService enrollmentService)
     {
         _groupService = groupService;
-                _jobQueue = jobQueue;
+        _jobQueue = jobQueue;
+        _enrollmentService = enrollmentService;
     }
 
     
@@ -108,5 +110,13 @@ public class GroupsController : ControllerBase
     {
         await _groupService.MoveMembersAsync(id, request.ToGroupId, request.UserIds);
         return Ok(new { message = "Üyeler taşındı." });
+    }
+
+    [HttpPost("{id:guid}/courses/bulk")]
+    public async Task<IActionResult> BulkAssignCourses(Guid id, [FromBody] BulkAssignCoursesToGroupRequest request)
+    {
+        await _enrollmentService.BulkAssignToGroupAsync(id, request.Assignments);
+        await _jobQueue.EnqueueAsync(new AuditLogJob(GetActorId(), null, "BulkAssignCourses", "Group", id.ToString(), null, $"{request.Assignments.Count} ders atandı", GetIp()));
+        return Ok(new { message = "Dersler gruba başarıyla atandı." });
     }
 }

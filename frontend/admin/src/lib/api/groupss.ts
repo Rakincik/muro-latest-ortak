@@ -40,6 +40,11 @@ export const groupsApi = {
         invalidateCacheByPrefix('groups:');
         invalidateCacheByPrefix('courses:');
     },
+    bulkAssignCourses: async (token: string, tenantId: string, groupId: string, assignments: { courseId: string; mode: string }[]) => {
+        await api<void>(`/groups/${groupId}/courses/bulk`, { method: 'POST', token, tenantId, body: JSON.stringify({ assignments }) });
+        invalidateCacheByPrefix('groups:');
+        invalidateCacheByPrefix('courses:');
+    },
     removeCourse: async (token: string, tenantId: string, groupId: string, courseId: string) => {
         await api<void>(`/courses/${courseId}/groups/${groupId}`, { method: 'DELETE', token, tenantId });
         invalidateCacheByPrefix('groups:');
