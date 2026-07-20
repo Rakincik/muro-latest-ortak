@@ -101,12 +101,12 @@ echo ""
 
 # ── 7. Nginx config ──
 echo "🔧 Nginx yapılandırılıyor..."
-cp nginx/3u-demo.conf /etc/nginx/sites-available/3u-demo.conf 2>/dev/null || \
-cp nginx/3u-demo.conf /etc/nginx/conf.d/3u-demo.conf
+cp nginx/demo.conf /etc/nginx/sites-available/demo.conf 2>/dev/null || \
+cp nginx/demo.conf /etc/nginx/conf.d/demo.conf
 
 # sites-enabled varsa symlink oluştur
 if [ -d "/etc/nginx/sites-enabled" ]; then
-    ln -sf /etc/nginx/sites-available/3u-demo.conf /etc/nginx/sites-enabled/3u-demo.conf
+    ln -sf /etc/nginx/sites-available/demo.conf /etc/nginx/sites-enabled/demo.conf
 fi
 
 # Nginx test
@@ -136,34 +136,34 @@ echo "🏥 Health Check:"
 echo "───────────────────────────────────────────────"
 
 # API
-if curl -sf http://127.0.0.1:5292/api/health > /dev/null 2>&1; then
-    echo "   ✅ API (5292): Sağlıklı"
+if curl -sf http://127.0.0.1:5300/api/health > /dev/null 2>&1; then
+    echo "   ✅ API (5300): Sağlıklı"
 else
-    echo "   ⏳ API (5292): Henüz başlatılıyor..."
+    echo "   ⏳ API (5300): Henüz başlatılıyor..."
     echo "      → Log: docker compose -f docker-compose.demo.yml logs api"
 fi
 
 # Admin
-if curl -sf http://127.0.0.1:3001 > /dev/null 2>&1; then
-    echo "   ✅ Admin (3001): Sağlıklı"
+if curl -sf http://127.0.0.1:4009 > /dev/null 2>&1; then
+    echo "   ✅ Admin (4009): Sağlıklı"
 else
-    echo "   ⏳ Admin (3001): Henüz başlatılıyor..."
+    echo "   ⏳ Admin (4009): Henüz başlatılıyor..."
 fi
 
 # Student
-if curl -sf http://127.0.0.1:3002 > /dev/null 2>&1; then
-    echo "   ✅ Student (3002): Sağlıklı"
+if curl -sf http://127.0.0.1:3010 > /dev/null 2>&1; then
+    echo "   ✅ Student (3010): Sağlıklı"
 else
-    echo "   ⏳ Student (3002): Henüz başlatılıyor..."
+    echo "   ⏳ Student (3010): Henüz başlatılıyor..."
 fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════╗"
 echo "║  🎉 MURO Demo Deploy Tamamlandı!                 ║"
 echo "║                                                   ║"
-echo "║  🌐 Student:  https://3u.muro.click               ║"
-echo "║  🔧 Admin:    https://3u-ad.muro.click            ║"
-echo "║  📡 API:      https://3u-ap.muro.click/api/health ║"
+echo "║  🌐 Student:  https://demo.muro.click               ║"
+echo "║  🔧 Admin:    https://demo-ad.muro.click            ║"
+echo "║  📡 API:      https://demo-ap.muro.click/api/health ║"
 echo "╚═══════════════════════════════════════════════════╝"
 echo ""
 echo "📊 Logları görmek için:"

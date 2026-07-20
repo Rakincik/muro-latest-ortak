@@ -53,7 +53,7 @@ services:
     container_name: muro_demo_api
     restart: unless-stopped
     ports:
-      - "127.0.0.1:5292:5292"
+      - "127.0.0.1:5300:5292"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5292
@@ -69,16 +69,12 @@ services:
       - Bbb__DefaultAttendeePw=attendee123
       - Bbb__DefaultModeratorPw=moderator123
       - Bbb__Defaults__LogoutURL=${ADMIN_URL:-https://3u-ad.muro.click}/dashboard/courses
-      - Cors__AllowedOrigins__0=https://3u.muro.click
-      - Cors__AllowedOrigins__1=https://3u-ad.muro.click
-      - Cors__AllowedOrigins__2=https://3u-ap.muro.click
-      - Cors__AllowedOrigins__3=http://3u.muro.click
-      - Cors__AllowedOrigins__4=http://3u-ad.muro.click
-      - Cors__AllowedOrigins__5=http://3u-ap.muro.click
-      - Cors__AllowedOrigins__6=https://demo.muro.click
-      - Cors__AllowedOrigins__7=http://demo.muro.click
-      - Cors__AllowedOrigins__8=https://demo-ap.muro.click
-      - Cors__AllowedOrigins__9=http://demo-ap.muro.click
+      - Cors__AllowedOrigins__0=https://demo.muro.click
+      - Cors__AllowedOrigins__1=http://demo.muro.click
+      - Cors__AllowedOrigins__2=https://demo-ad.muro.click
+      - Cors__AllowedOrigins__3=http://demo-ad.muro.click
+      - Cors__AllowedOrigins__4=https://demo-ap.muro.click
+      - Cors__AllowedOrigins__5=http://demo-ap.muro.click
       - Tenant__BaseDomain=${BASE_DOMAIN:-muro.click}
       - Gemini__ApiKey=${GEMINI_API_KEY:-}
       - Webhook__Secret=${WEBHOOK_SECRET:-CHANGE_THIS}
@@ -131,7 +127,7 @@ services:
     container_name: muro_demo_admin
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:4009:3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -149,7 +145,7 @@ services:
     container_name: muro_demo_student
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3002:3002"
+      - "127.0.0.1:3010:3002"
     environment:
       - NODE_ENV=production
       - PORT=3002
