@@ -75,6 +75,10 @@ services:
       - Cors__AllowedOrigins__3=http://3u.muro.click
       - Cors__AllowedOrigins__4=http://3u-ad.muro.click
       - Cors__AllowedOrigins__5=http://3u-ap.muro.click
+      - Cors__AllowedOrigins__6=https://demo.muro.click
+      - Cors__AllowedOrigins__7=http://demo.muro.click
+      - Cors__AllowedOrigins__8=https://demo-ap.muro.click
+      - Cors__AllowedOrigins__9=http://demo-ap.muro.click
       - Tenant__BaseDomain=${BASE_DOMAIN:-muro.click}
       - Gemini__ApiKey=${GEMINI_API_KEY:-}
       - Webhook__Secret=${WEBHOOK_SECRET:-CHANGE_THIS}
