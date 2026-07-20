@@ -149,38 +149,16 @@ def main():
             start_time = info["start_time"] if info["start_time"] else start_time_str
             duration = f"{info['duration']} dk" if info["duration"] != "Bilinmiyor" else f"{duration_min} dk"
             matched_by_db += 1
-        
-        # 2. Aşama: Nginx logs Referer domain kontrolü (Log bazlı kesin eşleşme)
-        elif referer_domain and referer_domain in DOMAIN_MAP:
-            kurum = DOMAIN_MAP[referer_domain]
+            
+        else:
+            # Eşleşme yoksa belirsiz bırak
+            kurum = "Belirsiz / Bilinmeyen Musteri"
             class_name = meeting_name
-            class_desc = "Nginx Referer Eslesmesi (Gecmis Donem)"
+            class_desc = "Eslesme Bulunamadi"
             recording_name = meeting_name
             start_time = start_time_str
             duration = f"{duration_min} dk" if duration_min != "Bilinmiyor" else "Bilinmiyor"
-            matched_by_referer += 1
-            
-        else:
-            # 3. Aşama: Akıllı Kelime Kuralları (NLP bazlı arşiv eşleşmesi)
-            kurum_guess = get_institution_by_advanced_rules(meeting_name, slide_kws)
-            
-            if kurum_guess:
-                kurum = kurum_guess
-                class_name = meeting_name
-                class_desc = "Akilli Kelime Eslesmesi (Arsiv Donemi)"
-                recording_name = meeting_name
-                start_time = start_time_str
-                duration = f"{duration_min} dk" if duration_min != "Bilinmiyor" else "Bilinmiyor"
-                matched_by_keyword += 1
-            else:
-                # Eşleşme yoksa belirsiz bırak
-                kurum = "Belirsiz / Bilinmeyen Musteri"
-                class_name = meeting_name
-                class_desc = "Eslesme Bulunamadi"
-                recording_name = meeting_name
-                start_time = start_time_str
-                duration = f"{duration_min} dk" if duration_min != "Bilinmiyor" else "Bilinmiyor"
-                unmatched_count += 1
+            unmatched_count += 1
                 
         playback_url = f"https://{server_ip}/playback/presentation/2.3/{folder}"
         

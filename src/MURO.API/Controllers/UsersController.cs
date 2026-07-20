@@ -125,7 +125,7 @@ public class UsersController : ControllerBase
         [FromBody] ExportExcelRequest request,
         [FromServices] IExcelService excelService)
     {
-        var result = await _userService.GetUsersAsync(1, 1000, null, null, null, null);
+        var result = await _userService.GetUsersAsync(1, 999999, null, null, null, null);
         var users = result.Items.Where(u => request.UserIds == null || request.UserIds.Contains(u.Id)).ToList();
         
         var exportData = users.Select(u => new UserExportDto

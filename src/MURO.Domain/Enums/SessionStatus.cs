@@ -5,5 +5,6 @@ public enum SessionStatus
     Scheduled = 0,
     Live = 1,
     Ended = 2,
-    Cancelled = 3
+    Cancelled = 3,
+    Completed = 4
 }

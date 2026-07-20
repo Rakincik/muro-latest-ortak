@@ -99,25 +99,23 @@ echo "🌐 Tüm servisler başlatılıyor..."
 docker compose -f docker-compose.demo.yml up -d
 echo ""
 
-# ── 7. Nginx config ──
-echo "🔧 Nginx yapılandırılıyor..."
-cp nginx/demo.conf /etc/nginx/sites-available/demo.conf 2>/dev/null || \
-cp nginx/demo.conf /etc/nginx/conf.d/demo.conf
-
-# sites-enabled varsa symlink oluştur
-if [ -d "/etc/nginx/sites-enabled" ]; then
-    ln -sf /etc/nginx/sites-available/demo.conf /etc/nginx/sites-enabled/demo.conf
-fi
-
-# Nginx test
-if nginx -t 2>&1; then
-    systemctl reload nginx
-    echo "✅ Nginx yapılandırması yüklendi ve reload edildi"
-else
-    echo "❌ Nginx config hatası! Kontrol edin:"
-    echo "   nginx -t"
-    echo "   Devam ediliyor..."
-fi
+# ── 7. Nginx config (Cyberpanel üzerinden yapıldığı için iptal edildi) ──
+echo "🔧 Nginx yapılandırması atlanıyor (Cyberpanel kullanılıyor)..."
+# cp nginx/demo.conf /etc/nginx/sites-available/demo.conf 2>/dev/null || \
+# cp nginx/demo.conf /etc/nginx/conf.d/demo.conf
+# 
+# if [ -d "/etc/nginx/sites-enabled" ]; then
+#     ln -sf /etc/nginx/sites-available/demo.conf /etc/nginx/sites-enabled/demo.conf
+# fi
+# 
+# if nginx -t 2>&1; then
+#     systemctl reload nginx
+#     echo "✅ Nginx yapılandırması yüklendi ve reload edildi"
+# else
+#     echo "❌ Nginx config hatası! Kontrol edin:"
+#     echo "   nginx -t"
+#     echo "   Devam ediliyor..."
+# fi
 echo ""
 
 # ── 8. Servislerin başlaması bekleniyor ──
