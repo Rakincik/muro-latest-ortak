@@ -9,59 +9,7 @@ public static class DatabaseSeeder
 {
     public static async Task SeedAsync(MuroDbContext db)
     {
-        // ── Admin user ────────────────────────────────────────────────────────
-        var adminEmail = "admin@monopol.com.tr";
-        var admin = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == adminEmail);
-        if (admin == null)
-        {
-            admin = new User
-            {
-                Id           = Guid.NewGuid(),
-                FirstName    = "Monopol",
-                LastName     = "Admin",
-                Email        = adminEmail,
-                Username     = adminEmail,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
-                Role         = UserRole.Admin,
-                IsActive     = true,
-                CreatedAt    = DateTime.UtcNow,
-            };
-            db.Users.Add(admin);
-        }
-        else
-        {
-            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
-            admin.IsActive     = true;
-            admin.Role         = UserRole.Admin;
-            db.Users.Update(admin);
-        }
 
-        // ── Demo user ─────────────────────────────────────────────────────────
-        var studentEmail = "ogrenci@demo.com";
-        var student = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == studentEmail);
-        if (student == null)
-        {
-            student = new User
-            {
-                Id           = Guid.NewGuid(),
-                FirstName    = "Demo",
-                LastName     = "Öğrenci",
-                Email        = studentEmail,
-                Username     = studentEmail,
-                PasswordHash = "123456",
-                Role         = UserRole.Student,
-                StudentType  = StudentType.Active,
-                IsActive     = true,
-                CreatedAt    = DateTime.UtcNow,
-            };
-            db.Users.Add(student);
-        }
-        else
-        {
-            student.PasswordHash = "123456";
-            student.IsActive     = true;
-            db.Users.Update(student);
-        }
 
         // ── Rüstem SuperAdmin ────────────────────────────────────────────────
         var rustemEmail = "rustemakincik@on7yazilim.com";
