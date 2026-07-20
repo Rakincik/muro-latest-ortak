@@ -134,25 +134,25 @@ echo "🏥 Health Check:"
 echo "───────────────────────────────────────────────"
 
 # API
-if curl -sf http://127.0.0.1:5300/api/health > /dev/null 2>&1; then
-    echo "   ✅ API (5300): Sağlıklı"
+if curl -sf http://127.0.0.1:25292/api/health > /dev/null 2>&1; then
+    echo "   ✅ API (25292): Sağlıklı"
 else
-    echo "   ⏳ API (5300): Henüz başlatılıyor..."
+    echo "   ⏳ API (25292): Henüz başlatılıyor..."
     echo "      → Log: docker compose -f docker-compose.demo.yml logs api"
 fi
 
 # Admin
-if curl -sf http://127.0.0.1:4009 > /dev/null 2>&1; then
-    echo "   ✅ Admin (4009): Sağlıklı"
+if curl -sf http://127.0.0.1:23001 > /dev/null 2>&1; then
+    echo "   ✅ Admin (23001): Sağlıklı"
 else
-    echo "   ⏳ Admin (4009): Henüz başlatılıyor..."
+    echo "   ⏳ Admin (23001): Henüz başlatılıyor..."
 fi
 
 # Student
-if curl -sf http://127.0.0.1:3010 > /dev/null 2>&1; then
-    echo "   ✅ Student (3010): Sağlıklı"
+if curl -sf http://127.0.0.1:23002 > /dev/null 2>&1; then
+    echo "   ✅ Student (23002): Sağlıklı"
 else
-    echo "   ⏳ Student (3010): Henüz başlatılıyor..."
+    echo "   ⏳ Student (23002): Henüz başlatılıyor..."
 fi
 
 echo ""
