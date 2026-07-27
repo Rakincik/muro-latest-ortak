@@ -119,7 +119,7 @@ services:
 
   # --- Admin Frontend (Next.js) ---
   admin:
-    image: muro-admin:latest
+    image: muro-admin-mng:latest
 
     volumes:
 
@@ -137,7 +137,7 @@ services:
 
   # --- Student Frontend (Next.js) ---
   student:
-    image: muro-student:latest
+    image: muro-student-mng:latest
 
     volumes:
 

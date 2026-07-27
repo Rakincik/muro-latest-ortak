@@ -1,0 +1,1 @@
+wget -qO- https://ubuntu.bigbluebutton.org/bbb-install.sh | bash -s -- -v jammy-300 -s canli.3u.muro.click -e admin@muro.click -w

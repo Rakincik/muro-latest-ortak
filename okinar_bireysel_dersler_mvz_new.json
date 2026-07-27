@@ -1,0 +1,764 @@
+[
+  {
+    "name": "İbrahim Akyayla",
+    "phone": "5319508846",
+    "email": "ibrahimakyayla@gmail.com",
+    "role": "Yönetici",
+    "courses": []
+  },
+  {
+    "name": "Osman BADILLI",
+    "phone": "05538018088",
+    "email": "osmanbadilli8@gmail.com",
+    "role": "Yönetici",
+    "courses": []
+  },
+  {
+    "name": "Gürkan Sancak",
+    "phone": "05077736347",
+    "email": "gurkansancak@outlook.com.tr",
+    "role": "Yönetici",
+    "courses": []
+  },
+  {
+    "name": "Mevzuat Adam",
+    "phone": "05403465800",
+    "email": "mevzuatadam@gmail.com",
+    "role": "Eğitimci",
+    "courses": []
+  },
+  {
+    "name": "AYSN GZBK*",
+    "phone": "05434384358",
+    "email": "aysn.gzbk@gmail.com",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "Soru Çözümü-4734-4375-2886",
+        "status": "online"
+      }
+    ]
+  },
+  {
+    "name": "Sinan Antepli",
+    "phone": "05458946655",
+    "email": "sinanantepli@gmail.com",
+    "role": "Yönetici",
+    "courses": [
+      {
+        "courseName": "Soru Çözümü-4734-4375-2886",
+        "status": "online"
+      }
+    ]
+  },
+  {
+    "name": "Buket Zeybey",
+    "phone": "05079528217",
+    "email": "buketzeybey1@gmail.com",
+    "role": "Yönetici",
+    "courses": []
+  },
+  {
+    "name": "Tuğçe KORKMAZ",
+    "phone": "05541882710",
+    "email": "CTE Saymanlık",
+    "role": "Öğrenci",
+    "courses": []
+  },
+  {
+    "name": "Salim YUMAK",
+    "phone": "05308982852",
+    "email": "AB Yazı İşleri",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4982 sayılı BİLGİ EDİNME HAKKI KANUNU",
+        "status": "offline"
+      },
+      {
+        "courseName": "5070 sayılı Elektronik İmza Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Rehberlik",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Behiye Başdemir",
+    "phone": "05326542222",
+    "email": "",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4982 sayılı BİLGİ EDİNME HAKKI KANUNU",
+        "status": "offline"
+      },
+      {
+        "courseName": "5070 sayılı Elektronik İmza Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Rehberlik",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Açelya Karataş",
+    "phone": "05324861828",
+    "email": "AB YİM",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "2576 sayılı Bölge İdare Mahkemeleri, İdare Mahkemeleri ve Vergi Mahkemelerinin Kuruluşu ve Görevleri Hakkında Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "2577 sayılı İdari Yarılama Usulü Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "30 Kasım 2025 Adalet Bakanlığı Yazı İşleri Müdürlüğü",
+        "status": "offline"
+      },
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "492 sayılı Harçlar Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "4982 sayılı BİLGİ EDİNME HAKKI KANUNU",
+        "status": "offline"
+      },
+      {
+        "courseName": "5018 sayılı Kamu Mali Yönetimi ve Kontrol Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5235 sayılı ADLÎ YARGI İLK DERECE MAHKEMELERİ İLE BÖLGE ADLİYE MAHKEMELERİNİN KURULUŞ, GÖREV VE YETKİLERİ HAKKINDA KANUN",
+        "status": "offline"
+      },
+      {
+        "courseName": "5271 sayılı Ceza Muhakemesi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5275 sayılı Ceza Ve Güvenlik Tedbirlerinin İnfazı Hakkında Kanun",
+        "status": "online"
+      },
+      {
+        "courseName": "5302 sayılı İl Özel İdaresi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5393 sayılı Belediye Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5442 sayılı İl İdaresi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "6100 SAYILI HMK (YİM ÖZEL)",
+        "status": "offline"
+      },
+      {
+        "courseName": "6100 SAYILI HMK (YİM ÖZEL)",
+        "status": "online"
+      },
+      {
+        "courseName": "657 sayılı Devlet Memurları Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Adalet Bakanlığı Memur Sınav, Atama ve Nakil Yönetmeliği",
+        "status": "offline"
+      },
+      {
+        "courseName": "Adalet Bakanlığı Personeli Görevde Yükselme ve Unvan Değişikliği Yönetmeliği",
+        "status": "offline"
+      },
+      {
+        "courseName": "BİM, İdare Mahkemeleri ve Vergi Mahkemelerinin İdari İşler İle Yazı İşleri Hizmetlerinin Yürütülmesi Usul ve Esaslarına İlişkin Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Bölge Adliye ve Adli Yargı İlk Derece Mahkemeleri İle Cumhuriyet Başsavcılıkları İdari ve Yazı İşleri Hizmetlerinin Yürütülmesine Dair Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Cumhurbaşkanlığı Teşkilatı Hakkında 1 sayılı Cumhurbaşkanlığı Kararnamesi (Adalet Bakanlığı)",
+        "status": "offline"
+      },
+      {
+        "courseName": "Cumhurbaşkanlığı Teşkilatı Hakkında 1 sayılı Cumhurbaşkanlığı Kararnamesi (CUMHURBAŞKANLIĞI)",
+        "status": "offline"
+      },
+      {
+        "courseName": "Etik Davranış İlkeleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Rehberlik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Resmi Yazışmalarda Uygulanacak Usul ve Esaslar Hakkında Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4982",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 657",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Anayasa",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Etik Davranış İlkeleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Resmi Yazışmalar",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü- 657 sayılı DMK",
+        "status": "offline"
+      },
+      {
+        "courseName": "T.C. ANAYASASI",
+        "status": "offline"
+      },
+      {
+        "courseName": "UYAP ve SEGBİS",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Kübra Turaç",
+    "phone": "05336618827",
+    "email": "Meb",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "2576 sayılı Bölge İdare Mahkemeleri, İdare Mahkemeleri ve Vergi Mahkemelerinin Kuruluşu ve Görevleri Hakkında Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "2577 sayılı İdari Yarılama Usulü Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "30 Kasım 2025 Adalet Bakanlığı Yazı İşleri Müdürlüğü",
+        "status": "offline"
+      },
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "492 sayılı Harçlar Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "4982 sayılı BİLGİ EDİNME HAKKI KANUNU",
+        "status": "offline"
+      },
+      {
+        "courseName": "5018 sayılı Kamu Mali Yönetimi ve Kontrol Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5235 sayılı ADLÎ YARGI İLK DERECE MAHKEMELERİ İLE BÖLGE ADLİYE MAHKEMELERİNİN KURULUŞ, GÖREV VE YETKİLERİ HAKKINDA KANUN",
+        "status": "offline"
+      },
+      {
+        "courseName": "5271 sayılı Ceza Muhakemesi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5275 sayılı Ceza Ve Güvenlik Tedbirlerinin İnfazı Hakkında Kanun",
+        "status": "online"
+      },
+      {
+        "courseName": "5302 sayılı İl Özel İdaresi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5393 sayılı Belediye Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5442 sayılı İl İdaresi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "6100 SAYILI HMK (YİM ÖZEL)",
+        "status": "offline"
+      },
+      {
+        "courseName": "6100 SAYILI HMK (YİM ÖZEL)",
+        "status": "online"
+      },
+      {
+        "courseName": "657 sayılı Devlet Memurları Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Adalet Bakanlığı Memur Sınav, Atama ve Nakil Yönetmeliği",
+        "status": "offline"
+      },
+      {
+        "courseName": "Adalet Bakanlığı Personeli Görevde Yükselme ve Unvan Değişikliği Yönetmeliği",
+        "status": "offline"
+      },
+      {
+        "courseName": "BİM, İdare Mahkemeleri ve Vergi Mahkemelerinin İdari İşler İle Yazı İşleri Hizmetlerinin Yürütülmesi Usul ve Esaslarına İlişkin Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Bölge Adliye ve Adli Yargı İlk Derece Mahkemeleri İle Cumhuriyet Başsavcılıkları İdari ve Yazı İşleri Hizmetlerinin Yürütülmesine Dair Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Cumhurbaşkanlığı Teşkilatı Hakkında 1 sayılı Cumhurbaşkanlığı Kararnamesi (Adalet Bakanlığı)",
+        "status": "offline"
+      },
+      {
+        "courseName": "Cumhurbaşkanlığı Teşkilatı Hakkında 1 sayılı Cumhurbaşkanlığı Kararnamesi (CUMHURBAŞKANLIĞI)",
+        "status": "offline"
+      },
+      {
+        "courseName": "Etik Davranış İlkeleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Rehberlik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Resmi Yazışmalarda Uygulanacak Usul ve Esaslar Hakkında Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4982",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 657",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Anayasa",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Etik Davranış İlkeleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Resmi Yazışmalar",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü- 657 sayılı DMK",
+        "status": "offline"
+      },
+      {
+        "courseName": "T.C. ANAYASASI",
+        "status": "offline"
+      },
+      {
+        "courseName": "UYAP ve SEGBİS",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Sercan DELİBAŞ",
+    "phone": "05475053535",
+    "email": "CTE Şef",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4734 sayılı Kamu İhale Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "4735 sayılı Kamu İhale Sözleşmeleri Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5018 sayılı Kamu Mali Yönetimi ve Kontrol Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "6331 sayılı İş Sağlığı ve Güvenliği Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "657 sayılı Devlet Memurları Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Etik Davranış İlkeleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4734",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4735",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 5018",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 657",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Anayasa",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü- 657 sayılı DMK",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü-4734-4375-2886",
+        "status": "offline"
+      },
+      {
+        "courseName": "T.C. ANAYASASI",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Rahime Durmuş",
+    "phone": "05308435042",
+    "email": "İçişleri Şef",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4734 sayılı Kamu İhale Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "4735 sayılı Kamu İhale Sözleşmeleri Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5018 sayılı Kamu Mali Yönetimi ve Kontrol Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "6331 sayılı İş Sağlığı ve Güvenliği Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "657 sayılı Devlet Memurları Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Etik Davranış İlkeleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4734",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4735",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 5018",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 657",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Anayasa",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü- 657 sayılı DMK",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü-4734-4375-2886",
+        "status": "offline"
+      },
+      {
+        "courseName": "T.C. ANAYASASI",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Derya Suluova",
+    "phone": "05054401775",
+    "email": "içişleri şube",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "2577 sayılı İdari Yarılama Usulü Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "3628 Sayılı Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4483 sayılı Memurlar ve Diğer Kamu Görevlilerinin Yargılanması Hakkında Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4982 sayılı BİLGİ EDİNME HAKKI KANUNU",
+        "status": "offline"
+      },
+      {
+        "courseName": "5393 sayılı Belediye Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5442 sayılı İl İdaresi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "6245 sayılı Harcırah Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "657 sayılı Devlet Memurları Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Resmi Yazışmalarda Uygulanacak Usul ve Esaslar Hakkında Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 3628",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4483",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4982",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 5442",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 6245",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 657",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Anayasa",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Resmi Yazışmalar",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü- 657 sayılı DMK",
+        "status": "offline"
+      },
+      {
+        "courseName": "T.C. ANAYASASI",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Seher Atay",
+    "phone": "05542081181",
+    "email": "KİK ŞEF",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "2577 sayılı İdari Yarılama Usulü Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "3071 sayılı Dilekçe Hakkının Kullanılmasına Dair Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "3628 Sayılı Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4483 sayılı Memurlar ve Diğer Kamu Görevlilerinin Yargılanması Hakkında Kanun",
+        "status": "offline"
+      },
+      {
+        "courseName": "4982 sayılı BİLGİ EDİNME HAKKI KANUNU",
+        "status": "offline"
+      },
+      {
+        "courseName": "5393 sayılı Belediye Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5442 sayılı İl İdaresi Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "6245 sayılı Harcırah Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "657 sayılı Devlet Memurları Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "7201 sayılı Tebligat Kanunu ve Uygulama Yönetmelikleri",
+        "status": "offline"
+      },
+      {
+        "courseName": "Resmi Yazışmalarda Uygulanacak Usul ve Esaslar Hakkında Yönetmelik",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 3628",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4483",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4982",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 5442",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 6245",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 657",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Anayasa",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - Resmi Yazışmalar",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü- 657 sayılı DMK",
+        "status": "offline"
+      },
+      {
+        "courseName": "T.C. ANAYASASI",
+        "status": "offline"
+      }
+    ]
+  },
+  {
+    "name": "Tülay Konakçı",
+    "phone": "05416569544",
+    "email": "Cte Sayman",
+    "role": "Öğrenci",
+    "courses": [
+      {
+        "courseName": "4734 sayılı Kamu İhale Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "5018 sayılı Kamu Mali Yönetimi ve Kontrol Kanunu",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 4734",
+        "status": "offline"
+      },
+      {
+        "courseName": "Soru Çözümü - 5018",
+        "status": "offline"
+      }
+    ]
+  }
+]

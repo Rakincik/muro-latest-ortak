@@ -100,7 +100,7 @@ public class CourseService : ICourseService
                 .Select(c => new CourseListDto(
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
-                    c.CourseMedias.Count, c.CourseGroups.Count,
+                    c.Sessions.Count, c.CourseGroups.Count,
                     c.Order, c.StartDate, c.CreatedAt, c.UpdatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null,
@@ -173,7 +173,7 @@ public class CourseService : ICourseService
                 .Select(c => new CourseListDto(
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
-                    c.CourseMedias.Count, c.CourseGroups.Count,
+                    c.Sessions.Count, c.CourseGroups.Count,
                     c.Order, c.StartDate, c.CreatedAt, c.UpdatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null,
@@ -350,7 +350,7 @@ public class CourseService : ICourseService
         await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
-            course.CourseType.ToString(), course.IsPublished, course.CourseMedias.Count,
+            course.CourseType.ToString(), course.IsPublished, course.Sessions.Count,
             course.CourseGroups.Count, course.Order, course.StartDate, course.CreatedAt, course.UpdatedAt,
             course.InstructorId,
             course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null,

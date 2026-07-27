@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Subdomain deployment — no basePath needed
-  // (basePath was '/admin' for single-domain setup)
+  // Serve admin under basePath if specified (e.g., '/admin'), otherwise no basePath
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH ? process.env.NEXT_PUBLIC_BASE_PATH : undefined,
 
   // Standalone output for Docker deployment
   output: 'standalone',

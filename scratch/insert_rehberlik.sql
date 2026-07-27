@@ -1,0 +1,4 @@
+INSERT INTO "Sessions" ("Id", "CourseId", "Title", "VideoUrl", "BbbMeetingId", "IsDeleted", "CreatedAt", "Status", "Order", "RecordingEnabled", "IsFree", "ScheduledStart", "ScheduledEnd", "DurationMinutes")
+VALUES 
+(gen_random_uuid(), '9bd6f88c-98eb-4ec7-8025-a131b79040db', '18.06.2025 - Sertkan Erdurmaz', 'https://canli.monopoluzem.com.tr/playback/presentation/2.3/a6ccbe16ae8042d7ccaf615b1894ba74a13836ae-1750272872689', 'a6ccbe16ae8042d7ccaf615b1894ba74a13836ae-1750272872689', false, '2025-06-18 21:54:32', 3, 1, true, false, '2025-06-18 21:54:32', '2025-06-18 23:44:32', 110),
+(gen_random_uuid(), '9bd6f88c-98eb-4ec7-8025-a131b79040db', '03.08.2025 - Sertkan Erdurmaz', 'https://canli.monopoluzem.com.tr/playback/presentation/2.3/a6ccbe16ae8042d7ccaf615b1894ba74a13836ae-1754244961699', 'a6ccbe16ae8042d7ccaf615b1894ba74a13836ae-1754244961699', false, '2025-08-03 21:16:01', 3, 2, true, false, '2025-08-03 21:16:01', '2025-08-03 23:01:01', 105);

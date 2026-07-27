@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/toast";
 import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
+import DynamicTitle from "@/components/DynamicTitle";
 
 export const metadata: Metadata = {
   title: "muro",
@@ -25,6 +26,7 @@ export default function RootLayout({
         <AuthProvider>
           <GlobalUploadProvider>
             <ToastProvider>
+              <DynamicTitle />
               {children}
             </ToastProvider>
           </GlobalUploadProvider>

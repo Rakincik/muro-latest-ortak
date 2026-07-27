@@ -60,13 +60,17 @@ public class BbbWebhookController : ControllerBase
         {
             var rawTrimmed = rawBody.TrimStart();
             
-            // Eğer BBB URL-encoded gönderdiyse (event=...)
-            if (rawTrimmed.StartsWith("event="))
+            // Eğer BBB URL-encoded gönderdiyse (event=... veya data=...)
+            if (rawTrimmed.StartsWith("event=") || rawTrimmed.StartsWith("data="))
             {
                 var parsed = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(rawTrimmed);
                 if (parsed.TryGetValue("event", out var evnt))
                 {
                     rawTrimmed = evnt.ToString();
+                }
+                else if (parsed.TryGetValue("data", out var dataVal))
+                {
+                    rawTrimmed = dataVal.ToString();
                 }
             }
 

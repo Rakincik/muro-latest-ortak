@@ -2,6 +2,11 @@ export const getApiUrl = () => {
     if (typeof window === "undefined") {
         return process.env.INTERNAL_API_URL || "http://localhost:5292/api/v1";
     }
+
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        return process.env.NEXT_PUBLIC_API_URL;
+    }
+
     const hostname = window.location.hostname;
     
     if (hostname === "localhost" || hostname === "127.0.0.1") {
@@ -76,7 +81,7 @@ export const getApiUrl = () => {
 };
 
 export const API_URL = getApiUrl();
-export const API_BASE = API_URL.replace("/api/v1", "");
+export const API_BASE = API_URL.replace('/api/v1', '');
 
 interface FetchOptions extends RequestInit {
     token?: string;

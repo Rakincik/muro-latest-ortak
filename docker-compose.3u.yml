@@ -70,6 +70,20 @@ services:
       - Email__Password=${EMAIL_PASSWORD}
       - Email__SenderEmail=${EMAIL_SENDER}
       - Email__SenderName=3U Uzem
+      - Bbb__Url=${BBB_URL}
+      - Bbb__Secret=${BBB_SECRET}
+      - Bbb__WebhookSharedSecret=${BBB_WEBHOOK_SECRET}
+      - Bbb__DefaultAttendeePw=attendee123
+      - Bbb__DefaultModeratorPw=moderator123
+      - Bbb__Defaults__LogoutURL=${ADMIN_URL}/dashboard/courses
+      - Cors__AllowedOrigins__0=https://3u.muro.click
+      - Cors__AllowedOrigins__1=https://3u-ad.muro.click
+      - Cors__AllowedOrigins__2=https://3u-ap.muro.click
+      - Cors__AllowedOrigins__3=http://3u.muro.click
+      - Cors__AllowedOrigins__4=http://3u-ad.muro.click
+      - Cors__AllowedOrigins__5=http://3u-ap.muro.click
+      - Tenant__BaseDomain=${BASE_DOMAIN}
+      - Webhook__Secret=${WEBHOOK_SECRET}
     volumes:
       - muro_demo_hls:/app/wwwroot/hls
       - muro_demo_uploads:/app/wwwroot/uploads

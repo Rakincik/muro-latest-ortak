@@ -50,17 +50,86 @@ public class SystemController : ControllerBase
 
     [HttpGet("/api/v1/tenant/branding")]
     [AllowAnonymous]
-    public IActionResult GetTenantBranding()
+    public async Task<IActionResult> GetTenantBranding()
     {
-        // Frontend'in çökmemesi için sahte bir branding dönüyoruz (Single-tenant).
+        var settings = await _db.SystemSettings.FirstOrDefaultAsync();
+        if (settings == null)
+        {
+            return Ok(new
+            {
+                ThemeColor = "#1B3B6F",
+                LogoUrl = "/monopol_logo.png",
+                FaviconUrl = "/favicon.png",
+                CustomCss = "",
+                Title = "Monopoluzem",
+                Name = "Monopoluzem"
+            });
+        }
         return Ok(new
         {
-            ThemeColor = "#1D4ED8",
-            LogoUrl = "/icon.png",
-            FaviconUrl = "/favicon.ico",
+            ThemeColor = settings.PrimaryColor,
+            LogoUrl = settings.LogoUrl ?? "/monopol_logo.png",
+            FaviconUrl = settings.FaviconUrl ?? "/favicon.png",
             CustomCss = "",
-            Title = "Monopol"
+            Title = settings.TenantName,
+            Name = settings.TenantName,
+            PrimaryColor = settings.PrimaryColor,
+            AccentColor = settings.AccentColor,
+            FooterText = settings.FooterText
         });
+    }
+
+    public record UpdateBrandingRequest(
+        string Name,
+        string? LogoUrl,
+        string? FaviconUrl,
+        string PrimaryColor,
+        string? AccentColor,
+        string? FooterText
+    );
+
+    [HttpGet("/api/v1/admin/tenant/branding")]
+    [Authorize(Roles = "SuperAdmin")]
+    public async Task<IActionResult> GetAdminBranding()
+    {
+        var settings = await _db.SystemSettings.FirstOrDefaultAsync();
+        if (settings == null)
+        {
+            settings = new SystemSetting
+            {
+                TenantName = "Monopoluzem",
+                PrimaryColor = "#1B3B6F"
+            };
+        }
+        return Ok(settings);
+    }
+
+    [HttpPost("/api/v1/admin/tenant/branding")]
+    [Authorize(Roles = "SuperAdmin")]
+    public async Task<IActionResult> UpdateAdminBranding([FromBody] UpdateBrandingRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return BadRequest(new { error = "Kurum adı boş olamaz." });
+        if (string.IsNullOrWhiteSpace(request.PrimaryColor))
+            return BadRequest(new { error = "Tema rengi boş olamaz." });
+
+        var settings = await _db.SystemSettings.FirstOrDefaultAsync();
+        if (settings == null)
+        {
+            settings = new SystemSetting();
+            _db.SystemSettings.Add(settings);
+        }
+
+        settings.TenantName = request.Name;
+        settings.LogoUrl = request.LogoUrl;
+        settings.FaviconUrl = request.FaviconUrl;
+        settings.PrimaryColor = request.PrimaryColor;
+        settings.AccentColor = request.AccentColor;
+        settings.FooterText = request.FooterText;
+        settings.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(settings);
     }
 
     // ═══════════════════════════════════════════════════════════════════

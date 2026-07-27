@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/components/ToastProvider";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import NativeFeatures from "@/components/NativeFeatures";
+import DynamicTitle from "@/components/DynamicTitle";
 
 export const metadata: Metadata = {
   title: "muro",
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-[#E2E8F0]/20 text-[#0A1931] antialiased">
         <AuthProvider>
           <ToastProvider>
+            <DynamicTitle />
             <NativeFeatures />
             <OfflineIndicator />
             {children}

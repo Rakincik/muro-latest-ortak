@@ -65,6 +65,12 @@ const sections = [
             { label: "Muhasebe", href: "/dashboard/accounting", icon: Wallet, roles: ["Admin", "SuperAdmin", "Accountant"], featureKey: "accounting" },
             { label: "Güvenlik", href: "/dashboard/audit-trail", icon: Shield, roles: ["Admin", "SuperAdmin"] },
         ]
+    },
+    {
+        title: "SİSTEM",
+        items: [
+            { label: "Kurum Ayarları", href: "/dashboard/settings/branding", icon: Building2, roles: ["SuperAdmin"] }
+        ]
     }
 ];
 
@@ -110,7 +116,7 @@ export default function Sidebar({
             .catch(() => { /* use defaults */ });
     }, [currentTenantId]);
 
-    const brandName = "MURO";
+    const brandName = branding?.name || "MURO";
     const brandInitial = brandName.charAt(0).toUpperCase();
     const primaryColor = branding?.primaryColor || "#1B3B6F";
 
@@ -131,13 +137,16 @@ export default function Sidebar({
                     onClick={onClose}
                 />
             )}
-            <aside className={`w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${isCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0'}`}>
+            <aside 
+                style={{ backgroundColor: primaryColor }}
+                className={`w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${isCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0'}`}
+            >
                 {/* Logo + Bell */}
                 <div className="px-6 py-7 flex items-center justify-between relative">
                     <img 
-                        src="/logo.png" 
+                        src={branding?.logoUrl || "/logo.png"} 
                         alt={brandName} 
-                        className="w-36 h-auto object-contain drop-shadow-md" 
+                        className="w-36 max-h-12 h-auto object-contain drop-shadow-md" 
                     />
                     <div className="hidden lg:flex items-center gap-1.5">
                         <NotificationBell />
