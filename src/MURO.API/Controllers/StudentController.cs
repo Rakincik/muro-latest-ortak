@@ -15,24 +15,26 @@ namespace MURO.API.Controllers;
 public class StudentController : ControllerBase
 {
     private readonly IStudentService _studentService;
-        private readonly IAnalyticsService _analyticsService;
+    private readonly IAnalyticsService _analyticsService;
     private readonly ICourseService _courseService;
     private readonly ICourseSessionService _sessionService;
     private readonly INotificationService _notificationService;
+    private readonly ISecurityService _securityService;
 
     public StudentController(
         IStudentService studentService, 
-        
         IAnalyticsService analyticsService,
         ICourseService courseService,
         ICourseSessionService sessionService,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        ISecurityService securityService)
     {
         _studentService = studentService;
-                _analyticsService = analyticsService;
+        _analyticsService = analyticsService;
         _courseService = courseService;
         _sessionService = sessionService;
         _notificationService = notificationService;
+        _securityService = securityService;
     }
 
     
@@ -109,4 +111,17 @@ public class StudentController : ControllerBase
 
         return Ok(dto);
     }
+
+    [HttpPost("security-event")]
+    public async Task<IActionResult> LogSecurityEvent([FromBody] LogSecurityEventRequest request)
+    {
+        var userId = GetUserId();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        
+        await _securityService.LogEventAsync(userId, request.EventType, ipAddress, userAgent, request.Details);
+        return Ok(new { message = "Güvenlik olayı kaydedildi." });
+    }
 }
+
+public record LogSecurityEventRequest(string EventType, string? Details);

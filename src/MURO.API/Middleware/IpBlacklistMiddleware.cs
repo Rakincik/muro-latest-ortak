@@ -5,7 +5,7 @@ namespace MURO.API.Middleware;
 
 /// <summary>
 /// Şüpheli IP'leri otomatik engelleyen middleware.
-/// Son 1 saatte 3+ BRUTE_FORCE_DETECTED veya 10+ LOGIN_FAILED olan IP'leri bloklar.
+/// Son 1 saatte 3+ BRUTE_FORCE_DETECTED veya 20+ LOGIN_FAILED olan IP'leri bloklar.
 /// Blok süresi: 1 saat (cache'te tutulur).
 /// </summary>
 public class IpBlacklistMiddleware
@@ -19,9 +19,27 @@ public class IpBlacklistMiddleware
     private static DateTime _lastCleanup = DateTime.UtcNow;
 
     private const int BruteForceThreshold = 3;
-    private const int LoginFailThreshold = 10;
+    private const int LoginFailThreshold = 20;
     private static readonly TimeSpan CheckWindow = TimeSpan.FromHours(1);
     private static readonly TimeSpan BlockDuration = TimeSpan.FromHours(1);
+
+    public static IReadOnlyDictionary<string, DateTime> GetBlockedIps()
+    {
+        lock (_lock)
+        {
+            var expired = _blockedIps.Where(kv => kv.Value < DateTime.UtcNow).Select(kv => kv.Key).ToList();
+            foreach (var ip in expired) _blockedIps.Remove(ip);
+            return new Dictionary<string, DateTime>(_blockedIps);
+        }
+    }
+
+    public static bool UnblockIp(string ip)
+    {
+        lock (_lock)
+        {
+            return _blockedIps.Remove(ip);
+        }
+    }
 
     public IpBlacklistMiddleware(RequestDelegate next, ILogger<IpBlacklistMiddleware> logger)
     {

@@ -59,7 +59,7 @@ public class SystemController : ControllerBase
         {
             return Ok(new
             {
-                ThemeColor = "#1B3B6F",
+                ThemeColor = "#0A1931",
                 LogoUrl = "/monopol_logo.png",
                 FaviconUrl = "/favicon.png",
                 CustomCss = "",
@@ -71,7 +71,10 @@ public class SystemController : ControllerBase
         {
             ThemeColor = settings.PrimaryColor,
             LogoUrl = settings.LogoUrl ?? "/monopol_logo.png",
+            SidebarLogoUrl = settings.SidebarLogoUrl,
+            UseWhiteLogoBackground = settings.UseWhiteLogoBackground,
             FaviconUrl = settings.FaviconUrl ?? "/favicon.png",
+
             CustomCss = "",
             Title = settings.TenantName,
             Name = settings.TenantName,
@@ -84,7 +87,10 @@ public class SystemController : ControllerBase
     public record UpdateBrandingRequest(
         string Name,
         string? LogoUrl,
+        string? SidebarLogoUrl,
+        bool UseWhiteLogoBackground,
         string? FaviconUrl,
+
         string PrimaryColor,
         string? AccentColor,
         string? FooterText,
@@ -104,7 +110,7 @@ public class SystemController : ControllerBase
             settings = new SystemSetting
             {
                 TenantName = "Monopoluzem",
-                PrimaryColor = "#1B3B6F"
+                PrimaryColor = "#0A1931"
             };
         }
         return Ok(settings);
@@ -128,7 +134,10 @@ public class SystemController : ControllerBase
 
         settings.TenantName = request.Name;
         settings.LogoUrl = request.LogoUrl;
+        settings.SidebarLogoUrl = request.SidebarLogoUrl;
+        settings.UseWhiteLogoBackground = request.UseWhiteLogoBackground;
         settings.FaviconUrl = request.FaviconUrl;
+
         settings.PrimaryColor = request.PrimaryColor;
         settings.AccentColor = request.AccentColor;
         settings.FooterText = request.FooterText;

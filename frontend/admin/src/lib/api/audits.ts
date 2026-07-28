@@ -14,6 +14,17 @@ export const securityApi = {
         if (params?.from) qs.set('from', params.from);
         if (params?.to) qs.set('to', params.to);
         return api<any>("/security/events?" + qs.toString(), { token, tenantId });
+    },
+    getBlockedIps: (token: string, tenantId: string) => {
+        return api<{ items: Array<{ ipAddress: string; blockedUntil: string }>; count: number }>("/admin/security/blocked-ips", { token, tenantId });
+    },
+    unblockIp: (token: string, tenantId: string, ipAddress: string) => {
+        return api<{ success: boolean; message: string }>("/admin/security/unblock-ip", {
+            token,
+            tenantId,
+            method: "POST",
+            body: JSON.stringify({ ipAddress })
+        });
     }
 };
 

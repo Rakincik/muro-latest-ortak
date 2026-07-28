@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MURO.Application.DTOs.Admin;
 using MURO.Application.Interfaces;
+using System.Linq;
+using MURO.API.Middleware;
+using Microsoft.EntityFrameworkCore;
+using MURO.Infrastructure.Persistence;
 
 namespace MURO.API.Controllers.Admin;
 
@@ -62,5 +66,46 @@ public class AdminSecurityController : ControllerBase
         var (status_code, data) = await _securityService.UnlockAccount(userId);
         return StatusCode(status_code, data);
     }
+
+    [HttpGet("security/blocked-ips")]
+    public IActionResult GetBlockedIps()
+    {
+        var blocked = IpBlacklistMiddleware.GetBlockedIps();
+        var list = blocked.Select(kv => new { ipAddress = kv.Key, blockedUntil = kv.Value }).ToList();
+        return Ok(new { items = list, count = list.Count });
+    }
+
+    [HttpPost("security/unblock-ip")]
+    public async Task<IActionResult> UnblockIp([FromBody] UnblockIpRequest request, [FromServices] MuroDbContext db)
+    {
+        if (string.IsNullOrEmpty(request?.IpAddress))
+            return BadRequest(new { message = "IP adresi belirtilmelidir." });
+
+        // Memory cache'ten kaldır
+        var removed = IpBlacklistMiddleware.UnblockIp(request.IpAddress);
+
+        // Veritabanındaki engellemeye neden olan hatalı giriş/brute-force kayıtlarını temizle
+        var events = await db.SecurityEvents
+            .Where(se => se.IpAddress == request.IpAddress && 
+                         (se.EventType == "LOGIN_FAILED" || se.EventType == "BRUTE_FORCE_DETECTED"))
+            .ToListAsync();
+
+        if (events.Any())
+        {
+            db.SecurityEvents.RemoveRange(events);
+            await db.SaveChangesAsync();
+            removed = true;
+        }
+
+        if (!removed)
+            return NotFound(new { message = "IP engelli listesinde veya geçmişinde bulunamadı." });
+
+        return Ok(new { success = true, message = $"{request.IpAddress} engeli ve giriş geçmişi temizlendi." });
+    }
+}
+
+public class UnblockIpRequest
+{
+    public string IpAddress { get; set; } = string.Empty;
 }
 

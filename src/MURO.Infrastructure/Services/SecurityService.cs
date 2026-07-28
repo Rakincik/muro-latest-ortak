@@ -74,4 +74,18 @@ public class SecurityService : ISecurityService
 
         return suspicious;
     }
+
+    public async Task LogEventAsync(Guid? userId, string eventType, string? ipAddress, string? userAgent, string? details)
+    {
+        _context.SecurityEvents.Add(new MURO.Domain.Entities.SecurityEvent
+        {
+            UserId = userId,
+            EventType = eventType,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            Details = details,
+            CreatedAt = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+    }
 }

@@ -1,0 +1,429 @@
+From aa0fcba66b27ca5382a9a3df5cbb7b3098a36c7a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?R=C3=BCstem=20Ak=C4=B1nc=C4=B1k?= <r.akincikk@gmail.com>
+Date: Thu, 25 Jun 2026 05:00:16 +0300
+Subject: [PATCH] feat(media): add case-insensitive folder search in media
+ library
+
+---
+ .../admin/src/components/ui/FolderTree.tsx    | 207 +++++++++++++-----
+ frontend/admin/src/lib/api/mediaLibrary.ts    |  14 +-
+ frontend/admin/src/lib/api/types.ts           |   1 +
+ .../Controllers/MediaFolderController.cs      |   4 +-
+ src/MURO.Application/DTOs/Media/MediaDtos.cs  |   4 +-
+ .../Interfaces/IMediaFolderService.cs         |   2 +-
+ .../Services/MediaFolderService.cs            |  53 ++++-
+ 7 files changed, 225 insertions(+), 60 deletions(-)
+
+diff --git a/frontend/admin/src/components/ui/FolderTree.tsx b/frontend/admin/src/components/ui/FolderTree.tsx
+index bc7274d..7df7907 100644
+--- a/frontend/admin/src/components/ui/FolderTree.tsx
++++ b/frontend/admin/src/components/ui/FolderTree.tsx
+@@ -1,7 +1,7 @@
+ "use client";
+ 
+ import React, { useState, useEffect } from 'react';
+-import { ChevronRight, ChevronDown, Folder, MoreVertical, Plus, Edit2, Trash2, BookOpen } from 'lucide-react';
++import { ChevronRight, ChevronDown, Folder, MoreVertical, Plus, Edit2, Trash2, BookOpen, Search, X } from 'lucide-react';
+ import { mediaLibraryApi, type MediaFolderDto } from '@/lib/api';
+ import { Tooltip } from '@/components/ui/Tooltip';
+ 
+@@ -153,18 +153,27 @@ interface FolderTreeProps {
+ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger, dragOverFolderId, onDragOverFolder, onDragLeaveFolder, onDropOnFolder }: FolderTreeProps) {
+     const [rootFolders, setRootFolders] = useState<MediaFolderDto[]>([]);
+     const [isLoading, setIsLoading] = useState(true);
++    const [searchQuery, setSearchQuery] = useState('');
++    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+ 
+     useEffect(() => {
+-        loadRootFolders();
+-    }, [refreshTrigger]);
++        const handler = setTimeout(() => {
++            setDebouncedSearchQuery(searchQuery);
++        }, 300);
++        return () => clearTimeout(handler);
++    }, [searchQuery]);
+ 
+-    const loadRootFolders = async () => {
++    useEffect(() => {
++        loadFolders();
++    }, [refreshTrigger, debouncedSearchQuery]);
++
++    const loadFolders = async () => {
+         setIsLoading(true);
+         try {
+-            const fetched = await mediaLibraryApi.getFolders(undefined); // fetch root
++            const fetched = await mediaLibraryApi.getFolders(undefined, debouncedSearchQuery || undefined);
+             setRootFolders(fetched);
+         } catch (error) {
+-            console.error("Failed to load root folders", error);
++            console.error("Failed to load folders", error);
+         } finally {
+             setIsLoading(false);
+         }
+@@ -173,58 +182,154 @@ export function FolderTree({ activeFolderId, onSelect, onAction, refreshTrigger,
+     return (
+         <div className="w-full h-full flex flex-col bg-white border-r border-gray-200">
+             {/* Header */}
+-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+-                <h2 className="font-semibold text-gray-900">Klasörler</h2>
+-                <Tooltip content="Yeni Klasör" position="bottom">
+-                    <button 
+-                        onClick={() => onAction('createSub', null)}
+-                        className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+-                    >
+-                        <Plus size={18} />
+-                    </button>
+-                </Tooltip>
++            <div className="p-4 border-b border-gray-100 flex flex-col gap-3">
++                <div className="flex items-center justify-between">
++                    <h2 className="font-semibold text-gray-900">Klasörler</h2>
++                    <Tooltip content="Yeni Klasör" position="bottom">
++                        <button 
++                            onClick={() => onAction('createSub', null)}
++                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
++                        >
++                            <Plus size={18} />
++                        </button>
++                    </Tooltip>
++                </div>
++                
++                {/* Search Bar */}
++                <div className="relative">
++                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
++                    <input
++                        type="text"
++                        placeholder="Klasörlerde ara..."
++                        value={searchQuery}
++                        onChange={(e) => setSearchQuery(e.target.value)}
++                        className="w-full pl-9 pr-8 py-1.5 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50/50 transition-all"
++                    />
++                    {searchQuery && (
++                        <button 
++                            onClick={() => setSearchQuery('')}
++                            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200/50 transition-colors"
++                        >
++                            <X size={14} />
++                        </button>
++                    )}
++                </div>
+             </div>
+ 
+             {/* Tree */}
+             <div className="flex-1 overflow-y-auto p-2">
+-                <div 
+-                    className={`flex items-center gap-2 py-2 px-3 mb-2 cursor-pointer rounded-lg transition-colors ${dragOverFolderId === null ? 'bg-blue-100 ring-2 ring-blue-400' : activeFolderId === null ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'}`}
+-                    onClick={() => onSelect(null, [{id: null, name: 'Ana Klasör'}])}
+-                    onDragOver={(e) => onDragOverFolder(e, null)}
+-                    onDragLeave={onDragLeaveFolder}
+-                    onDrop={(e) => onDropOnFolder(e, null)}
+-                >
+-                    <Folder size={18} className={activeFolderId === null ? 'text-blue-600' : 'text-gray-400'} />
+-                    <span className="text-sm font-semibold">Ana Klasör</span>
+-                </div>
+-
+-                {isLoading ? (
+-                    <div className="flex justify-center p-4">
+-                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+-                    </div>
++                {debouncedSearchQuery ? (
++                    isLoading ? (
++                        <div className="flex justify-center p-4">
++                            <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
++                        </div>
++                    ) : (
++                        <div className="flex flex-col gap-1">
++                            <div className="text-[11px] font-medium text-gray-500 px-3 py-1 mb-1 bg-gray-50 rounded-lg">
++                                Arama Sonuçları ({rootFolders.length})
++                            </div>
++                            {rootFolders.map(folder => {
++                                const pathString = ['Ana Klasör', ...(folder.path || []).slice(0, -1).map(p => p.name)].join(' > ');
++                                const isActive = activeFolderId === folder.id;
++                                
++                                return (
++                                    <div 
++                                        key={folder.id}
++                                        onClick={() => {
++                                            const selectPath = [
++                                                { id: null, name: 'Ana Klasör' },
++                                                ...(folder.path || []).map(p => ({ id: p.id, name: p.name }))
++                                            ];
++                                            onSelect(folder.id, selectPath);
++                                        }}
++                                        className={`group flex flex-col py-2 px-3 cursor-pointer rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'}`}
++                                    >
++                                        <div className="flex items-center gap-2 min-w-0">
++                                            <Folder size={16} className={isActive ? 'text-blue-600 shrink-0' : 'text-gray-400 shrink-0'} />
++                                            <span className="truncate text-sm font-medium select-none block flex-1">{folder.name}</span>
++                                            
++                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0">
++                                                <Tooltip content="Alt Klasör Ekle">
++                                                    <button 
++                                                        onClick={(e) => { e.stopPropagation(); onAction('createSub', folder); }}
++                                                        className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
++                                                    >
++                                                        <Plus size={14} />
++                                                    </button>
++                                                </Tooltip>
++                                                <Tooltip content="Yeniden Adlandır">
++                                                    <button 
++                                                        onClick={(e) => { e.stopPropagation(); onAction('rename', folder); }}
++                                                        className="p-1 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-100 transition-colors"
++                                                    >
++                                                        <Edit2 size={14} />
++                                                    </button>
++                                                </Tooltip>
++                                                <Tooltip content="Sil">
++                                                    <button 
++                                                        onClick={(e) => { e.stopPropagation(); onAction('delete', folder); }}
++                                                        className="p-1 rounded-md text-gray-500 hover:text-red-600 hover:bg-red-100 transition-colors"
++                                                    >
++                                                        <Trash2 size={14} />
++                                                    </button>
++                                                </Tooltip>
++                                            </div>
++                                        </div>
++                                        <span className="text-[10px] text-gray-400 truncate pl-6 block" title={pathString}>
++                                            {pathString}
++                                        </span>
++                                    </div>
++                                );
++                            })}
++                            {rootFolders.length === 0 && (
++                                <div className="p-4 text-center text-xs text-gray-500">
++                                    Klasör bulunamadı
++                                </div>
++                            )}
++                        </div>
++                    )
+                 ) : (
+-                    <div className="flex flex-col gap-0.5">
+-                        {rootFolders.map(folder => (
+-                            <FolderNode 
+-                                key={folder.id} 
+-                                folder={folder} 
+-                                level={0} 
+-                                activeFolderId={activeFolderId}
+-                                path={[{id: null, name: 'Ana Klasör'}]}
+-                                onSelect={onSelect}
+-                                onAction={onAction}
+-                                dragOverFolderId={dragOverFolderId}
+-                                onDragOverFolder={onDragOverFolder}
+-                                onDragLeaveFolder={onDragLeaveFolder}
+-                                onDropOnFolder={onDropOnFolder}
+-                            />
+-                        ))}
+-                        {rootFolders.length === 0 && (
+-                            <div className="p-4 text-center text-xs text-gray-500">
+-                                Klasör bulunamadı
++                    <>
++                        <div 
++                            className={`flex items-center gap-2 py-2 px-3 mb-2 cursor-pointer rounded-lg transition-colors ${dragOverFolderId === null ? 'bg-blue-100 ring-2 ring-blue-400' : activeFolderId === null ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-100 text-gray-700'}`}
++                            onClick={() => onSelect(null, [{id: null, name: 'Ana Klasör'}])}
++                            onDragOver={(e) => onDragOverFolder(e, null)}
++                            onDragLeave={onDragLeaveFolder}
++                            onDrop={(e) => onDropOnFolder(e, null)}
++                        >
++                            <Folder size={18} className={activeFolderId === null ? 'text-blue-600' : 'text-gray-400'} />
++                            <span className="text-sm font-semibold">Ana Klasör</span>
++                        </div>
++
++                        {isLoading ? (
++                            <div className="flex justify-center p-4">
++                                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
++                            </div>
++                        ) : (
++                            <div className="flex flex-col gap-0.5">
++                                {rootFolders.map(folder => (
++                                    <FolderNode 
++                                        key={folder.id} 
++                                        folder={folder} 
++                                        level={0} 
++                                        activeFolderId={activeFolderId}
++                                        path={[{id: null, name: 'Ana Klasör'}]}
++                                        onSelect={onSelect}
++                                        onAction={onAction}
++                                        dragOverFolderId={dragOverFolderId}
++                                        onDragOverFolder={onDragOverFolder}
++                                        onDragLeaveFolder={onDragLeaveFolder}
++                                        onDropOnFolder={onDropOnFolder}
++                                    />
++                                ))}
++                                {rootFolders.length === 0 && (
++                                    <div className="p-4 text-center text-xs text-gray-500">
++                                        Klasör bulunamadı
++                                    </div>
++                                )}
+                             </div>
+                         )}
+-                    </div>
++                    </>
+                 )}
+             </div>
+         </div>
+diff --git a/frontend/admin/src/lib/api/mediaLibrary.ts b/frontend/admin/src/lib/api/mediaLibrary.ts
+index 826164b..cc875af 100644
+--- a/frontend/admin/src/lib/api/mediaLibrary.ts
++++ b/frontend/admin/src/lib/api/mediaLibrary.ts
+@@ -2,10 +2,18 @@ import { api as fetchApi } from './core';
+ import type { MediaFolderDto, MediaAssetDto, CourseMediaDto } from './types';
+ 
+ // --- Media Folders ---
+-export const getFolders = async (parentFolderId?: string): Promise<MediaFolderDto[]> => {
++export const getFolders = async (parentFolderId?: string, search?: string): Promise<MediaFolderDto[]> => {
+     let url = '/media-folders';
++    const params = new URLSearchParams();
+     if (parentFolderId) {
+-        url += `?parentFolderId=${parentFolderId}`;
++        params.append('parentFolderId', parentFolderId);
++    }
++    if (search) {
++        params.append('search', search);
++    }
++    const queryString = params.toString();
++    if (queryString) {
++        url += `?${queryString}`;
+     }
+     return fetchApi(url);
+ };
+@@ -39,7 +47,7 @@ export const getAssets = async (folderId?: string): Promise<MediaAssetDto[]> =>
+     if (folderId) {
+         url += `&folderId=${folderId}`;
+     }
+-    const res = await fetchApi(url);
++    const res = await fetchApi(url) as any;
+     return res.items || [];
+ };
+ 
+diff --git a/frontend/admin/src/lib/api/types.ts b/frontend/admin/src/lib/api/types.ts
+index c29d063..ffe8eb6 100644
+--- a/frontend/admin/src/lib/api/types.ts
++++ b/frontend/admin/src/lib/api/types.ts
+@@ -626,6 +626,7 @@ export interface MediaFolderDto {
+     createdAt: string;
+     subFolderCount: number;
+     mediaAssetCount: number;
++    path?: { id: string; name: string }[];
+ }
+ 
+ export interface CourseMediaDto {
+diff --git a/src/MURO.API/Controllers/MediaFolderController.cs b/src/MURO.API/Controllers/MediaFolderController.cs
+index 427dd62..8537481 100644
+--- a/src/MURO.API/Controllers/MediaFolderController.cs
++++ b/src/MURO.API/Controllers/MediaFolderController.cs
+@@ -20,9 +20,9 @@ public class MediaFolderController : ControllerBase
+ 
+ 
+     [HttpGet]
+-    public async Task<IActionResult> GetFolders([FromQuery] Guid? parentFolderId = null)
++    public async Task<IActionResult> GetFolders([FromQuery] Guid? parentFolderId = null, [FromQuery] string? search = null)
+     {
+-        var folders = await _folderService.GetFoldersAsync(parentFolderId);
++        var folders = await _folderService.GetFoldersAsync(parentFolderId, search);
+         return Ok(folders);
+     }
+ 
+diff --git a/src/MURO.Application/DTOs/Media/MediaDtos.cs b/src/MURO.Application/DTOs/Media/MediaDtos.cs
+index 78aa635..b9ccb92 100644
+--- a/src/MURO.Application/DTOs/Media/MediaDtos.cs
++++ b/src/MURO.Application/DTOs/Media/MediaDtos.cs
+@@ -17,9 +17,11 @@ public record UpdateMediaAssetRequest(
+ 
+ // ─── Virtual Folders ────────────────────────────────────────────────────────
+ 
++public record FolderMinDto(Guid Id, string Name);
++
+ public record MediaFolderDto(
+     Guid Id, string Name, Guid? ParentFolderId, DateTime CreatedAt,
+-    int SubFolderCount, int MediaAssetCount
++    int SubFolderCount, int MediaAssetCount, System.Collections.Generic.List<FolderMinDto>? Path = null
+ );
+ 
+ public record CreateMediaFolderRequest(string Name, Guid? ParentFolderId);
+diff --git a/src/MURO.Application/Interfaces/IMediaFolderService.cs b/src/MURO.Application/Interfaces/IMediaFolderService.cs
+index a372996..5b320eb 100644
+--- a/src/MURO.Application/Interfaces/IMediaFolderService.cs
++++ b/src/MURO.Application/Interfaces/IMediaFolderService.cs
+@@ -5,7 +5,7 @@ namespace MURO.Application.Interfaces;
+ 
+ public interface IMediaFolderService
+ {
+-    Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null);
++    Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null, string? search = null);
+     Task<MediaFolderDto> GetFolderByIdAsync(Guid folderId);
+     Task<MediaFolderDto> CreateFolderAsync(CreateMediaFolderRequest request);
+     Task<MediaFolderDto> UpdateFolderAsync(Guid folderId, UpdateMediaFolderRequest request);
+diff --git a/src/MURO.Infrastructure/Services/MediaFolderService.cs b/src/MURO.Infrastructure/Services/MediaFolderService.cs
+index 4542715..8063856 100644
+--- a/src/MURO.Infrastructure/Services/MediaFolderService.cs
++++ b/src/MURO.Infrastructure/Services/MediaFolderService.cs
+@@ -17,8 +17,56 @@ public class MediaFolderService : IMediaFolderService
+         _mediaService = mediaService;
+     }
+ 
+-    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null)
++    public async Task<List<MediaFolderDto>> GetFoldersAsync(Guid? parentFolderId = null, string? search = null)
+     {
++        if (!string.IsNullOrEmpty(search))
++        {
++            var searchLower = search.ToLower();
++            var matchedFolders = await _context.MediaFolders
++                .Where(f => f.Name.ToLower().Contains(searchLower))
++                .OrderBy(f => f.Name)
++                .Select(f => new {
++                    f.Id,
++                    f.Name,
++                    f.ParentFolderId,
++                    f.CreatedAt,
++                    SubFolderCount = f.SubFolders.Count,
++                    MediaAssetCount = f.MediaAssets.Count
++                })
++                .ToListAsync();
++
++            var allFoldersLookup = await _context.MediaFolders
++                .Select(f => new { f.Id, f.Name, f.ParentFolderId })
++                .ToDictionaryAsync(f => f.Id);
++
++            var result = new List<MediaFolderDto>();
++            foreach (var f in matchedFolders)
++            {
++                var pathList = new List<FolderMinDto>();
++                var currentId = f.ParentFolderId;
++                var visited = new HashSet<Guid>();
++                while (currentId.HasValue && allFoldersLookup.TryGetValue(currentId.Value, out var parent))
++                {
++                    if (!visited.Add(parent.Id)) break;
++                    pathList.Insert(0, new FolderMinDto(parent.Id, parent.Name));
++                    currentId = parent.ParentFolderId;
++                }
++                pathList.Add(new FolderMinDto(f.Id, f.Name));
++
++                result.Add(new MediaFolderDto(
++                    f.Id,
++                    f.Name,
++                    f.ParentFolderId,
++                    f.CreatedAt,
++                    f.SubFolderCount,
++                    f.MediaAssetCount,
++                    pathList
++                ));
++            }
++
++            return result;
++        }
++
+         var folders = await _context.MediaFolders
+             .Where(f => f.ParentFolderId == parentFolderId)
+             .OrderBy(f => f.Name)
+@@ -28,7 +76,8 @@ public class MediaFolderService : IMediaFolderService
+                 f.ParentFolderId,
+                 f.CreatedAt,
+                 f.SubFolders.Count,
+-                f.MediaAssets.Count
++                f.MediaAssets.Count,
++                null
+             ))
+             .ToListAsync();
+ 
+-- 
+2.51.0.windows.1
+

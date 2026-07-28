@@ -40,7 +40,7 @@ export default function StudentLoginPage() {
         
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else {
+        } else if (window.location.hostname.endsWith("muro.click")) {
           // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click
           const currentHost = window.location.hostname;
           let adminHost = currentHost;
@@ -56,6 +56,9 @@ export default function StudentLoginPage() {
           }
           
           targetUrl = `https://${adminHost}/dashboard`;
+        } else {
+          // Monopol: Redirect directly to the /admin/dashboard subpath
+          targetUrl = `/admin/dashboard`;
         }
 
         // Token'ı URL ile aktar (Subdomain'ler arası localStorage paylaşılmaz)
@@ -121,19 +124,11 @@ export default function StudentLoginPage() {
 
         {/* Logo — tenant branding */}
         <div className="text-center mb-8">
-          {branding?.logoUrl ? (
-            <div className="flex flex-col items-center gap-3">
-              <img 
-                src={branding.logoUrl} 
-                alt={brandName} 
-                className="h-24 w-auto object-contain drop-shadow-lg"
-              />
-            </div>
-          ) : (
-            <h1 className="text-3xl font-extrabold text-white tracking-wider font-outfit uppercase">
-              {brandName}
-            </h1>
-          )}
+          <img 
+            src={branding?.logoUrl || "/logo.png"} 
+            alt={brandName} 
+            className="w-64 h-auto mx-auto object-contain drop-shadow-lg" 
+          />
         </div>
 
         {/* Card */}
@@ -149,18 +144,18 @@ export default function StudentLoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">Telefon Numarası</label>
+              <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">Kullanıcı Adı</label>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-[#1B3B6F]/15 border border-[#1B3B6F]/30 rounded-xl text-white placeholder-[#A9A9A9] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F] focus:border-transparent transition-all text-sm"
-                placeholder="Telefon numaranızı girin (Başında 0 olmadan)"
+                placeholder="Kullanıcı adınızı girin"
               />
               <p className="mt-1.5 text-[11px] text-[#A0AEC0]/70 italic leading-relaxed">
-                * Giriş yaparken lütfen telefon numaranızı başında 0 olmadan giriniz. <br />
-                Örnek: 5xxxxxxxxx
+                <span className="text-red-400 font-medium not-italic">* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.</span> <br />
+                Örnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen
               </p>
             </div>
             <div>

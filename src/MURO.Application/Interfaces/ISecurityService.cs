@@ -7,4 +7,5 @@ public interface ISecurityService
     Task<SecurityEventPageDto> GetEventsAsync(DateTime? from, DateTime? to, Guid? userId, string? eventType, int page, int pageSize);
     Task<List<SecuritySummaryDto>> GetSummaryAsync();
     Task<List<SecurityEventDto>> GetSuspiciousActivityAsync();
+    Task LogEventAsync(Guid? userId, string eventType, string? ipAddress, string? userAgent, string? details);
 }

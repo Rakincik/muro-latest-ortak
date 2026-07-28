@@ -4,12 +4,13 @@ import {
     Shield, Search, ChevronLeft, ChevronRight,
     User, FileText, Trash2, Edit3, Plus, RefreshCw, Clock, Globe,
     AlertTriangle, X, Activity, Eye, Lock, Smartphone, Monitor,
-    ArrowRight, Check
+    ArrowRight, Check, Unlock
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { auditApi, securityApi } from "@/lib/api/audits";
 import { type AuditLogDto, type UserAuditSummaryDto, type SuspiciousUserDto } from "@/lib/api/types";
 import { UAParser } from "ua-parser-js";
+import { useToast } from "@/components/toast";
 
 const actionMeta: Record<string, { labelTR: string; bg: string; text: string; icon: any }> = {
     Create: { labelTR: "Oluşturuldu", bg: "bg-emerald-50 border border-emerald-100", text: "text-emerald-700", icon: Plus },
@@ -445,10 +446,12 @@ const RenderLogDetails = ({ details }: { details: string }) => {
 
 export default function AuditTrailPage() {
     const { token, currentTenantId: tenantId } = useAuth();
+    const { success: toastSuccess, error: toastError } = useToast();
     
     // Master View States
     const [users, setUsers] = useState<UserAuditSummaryDto[]>([]);
     const [suspicious, setSuspicious] = useState<SuspiciousUserDto[]>([]);
+    const [blockedIps, setBlockedIps] = useState<Array<{ ipAddress: string; blockedUntil: string }>>([]);
     const [totalUsers, setTotalUsers] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     
@@ -456,6 +459,7 @@ export default function AuditTrailPage() {
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState<"date" | "count">("date");
     const [loading, setLoading] = useState(true);
+    const [loadingBlockedIps, setLoadingBlockedIps] = useState(false);
 
     // Detail Modal States
     const [selectedUser, setSelectedUser] = useState<{ id: string | null; name: string | null; avatarUrl?: string | null; email?: string | null } | null>(null);
@@ -466,21 +470,42 @@ export default function AuditTrailPage() {
     const fetchMasterData = useCallback(async () => {
         if (!token || !tenantId) return;
         setLoading(true);
+        setLoadingBlockedIps(true);
         try {
-            const [usersRes, suspRes] = await Promise.all([
+            const [usersRes, suspRes, blockedRes] = await Promise.all([
                 auditApi.getUserAudits(token, tenantId, { page, pageSize: 10, search, sortBy }),
-                auditApi.getSuspiciousUsers(token, tenantId)
+                auditApi.getSuspiciousUsers(token, tenantId),
+                securityApi.getBlockedIps(token, tenantId)
             ]);
             setUsers(usersRes.items);
             setTotalUsers(usersRes.totalCount);
             setTotalPages(usersRes.totalPages);
             setSuspicious(suspRes);
+            setBlockedIps(blockedRes.items || []);
         } catch (e) {
             console.error("Failed to load audit data", e);
         } finally {
             setLoading(false);
+            setLoadingBlockedIps(false);
         }
     }, [token, tenantId, page, search, sortBy]);
+
+    const handleUnblockIp = async (ip: string) => {
+        if (!token || !tenantId) return;
+        try {
+            const res = await securityApi.unblockIp(token, tenantId, ip);
+            if (res.success) {
+                toastSuccess("IP Engeli Kaldırıldı", res.message || `${ip} engeli başarıyla kaldırıldı.`);
+                const blockedRes = await securityApi.getBlockedIps(token, tenantId);
+                setBlockedIps(blockedRes.items || []);
+            } else {
+                toastError("Hata", "IP engeli kaldırılamadı.");
+            }
+        } catch (e: any) {
+            console.error("Failed to unblock IP", e);
+            toastError("Hata", e.message || "IP engeli kaldırılırken bir hata oluştu.");
+        }
+    };
 
     useEffect(() => { fetchMasterData(); }, [fetchMasterData]);
 
@@ -776,6 +801,54 @@ export default function AuditTrailPage() {
 
                         </div>
                     </div>
+
+                    {/* Engellenen IP Adresleri Paneli */}
+                    <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="p-4 bg-slate-50/50 border-b border-[#E2E8F0] flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-[#0A1931] flex items-center gap-2">
+                                <Lock size={16} className="text-red-500" /> Engellenen IP Adresleri
+                            </h2>
+                            <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg border border-red-100 shadow-sm font-sans">
+                                {blockedIps.length} Aktif
+                            </span>
+                        </div>
+
+                        <div className="p-5">
+                            {loadingBlockedIps || loading ? (
+                                <div className="space-y-3">
+                                    {[...Array(2)].map((_, i) => (
+                                        <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : blockedIps.length === 0 ? (
+                                <p className="text-xs text-[#A9A9A9] italic text-center py-4 font-sans">Şu an engellenmiş bir IP adresi bulunmuyor.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {blockedIps.map((b, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 bg-red-50/30 hover:bg-red-50/50 border border-red-100 rounded-xl transition-all duration-200 shadow-sm">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-xs font-mono font-bold text-[#0A1931] truncate">{b.ipAddress}</span>
+                                                    <IpLocation ip={b.ipAddress} />
+                                                </div>
+                                                <p className="text-[10px] text-[#A9A9A9] mt-0.5 font-sans">
+                                                    Engel Bitiş: {new Date(b.blockedUntil).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleUnblockIp(b.ipAddress)}
+                                                className="p-1.5 bg-white hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-lg border border-slate-200 hover:border-emerald-200 transition-all shadow-sm shrink-0 ml-2"
+                                                title="Engeli Kaldır"
+                                            >
+                                                <Unlock size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -960,7 +1033,9 @@ export default function AuditTrailPage() {
                                                                     {log.eventType === "SESSION_KICKED" && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg border border-red-100"><AlertTriangle size={10} /> Çoklu Giriş Engellendi</span>}
                                                                     {log.eventType === "LOGIN_FAILED" && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded-lg border border-orange-100"><X size={10} /> Hatalı Şifre Denemesi</span>}
                                                                     {log.eventType === "BRUTE_FORCE_DETECTED" && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-lg border border-red-200"><Shield size={10} /> Şüpheli (Brute Force)</span>}
+                                                                    {log.eventType === "DEVTOOLS_DETECTED" && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg border border-rose-100"><Shield size={10} /> DevTools (F12) Açma Girişimi</span>}
                                                                 </div>
+                                                                {log.details && <p className="text-xs text-[#0A1931] font-medium mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">{log.details}</p>}
                                                                 {log.userAgent && (
                                                                     <div className="flex items-center gap-3 text-xs text-[#1B3B6F] font-medium bg-[#F8FAFC] p-2 rounded-lg border border-[#E2E8F0]">
                                                                         {parseUserAgent(log.userAgent).device === "Mobile" ? <Smartphone size={14} /> : <Monitor size={14} />}

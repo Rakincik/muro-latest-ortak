@@ -8,7 +8,7 @@ import NativeFeatures from "@/components/NativeFeatures";
 import DynamicTitle from "@/components/DynamicTitle";
 
 export const metadata: Metadata = {
-  title: "muro",
+  title: "Öğrenci Paneli",
   description: "Derece Uzaktan Eğitim Platformu",
   viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no",
   other: {

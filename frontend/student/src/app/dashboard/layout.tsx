@@ -11,9 +11,10 @@ import { useCapacitorPush } from "@/hooks/useCapacitorPush";
 import { useDeepLink } from "@/hooks/useDeepLink";
 import { useStudentHub } from "@/hooks/useStudentHub";
 import { useToast } from "@/components/ToastProvider";
-import { Bell } from "lucide-react";
-import { notificationApi } from "@/lib/api";
+import { Bell, ShieldAlert } from "lucide-react";
+import { notificationApi, api } from "@/lib/api";
 import NotificationsModal from "@/components/NotificationsModal";
+import { initSecurityKiosk } from "@/lib/security/antiDebug";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, isLoading, token, currentTenantId: tenantId } = useAuth();
@@ -23,6 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
     const { showToast } = useToast();
+    const [securityViolation, setSecurityViolation] = useState(false);
 
     useEffect(() => {
         if (!token || !tenantId) return;
@@ -86,7 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     const isDev = window.location.hostname === "localhost";
                     if (isDev) {
                         window.location.href = `http://localhost:3001/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
-                    } else {
+                    } else if (window.location.hostname.endsWith("muro.click")) {
+                        // Subdomain architecture for demo
                         const currentHost = window.location.hostname;
                         let adminHost = currentHost;
                         if (currentHost.startsWith("3u.")) {
@@ -99,6 +102,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                            adminHost = "admin." + currentHost;
                         }
                         window.location.href = `https://${adminHost}/dashboard`;
+                    } else {
+                        // Single-domain setup for Monopol (e.g. online.monopoluzem.com.tr)
+                        window.location.href = `/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
                     }
                 }
             }
@@ -107,48 +113,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // Anti-DevTools Koruması (Sadece Öğrenci Paneli için)
     useEffect(() => {
-        // Eğer kullanıcı öğrenci ise ve sayfaya eriştiginde çalışır
-        if (user && user.role?.toLowerCase() === "student") {
-            const handleContextMenu = (e: MouseEvent) => {
-                e.preventDefault();
-            };
-
-            const handleKeyDown = (e: KeyboardEvent) => {
-                // F12 tuşu
-                if (e.key === "F12") {
-                    e.preventDefault();
+        if (user && user.role?.toLowerCase() === "student" && token && tenantId) {
+            let hasLogged = false;
+            const cleanup = initSecurityKiosk(() => {
+                setSecurityViolation(true);
+                if (!hasLogged) {
+                    hasLogged = true;
+                    api("/student/security-event", {
+                        method: "POST",
+                        token,
+                        tenantId,
+                        body: JSON.stringify({
+                            eventType: "DEVTOOLS_DETECTED",
+                            details: `Geliştirici araçları (DevTools) açma girişimi tespit edildi. Sayfa: ${window.location.pathname}`
+                        })
+                    }).catch(err => console.error("Failed to log security event", err));
                 }
-                // Ctrl+Shift+I (Windows) veya Cmd+Option+I (Mac)
-                if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "i") || 
-                    (e.metaKey && e.altKey && e.key.toLowerCase() === "i")) {
-                    e.preventDefault();
-                }
-                // Ctrl+Shift+J (Windows) veya Cmd+Option+J (Mac)
-                if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "j") || 
-                    (e.metaKey && e.altKey && e.key.toLowerCase() === "j")) {
-                    e.preventDefault();
-                }
-                // Ctrl+Shift+C (Windows) veya Cmd+Option+C (Mac) - Inspector
-                if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "c") || 
-                    (e.metaKey && e.altKey && e.key.toLowerCase() === "c")) {
-                    e.preventDefault();
-                }
-                // Ctrl+U (Windows) veya Cmd+Option+U (Mac) - Kaynak Kodu
-                if ((e.ctrlKey && e.key.toLowerCase() === "u") || 
-                    (e.metaKey && e.altKey && e.key.toLowerCase() === "u")) {
-                    e.preventDefault();
-                }
-            };
-
-            document.addEventListener("contextmenu", handleContextMenu);
-            document.addEventListener("keydown", handleKeyDown);
-
-            return () => {
-                document.removeEventListener("contextmenu", handleContextMenu);
-                document.removeEventListener("keydown", handleKeyDown);
-            };
+            });
+            return cleanup;
         }
-    }, [user]);
+    }, [user, token, tenantId]);
 
     // Sayfa değiştiğinde sidebar'ı kapat (mobil)
     useEffect(() => {
@@ -234,6 +218,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     onClose={() => setShowNotifications(false)} 
                     onUnreadCountUpdate={setUnreadCount}
                 />
+            )}
+
+            {/* DevTools Security Violation Screen */}
+            {securityViolation && (
+                <div className="fixed inset-0 bg-red-950/95 flex items-center justify-center z-[9999] backdrop-blur-sm">
+                    <div className="text-center bg-black/60 p-10 rounded-3xl border border-red-500/30 max-w-md mx-4 animate-in fade-in-50 zoom-in-95 duration-200">
+                        <ShieldAlert size={64} className="text-red-500 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold text-white mb-2">Güvenlik İhlali</h2>
+                        <p className="text-red-200 text-sm leading-relaxed">
+                            Sistem kaynaklarını izinsiz kopyalama veya izleme girişimi tespit edildi. <br/><br/>
+                            Geliştirici araçlarını (DevTools) kapatıp sayfayı yenileyin.
+                        </p>
+                    </div>
+                </div>
             )}
         </div>
     );

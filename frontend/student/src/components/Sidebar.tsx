@@ -69,7 +69,8 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
 
     const brandName = branding?.name || "MURO";
     const brandInitial = brandName.charAt(0).toUpperCase();
-    const primaryColor = branding?.primaryColor || "#1B3B6F";
+    const primaryColor = branding?.primaryColor || "#0A1931";
+    const accentColor = branding?.accentColor || "#1B3B6F";
 
     const tenantName = user?.tenants?.find((t: UserTenantDto) => t.tenantId === currentTenantId)?.tenantName
         || user?.tenants?.[0]?.tenantName
@@ -77,22 +78,32 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
 
     const handleLogout = () => {
         logout();
-        router.push("/");
+        window.location.href = "/?action=logout";
     };
 
     return (
         <>
         <aside 
-            className={`sidebar w-[280px] md:w-[260px] flex flex-col h-screen fixed left-0 top-0 z-[70] md:z-50 border-r border-[#1B3B6F]/20 bg-[#0A1931] transition-transform duration-300 md:translate-x-0 ${!isOpen ? "-translate-x-full" : ""}`}
-            style={isOpen ? { transform: 'translateX(0)' } : undefined}
+            className={`sidebar w-[280px] md:w-[260px] flex flex-col h-screen fixed left-0 top-0 z-[70] md:z-50 border-r border-[#1B3B6F]/20 transition-transform duration-300 md:translate-x-0 ${!isOpen ? "-translate-x-full" : ""}`}
+            style={{ backgroundColor: primaryColor, ...(isOpen ? { transform: 'translateX(0)' } : {}) }}
         >
             {/* Logo + Notifications */}
             <div className="px-6 py-7 flex items-center justify-between relative">
-                <img 
-                    src="/logo.png" 
-                    alt={brandName} 
-                    className="w-36 h-auto object-contain drop-shadow-md" 
-                />
+                {branding?.useWhiteLogoBackground ? (
+                    <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-white/20 flex items-center justify-center shrink-0">
+                        <img 
+                            src={branding?.sidebarLogoUrl || branding?.logoUrl || "/logo.png"} 
+                            alt={brandName} 
+                            className="w-32 max-h-10 h-auto object-contain" 
+                        />
+                    </div>
+                ) : (
+                    <img 
+                        src={branding?.sidebarLogoUrl || branding?.logoUrl || "/logo.png"} 
+                        alt={brandName} 
+                        className="w-36 h-auto object-contain drop-shadow-md" 
+                    />
+                )}
                 <button
                     onClick={() => setShowNotifications(true)}
                     className="relative p-2 text-[#A0AEC0] hover:text-white hover:bg-[#1B3B6F]/30 rounded-xl transition-all"
@@ -131,9 +142,10 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
                                         href={item.href}
                                         prefetch={false}
                                         className={`group relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive
-                                            ? "bg-[#1B3B6F] text-white shadow-lg shadow-[#0A1931]/40"
+                                            ? "text-white shadow-lg shadow-[#0A1931]/40"
                                             : "text-[#A0AEC0] hover:bg-[#1B3B6F]/20 hover:text-[#E2E8F0]"
                                             }`}
+                                        style={isActive ? { backgroundColor: accentColor } : undefined}
                                     >
                                         <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} className={isActive ? "text-white" : "text-[#A9A9A9] group-hover:text-[#E2E8F0]"} />
                                         <span className="flex-1">{item.label}</span>
@@ -165,9 +177,10 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
                         <button
                             onClick={() => setShowNotifications(true)}
                             className={`w-full text-left group relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${showNotifications
-                                ? "bg-[#1B3B6F] text-white shadow-lg shadow-[#0A1931]/40"
+                                ? "text-white shadow-lg shadow-[#0A1931]/40"
                                 : "text-[#A0AEC0] hover:bg-[#1B3B6F]/20 hover:text-[#E2E8F0]"
                                 }`}
+                            style={showNotifications ? { backgroundColor: accentColor } : undefined}
                         >
                             <Bell size={18} strokeWidth={showNotifications ? 2.5 : 1.5} className={showNotifications ? "text-white" : "text-[#A9A9A9] group-hover:text-[#E2E8F0]"} />
                             <span className="flex-1">Bildirimler</span>

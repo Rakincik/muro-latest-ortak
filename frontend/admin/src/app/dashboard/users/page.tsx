@@ -301,10 +301,12 @@ export default function UsersPage() {
                     firstName: d.firstName, 
                     lastName: d.lastName, 
                     email: d.email, 
+                    username: d.username,
                     role: d.role, 
                     phone: d.phone,
                     studentType: apiStudentType,
-                    tcNo: d.tcNo
+                    tcNo: d.tcNo,
+                    groupNames: d.groupNames
                 };
                 if (d.password) {
                     updatePayload.password = d.password;
@@ -317,7 +319,8 @@ export default function UsersPage() {
             } else {
                 let targetPassword = d.password;
                 if (!targetPassword && (d.role === "Student" || d.role === "Öğrenci")) {
-                    targetPassword = d.email || "123456";
+                    const lastTwo = d.phone && d.phone.length >= 2 ? d.phone.substring(d.phone.length - 2) : "00";
+                    targetPassword = d.tcNo ? `${d.tcNo}.${lastTwo}` : "123456";
                 } else if (!targetPassword) {
                     targetPassword = "123456";
                 }
@@ -326,11 +329,13 @@ export default function UsersPage() {
                     firstName: d.firstName || "", 
                     lastName: d.lastName || "", 
                     email: d.email || "", 
+                    username: d.username,
                     password: targetPassword, 
                     role: d.role || "Student", 
                     studentType: apiStudentType || undefined, 
                     phone: d.phone,
-                    tcNo: d.tcNo
+                    tcNo: d.tcNo,
+                    groupNames: d.groupNames
                 } as any);
                 setUsers(p => [mapApiUser(created), ...p]); 
                 success("Kullanıcı Eklendi"); 
@@ -575,8 +580,37 @@ export default function UsersPage() {
                                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931]" /></td>
                                         <td className="px-4 py-3"><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl ${c.avatar} flex items-center justify-center text-white text-[10px] font-bold shadow-sm border border-white/10`}>{ini(u)}</div><div><p className="text-sm font-bold text-[#0A1931] tracking-tight">{u.firstName} {u.lastName}</p><p className="text-[11px] text-[#A0AEC0] font-medium">{u.username || u.email}</p></div></div></td>
                                         <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{roleLabel[u.role] || u.role}</span></td>
-                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.groupNames.length > 0 ? <div className="relative group/grp inline-flex"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg bg-[#1B3B6F]/10 text-[#1B3B6F] border border-[#1B3B6F]/20 cursor-default"><Users size={12} className="text-[#A0AEC0]" />{u.groupNames.length}</span><div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/grp:block"><div className="bg-[#0A1931] text-white rounded-xl shadow-2xl p-3 min-w-[160px] border border-[#1B3B6F]/30"><p className="text-[10px] font-bold uppercase tracking-wider text-[#A0AEC0] mb-2">Gruplar</p><div className="space-y-1">{u.groupNames.map(g => <div key={g} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-white/10">{g}</div>)}</div></div></div></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
-                                        <td className="px-4 py-3"><span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}><span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} />{u.isActive ? "AKTİF" : "PASİF"}{u.studentType === "Demo" && <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-amber-50 text-amber-600 font-bold ml-2">DEMO</span>}{u.studentType === "Passive" && <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-[#F0F4F8] text-[#A0AEC0] font-bold ml-2">PASİF</span>}</span></td>
+                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.groupNames.length > 0 ? <div className="relative group/grp inline-flex"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg bg-[#1B3B6F]/10 text-[#1B3B6F] border border-[#1B3B6F]/20 cursor-default"><Users size={12} className="text-[#A0AEC0]" />{u.groupNames.length}</span><div className="absolute left-0 bottom-full mb-1 z-50 hidden group-hover/grp:block"><div className="bg-[#0A1931] text-white rounded-xl shadow-2xl p-3 min-w-[160px] border border-[#1B3B6F]/30"><p className="text-[10px] font-bold uppercase tracking-wider text-[#A0AEC0] mb-2">Gruplar</p><div className="space-y-1">{u.groupNames.map(g => <div key={g} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-white/10">{g}</div>)}</div></div></div></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
+                                        <td className="px-4 py-3">
+                                            {u.role === "Student" ? (
+                                                !u.isActive ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#A0AEC0]">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-[#A0AEC0]" />
+                                                        PASİF (Kilitli)
+                                                    </span>
+                                                ) : u.studentType === "Demo" ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                        DEMO
+                                                    </span>
+                                                ) : u.studentType === "Passive" ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#A0AEC0]">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-[#A0AEC0]" />
+                                                        PASİF
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                        AKTİF
+                                                    </span>
+                                                )
+                                            ) : (
+                                                <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-[#A0AEC0]"}`} />
+                                                    {u.isActive ? "AKTİF" : "PASİF"}
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.phone ? <div className="flex items-center gap-2"><a href={`tel:${u.phone.replace(/\s/g, '')}`} className="text-[11px] font-medium text-[#1B3B6F] hover:text-[#0A1931] flex items-center gap-1.5 transition-colors"><Phone size={12} className="text-[#A0AEC0]" />{u.phone}</a><Tooltip content="WhatsApp"><a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 transition-all hover:scale-110 flex"><svg viewBox="0 0 24 24" width="14" height="14" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg></a></Tooltip></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
                                         <td className="px-4 py-3"><span className="text-[11px] font-medium text-[#1B3B6F] flex items-center gap-1.5"><CalendarIcon size={12} className="text-[#A0AEC0]" />{new Date(u.createdAt).toLocaleDateString("tr-TR")}</span></td>
                                         <td className="px-4 py-3"><span className="text-[11px] font-medium text-[#A0AEC0] flex items-center gap-1.5"><Clock size={12} />{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("tr-TR") : "—"}</span></td>
@@ -628,18 +662,18 @@ export default function UsersPage() {
                                                 <div className="flex items-center gap-2 mt-1 text-[10px]">
                                                     <span className={`font-bold uppercase tracking-widest ${c.text}`}>{roleLabel[u.role] || u.role}</span>
                                                     <span className="text-[#E2E8F0]">•</span>
-                                                    <span className={`font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}>{u.isActive ? "AKTİF" : "PASİF"}</span>
-                                                    {u.studentType === "Demo" && (
-                                                        <>
-                                                            <span className="text-[#E2E8F0]">•</span>
+                                                    {u.role === "Student" ? (
+                                                        !u.isActive ? (
+                                                            <span className="font-bold text-[#A0AEC0]">PASİF (Kilitli)</span>
+                                                        ) : u.studentType === "Demo" ? (
                                                             <span className="font-bold text-amber-600 uppercase tracking-widest">DEMO</span>
-                                                        </>
-                                                    )}
-                                                    {u.studentType === "Passive" && (
-                                                        <>
-                                                            <span className="text-[#E2E8F0]">•</span>
+                                                        ) : u.studentType === "Passive" ? (
                                                             <span className="font-bold text-[#A0AEC0] uppercase tracking-widest">PASİF</span>
-                                                        </>
+                                                        ) : (
+                                                            <span className="font-bold text-emerald-600">AKTİF</span>
+                                                        )
+                                                    ) : (
+                                                        <span className={`font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}>{u.isActive ? "AKTİF" : "PASİF"}</span>
                                                     )}
                                                 </div>
                                             </div>
@@ -742,7 +776,7 @@ export default function UsersPage() {
                                             <div className="bg-[#F8FAFC] p-4 rounded-xl text-left border border-[#E2E8F0]/60 space-y-3">
                                                 <div className="flex items-start gap-3">
                                                     <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} className="text-emerald-500" /></div> 
-                                                    <p className="text-xs text-[#64748B] font-medium leading-relaxed">Şifreler otomatik olarak <strong className="text-[#0A1931]">isim.telefonunson2hanesi.soyismininilkharfi (Örn: volkan.51.c)</strong> olarak atanır.</p>
+                                                    <p className="text-xs text-[#64748B] font-medium leading-relaxed">Şifreler otomatik olarak <strong className="text-[#0A1931]">TC + Numaranın Son 2 Hanesi</strong> olarak atanır.</p>
                                                 </div>
                                                 <div className="flex items-start gap-3">
                                                     <div className="mt-0.5 w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><AlertTriangle size={12} strokeWidth={3} className="text-rose-500" /></div> 
@@ -895,8 +929,28 @@ export default function UsersPage() {
     }
 
     function UserFormModal({ user, onClose, onSave }: { user: User | null; onClose: () => void; onSave: (d: Partial<User> & { password?: string }) => void }) {
-        const [f, sF] = useState({ firstName: user?.firstName || "", lastName: user?.lastName || "", email: user?.email || "", phone: user?.phone || "", role: user?.role || "Student", groupNames: user?.groupNames || [] as string[], studentType: user?.studentType || "Aktif", tcNo: user?.tcNo || "" });
+        const [f, sF] = useState({ firstName: user?.firstName || "", lastName: user?.lastName || "", email: user?.email || "", username: user?.username || "", phone: user?.phone || "", role: user?.role || "Student", groupNames: user?.groupNames || [] as string[], studentType: user?.studentType || "Aktif", tcNo: user?.tcNo || "" });
         const u = (k: string, v: string) => sF(p => ({ ...p, [k]: v }));
+
+        const handleFirstNameChange = (val: string) => {
+            sF(p => {
+                const next = { ...p, firstName: val };
+                if (!user) {
+                    next.username = ToEnglishUsernameSlug(val, p.lastName);
+                }
+                return next;
+            });
+        };
+
+        const handleLastNameChange = (val: string) => {
+            sF(p => {
+                const next = { ...p, lastName: val };
+                if (!user) {
+                    next.username = ToEnglishUsernameSlug(p.firstName, val);
+                }
+                return next;
+            });
+        };
         const toggleGroup = (g: string) => sF(p => ({ ...p, groupNames: p.groupNames.includes(g) ? p.groupNames.filter(x => x !== g) : [...p.groupNames, g] }));
 
         const [roleOpen, setRoleOpen] = useState(false);
@@ -955,22 +1009,28 @@ export default function UsersPage() {
         };
 
         return (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}><div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                <div className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-xl animate-fade-in flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+                <div className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-xl animate-fade-in flex flex-col">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]/60 shrink-0"><h2 className="text-lg font-bold text-[#0A1931]">{user ? "Kullanıcı Düzenle" : "Yeni Kullanıcı"}</h2><button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E2E8F0]/40 text-[#A0AEC0]"><X size={18} /></button></div>
                     <div className="flex-1 overflow-y-auto p-6 space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Ad</label><input type="text" value={f.firstName} onChange={e => u("firstName", e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Ad" /></div>
-                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Soyad</label><input type="text" value={f.lastName} onChange={e => u("lastName", e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Soyad" /></div>
+                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Ad</label><input type="text" value={f.firstName} onChange={e => handleFirstNameChange(e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Ad" /></div>
+                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Soyad</label><input type="text" value={f.lastName} onChange={e => handleLastNameChange(e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Soyad" /></div>
                         </div>
                         
                         {(f.role === "Student" || f.role === "Öğrenci") ? (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Oluşturulacak Kullanıcı Adı</label>
-                                    <div className="w-full px-3.5 py-2.5 text-sm bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 font-bold flex items-center gap-2">
-                                        <Zap size={14} className="text-emerald-500 animate-pulse shrink-0" />
-                                        {f.phone || "(Telefon girin)"}
+                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Kullanıcı Adı</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            value={f.username} 
+                                            onChange={e => u("username", ToEnglishUsernameSlug(e.target.value, ""))} 
+                                            className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] font-bold text-[#1B3B6F]" 
+                                            placeholder="kullaniciadi" 
+                                        />
                                     </div>
                                 </div>
                                 <div>

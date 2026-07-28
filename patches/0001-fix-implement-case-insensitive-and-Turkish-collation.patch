@@ -1,0 +1,180 @@
+From de0c07efd4ff7fe4db6b8088c7028215584bc328 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?R=C3=BCstem=20Ak=C4=B1nc=C4=B1k?= <r.akincikk@gmail.com>
+Date: Sat, 27 Jun 2026 05:20:59 +0300
+Subject: [PATCH] fix: implement case-insensitive and Turkish
+ collation-insensitive search normalization for courses, exams, and media
+
+---
+ .../Services/CourseService.cs                 | 65 +++++++++++++++++--
+ .../Services/ExamService.cs                   | 24 ++++++-
+ .../Services/MediaService.cs                  | 24 ++++++-
+ 3 files changed, 105 insertions(+), 8 deletions(-)
+
+diff --git a/src/MURO.Infrastructure/Services/CourseService.cs b/src/MURO.Infrastructure/Services/CourseService.cs
+index e8ecca3..99fffdb 100644
+--- a/src/MURO.Infrastructure/Services/CourseService.cs
++++ b/src/MURO.Infrastructure/Services/CourseService.cs
+@@ -1,3 +1,4 @@
++using System.Globalization;
+ using Microsoft.EntityFrameworkCore;
+ using Microsoft.Extensions.Configuration;
+ using MURO.Application.DTOs;
+@@ -48,8 +49,36 @@ public class CourseService : ICourseService
+ 
+             if (!string.IsNullOrWhiteSpace(search))
+             {
+-                var s = search.ToLower();
+-                query = query.Where(c => c.Title.ToLower().Contains(s) || (c.Description != null && c.Description.ToLower().Contains(s)));
++                var trCulture = new CultureInfo("tr-TR");
++                var s = search.ToLower(trCulture)
++                    .Replace("ı", "i")
++                    .Replace("i", "i")
++                    .Replace("ö", "o")
++                    .Replace("ü", "u")
++                    .Replace("ş", "s")
++                    .Replace("ğ", "g")
++                    .Replace("ç", "c");
++
++                query = query.Where(c => 
++                    c.Title.ToLower()
++                        .Replace("ı", "i")
++                        .Replace("İ", "i")
++                        .Replace("ö", "o")
++                        .Replace("ü", "u")
++                        .Replace("ş", "s")
++                        .Replace("ğ", "g")
++                        .Replace("ç", "c")
++                        .Contains(s) 
++                    || (c.Description != null && c.Description.ToLower()
++                        .Replace("ı", "i")
++                        .Replace("İ", "i")
++                        .Replace("ö", "o")
++                        .Replace("ü", "u")
++                        .Replace("ş", "s")
++                        .Replace("ğ", "g")
++                        .Replace("ç", "c")
++                        .Contains(s))
++                );
+             }
+ 
+             if (!string.IsNullOrWhiteSpace(courseType) && Enum.TryParse<CourseType>(courseType, true, out var ct))
+@@ -98,8 +127,36 @@ public class CourseService : ICourseService
+ 
+             if (!string.IsNullOrWhiteSpace(search))
+             {
+-                var s = search.ToLower();
+-                query = query.Where(c => c.Title.ToLower().Contains(s) || (c.Description != null && c.Description.ToLower().Contains(s)));
++                var trCulture = new CultureInfo("tr-TR");
++                var s = search.ToLower(trCulture)
++                    .Replace("ı", "i")
++                    .Replace("i", "i")
++                    .Replace("ö", "o")
++                    .Replace("ü", "u")
++                    .Replace("ş", "s")
++                    .Replace("ğ", "g")
++                    .Replace("ç", "c");
++
++                query = query.Where(c => 
++                    c.Title.ToLower()
++                        .Replace("ı", "i")
++                        .Replace("İ", "i")
++                        .Replace("ö", "o")
++                        .Replace("ü", "u")
++                        .Replace("ş", "s")
++                        .Replace("ğ", "g")
++                        .Replace("ç", "c")
++                        .Contains(s) 
++                    || (c.Description != null && c.Description.ToLower()
++                        .Replace("ı", "i")
++                        .Replace("İ", "i")
++                        .Replace("ö", "o")
++                        .Replace("ü", "u")
++                        .Replace("ş", "s")
++                        .Replace("ğ", "g")
++                        .Replace("ç", "c")
++                        .Contains(s))
++                );
+             }
+ 
+             if (!string.IsNullOrWhiteSpace(courseType) && Enum.TryParse<CourseType>(courseType, true, out var ct))
+diff --git a/src/MURO.Infrastructure/Services/ExamService.cs b/src/MURO.Infrastructure/Services/ExamService.cs
+index 0613d1c..46c71da 100644
+--- a/src/MURO.Infrastructure/Services/ExamService.cs
++++ b/src/MURO.Infrastructure/Services/ExamService.cs
+@@ -1,3 +1,4 @@
++using System.Globalization;
+ using System.Text.Json;
+ using Microsoft.EntityFrameworkCore;
+ using MURO.Application.DTOs;
+@@ -31,8 +32,27 @@ public class ExamService : IExamService
+ 
+             if (!string.IsNullOrWhiteSpace(search))
+             {
+-                var s = search.ToLower();
+-                query = query.Where(e => e.Title.ToLower().Contains(s));
++                var trCulture = new CultureInfo("tr-TR");
++                var s = search.ToLower(trCulture)
++                    .Replace("ı", "i")
++                    .Replace("i", "i")
++                    .Replace("ö", "o")
++                    .Replace("ü", "u")
++                    .Replace("ş", "s")
++                    .Replace("ğ", "g")
++                    .Replace("ç", "c");
++
++                query = query.Where(e => 
++                    e.Title.ToLower()
++                        .Replace("ı", "i")
++                        .Replace("İ", "i")
++                        .Replace("ö", "o")
++                        .Replace("ü", "u")
++                        .Replace("ş", "s")
++                        .Replace("ğ", "g")
++                        .Replace("ç", "c")
++                        .Contains(s)
++                );
+             }
+ 
+             if (!string.IsNullOrWhiteSpace(examType))
+diff --git a/src/MURO.Infrastructure/Services/MediaService.cs b/src/MURO.Infrastructure/Services/MediaService.cs
+index f4cf367..bfc3c84 100644
+--- a/src/MURO.Infrastructure/Services/MediaService.cs
++++ b/src/MURO.Infrastructure/Services/MediaService.cs
+@@ -1,3 +1,4 @@
++using System.Globalization;
+ using Microsoft.EntityFrameworkCore;
+ using Microsoft.Extensions.Configuration;
+ using Microsoft.Extensions.Logging;
+@@ -46,8 +47,27 @@ public class MediaService : IMediaService
+         
+         if (!string.IsNullOrWhiteSpace(search))
+         {
+-            var s = search.ToLower();
+-            query = query.Where(m => m.Title.ToLower().Contains(s));
++            var trCulture = new CultureInfo("tr-TR");
++            var s = search.ToLower(trCulture)
++                .Replace("ı", "i")
++                .Replace("i", "i")
++                .Replace("ö", "o")
++                .Replace("ü", "u")
++                .Replace("ş", "s")
++                .Replace("ğ", "g")
++                .Replace("ç", "c");
++
++            query = query.Where(m => 
++                m.Title.ToLower()
++                    .Replace("ı", "i")
++                    .Replace("İ", "i")
++                    .Replace("ö", "o")
++                    .Replace("ü", "u")
++                    .Replace("ş", "s")
++                    .Replace("ğ", "g")
++                    .Replace("ç", "c")
++                    .Contains(s)
++            );
+         }
+ 
+         var totalCount = await query.CountAsync();
+-- 
+2.51.0.windows.1
+

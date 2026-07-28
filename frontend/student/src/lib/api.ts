@@ -755,7 +755,10 @@ export const studentSupportApi = {
 export interface TenantBrandingDto {
     name: string;
     logoUrl: string | null;
+    sidebarLogoUrl?: string | null;
+    useWhiteLogoBackground?: boolean;
     faviconUrl: string | null;
+
     primaryColor: string | null;
     accentColor: string | null;
     footerText: string | null;

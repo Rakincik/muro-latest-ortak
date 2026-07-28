@@ -6,7 +6,7 @@ import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
 import DynamicTitle from "@/components/DynamicTitle";
 
 export const metadata: Metadata = {
-  title: "muro",
+  title: "Yönetim Paneli",
   description: "Derece Uzaktan Eğitim Platformu",
 };
 
