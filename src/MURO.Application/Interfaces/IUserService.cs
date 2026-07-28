@@ -15,4 +15,5 @@ public interface IUserService
     Task AssignToGroupAsync(Guid userId, Guid groupId);
     Task AssignToCourseAsync(Guid userId, Guid courseId, string mode);
     Task<byte[]> ExportUsersAsync(string? role);
+    Task ApplyBrandingRulesRetroactivelyAsync(bool applyToStudentsOnly);
 }

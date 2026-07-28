@@ -39,6 +39,10 @@ export default function BrandingSettingsPage() {
     const [footerText, setFooterText] = useState("");
     const [logoUrl, setLogoUrl] = useState<string | null>(null);
     const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
+    const [usernameRule, setUsernameRule] = useState("default");
+    const [passwordRule, setPasswordRule] = useState("{first_name}.{phone_last2}.{last_name_first_char}");
+    const [applyToStudents, setApplyToStudents] = useState(false);
+    const [applyToAllUsers, setApplyToAllUsers] = useState(false);
 
     // UX State
     const [loading, setLoading] = useState(true);
@@ -67,6 +71,10 @@ export default function BrandingSettingsPage() {
                     setFooterText(res.footerText || "");
                     setLogoUrl(res.logoUrl);
                     setFaviconUrl(res.faviconUrl);
+                    // Cast res as any to support dynamic rule properties
+                    const data = res as any;
+                    if (data.usernameRule) setUsernameRule(data.usernameRule);
+                    if (data.passwordRule) setPasswordRule(data.passwordRule);
                 }
             })
             .catch(() => {
@@ -125,7 +133,11 @@ export default function BrandingSettingsPage() {
                 accentColor,
                 footerText,
                 logoUrl,
-                faviconUrl
+                faviconUrl,
+                usernameRule,
+                passwordRule,
+                applyToStudents,
+                applyToAllUsers
             });
             success("Kaydedildi", "Kurum temalandırma ayarları başarıyla kaydedildi!");
             
@@ -369,6 +381,141 @@ export default function BrandingSettingsPage() {
                                         className="hidden" 
                                     />
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Kullanıcı Oluşturma ve Şifre Güvenlik Kuralları */}
+                    <div className="bg-[#1B3B6F]/10 backdrop-blur-xl border border-[#1B3B6F]/20 rounded-2xl p-6 shadow-2xl space-y-6">
+                        <h2 className="text-md font-semibold text-white flex items-center gap-2 border-b border-[#1B3B6F]/20 pb-3">
+                            <Lock size={18} className="text-[#3B82F6]" />
+                            Kullanıcı Oluşturma & Şifre Kuralları
+                        </h2>
+
+                        {/* Kullanıcı Adı Kuralı */}
+                        <div>
+                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider mb-2">
+                                Otomatik Kullanıcı Adı Formatı
+                            </label>
+                            <select
+                                value={usernameRule}
+                                onChange={(e) => setUsernameRule(e.target.value)}
+                                className="w-full px-4 py-3 bg-[#1B3B6F]/10 border border-[#1B3B6F]/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm appearance-none cursor-pointer"
+                            >
+                                <option value="default" className="bg-[#0A1931] text-white">İsim Soyisim İngilizce Karakter (Varsayılan - örn: ahmetyilmaz)</option>
+                                <option value="email" className="bg-[#0A1931] text-white">E-posta Adresi (örn: ahmet@gmail.com)</option>
+                                <option value="phone" className="bg-[#0A1931] text-white">Telefon Numarası (örn: 5551234567)</option>
+                            </select>
+                        </div>
+
+                        {/* Şifre Kuralı */}
+                        <div className="space-y-3">
+                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider">
+                                Otomatik Üretilen Şifre Formülü
+                            </label>
+
+                            {/* Preset Buttons */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordRule("{first_name}.{phone_last2}.{last_name_first_char}")}
+                                    className={`px-3 py-2.5 rounded-xl border transition-all text-left text-xs ${passwordRule === "{first_name}.{phone_last2}.{last_name_first_char}" ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-white' : 'border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/15 text-[#A0AEC0]'}`}
+                                >
+                                    <span className="font-bold block mb-0.5">Varsayılan Formül</span>
+                                    <span className="opacity-70 text-[10px]">isim.telefonSon2.soyisimİlkHarf</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordRule("{email}")}
+                                    className={`px-3 py-2.5 rounded-xl border transition-all text-left text-xs ${passwordRule === "{email}" ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-white' : 'border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/15 text-[#A0AEC0]'}`}
+                                >
+                                    <span className="font-bold block mb-0.5">Doğrudan E-posta</span>
+                                    <span className="opacity-70 text-[10px]">{`{email}`}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordRule("{phone}")}
+                                    className={`px-3 py-2.5 rounded-xl border transition-all text-left text-xs ${passwordRule === "{phone}" ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-white' : 'border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/15 text-[#A0AEC0]'}`}
+                                >
+                                    <span className="font-bold block mb-0.5">Doğrudan Telefon</span>
+                                    <span className="opacity-70 text-[10px]">{`{phone}`}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordRule("{email}.{phone_last2}")}
+                                    className={`px-3 py-2.5 rounded-xl border transition-all text-left text-xs ${passwordRule === "{email}.{phone_last2}" ? 'border-[#3B82F6] bg-[#3B82F6]/10 text-white' : 'border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/15 text-[#A0AEC0]'}`}
+                                >
+                                    <span className="font-bold block mb-0.5">E-posta + Telefon Son 2</span>
+                                    <span className="opacity-70 text-[10px]">{`{email}.{phone_last2}`}</span>
+                                </button>
+                            </div>
+
+                            {/* Custom Formula input */}
+                            <div className="pt-2">
+                                <label className="block text-[11px] font-bold text-[#A0AEC0] mb-1.5">Kendi Özel Formülünü Yaz</label>
+                                <input
+                                    type="text"
+                                    value={passwordRule}
+                                    onChange={(e) => setPasswordRule(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-[#1B3B6F]/10 border border-[#1B3B6F]/30 rounded-xl text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm font-mono"
+                                    placeholder="Örn: {email}.{phone_last2}"
+                                />
+                            </div>
+
+                            {/* Değişken Kılavuzu */}
+                            <div className="bg-[#1B3B6F]/5 border border-[#1B3B6F]/10 rounded-xl p-4 text-[11px] text-[#A0AEC0] space-y-2.5">
+                                <span className="font-bold text-white block">Formülde Kullanabileceğin Değişkenler:</span>
+                                <div className="grid grid-cols-2 gap-2 font-mono">
+                                    <div><span className="text-[#3B82F6]">{`{first_name}`}</span>: Küçük harf isim</div>
+                                    <div><span className="text-[#3B82F6]">{`{last_name}`}</span>: Küçük harf soyisim</div>
+                                    <div><span className="text-[#3B82F6]">{`{last_name_first_char}`}</span>: Soyisim ilk harf</div>
+                                    <div><span className="text-[#3B82F6]">{`{phone}`}</span>: Telefon numarası</div>
+                                    <div><span className="text-[#3B82F6]">{`{phone_last2}`}</span>: Telefon son 2 hanesi</div>
+                                    <div><span className="text-[#3B82F6]">{`{email}`}</span>: E-posta adresi</div>
+                                    <div><span className="text-[#3B82F6]">{`{tcno}`}</span>: TC Kimlik numarası</div>
+                                    <div><span className="text-[#3B82F6]">{`{tcno_last4}`}</span>: TC son 4 hanesi</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Geriye Dönük Uygulama Seçenekleri */}
+                        <div className="pt-4 border-t border-[#1B3B6F]/20 space-y-3">
+                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider">
+                                Kuralları Geriye Dönük Uygula
+                            </label>
+
+                            <div className="space-y-2">
+                                <label className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={applyToStudents}
+                                        onChange={(e) => {
+                                            setApplyToStudents(e.target.checked);
+                                            if (e.target.checked) setApplyToAllUsers(false);
+                                        }}
+                                        className="mt-1 rounded border-[#1B3B6F]/30 bg-[#1B3B6F]/10 text-[#3B82F6] focus:ring-offset-0 focus:ring-[#3B82F6]/50"
+                                    />
+                                    <div className="text-xs text-[#A0AEC0] group-hover:text-white transition-colors">
+                                        <span className="font-semibold text-white block">Mevcut Öğrencilere Uygula</span>
+                                        Kaydederken tüm aktif öğrencilerin kullanıcı adı ve şifrelerini bu yeni kurallara göre güncelle.
+                                    </div>
+                                </label>
+
+                                <label className="flex items-start gap-3 cursor-pointer group">
+                                    <input
+                                        type="checkbox"
+                                        checked={applyToAllUsers}
+                                        onChange={(e) => {
+                                            setApplyToAllUsers(e.target.checked);
+                                            if (e.target.checked) setApplyToStudents(false);
+                                        }}
+                                        className="mt-1 rounded border-[#1B3B6F]/30 bg-[#1B3B6F]/10 text-[#3B82F6] focus:ring-offset-0 focus:ring-[#3B82F6]/50"
+                                    />
+                                    <div className="text-xs text-[#A0AEC0] group-hover:text-white transition-colors">
+                                        <span className="font-semibold text-white block">Tüm Mevcut Kullanıcılara Uygula</span>
+                                        Mevcut tüm kullanıcıların (Öğretmen, Eğitmen, Admin) bilgilerini güncelle (SuperAdmin hariç).
+                                    </div>
+                                </label>
                             </div>
                         </div>
                     </div>

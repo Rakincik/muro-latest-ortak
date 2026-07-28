@@ -39,6 +39,8 @@ export const tenantApi = {
     updateAdminBranding: (token: string, tenantId: string, data: {
         name: string; logoUrl?: string | null; faviconUrl?: string | null;
         primaryColor: string; accentColor?: string | null; footerText?: string | null;
+        usernameRule?: string; passwordRule?: string;
+        applyToStudents?: boolean; applyToAllUsers?: boolean;
     }) =>
         api<unknown>('/admin/tenant/branding', {
             method: 'POST', token, tenantId, body: JSON.stringify(data),

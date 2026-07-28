@@ -21,13 +21,15 @@ public class SystemController : ControllerBase
     private readonly IVepWebhookService _webhook;
     private readonly MuroDbContext _db;
     private readonly ISecurityService _security;
+    private readonly IUserService _users;
 
-    public SystemController(ISystemHealthService health, IVepWebhookService webhook, MuroDbContext db, ISecurityService security)
+    public SystemController(ISystemHealthService health, IVepWebhookService webhook, MuroDbContext db, ISecurityService security, IUserService users)
     {
         _health = health;
         _webhook = webhook;
         _db = db;
         _security = security;
+        _users = users;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -85,7 +87,11 @@ public class SystemController : ControllerBase
         string? FaviconUrl,
         string PrimaryColor,
         string? AccentColor,
-        string? FooterText
+        string? FooterText,
+        string? UsernameRule,
+        string? PasswordRule,
+        bool ApplyToStudents = false,
+        bool ApplyToAllUsers = false
     );
 
     [HttpGet("/api/v1/admin/tenant/branding")]
@@ -126,9 +132,22 @@ public class SystemController : ControllerBase
         settings.PrimaryColor = request.PrimaryColor;
         settings.AccentColor = request.AccentColor;
         settings.FooterText = request.FooterText;
+        if (!string.IsNullOrEmpty(request.UsernameRule)) settings.UsernameRule = request.UsernameRule;
+        if (!string.IsNullOrEmpty(request.PasswordRule)) settings.PasswordRule = request.PasswordRule;
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+
+        // Geriye dönük kuralları uygulayalım kanka!
+        if (request.ApplyToAllUsers)
+        {
+            await _users.ApplyBrandingRulesRetroactivelyAsync(false);
+        }
+        else if (request.ApplyToStudents)
+        {
+            await _users.ApplyBrandingRulesRetroactivelyAsync(true);
+        }
+
         return Ok(settings);
     }
 

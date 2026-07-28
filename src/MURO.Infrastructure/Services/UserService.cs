@@ -155,9 +155,19 @@ public class UserService : IUserService
         string email = request.Email?.Trim() ?? string.Empty;
         string username = request.Username?.Trim() ?? string.Empty;
         
+        var settings = await _context.SystemSettings.FirstOrDefaultAsync();
+
         if (string.IsNullOrWhiteSpace(username))
         {
-            if (role == UserRole.Student && !string.IsNullOrEmpty(cleanedPhone))
+            if (settings != null && settings.UsernameRule == "email" && !string.IsNullOrEmpty(email))
+            {
+                username = email;
+            }
+            else if (settings != null && settings.UsernameRule == "phone" && !string.IsNullOrEmpty(cleanedPhone))
+            {
+                username = cleanedPhone;
+            }
+            else if (role == UserRole.Student && !string.IsNullOrEmpty(cleanedPhone))
             {
                 username = cleanedPhone;
             }
@@ -177,11 +187,8 @@ public class UserService : IUserService
         string password = request.Password;
         if (isStudent && string.IsNullOrWhiteSpace(password))
         {
-            var cleanFirst = NormalizeString(request.FirstName?.Trim().Split(' ')[0] ?? "");
-            var cleanLast = NormalizeString(request.LastName?.Trim() ?? "");
-            var lastChar = cleanLast.Length > 0 ? cleanLast.Substring(0, 1) : "x";
-            var lastTwo = (cleanedPhone ?? "").Length >= 2 ? (cleanedPhone ?? "").Substring((cleanedPhone ?? "").Length - 2) : "00";
-            password = $"{cleanFirst}.{lastTwo}.{lastChar}";
+            var rule = settings?.PasswordRule;
+            password = ResolvePasswordRule(rule, new User { FirstName = request.FirstName, LastName = request.LastName, Email = email, TcNo = request.TcNo }, cleanedPhone);
         }
 
         var tcCheck = request.TcNo?.Trim();
@@ -294,6 +301,8 @@ public class UserService : IUserService
         // Track emails across the whole db for generation
         var allDbEmails = (await _context.Users.IgnoreQueryFilters().Select(u => u.Email).ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var settings = await _context.SystemSettings.FirstOrDefaultAsync();
+
         foreach (var req in requests)
         {
             if (!Enum.TryParse<UserRole>(req.Role, true, out var role)) 
@@ -341,7 +350,15 @@ public class UserService : IUserService
 
             if (string.IsNullOrWhiteSpace(username) && existingUser == null)
             {
-                if (isStudent && !string.IsNullOrEmpty(cleanedPhone))
+                if (settings != null && settings.UsernameRule == "email" && !string.IsNullOrEmpty(email))
+                {
+                    username = email;
+                }
+                else if (settings != null && settings.UsernameRule == "phone" && !string.IsNullOrEmpty(cleanedPhone))
+                {
+                    username = cleanedPhone;
+                }
+                else if (isStudent && !string.IsNullOrEmpty(cleanedPhone))
                 {
                     username = cleanedPhone;
                 }
@@ -372,7 +389,8 @@ public class UserService : IUserService
             string password = req.Password;
             if (isStudent && string.IsNullOrEmpty(password))
             {
-                password = !string.IsNullOrWhiteSpace(email) ? email : "123456";
+                var rule = settings?.PasswordRule;
+                password = ResolvePasswordRule(rule, new User { FirstName = req.FirstName, LastName = req.LastName, Email = email, TcNo = req.TcNo }, cleanedPhone);
             }
             else if (!isStudent && string.IsNullOrWhiteSpace(password))
             {
@@ -658,6 +676,82 @@ public class UserService : IUserService
             }
         }
         return sb.ToString();
+    }
+
+    public async Task ApplyBrandingRulesRetroactivelyAsync(bool applyToStudentsOnly)
+    {
+        var settings = await _context.SystemSettings.FirstOrDefaultAsync();
+        if (settings == null) return;
+
+        var query = _context.Users.AsQueryable();
+        if (applyToStudentsOnly)
+        {
+            query = query.Where(u => u.Role == UserRole.Student);
+        }
+        else
+        {
+            query = query.Where(u => u.Role != UserRole.SuperAdmin);
+        }
+
+        var users = await query.ToListAsync();
+        foreach (var user in users)
+        {
+            var cleanedPhone = CleanPhoneNumber(user.Phone);
+
+            // 1. Kullanıcı Adı Güncelle
+            if (settings.UsernameRule == "email" && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                user.Username = user.Email.Trim();
+            }
+            else if (settings.UsernameRule == "phone" && !string.IsNullOrWhiteSpace(cleanedPhone))
+            {
+                user.Username = cleanedPhone;
+            }
+            else if (settings.UsernameRule == "default")
+            {
+                var baseUsername = ToEnglishUsername(user.FirstName, user.LastName);
+                user.Username = baseUsername;
+            }
+
+            // 2. Şifre Güncelle (Eğer eski şifre bcrypt değilse veya geriye dönük yeni kuralı sıfırlamak istiyorsak)
+            user.PasswordHash = ResolvePasswordRule(settings.PasswordRule, user, cleanedPhone);
+        }
+
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync($"users:");
+    }
+
+    private static string ResolvePasswordRule(string? rule, User user, string? cleanedPhone)
+    {
+        if (string.IsNullOrWhiteSpace(rule))
+        {
+            var cleanFirst = NormalizeString(user.FirstName?.Trim().Split(' ')[0] ?? "");
+            var cleanLast = NormalizeString(user.LastName?.Trim() ?? "");
+            var lastChar = cleanLast.Length > 0 ? cleanLast.Substring(0, 1) : "x";
+            var lastTwo = (cleanedPhone ?? "").Length >= 2 ? (cleanedPhone ?? "").Substring((cleanedPhone ?? "").Length - 2) : "00";
+            return $"{cleanFirst}.{lastTwo}.{lastChar}";
+        }
+
+        var cleanFirstName = NormalizeString(user.FirstName?.Trim().Split(' ')[0] ?? "");
+        var cleanLastName = NormalizeString(user.LastName?.Trim() ?? "");
+        var lastCharVal = cleanLastName.Length > 0 ? cleanLastName.Substring(0, 1) : "x";
+        var lastTwoVal = (cleanedPhone ?? "").Length >= 2 ? (cleanedPhone ?? "").Substring((cleanedPhone ?? "").Length - 2) : "00";
+        var phoneVal = cleanedPhone ?? "";
+        var emailVal = user.Email ?? "";
+        var tcnoVal = user.TcNo ?? "";
+        var tcnoLast4Val = tcnoVal.Length >= 4 ? tcnoVal.Substring(tcnoVal.Length - 4) : "0000";
+
+        var result = rule
+            .Replace("{first_name}", cleanFirstName)
+            .Replace("{last_name}", cleanLastName)
+            .Replace("{last_name_first_char}", lastCharVal)
+            .Replace("{phone}", phoneVal)
+            .Replace("{phone_last2}", lastTwoVal)
+            .Replace("{email}", emailVal)
+            .Replace("{tcno}", tcnoVal)
+            .Replace("{tcno_last4}", tcnoLast4Val);
+
+        return result;
     }
 
     public static string? CleanPhoneNumber(string? phone)
