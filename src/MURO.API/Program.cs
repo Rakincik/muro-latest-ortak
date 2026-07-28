@@ -249,7 +249,7 @@ builder.Services.AddCors(options =>
     {
         policy.SetIsOriginAllowed(_ => true)
             .AllowCredentials()
-            .WithHeaders("Authorization", "Content-Type", "X-Tenant-Id", "X-Requested-With", "X-Correlation-Id")
+            .WithHeaders("Authorization", "Content-Type", "X-Tenant-Id", "X-Requested-With", "X-Correlation-Id", "x-signalr-user-agent")
             .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
             .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });

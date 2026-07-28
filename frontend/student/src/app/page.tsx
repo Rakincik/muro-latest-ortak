@@ -121,9 +121,22 @@ export default function StudentLoginPage() {
 
         {/* Logo — tenant branding */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-white tracking-wider font-outfit uppercase">
-            {brandName}
-          </h1>
+          {branding?.logoUrl ? (
+            <div className="flex flex-col items-center gap-3">
+              <img 
+                src={branding.logoUrl} 
+                alt={brandName} 
+                className="h-16 w-auto object-contain drop-shadow-lg"
+              />
+              <h1 className="text-xl font-bold text-white/80 tracking-wider font-outfit uppercase">
+                {brandName}
+              </h1>
+            </div>
+          ) : (
+            <h1 className="text-3xl font-extrabold text-white tracking-wider font-outfit uppercase">
+              {brandName}
+            </h1>
+          )}
         </div>
 
         {/* Card */}
