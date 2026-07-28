@@ -126,11 +126,8 @@ export default function StudentLoginPage() {
               <img 
                 src={branding.logoUrl} 
                 alt={brandName} 
-                className="h-16 w-auto object-contain drop-shadow-lg"
+                className="h-24 w-auto object-contain drop-shadow-lg"
               />
-              <h1 className="text-xl font-bold text-white/80 tracking-wider font-outfit uppercase">
-                {brandName}
-              </h1>
             </div>
           ) : (
             <h1 className="text-3xl font-extrabold text-white tracking-wider font-outfit uppercase">
