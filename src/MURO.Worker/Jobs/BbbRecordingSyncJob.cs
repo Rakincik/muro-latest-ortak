@@ -162,15 +162,12 @@ public class BbbRecordingSyncJob : BackgroundService
         // BBB varsayılan olarak "presentation" kaydeder (HTML+SVG+ses).
         // Bu bir MP4 URL'i değil, web oynatıcı URL'idir.
         // İframe ile embed edilir, HLS dönüşümüne gerek yok.
-        var tenantId = recording.Session.Course.TenantId;
-        
         var asset = recording.MediaAsset;
         if (asset == null)
         {
             asset = new Domain.Entities.MediaAsset
             {
                 Id            = Guid.NewGuid(),
-                TenantId      = tenantId,
                 CourseId      = recording.Session.CourseId,
                 CreatedAt     = DateTime.UtcNow
             };
