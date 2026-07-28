@@ -50,6 +50,7 @@ builder.Services.AddHostedService<ExamScoringJob>();
 builder.Services.AddHostedService<NotificationProcessingJob>();
 builder.Services.AddHostedService<GroupExpirationJob>();
 builder.Services.AddHostedService<AuditLogCleanupJob>();
+builder.Services.AddHostedService<BbbRecordingSyncJob>();
 
 var host = builder.Build();
 
