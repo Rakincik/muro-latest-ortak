@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   // Subdomain deployment — no basePath needed
   // Serve admin under basePath if specified (e.g., '/admin'), otherwise no basePath
   basePath: process.env.NEXT_PUBLIC_BASE_PATH ? process.env.NEXT_PUBLIC_BASE_PATH : undefined,
+  trailingSlash: true,
 
   // Standalone output for Docker deployment
   output: 'standalone',
