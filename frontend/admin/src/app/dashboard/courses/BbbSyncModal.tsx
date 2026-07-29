@@ -69,25 +69,35 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
             (r.meetingId && r.meetingId.toLowerCase().includes(q)) ||
             (r.recordingId && r.recordingId.toLowerCase().includes(q))
         );
-    }, [recordings, searchQuery]);
-
-    // Handle server recording assignment
+    }, [recordings, searchQuery])    // Handle server recording assignment
     const handleAssignServerRecording = async (rec: BbbRecordingInfo) => {
-        const targetSessionId = selectedSessions[rec.recordingId];
-        if (!targetSessionId || !token || !tenantId) {
-            toastError("Uyarı", "Lütfen videoyu bağlamak için bir oturum seçin.");
+        const targetValue = selectedSessions[rec.recordingId];
+        if (!targetValue || !token || !tenantId) {
+            toastError("Uyarı", "Lütfen videoyu bağlamak için bir oturum veya ders seçin.");
             return;
         }
 
         setAssigning(rec.recordingId);
         try {
-            await adminBbbApi.assignRecording(token, tenantId, {
-                sessionId: targetSessionId,
-                recordingId: rec.recordingId,
-                playbackUrl: rec.playbackUrl || "",
-                durationSeconds: rec.durationSeconds
-            });
-            success("Başarılı", "Video kaydı oturuma başarıyla bağlandı.");
+            if (targetValue === "direct-course") {
+                await adminBbbApi.assignRecording(token, tenantId, {
+                    courseId: courseId,
+                    sessionId: null,
+                    recordingId: rec.recordingId,
+                    playbackUrl: rec.playbackUrl || "",
+                    durationSeconds: rec.durationSeconds
+                });
+                success("Başarılı", "Video kaydı doğrudan derse eklendi.");
+            } else {
+                await adminBbbApi.assignRecording(token, tenantId, {
+                    sessionId: targetValue,
+                    courseId: null,
+                    recordingId: rec.recordingId,
+                    playbackUrl: rec.playbackUrl || "",
+                    durationSeconds: rec.durationSeconds
+                });
+                success("Başarılı", "Video kaydı oturuma başarıyla bağlandı.");
+            }
             onSuccess();
             // Refresh recordings list to update status or remove if necessary
             loadRecordings();
@@ -106,7 +116,7 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
             return;
         }
         if (!manualSessionId) {
-            toastError("Uyarı", "Lütfen hedef oturumu seçin.");
+            toastError("Uyarı", "Lütfen hedef oturumu veya dersi seçin.");
             return;
         }
         if (!token || !tenantId) return;
@@ -116,13 +126,25 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
 
         setManualSubmitting(true);
         try {
-            await adminBbbApi.assignRecording(token, tenantId, {
-                sessionId: manualSessionId,
-                recordingId: null, // manual link has no BBB recording id
-                playbackUrl: manualUrl.trim(),
-                durationSeconds: durationSeconds
-            });
-            success("Başarılı", "Manuel video kaydı oturuma başarıyla bağlandı.");
+            if (manualSessionId === "direct-course") {
+                await adminBbbApi.assignRecording(token, tenantId, {
+                    courseId: courseId,
+                    sessionId: null,
+                    recordingId: null,
+                    playbackUrl: manualUrl.trim(),
+                    durationSeconds: durationSeconds
+                });
+                success("Başarılı", "Manuel video doğrudan derse eklendi.");
+            } else {
+                await adminBbbApi.assignRecording(token, tenantId, {
+                    sessionId: manualSessionId,
+                    courseId: null,
+                    recordingId: null,
+                    playbackUrl: manualUrl.trim(),
+                    durationSeconds: durationSeconds
+                });
+                success("Başarılı", "Manuel video kaydı oturuma başarıyla bağlandı.");
+            }
             setManualUrl("");
             setManualDuration("");
             setManualSessionId("");
@@ -250,12 +272,17 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
                                                         onChange={e => setSelectedSessions(prev => ({ ...prev, [rec.recordingId]: e.target.value }))}
                                                         className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-slate-50 focus:outline-none focus:bg-white transition-all cursor-pointer w-48"
                                                     >
-                                                        <option value="">— Hedef Oturum —</option>
-                                                        {sessions.map(s => (
-                                                            <option key={s.id} value={s.id}>
-                                                                {s.title} ({s.date})
-                                                            </option>
-                                                        ))}
+                                                        <option value="">— Hedef Oturum / Ders —</option>
+                                                        <option value="direct-course">— Doğrudan Derse Video Olarak Ekle —</option>
+                                                        {sessions.length > 0 && (
+                                                            <optgroup label="Canlı Oturumlar">
+                                                                {sessions.map(s => (
+                                                                    <option key={s.id} value={s.id}>
+                                                                        {s.title} ({s.date})
+                                                                    </option>
+                                                                ))}
+                                                            </optgroup>
+                                                        )}
                                                     </select>
 
                                                     <button 
@@ -317,12 +344,17 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
                                         onChange={e => setManualSessionId(e.target.value)}
                                         className="w-full px-4 py-3 text-sm font-medium border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#0A1931] focus:bg-white transition-all cursor-pointer"
                                     >
-                                        <option value="">— Hedef Oturum Seçin —</option>
-                                        {sessions.map(s => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.title} ({s.date})
-                                            </option>
-                                        ))}
+                                        <option value="">— Hedef Oturum / Ders Seçin —</option>
+                                        <option value="direct-course">— Doğrudan Derse Video Olarak Ekle —</option>
+                                        {sessions.length > 0 && (
+                                            <optgroup label="Canlı Oturumlar">
+                                                {sessions.map(s => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.title} ({s.date})
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        )}
                                     </select>
                                 </div>
                             </div>
