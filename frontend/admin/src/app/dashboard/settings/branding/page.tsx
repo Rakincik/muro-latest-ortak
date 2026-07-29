@@ -511,13 +511,13 @@ export default function BrandingSettingsPage() {
 
                         {/* Kullanıcı Adı Kuralı */}
                         <div>
-                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider mb-2">
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2">
                                 Otomatik Kullanıcı Adı Formatı
                             </label>
                             <select
                                 value={usernameRule}
                                 onChange={(e) => setUsernameRule(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#1B3B6F]/10 border border-[#1B3B6F]/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm appearance-none cursor-pointer"
+                                className="w-full px-4 py-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm cursor-pointer"
                             >
                                 <option value="default" className="bg-white text-[#0F172A]">İsim Soyisim İngilizce Karakter (Varsayılan - örn: ahmetyilmaz)</option>
                                 <option value="email" className="bg-white text-[#0F172A]">E-posta Adresi (örn: ahmet@gmail.com)</option>
@@ -527,13 +527,13 @@ export default function BrandingSettingsPage() {
 
                         {/* Video Sıralama Kuralı */}
                         <div>
-                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider mb-2">
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2">
                                 Varsayılan Ders Videosu Sıralaması
                             </label>
                             <select
                                 value={videoSortRule}
                                 onChange={(e) => setVideoSortRule(e.target.value)}
-                                className="w-full px-4 py-3 bg-[#1B3B6F]/10 border border-[#1B3B6F]/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm appearance-none cursor-pointer"
+                                className="w-full px-4 py-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm cursor-pointer"
                             >
                                 <option value="custom" className="bg-white text-[#0F172A]">Özel Sıralama (Admin Manuel Sıralaması)</option>
                                 <option value="date_asc" className="bg-white text-[#0F172A]">Tarihe Göre (Eskiden Yeniye)</option>
@@ -545,7 +545,7 @@ export default function BrandingSettingsPage() {
 
                         {/* Şifre Kuralı */}
                         <div className="space-y-3">
-                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider">
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider">
                                 Otomatik Üretilen Şifre Formülü
                             </label>
 
@@ -587,7 +587,7 @@ export default function BrandingSettingsPage() {
 
                             {/* Custom Formula input */}
                             <div className="pt-2">
-                                <label className="block text-[11px] font-bold text-[#A0AEC0] mb-1.5">Kendi Özel Formülünü Yaz</label>
+                                <label className="block text-[11px] font-bold text-[#64748B] mb-1.5">Kendi Özel Formülünü Yaz</label>
                                 <input
                                     type="text"
                                     value={passwordRule}
@@ -615,7 +615,7 @@ export default function BrandingSettingsPage() {
 
                         {/* Geriye Dönük Uygulama Seçenekleri */}
                         <div className="pt-4 border-t border-[#1B3B6F]/20 space-y-3">
-                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider">
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider">
                                 Kuralları Geriye Dönük Uygula
                             </label>
 
