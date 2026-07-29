@@ -40,8 +40,11 @@ export default function StudentLoginPage() {
         
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else if (window.location.hostname.endsWith("muro.click")) {
-          // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click
+        } else if (window.location.hostname.includes("monopol")) {
+          // Monopol: Redirect directly to the /admin/dashboard subpath
+          targetUrl = `/admin/dashboard`;
+        } else {
+          // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click, uzem.4takademi.com -> uzem-adm.4takademi.com
           const currentHost = window.location.hostname;
           let adminHost = currentHost;
           
@@ -56,9 +59,6 @@ export default function StudentLoginPage() {
           }
           
           targetUrl = `https://${adminHost}/dashboard`;
-        } else {
-          // Monopol: Redirect directly to the /admin/dashboard subpath
-          targetUrl = `/admin/dashboard`;
         }
 
         // Token'ı URL ile aktar (Subdomain'ler arası localStorage paylaşılmaz)

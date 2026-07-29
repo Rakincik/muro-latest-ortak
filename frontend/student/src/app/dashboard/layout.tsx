@@ -88,8 +88,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     const isDev = window.location.hostname === "localhost";
                     if (isDev) {
                         window.location.href = `http://localhost:3001/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
-                    } else if (window.location.hostname.endsWith("muro.click")) {
-                        // Subdomain architecture for demo
+                    } else if (window.location.hostname.includes("monopol")) {
+                        // Single-domain setup for Monopol (e.g. online.monopoluzem.com.tr)
+                        window.location.href = `/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
+                    } else {
+                        // Subdomain architecture for demo and other tenants
                         const currentHost = window.location.hostname;
                         let adminHost = currentHost;
                         if (currentHost.startsWith("3u.")) {
@@ -102,9 +105,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                            adminHost = "admin." + currentHost;
                         }
                         window.location.href = `https://${adminHost}/dashboard`;
-                    } else {
-                        // Single-domain setup for Monopol (e.g. online.monopoluzem.com.tr)
-                        window.location.href = `/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
                     }
                 }
             }
