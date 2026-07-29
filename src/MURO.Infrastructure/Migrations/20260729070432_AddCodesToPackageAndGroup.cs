@@ -10,18 +10,6 @@ namespace MURO.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "IsPodcastEnabled",
-                table: "SystemSettings");
-
-            migrationBuilder.DropColumn(
-                name: "IsQuestionsEnabled",
-                table: "SystemSettings");
-
-            migrationBuilder.DropColumn(
-                name: "IsSupportEnabled",
-                table: "SystemSettings");
-
             migrationBuilder.AddColumn<string>(
                 name: "Code",
                 table: "Packages",
