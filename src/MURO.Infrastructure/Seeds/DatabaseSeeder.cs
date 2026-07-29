@@ -9,6 +9,9 @@ public static class DatabaseSeeder
 {
     public static async Task SeedAsync(MuroDbContext db)
     {
+        // ── Auto Schema Update: Ensure FeaturesJson column exists ──────────────
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"FeaturesJson\" text;");
+
         // ── Admin user ────────────────────────────────────────────────────────
         var adminEmail = "admin@monopol.com.tr";
         var admin = await db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == adminEmail);

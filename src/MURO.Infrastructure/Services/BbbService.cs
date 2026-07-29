@@ -211,46 +211,51 @@ public class BbbService : IBbbService
 
     // ─── GetRecordings ─────────────────────────────────────────────────────────
 
-    public async Task<List<BbbRecordingInfo>> GetRecordingsAsync(string meetingId)
+    public async Task<List<BbbRecordingInfo>> GetRecordingsAsync(string? meetingId)
     {
-        var parameters = new Dictionary<string, string>
+        var cacheKey = $"bbb:recordings:{meetingId ?? "all"}";
+        return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            ["meetingID"] = meetingId,
-        };
+            var parameters = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(meetingId))
+            {
+                parameters["meetingID"] = meetingId;
+            }
 
-        var url = BuildUrl("getRecordings", parameters);
+            var url = BuildUrl("getRecordings", parameters);
 
-        _logger.LogInformation("BBB GetRecordings → {MeetingId}", meetingId);
+            _logger.LogInformation("BBB GetRecordings → {MeetingId}", meetingId ?? "ALL");
 
-        try
-        {
-            var response = await _httpClient.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-            await using var stream = await response.Content.ReadAsStreamAsync();
-            var data = DeserializeXml<BbbGetRecordingsResponse>(stream);
+            try
+            {
+                var response = await _httpClient.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+                await using var stream = await response.Content.ReadAsStreamAsync();
+                var data = DeserializeXml<BbbGetRecordingsResponse>(stream);
 
-            if (data.ReturnCode != "SUCCESS" || data.Recordings == null)
+                if (data.ReturnCode != "SUCCESS" || data.Recordings == null)
+                    return new List<BbbRecordingInfo>();
+
+                var recordings = data.Recordings
+                    .Select(r => new BbbRecordingInfo(
+                        RecordingId: r.RecordId ?? "",
+                        MeetingId: r.MeetingId ?? (meetingId ?? ""),
+                        PlaybackUrl: r.PlaybackFormats?.FirstOrDefault()?.Url,
+                        DurationSeconds: ParseRecordingDuration(r),
+                        StartTime: ParseUnixTimestamp(r.StartTime),
+                        Status: r.State ?? "unknown"
+                    ))
+                    .ToList();
+
+                _logger.LogInformation("BBB GetRecordings → {Count} kayıt bulundu", recordings.Count);
+                return recordings;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "BBB GetRecordings hatası: {MeetingId}", meetingId ?? "ALL");
                 return new List<BbbRecordingInfo>();
-
-            var recordings = data.Recordings
-                .Select(r => new BbbRecordingInfo(
-                    RecordingId: r.RecordId ?? "",
-                    MeetingId: r.MeetingId ?? meetingId,
-                    PlaybackUrl: r.PlaybackFormats?.FirstOrDefault()?.Url,
-                    DurationSeconds: ParseRecordingDuration(r),
-                    StartTime: ParseUnixTimestamp(r.StartTime),
-                    Status: r.State ?? "unknown"
-                ))
-                .ToList();
-
-            _logger.LogInformation("BBB GetRecordings → {Count} kayıt bulundu", recordings.Count);
-            return recordings;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "BBB GetRecordings hatası: {MeetingId}", meetingId);
-            return new List<BbbRecordingInfo>();
-        }
+            }
+        }, TimeSpan.FromMinutes(2));
     }
 
     // ─── IsMeetingRunning ──────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import DynamicTitle from "@/components/DynamicTitle";
 
 export const metadata: Metadata = {
   title: "Yönetim Paneli",
-  description: "Derece Uzaktan Eğitim Platformu",
+  description: "Uzaktan Eğitim Platformu",
 };
 
 export default function RootLayout({

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, sessionRecordingApi, videoApi, getFileUrl, getVideoPlaybackDetails, type RecordingDto, type VideoNoteDto, type CourseMediaDto, API_URL } from "@/lib/api";
+import { courseApi, sessionRecordingApi, videoApi, getFileUrl, getVideoPlaybackDetails, tenantApi, type RecordingDto, type VideoNoteDto, type CourseMediaDto, API_URL } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PremiumPlayer } from "@/components/video/PremiumPlayer";
@@ -45,6 +45,71 @@ export default function WatchPage() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [securityViolation, setSecurityViolation] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+
+    const [resolvedSortRule, setResolvedSortRule] = useState("custom");
+
+    const sortedRecordings: RecordingDto[] = useMemo(() => {
+        const list = [...allRecordings];
+        
+        const extractDateFromTitle = (title: string) => {
+            if (!title) return null;
+            const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+            if (match) return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
+            return null;
+        };
+
+        const getRecordingDate = (r: any) => {
+            const titleDate = extractDateFromTitle(r.sessionTitle);
+            if (titleDate) return titleDate;
+            return r.scheduledStart || r.createdAt || "";
+        };
+
+        list.sort((a: any, b: any) => {
+            if (resolvedSortRule === 'date_asc') {
+                const dateA = getRecordingDate(a);
+                const dateB = getRecordingDate(b);
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+            } else if (resolvedSortRule === 'date_desc') {
+                const dateA = getRecordingDate(a);
+                const dateB = getRecordingDate(b);
+                if (dateA !== dateB) return dateB.localeCompare(dateA);
+            } else if (resolvedSortRule === 'alpha_asc') {
+                const titleA = a.sessionTitle || "";
+                const titleB = b.sessionTitle || "";
+                if (titleA !== titleB) return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+            } else if (resolvedSortRule === 'alpha_desc') {
+                const titleA = a.sessionTitle || "";
+                const titleB = b.sessionTitle || "";
+                if (titleA !== titleB) return titleB.localeCompare(titleA, 'tr', { numeric: true, sensitivity: 'base' });
+            }
+
+            // Fallback to custom/orderIndex order (manual admin ordering)
+            if (a.orderIndex !== b.orderIndex) {
+                return (a.orderIndex || 0) - (b.orderIndex || 0);
+            }
+
+            // Fallback if no order index (e.g. date from title or scheduled start)
+            const titleDateA = extractDateFromTitle(a.sessionTitle);
+            const titleDateB = extractDateFromTitle(b.sessionTitle);
+            if (titleDateA && titleDateB && titleDateA !== titleDateB) {
+                return titleDateA.localeCompare(titleDateB);
+            }
+
+            const titleA = a.sessionTitle || "";
+            const titleB = b.sessionTitle || "";
+            if (titleA !== titleB) {
+                return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+            }
+
+            const fbDateA = a.scheduledStart || a.createdAt || "";
+            const fbDateB = b.scheduledStart || b.createdAt || "";
+            if (fbDateA !== fbDateB) return fbDateA.localeCompare(fbDateB);
+
+            return (a.id || "").localeCompare(b.id || "");
+        });
+
+        return list as RecordingDto[];
+    }, [allRecordings, resolvedSortRule]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -112,7 +177,13 @@ export default function WatchPage() {
 
                 const recs = await sessionRecordingApi.list(token, tenantId).catch(() => []);
                 const courseMedias = await courseApi.getCourseMedias(token, tenantId, courseId).catch(() => []);
+                const brandingData = await tenantApi.getBranding(tenantId).catch(() => null);
                 const sessions = courseData?.sessions ?? [];
+
+                const resolvedRule = courseData?.videoSortRule && courseData.videoSortRule !== "default"
+                    ? courseData.videoSortRule
+                    : (brandingData?.videoSortRule || "custom");
+                setResolvedSortRule(resolvedRule);
 
                 const typedRecs = recs as RecordingDto[];
 
@@ -152,20 +223,6 @@ export default function WatchPage() {
                         };
                     });
 
-                courseRecs.sort((a, b) => {
-                    if (a.orderIndex !== b.orderIndex) {
-                        return (a.orderIndex || 0) - (b.orderIndex || 0);
-                    }
-                    const dateA = a.scheduledStart || a.createdAt || "";
-                    const dateB = b.scheduledStart || b.createdAt || "";
-                    if (dateA && dateB) {
-                        return dateA.localeCompare(dateB);
-                    }
-                    if (dateA) return -1;
-                    if (dateB) return 1;
-                    return a.id.localeCompare(b.id);
-                });
-
                 setAllRecordings(courseRecs);
 
                 const current = courseRecs.find((r: RecordingDto) => r.id === recordingId) || courseRecs[0];
@@ -187,12 +244,12 @@ export default function WatchPage() {
 
     // Navigate to next recording
     const playNext = useCallback(() => {
-        const idx = allRecordings.findIndex(r => r.id === currentRec?.id);
-        if (idx < allRecordings.length - 1) {
-            const next = allRecordings[idx + 1];
+        const idx = sortedRecordings.findIndex((r: any) => r.id === currentRec?.id);
+        if (idx < sortedRecordings.length - 1) {
+            const next = sortedRecordings[idx + 1];
             router.push(`/dashboard/courses/${courseId}/watch/${next.id}`);
         }
-    }, [allRecordings, currentRec, courseId, router]);
+    }, [sortedRecordings, currentRec, courseId, router]);
 
     const switchRecording = (rec: RecordingDto) => {
         router.push(`/dashboard/courses/${courseId}/watch/${rec.id}`);
@@ -260,7 +317,7 @@ export default function WatchPage() {
         );
     }
 
-    const currentIndex = allRecordings.findIndex(r => r.id === currentRec?.id);
+    const currentIndex = sortedRecordings.findIndex((r: any) => r.id === currentRec?.id);
 
     return (
         <div className="fixed inset-0 bg-[#0A0A0F] z-50 flex flex-col">
@@ -279,7 +336,7 @@ export default function WatchPage() {
                 <div className="flex items-center gap-2 text-white/30 text-[10px]">
                     {currentIndex >= 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-bold">
-                            {currentIndex + 1} / {allRecordings.length}
+                            {currentIndex + 1} / {sortedRecordings.length}
                         </span>
                     )}
                 </div>
@@ -422,7 +479,10 @@ export default function WatchPage() {
                     <div className="flex-1 overflow-y-auto custom-scroll">
                         {sideTab === "playlist" ? (
                             <div className="p-2">
-                                {allRecordings.map((rec, idx) => {
+                                <div className="px-2 pb-2 mb-2 border-b border-white/5 flex items-center justify-between">
+                                    <span className="text-[10px] text-white/35 font-bold uppercase tracking-wider">Oynatma Listesi</span>
+                                </div>
+                                {sortedRecordings.map((rec: any, idx: number) => {
                                     const isActive = rec.id === currentRec?.id;
                                     const isWatched = watchedMap[rec.id];
                                     return (

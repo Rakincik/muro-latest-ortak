@@ -15,7 +15,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
-import { userApi, groupsApi, type UserDto, type PagedUsersResult, type CreateUserRequest } from "@/lib/api";
+import { userApi, groupsApi, tenantApi, type UserDto, type PagedUsersResult, type CreateUserRequest } from "@/lib/api";
 import { UserDirectCoursesTab } from "./UserDirectCoursesTab";
 import { UserDetail, type User } from "./UserDetail";
 
@@ -61,6 +61,64 @@ function formatPhoneForDisplay(phone?: string): string {
         digits = digits.substring(2);
     }
     return digits.substring(0, 10);
+}
+
+function resolvePasswordRule(rule: string, user: { firstName: string; lastName: string; email: string; phone: string; tcNo: string }): string {
+    const normalize = (str: string) => {
+        if (!str) return "";
+        return str.trim().toLowerCase()
+            .replace(/ı/g, "i")
+            .replace(/ğ/g, "g")
+            .replace(/ü/g, "u")
+            .replace(/ş/g, "s")
+            .replace(/ö/g, "o")
+            .replace(/ç/g, "c");
+    };
+
+    const cleanFirst = normalize(user.firstName.trim().split(" ")[0]);
+    const cleanLast = normalize(user.lastName.trim());
+    const lastChar = cleanLast.length > 0 ? cleanLast.substring(0, 1) : "x";
+    const cleanPhone = (user.phone || "").replace(/\D/g, "");
+    
+    // Strip leading zero for phone last 2
+    let digits = cleanPhone;
+    while (digits.startsWith("0")) {
+        digits = digits.substring(1);
+    }
+    if (digits.length === 12 && digits.startsWith("90")) {
+        digits = digits.substring(2);
+    }
+    const lastTwo = digits.length >= 2 ? digits.substring(digits.length - 2) : "00";
+
+    const phoneVal = digits;
+    const emailVal = user.email || "";
+    const tcnoVal = user.tcNo || "";
+    const tcnoLast4Val = tcnoVal.length >= 4 ? tcnoVal.substring(tcnoVal.length - 4) : "0000";
+
+    const targetRule = rule || "{first_name}.{phone_last2}.{last_name_first_char}";
+
+    return targetRule
+        .replace(/{first_name}/g, cleanFirst)
+        .replace(/{last_name}/g, cleanLast)
+        .replace(/{last_name_first_char}/g, lastChar)
+        .replace(/{phone}/g, phoneVal)
+        .replace(/{phone_last2}/g, lastTwo)
+        .replace(/{email}/g, emailVal)
+        .replace(/{tcno}/g, tcnoVal)
+        .replace(/{tcno_last4}/g, tcnoLast4Val);
+}
+
+function getPasswordRuleDescription(rule: string): string {
+    const targetRule = rule || "{first_name}.{phone_last2}.{last_name_first_char}";
+    return targetRule
+        .replace(/{first_name}/g, "[Ad]")
+        .replace(/{last_name}/g, "[Soyad]")
+        .replace(/{last_name_first_char}/g, "[SoyadınİlkHarfi]")
+        .replace(/{phone}/g, "[Telefon]")
+        .replace(/{phone_last2}/g, "[TelefonunSon2Hanesi]")
+        .replace(/{email}/g, "[E-posta]")
+        .replace(/{tcno}/g, "[TCKimlikNo]")
+        .replace(/{tcno_last4}/g, "[TCSon4Hanesi]");
 }
 
 function mapApiUser(u: UserDto): User {
@@ -151,6 +209,24 @@ export default function UsersPage() {
     const [loading, setLoading] = useState(true);
     const [groupOptions, setGroupOptions] = useState<string[]>([]);
     const isAssistant = currentUser?.role === "Assistant" || currentUser?.tenants?.find((t: any) => t.tenantId === tenantId)?.role === "Assistant";
+    const [usernameRule, setUsernameRule] = useState("default");
+    const [passwordRule, setPasswordRule] = useState("{first_name}.{phone_last2}.{last_name_first_char}");
+
+    useEffect(() => {
+        if (!token || !tenantId) return;
+        tenantApi.getAdminBranding(token, tenantId)
+            .then(res => {
+                if (res) {
+                    if ((res as any).usernameRule) {
+                        setUsernameRule((res as any).usernameRule);
+                    }
+                    if ((res as any).passwordRule) {
+                        setPasswordRule((res as any).passwordRule);
+                    }
+                }
+            })
+            .catch(() => {});
+    }, [token, tenantId]);
 
     const canEditUser = (u: User) => {
         if (isAssistant && ["Admin", "SuperAdmin", "Accountant"].includes(u.role)) {
@@ -317,11 +393,8 @@ export default function UsersPage() {
                 setEditUser(null);
                 setShowAddModal(false);
             } else {
-                let targetPassword = d.password;
-                if (!targetPassword && (d.role === "Student" || d.role === "Öğrenci")) {
-                    const lastTwo = d.phone && d.phone.length >= 2 ? d.phone.substring(d.phone.length - 2) : "00";
-                    targetPassword = d.tcNo ? `${d.tcNo}.${lastTwo}` : "123456";
-                } else if (!targetPassword) {
+                let targetPassword = d.password || "";
+                if (!targetPassword && (d.role !== "Student" && d.role !== "Öğrenci")) {
                     targetPassword = "123456";
                 }
 
@@ -774,10 +847,15 @@ export default function UsersPage() {
                                             </p>
                                             <p className="text-xs text-[#64748B] mb-5">Sütunlar: Ad, Soyad, TC, Telefon, Rol</p>
                                             <div className="bg-[#F8FAFC] p-4 rounded-xl text-left border border-[#E2E8F0]/60 space-y-3">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} className="text-emerald-500" /></div> 
-                                                    <p className="text-xs text-[#64748B] font-medium leading-relaxed">Şifreler otomatik olarak <strong className="text-[#0A1931]">TC + Numaranın Son 2 Hanesi</strong> olarak atanır.</p>
-                                                </div>
+                                                 <div className="flex items-start gap-3">
+                                                     <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0"><Check size={12} strokeWidth={3} className="text-emerald-500" /></div> 
+                                                     <p className="text-xs text-[#64748B] font-medium leading-relaxed">
+                                                         Şifreler otomatik olarak aktif şifre kuralına göre oluşturulur:{" "}
+                                                         <span className="inline-block font-mono font-black text-[#0A1931] bg-[#E2E8F0]/30 px-1.5 py-0.5 rounded border border-[#E2E8F0] text-[11px] mt-0.5">
+                                                             {getPasswordRuleDescription(passwordRule)}
+                                                         </span>
+                                                     </p>
+                                                 </div>
                                                 <div className="flex items-start gap-3">
                                                     <div className="mt-0.5 w-5 h-5 rounded-full bg-rose-100 flex items-center justify-center shrink-0"><AlertTriangle size={12} strokeWidth={3} className="text-rose-500" /></div> 
                                                     <p className="text-xs text-[#64748B] font-medium leading-relaxed">Telefon numaralarını başında <strong className="text-rose-600">0 olmadan</strong> giriniz!</p>
@@ -932,24 +1010,30 @@ export default function UsersPage() {
         const [f, sF] = useState({ firstName: user?.firstName || "", lastName: user?.lastName || "", email: user?.email || "", username: user?.username || "", phone: user?.phone || "", role: user?.role || "Student", groupNames: user?.groupNames || [] as string[], studentType: user?.studentType || "Aktif", tcNo: user?.tcNo || "" });
         const u = (k: string, v: string) => sF(p => ({ ...p, [k]: v }));
 
+        const [isUsernameManuallyEdited, setIsUsernameManuallyEdited] = useState(false);
+
+        useEffect(() => {
+            if (user) return; // Only for new users
+            if (isUsernameManuallyEdited) return;
+
+            let calculated = "";
+            if (usernameRule === "email") {
+                calculated = f.email;
+            } else if (usernameRule === "phone") {
+                calculated = f.phone;
+            } else {
+                calculated = ToEnglishUsernameSlug(f.firstName, f.lastName);
+            }
+            
+            sF(p => ({ ...p, username: calculated }));
+        }, [f.firstName, f.lastName, f.email, f.phone, usernameRule, user, isUsernameManuallyEdited]);
+
         const handleFirstNameChange = (val: string) => {
-            sF(p => {
-                const next = { ...p, firstName: val };
-                if (!user) {
-                    next.username = ToEnglishUsernameSlug(val, p.lastName);
-                }
-                return next;
-            });
+            u("firstName", val);
         };
 
         const handleLastNameChange = (val: string) => {
-            sF(p => {
-                const next = { ...p, lastName: val };
-                if (!user) {
-                    next.username = ToEnglishUsernameSlug(p.firstName, val);
-                }
-                return next;
-            });
+            u("lastName", val);
         };
         const toggleGroup = (g: string) => sF(p => ({ ...p, groupNames: p.groupNames.includes(g) ? p.groupNames.filter(x => x !== g) : [...p.groupNames, g] }));
 
@@ -1027,7 +1111,10 @@ export default function UsersPage() {
                                         <input 
                                             type="text" 
                                             value={f.username} 
-                                            onChange={e => u("username", ToEnglishUsernameSlug(e.target.value, ""))} 
+                                            onChange={e => {
+                                                setIsUsernameManuallyEdited(true);
+                                                u("username", ToEnglishUsernameSlug(e.target.value, ""));
+                                            }} 
                                             className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] font-bold text-[#1B3B6F]" 
                                             placeholder="kullaniciadi" 
                                         />
@@ -1071,9 +1158,9 @@ export default function UsersPage() {
                                 <div className="text-xs bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-800 font-semibold flex items-center justify-between">
                                     <span>Varsayılan Öğrenci Şifresi:</span>
                                     <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-300 select-all tracking-wider text-sm font-bold">
-                                        {f.firstName && f.lastName && f.phone ? 
-                                            `${(f.firstName || "").trim().split(" ")[0].toLowerCase().replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ö/g, "o").replace(/ç/g, "c")}.${(f.phone || "").replace(/\D/g, "").slice(-2)}.${(f.lastName || "").trim().toLowerCase().replace(/ı/g, "i").replace(/ğ/g, "g").replace(/ü/g, "u").replace(/ş/g, "s").replace(/ö/g, "o").replace(/ç/g, "c").charAt(0)}` 
-                                            : "(Ad, Soyad ve Telefon girin)"}
+                                        {f.firstName && f.lastName ? 
+                                            resolvePasswordRule(passwordRule, { firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, tcNo: f.tcNo })
+                                            : "(Ad ve Soyad girin)"}
                                     </span>
                                 </div>
                             )}
@@ -1091,7 +1178,7 @@ export default function UsersPage() {
                                     <ChevronDown size={16} className={`text-[#A0AEC0] transition-transform ${roleOpen ? 'rotate-180' : ''}`} />
                                 </button>
                                 {roleOpen && (
-                                    <div className="absolute z-50 left-0 right-0 top-full mt-1.5 bg-white rounded-xl border border-[#E2E8F0] shadow-xl shadow-black/10 py-1 max-h-48 overflow-y-auto animate-fade-in-up">
+                                    <div className="absolute z-50 left-0 right-0 bottom-full mb-1.5 bg-white rounded-xl border border-[#E2E8F0] shadow-xl shadow-black/10 py-1 max-h-48 overflow-y-auto animate-fade-in-up">
                                         {availableRoles.map(r => (
                                             <button key={r.value} type="button" onClick={() => { sF(p => ({ ...p, role: r.value, groupNames: (r.value === "Student" || r.value === "Öğrenci") ? p.groupNames : [] })); setRoleOpen(false); }}
                                                 className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-[#F8FAFC] transition-colors">

@@ -15,7 +15,8 @@ import {
     HelpCircle,
     Eye,
     ChevronRight,
-    Lock
+    Lock,
+    LayoutGrid
 } from "lucide-react";
 
 // Presets kanka, kullanıcı kolay seçsin diye
@@ -43,8 +44,26 @@ export default function BrandingSettingsPage() {
     const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
     const [usernameRule, setUsernameRule] = useState("default");
     const [passwordRule, setPasswordRule] = useState("{first_name}.{phone_last2}.{last_name_first_char}");
+    const [videoSortRule, setVideoSortRule] = useState("custom");
     const [applyToStudents, setApplyToStudents] = useState(false);
     const [applyToAllUsers, setApplyToAllUsers] = useState(false);
+    const [features, setFeatures] = useState<Record<string, boolean>>({
+        exams: true,
+        calendar: true,
+        assignments: true,
+        notifications: true,
+        questions: true,
+        support: true,
+        mediaLibrary: true,
+        podcast: true,
+        analytics: true,
+        examResults: true,
+        studentScorecard: true,
+        attendance: true,
+        accounting: true,
+        groups: true,
+        packages: true,
+    });
 
     // UX State
     const [loading, setLoading] = useState(true);
@@ -77,10 +96,16 @@ export default function BrandingSettingsPage() {
                     setSidebarLogoUrl(res.sidebarLogoUrl || null);
                     setUseWhiteLogoBackground(res.useWhiteLogoBackground || false);
                     setFaviconUrl(res.faviconUrl);
-                    // Cast res as any to support dynamic rule properties
                     const data = res as any;
                     if (data.usernameRule) setUsernameRule(data.usernameRule);
                     if (data.passwordRule) setPasswordRule(data.passwordRule);
+                    if (data.videoSortRule) setVideoSortRule(data.videoSortRule);
+                    if (data.featuresJson) {
+                        try {
+                            const parsed = JSON.parse(data.featuresJson);
+                            setFeatures(prev => ({ ...prev, ...parsed }));
+                        } catch (e) { console.error("featuresJson load failed:", e); }
+                    }
                 }
             })
             .catch(() => {
@@ -143,8 +168,10 @@ export default function BrandingSettingsPage() {
                 faviconUrl,
                 usernameRule,
                 passwordRule,
+                videoSortRule,
                 applyToStudents,
-                applyToAllUsers
+                applyToAllUsers,
+                featuresJson: JSON.stringify(features)
             });
             success("Kaydedildi", "Kurum temalandırma ayarları başarıyla kaydedildi!");
             
@@ -498,6 +525,24 @@ export default function BrandingSettingsPage() {
                             </select>
                         </div>
 
+                        {/* Video Sıralama Kuralı */}
+                        <div>
+                            <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider mb-2">
+                                Varsayılan Ders Videosu Sıralaması
+                            </label>
+                            <select
+                                value={videoSortRule}
+                                onChange={(e) => setVideoSortRule(e.target.value)}
+                                className="w-full px-4 py-3 bg-[#1B3B6F]/10 border border-[#1B3B6F]/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm appearance-none cursor-pointer"
+                            >
+                                <option value="custom" className="bg-white text-[#0F172A]">Özel Sıralama (Admin Manuel Sıralaması)</option>
+                                <option value="date_asc" className="bg-white text-[#0F172A]">Tarihe Göre (Eskiden Yeniye)</option>
+                                <option value="date_desc" className="bg-white text-[#0F172A]">Tarihe Göre (Yeniden Eskiye)</option>
+                                <option value="alpha_asc" className="bg-white text-[#0F172A]">İsme Göre (A-Z)</option>
+                                <option value="alpha_desc" className="bg-white text-[#0F172A]">İsme Göre (Z-A)</option>
+                            </select>
+                        </div>
+
                         {/* Şifre Kuralı */}
                         <div className="space-y-3">
                             <label className="block text-xs font-semibold text-[#A0AEC0] uppercase tracking-wider">
@@ -607,6 +652,53 @@ export default function BrandingSettingsPage() {
                                     </div>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Aktif Modüller ve Menü Yönetimi */}
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm space-y-6">
+                        <h2 className="text-md font-semibold text-[#1B3B6F] flex items-center gap-2 border-b border-[#1B3B6F]/20 pb-3">
+                            <LayoutGrid size={18} className="text-[#3B82F6]" />
+                            Aktif Modüller ve Menü Yönetimi
+                        </h2>
+                        <p className="text-xs text-[#64748B] leading-relaxed">
+                            Yönetici panelinde ve öğrenci arayüzünde görünmesini istediğiniz modülleri aktif edin. Kapatılan modüller sol menüden (sidebar) anında gizlenir.
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { key: "groups", label: "Gruplar Modülü", desc: "Öğrenci grupları ve hiyerarşi yönetimi" },
+                                { key: "packages", label: "Paket Satışı & Fiyatlandırma", desc: "Kurs paketi ve üyelik satışı" },
+                                { key: "exams", label: "Sınavlar & Tarama Testleri", desc: "Online sınavlar ve soru bankası" },
+                                { key: "calendar", label: "Etkinlik Takvimi", desc: "Canlı ders takvimi ve programlama" },
+                                { key: "assignments", label: "Ödevler & Teslimler", desc: "Ödev tanımlama ve dosya teslimleri" },
+                                { key: "notifications", label: "Toplu Bildirim Gönderimi", desc: "Toplu e-posta ve sistem içi duyurular" },
+                                { key: "questions", label: "Soru Sor (Soru-Cevap)", desc: "Öğrencilerin eğitmenlere soru sorma alanı" },
+                                { key: "support", label: "Teknik Destek (Destek Talebi)", desc: "Destek bileti (ticket) sistemi" },
+                                { key: "mediaLibrary", label: "Medya Kütüphanesi", desc: "Video ve materyal yükleme havuzu" },
+                                { key: "podcast", label: "Podcast & Ses Dosyaları", desc: "Sesli dersler ve dinleme modülü" },
+                                { key: "analytics", label: "Performans Analizleri", desc: "Sınıf ortalaması ve gelişim grafikleri" },
+                                { key: "examResults", label: "Sınav Sonuçları", desc: "Sınav sonuç listeleri ve analizler" },
+                                { key: "studentScorecard", label: "Öğrenci Karnesi", desc: "Bireysel gelişim ve karne modülü" },
+                                { key: "attendance", label: "Devam Raporları", desc: "Canlı ders yoklama ve devam bilgisi" },
+                                { key: "accounting", label: "Muhasebe & Satış Raporu", desc: "Ödeme, ciro ve cüzdan işlemleri" },
+                            ].map((mod) => (
+                                <div key={mod.key} className="flex items-center justify-between p-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl hover:bg-[#F1F5F9] transition-all">
+                                    <div className="flex-1 pr-3">
+                                        <span className="text-xs font-bold text-[#0F172A] block">{mod.label}</span>
+                                        <span className="text-[10px] text-[#64748B] mt-0.5 block leading-normal">{mod.desc}</span>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only peer" 
+                                            checked={features[mod.key] ?? false}
+                                            onChange={() => setFeatures(prev => ({ ...prev, [mod.key]: !prev[mod.key] }))}
+                                        />
+                                        <div className="w-9 h-5 bg-[#CBD5E1] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#3B82F6]"></div>
+                                    </label>
+                                </div>
+                            ))}
                         </div>
                     </div>
 

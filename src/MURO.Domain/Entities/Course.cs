@@ -18,6 +18,7 @@ public class Course : ISoftDeletable
     public bool IsPublished { get; set; } = false;
     public int Order { get; set; } = 0;
     public DateTime? StartDate { get; set; }
+    public string VideoSortRule { get; set; } = "default";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

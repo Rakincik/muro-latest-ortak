@@ -13,6 +13,7 @@ public record CourseListDto(
     int GroupCount,
     int Order,
     DateTime? StartDate,
+    string VideoSortRule,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     Guid? InstructorId,
@@ -29,6 +30,7 @@ public record CourseDetailDto(
     bool IsPublished,
     int Order,
     DateTime? StartDate,
+    string VideoSortRule,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     List<SessionDto> Sessions,
@@ -78,7 +80,8 @@ public record CreateCourseRequest(
     int? Order,
     DateTime? StartDate,
     Guid? InstructorId,
-    List<Guid>? InstructorIds = null
+    List<Guid>? InstructorIds = null,
+    string? VideoSortRule = "default"
 );
 
 public record UpdateCourseRequest(
@@ -90,7 +93,8 @@ public record UpdateCourseRequest(
     int? Order,
     DateTime? StartDate,
     Guid? InstructorId,
-    List<Guid>? InstructorIds = null
+    List<Guid>? InstructorIds = null,
+    string? VideoSortRule = null
 );
 
 public record CreateSessionRequest(

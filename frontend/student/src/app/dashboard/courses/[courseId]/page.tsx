@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, getDownloadUrl, getVideoPlaybackDetails, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto, API_URL } from "@/lib/api";
+import { courseApi, mediaApi, sessionRecordingApi, videoApi, getFileUrl, getDownloadUrl, getVideoPlaybackDetails, tenantApi, type SessionDto, type CourseDto, type MediaAssetDto, type RecordingDto, type VideoNoteDto, type CourseMaterialDto, type CourseMediaDto, API_URL } from "@/lib/api";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -66,13 +66,78 @@ export default function CourseDetailPage() {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
+    const [resolvedSortRule, setResolvedSortRule] = useState("custom");
+
+    const sortedRecordings: RecordingDto[] = useMemo(() => {
+        const list = [...recordings];
+        
+        const extractDateFromTitle = (title: string) => {
+            if (!title) return null;
+            const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+            if (match) return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
+            return null;
+        };
+
+        const getRecordingDate = (r: any) => {
+            const titleDate = extractDateFromTitle(r.sessionTitle);
+            if (titleDate) return titleDate;
+            return r.scheduledStart || r.createdAt || "";
+        };
+
+        list.sort((a: any, b: any) => {
+            if (resolvedSortRule === 'date_asc') {
+                const dateA = getRecordingDate(a);
+                const dateB = getRecordingDate(b);
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+            } else if (resolvedSortRule === 'date_desc') {
+                const dateA = getRecordingDate(a);
+                const dateB = getRecordingDate(b);
+                if (dateA !== dateB) return dateB.localeCompare(dateA);
+            } else if (resolvedSortRule === 'alpha_asc') {
+                const titleA = a.sessionTitle || "";
+                const titleB = b.sessionTitle || "";
+                if (titleA !== titleB) return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+            } else if (resolvedSortRule === 'alpha_desc') {
+                const titleA = a.sessionTitle || "";
+                const titleB = b.sessionTitle || "";
+                if (titleA !== titleB) return titleB.localeCompare(titleA, 'tr', { numeric: true, sensitivity: 'base' });
+            }
+
+            // Fallback to custom/orderIndex order (manual admin ordering)
+            if (a.orderIndex !== b.orderIndex) {
+                return (a.orderIndex || 0) - (b.orderIndex || 0);
+            }
+
+            // Fallback if no order index (e.g. date from title or scheduled start)
+            const titleDateA = extractDateFromTitle(a.sessionTitle);
+            const titleDateB = extractDateFromTitle(b.sessionTitle);
+            if (titleDateA && titleDateB && titleDateA !== titleDateB) {
+                return titleDateA.localeCompare(titleDateB);
+            }
+
+            const titleA = a.sessionTitle || "";
+            const titleB = b.sessionTitle || "";
+            if (titleA !== titleB) {
+                return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+            }
+
+            const fbDateA = a.scheduledStart || a.createdAt || "";
+            const fbDateB = b.scheduledStart || b.createdAt || "";
+            if (fbDateA !== fbDateB) return fbDateA.localeCompare(fbDateB);
+
+            return (a.id || "").localeCompare(b.id || "");
+        });
+
+        return list as RecordingDto[];
+    }, [recordings, resolvedSortRule]);
+
     // ── Custom hooks — extracted player & notes state ──
-    const player = useVideoPlayer(courseId, recordings, token, tenantId, activeTab);
+    const player = useVideoPlayer(courseId, sortedRecordings, token, tenantId, activeTab);
     const playerNotes = usePlayerNotes(player.selectedRec?.mediaAssetId || player.selectedRec?.id || null, token, tenantId);
 
     // Aliases for backward compatibility with render code
     const { selectedRec, setSelectedRec, isFullscreen, toggleFullscreen, sidebarOpen, setSidebarOpen,
-        iframeLoaded, setIframeLoaded, watchedMap, playerContainerRef, sortedRecordings,
+        iframeLoaded, setIframeLoaded, watchedMap, playerContainerRef,
         watchedCount, progressPercent, lastWatchedRec } = player;
 
     const activeRecId = selectedRec?.id || sortedRecordings[0]?.id;
@@ -130,9 +195,19 @@ export default function CourseDetailPage() {
             catch { return []; }
         };
 
-        Promise.all([fetchCourse(), fetchCourseMedias(), fetchRecordings(), fetchMaterials()])
-            .then(([courseData, courseMedias, recs, mats]) => {
+        const fetchBranding = async () => {
+            try { return await tenantApi.getBranding(tenantId); }
+            catch { return null; }
+        };
+
+        Promise.all([fetchCourse(), fetchCourseMedias(), fetchRecordings(), fetchMaterials(), fetchBranding()])
+            .then(([courseData, courseMedias, recs, mats, brandingData]) => {
                 setCourse(courseData);
+                
+                const resolvedRule = courseData?.videoSortRule && courseData.videoSortRule !== "default"
+                    ? courseData.videoSortRule
+                    : (brandingData?.videoSortRule || "custom");
+                setResolvedSortRule(resolvedRule);
                 // Sessions come from course detail response
                 const sess = courseData?.sessions ?? [];
                 setSessions(sess);
@@ -176,48 +251,6 @@ export default function CourseDetailPage() {
                     };
                 });
 
-                // Sıralamayı tarihe göre (eskiden yeniye) düzenle (Özellikle BBB dersleri için)
-                mappedRecordings.sort((a, b) => {
-                    const extractDateFromTitle = (title: string) => {
-                        if (!title) return null;
-                        const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-                        if (match) return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
-                        return null;
-                    };
-                    
-                    const titleA = a.sessionTitle || "";
-                    const titleB = b.sessionTitle || "";
-                    
-                    // 1. Sıralama önceliği: Title'dan çıkarılan tarihe göre (varsa)
-                    const parsedDateA = extractDateFromTitle(titleA);
-                    const parsedDateB = extractDateFromTitle(titleB);
-                    
-                    if (parsedDateA && parsedDateB && parsedDateA !== parsedDateB) {
-                        return parsedDateA.localeCompare(parsedDateB);
-                    }
-                    
-                    // 2. Sıralama önceliği: Alfabetik (numeric: true ile DERS-2 ve DERS-10'u doğru sıralar)
-                    if (titleA !== titleB) {
-                        return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
-                    }
-
-                    // 3. Sıralama önceliği: Admin elle sıralama yaptıysa (orderIndex)
-                    if (a.orderIndex !== b.orderIndex) {
-                        return (a.orderIndex || 0) - (b.orderIndex || 0);
-                    }
-                    
-                    // 4. En son çare: Oluşturulma tarihi
-                    const fallbackDateA = a.scheduledStart || a.createdAt || "";
-                    const fallbackDateB = b.scheduledStart || b.createdAt || "";
-                    
-                    if (fallbackDateA !== fallbackDateB) {
-                        return fallbackDateA.localeCompare(fallbackDateB);
-                    }
-                    
-                    // 5. ID'ye göre
-                    return (a.id || "").localeCompare(b.id || "");
-                });
-                
                 setRecordings(mappedRecordings);
                 setVideos([]); // Deprecated in unified architecture, keep empty to prevent crashes
                 setMaterials(mats || []);

@@ -617,7 +617,7 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                 }
             }
         }),
-        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5] },
+        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3] },
         disableContextMenu: true,
         keyboard: { focused: true, global: true },
         tooltips: { controls: true, seek: true },

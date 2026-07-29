@@ -33,14 +33,19 @@ export const tenantApi = {
             primaryColor: string;
             accentColor: string | null;
             footerText: string | null;
+            sidebarLogoUrl?: string | null;
+            useWhiteLogoBackground?: boolean;
+            videoSortRule?: string | null;
         }>('/admin/tenant/branding', { token, tenantId }),
 
     /** SuperAdmin — update dynamic branding. */
     updateAdminBranding: (token: string, tenantId: string, data: {
         name: string; logoUrl?: string | null; faviconUrl?: string | null;
         primaryColor: string; accentColor?: string | null; footerText?: string | null;
-        usernameRule?: string; passwordRule?: string;
+        sidebarLogoUrl?: string | null; useWhiteLogoBackground?: boolean;
+        usernameRule?: string; passwordRule?: string; videoSortRule?: string;
         applyToStudents?: boolean; applyToAllUsers?: boolean;
+        featuresJson?: string | null;
     }) =>
         api<unknown>('/admin/tenant/branding', {
             method: 'POST', token, tenantId, body: JSON.stringify(data),

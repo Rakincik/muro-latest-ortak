@@ -176,7 +176,7 @@ export interface AuthResponse { token: string; refreshToken: string; expiresAt: 
 export interface UserDto { id: string; firstName: string; lastName: string; email: string; phone?: string; role: string; studentType?: string; demoExpiresAt?: string; isActive: boolean; createdAt: string; tenants: UserTenantDto[]; }
 export interface UserTenantDto { tenantId: string; tenantName: string; tenantCode: string; role: string; status: string; }
 
-export interface CourseDto { id: string; title: string; description: string | null; thumbnailUrl: string | null; isPublished: boolean; sessionCount: number; completionPercentage?: number; instructorId?: string | null; instructorName?: string | null; }
+export interface CourseDto { id: string; title: string; description: string | null; thumbnailUrl: string | null; isPublished: boolean; sessionCount: number; completionPercentage?: number; instructorId?: string | null; instructorName?: string | null; videoSortRule?: string; }
 export interface SessionDto { id: string; title: string; description: string | null; order: number; videoUrl: string | null; durationMinutes: number | null; scheduledStart: string | null; scheduledEnd: string | null; bbbMeetingId: string | null; status: string; recordingEnabled: boolean; }
 export interface UpcomingSessionDto extends SessionDto { courseId: string; courseTitle: string; }
 export interface CourseMaterialDto { id: string; title: string; fileName: string; filePath: string; contentType: string; fileSize: number; createdAt: string; }
@@ -762,6 +762,7 @@ export interface TenantBrandingDto {
     primaryColor: string | null;
     accentColor: string | null;
     footerText: string | null;
+    videoSortRule?: string | null;
 }
 
 export const tenantApi = {

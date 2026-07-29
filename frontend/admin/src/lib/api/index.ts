@@ -21,3 +21,4 @@ export * from './tenant';
 export * from './upload';
 export * from './users';
 export * from './mediaLibrary';
+export * from './bbb';

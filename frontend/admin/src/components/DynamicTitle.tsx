@@ -22,9 +22,49 @@ export default function DynamicTitle() {
     }, []);
 
     useEffect(() => {
-        if (brandName) {
-            document.title = brandName;
-        }
+        if (!brandName) return;
+
+        const updateMetadata = () => {
+            const currentTitle = document.title;
+            if (currentTitle.includes("Yönetim Paneli")) {
+                const newTitle = currentTitle.replace("Yönetim Paneli", brandName);
+                if (document.title !== newTitle) {
+                    document.title = newTitle;
+                }
+            } else if (!currentTitle) {
+                document.title = brandName;
+            }
+
+            const metaDesc = document.querySelector("meta[name='description']") as HTMLMetaElement;
+            if (metaDesc) {
+                const targetDesc = `${brandName} Uzaktan Eğitim Platformu`;
+                if (metaDesc.content !== targetDesc) {
+                    metaDesc.content = targetDesc;
+                }
+            }
+        };
+
+        // Run initially
+        updateMetadata();
+
+        // Listen for Next.js metadata overrides
+        const target = document.querySelector('title');
+        if (!target) return;
+
+        const observer = new MutationObserver(() => {
+            updateMetadata();
+        });
+
+        observer.observe(target, {
+            childList: true,
+            characterData: true,
+            subtree: true
+        });
+
+        return () => observer.disconnect();
+    }, [pathname, brandName]);
+
+    useEffect(() => {
         if (faviconUrl) {
             let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
             if (!link) {
@@ -34,7 +74,7 @@ export default function DynamicTitle() {
             }
             link.href = faviconUrl;
         }
-    }, [pathname, brandName, faviconUrl]);
+    }, [pathname, faviconUrl]);
 
     return null;
 }

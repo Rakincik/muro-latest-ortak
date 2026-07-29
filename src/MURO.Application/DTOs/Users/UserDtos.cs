@@ -49,7 +49,8 @@ public record CreateUserRequest(
     string Role,
     string? StudentType,
     DateTime? DemoExpiresAt,
-    string? TcNo = null
+    string? TcNo = null,
+    List<string>? GroupNames = null
 );
 
 public record UpdateUserRequest(
@@ -63,7 +64,8 @@ public record UpdateUserRequest(
     string? StudentType,
     DateTime? DemoExpiresAt,
     bool? IsActive,
-    string? TcNo = null
+    string? TcNo = null,
+    List<string>? GroupNames = null
 );
 
 public record BulkCreateUserRequest(List<CreateUserRequest> Users);

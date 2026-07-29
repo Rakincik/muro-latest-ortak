@@ -80,7 +80,8 @@ public class SystemController : ControllerBase
             Name = settings.TenantName,
             PrimaryColor = settings.PrimaryColor,
             AccentColor = settings.AccentColor,
-            FooterText = settings.FooterText
+            FooterText = settings.FooterText,
+            VideoSortRule = settings.VideoSortRule ?? "custom"
         });
     }
 
@@ -96,8 +97,10 @@ public class SystemController : ControllerBase
         string? FooterText,
         string? UsernameRule,
         string? PasswordRule,
+        string? VideoSortRule,
         bool ApplyToStudents = false,
-        bool ApplyToAllUsers = false
+        bool ApplyToAllUsers = false,
+        string? FeaturesJson = null
     );
 
     [HttpGet("/api/v1/admin/tenant/branding")]
@@ -143,6 +146,8 @@ public class SystemController : ControllerBase
         settings.FooterText = request.FooterText;
         if (!string.IsNullOrEmpty(request.UsernameRule)) settings.UsernameRule = request.UsernameRule;
         if (!string.IsNullOrEmpty(request.PasswordRule)) settings.PasswordRule = request.PasswordRule;
+        if (!string.IsNullOrEmpty(request.VideoSortRule)) settings.VideoSortRule = request.VideoSortRule;
+        settings.FeaturesJson = request.FeaturesJson;
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

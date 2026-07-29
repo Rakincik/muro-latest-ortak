@@ -9,6 +9,7 @@ import { useToast } from "@/components/toast";
 import { LibrarySelectorModal } from "@/components/ui/LibrarySelectorModal";
 import { ExamSelectorModal } from "@/components/ui/ExamSelectorModal";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { BbbSyncModal } from "./BbbSyncModal";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
@@ -63,6 +64,7 @@ export function CourseMediaTab({
     const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
     const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+    const [isBbbSyncOpen, setIsBbbSyncOpen] = useState(false);
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
     
     // Inline confirmation states
@@ -416,6 +418,15 @@ export function CourseMediaTab({
                             { label: "Tümü (Sıralamaya İzin Ver)", value: -1 }
                         ]}
                     />
+                    {user?.role === 'SuperAdmin' && (
+                        <button 
+                            onClick={() => setIsBbbSyncOpen(true)}
+                            className="flex items-center gap-2 bg-[#0A1931] hover:bg-[#1B3B6F] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
+                        >
+                            <Video size={16} />
+                            BBB Kayıt Aktar
+                        </button>
+                    )}
                     <button 
                         onClick={() => setIsLibraryModalOpen(true)}
                         className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
@@ -840,6 +851,17 @@ export function CourseMediaTab({
                     onSelect={handleExamSelect}
                 />
             )}
+
+            <BbbSyncModal 
+                isOpen={isBbbSyncOpen}
+                onClose={() => setIsBbbSyncOpen(false)}
+                courseId={courseId}
+                sessions={sessions}
+                onSuccess={async () => {
+                    await loadMedias();
+                    if (onRefreshDetail) await onRefreshDetail();
+                }}
+            />
 
         </div>
     );

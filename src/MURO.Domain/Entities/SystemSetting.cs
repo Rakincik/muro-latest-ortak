@@ -17,5 +17,7 @@ public class SystemSetting
     public string? FooterText { get; set; }
     public string UsernameRule { get; set; } = "default";
     public string PasswordRule { get; set; } = "{first_name}.{phone_last2}.{last_name_first_char}";
+    public string VideoSortRule { get; set; } = "custom";
+    public string? FeaturesJson { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

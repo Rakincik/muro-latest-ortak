@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
     BookOpen, Plus, Search, Edit3, Trash2, Eye, X, Users, Clock, Video,
     Monitor, Layers, Play, ArrowLeft, Calendar as Cal,
@@ -66,6 +67,7 @@ interface MappedCourse {
     sessions: MappedSession[]; groups: CourseGroup[]; groupCount: number; order: number;
     instructorId: string | null; instructorName: string | null;
     instructors?: { id: string, fullName: string, email: string }[] | null;
+    videoSortRule: string;
 }
 
 type DTab = "overview" | "sessions" | "media" | "recordings" | "docs" | "settings" | "students";
@@ -128,6 +130,7 @@ const mapCourse = (c: CourseListDto, sessions: MappedSession[] = [], detail?: Co
     instructorId: c.instructorId ?? detail?.instructorId ?? null,
     instructorName: c.instructorName ?? detail?.instructorName ?? null,
     instructors: c.instructors ?? detail?.instructors ?? null,
+    videoSortRule: c.videoSortRule || detail?.videoSortRule || "default",
 });
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -254,10 +257,10 @@ export default function CoursesPage() {
         } catch { toastError("Hata", "Yayın durumu güncellenemedi."); }
     }, [token, tenantId, detail]);
 
-    const handleSettingsSave = useCallback(async (id: string, data: { title: string; description: string; courseType: string; instructorId?: string; instructorIds?: string[] }) => {
+    const handleSettingsSave = useCallback(async (id: string, data: { title: string; description: string; courseType: string; instructorId?: string; instructorIds?: string[]; videoSortRule?: string }) => {
         if (!token || !tenantId) return;
         try {
-            const payload = { ...data, instructorId: data.instructorId || null, instructorIds: data.instructorIds };
+            const payload = { ...data, instructorId: data.instructorId || null, instructorIds: data.instructorIds, videoSortRule: data.videoSortRule || "default" };
             const updatedCourse = await courseApi.update(token, tenantId, id, payload);
             setCourses(p => p.map(c => c.id === id ? { ...c, ...payload, type: data.courseType, instructors: updatedCourse.instructors } : c));
             if (detail?.id === id) setDetail(p => p ? { ...p, ...payload, type: data.courseType, instructors: updatedCourse.instructors } : null);
@@ -761,7 +764,7 @@ export default function CoursesPage() {
                 )}
 
                 {/* Attendance Modal */}
-                {attendanceModalOpen && (
+                {attendanceModalOpen && typeof window !== "undefined" && createPortal(
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
                             <div className="flex items-center gap-4 p-6 border-b border-[#E2E8F0]/60 bg-[#E2E8F0]/15">
@@ -824,7 +827,8 @@ export default function CoursesPage() {
                                 ) : null}
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
         );
@@ -1148,7 +1152,8 @@ function SettingsTab({ course, onSave, onDelete }: { course: MappedCourse; onSav
         title: course.title, description: course.description, courseType: course.type, 
         thumbnailUrl: course.thumbnailUrl || "", order: course.order, isPublished: course.isPublished,
         instructorId: course.instructorId || "",
-        instructorIds: (course.instructors || []).map(i => i.id)
+        instructorIds: (course.instructors || []).map(i => i.id),
+        videoSortRule: course.videoSortRule || "default"
     });
     const [instructors, setInstructors] = useState<UserDto[]>([]);
 
@@ -1209,6 +1214,22 @@ function SettingsTab({ course, onSave, onDelete }: { course: MappedCourse; onSav
                                 </button>
                             ))}
                         </div>
+                    </div>
+                    {/* Video Sıralama Kuralı */}
+                    <div>
+                        <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Ders İçi Video Sıralaması</label>
+                        <select
+                            value={f.videoSortRule}
+                            onChange={(e) => sF(p => ({ ...p, videoSortRule: e.target.value }))}
+                            className="w-full px-4 py-3 text-sm font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#A0AEC0] transition-all cursor-pointer"
+                        >
+                            <option value="default">Varsayılan (Kurum Ayarı Neyse O)</option>
+                            <option value="custom">Özel Sıralama (Admin Manuel Sıralaması)</option>
+                            <option value="date_asc">Tarihe Göre (Eskiden Yeniye)</option>
+                            <option value="date_desc">Tarihe Göre (Yeniden Eskiye)</option>
+                            <option value="alpha_asc">İsim (A-Z)</option>
+                            <option value="alpha_desc">İsim (Z-A)</option>
+                        </select>
                     </div>
                     <div className="grid grid-cols-1 gap-4">
                         <div>
@@ -1652,7 +1673,9 @@ function LiveStartModal({
     
     const isStartDisabled = !topic.trim() || loading || (type === "youtube" && !videoUrl.trim());
 
-    return (
+    if (typeof window === "undefined") return null;
+
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
                 <div className="flex items-center gap-4 p-6 border-b border-[#E2E8F0]/60 bg-[#E2E8F0]/15">
@@ -1708,7 +1731,8 @@ function LiveStartModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

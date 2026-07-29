@@ -28,7 +28,7 @@ public interface IBbbService
     /// BBB sunucusundan bir meeting'e ait kayıtları çeker.
     /// recording-ready webhook'tan ~1-5 dk sonra kayıt hazır olur.
     /// </summary>
-    Task<List<BbbRecordingInfo>> GetRecordingsAsync(string meetingId);
+    Task<List<BbbRecordingInfo>> GetRecordingsAsync(string? meetingId);
 
     /// <summary>
     /// Meeting'in BBB'de hâlâ aktif olup olmadığını kontrol eder.

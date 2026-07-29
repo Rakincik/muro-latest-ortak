@@ -19,6 +19,7 @@ export interface CourseListDto {
     instructorId?: string | null;
     instructorName?: string | null;
     instructors?: CourseInstructorDto[] | null;
+    videoSortRule: string;
 }
 
 export interface SessionDto {
@@ -48,6 +49,7 @@ export interface CourseDetailDto {
     createdAt: string;
     updatedAt?: string | null;
     sessions: SessionDto[];
+    videoSortRule: string;
     groups: { groupId: string; groupName: string; mode: string }[];
     instructorId?: string | null;
     instructorName?: string | null;
@@ -539,6 +541,8 @@ export interface PagedUsersResult {
 export interface CreateUserRequest {
     firstName: string; lastName: string; email: string; username?: string;
     password: string; role: string; studentType?: string; phone?: string;
+    tcNo?: string;
+    groupNames?: string[];
 }
 
 export interface QuestionDto {
@@ -600,6 +604,7 @@ export interface TenantBrandingDto {
     primaryColor: string | null;
     accentColor: string | null;
     footerText: string | null;
+    featuresJson?: string | null;
 }
 
 export interface SubmissionDto {

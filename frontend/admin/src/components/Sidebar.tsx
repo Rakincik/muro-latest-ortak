@@ -122,7 +122,11 @@ export default function Sidebar({
 
     const currentTenant = user?.tenants.find(t => t.tenantId === currentTenantId);
     let featuresDict: Record<string, boolean> = {};
-    if (currentTenant?.features) {
+    if (branding?.featuresJson) {
+        try {
+            featuresDict = JSON.parse(branding.featuresJson);
+        } catch { }
+    } else if (currentTenant?.features) {
         try {
             featuresDict = JSON.parse(currentTenant.features);
         } catch { }

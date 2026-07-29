@@ -191,12 +191,10 @@ public class UserService : IUserService
             password = ResolvePasswordRule(rule, new User { FirstName = request.FirstName, LastName = request.LastName, Email = email, TcNo = request.TcNo }, cleanedPhone);
         }
 
-        var tcCheck = request.TcNo?.Trim();
         var existingUser = await _context.Users.IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => 
                 (!string.IsNullOrEmpty(email) && u.Email == email) || 
                 u.Username == username ||
-                (!string.IsNullOrEmpty(tcCheck) && u.TcNo == tcCheck) ||
                 (!string.IsNullOrEmpty(cleanedPhone) && u.Phone == cleanedPhone));
 
         if (existingUser != null)
@@ -217,14 +215,39 @@ public class UserService : IUserService
             existingUser.IsDeleted = false; // Restore user visibility globally
             existingUser.StudentType = Enum.TryParse<StudentType>(request.StudentType, true, out var st2) ? st2 : null;
             existingUser.DemoExpiresAt = request.DemoExpiresAt;
-            if (!string.IsNullOrEmpty(tcCheck)) existingUser.TcNo = tcCheck;
+            if (!string.IsNullOrEmpty(request.TcNo)) existingUser.TcNo = request.TcNo.Trim();
+
+            // Remove existing memberships
+            var existingMemberships = await _context.GroupMembers.Where(gm => gm.UserId == existingUser.Id).ToListAsync();
+            _context.GroupMembers.RemoveRange(existingMemberships);
+
+            // Add requested memberships
+            if (request.GroupNames != null && request.GroupNames.Any())
+            {
+                var groups = await _context.Groups
+                    .Where(g => request.GroupNames.Contains(g.Name))
+                    .ToListAsync();
+                foreach (var group in groups)
+                {
+                    _context.GroupMembers.Add(new GroupMember
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = existingUser.Id,
+                        GroupId = group.Id,
+                        Status = "active"
+                    });
+                }
+            }
 
             await _context.SaveChangesAsync();
             await _cache.RemoveByPrefixAsync($"users:");
+            await _cache.RemoveByPrefixAsync($"groups:");
+
+            var userGroupNames = request.GroupNames ?? new List<string>();
 
             return new UserListDto(existingUser.Id, existingUser.FirstName, existingUser.LastName, existingUser.Email, existingUser.Username,
                 existingUser.Phone, existingUser.Role.ToString(), existingUser.StudentType?.ToString(),
-                existingUser.IsActive, existingUser.CreatedAt, existingUser.LastLoginAt, null, existingUser.PasswordHash.StartsWith("$2") ? null : existingUser.PasswordHash,
+                existingUser.IsActive, existingUser.CreatedAt, existingUser.LastLoginAt, userGroupNames, existingUser.PasswordHash.StartsWith("$2") ? null : existingUser.PasswordHash,
                 existingUser.TcNo);
         }
 
@@ -246,12 +269,32 @@ public class UserService : IUserService
 
         _context.Users.Add(user);
 
+        if (request.GroupNames != null && request.GroupNames.Any())
+        {
+            var groups = await _context.Groups
+                .Where(g => request.GroupNames.Contains(g.Name))
+                .ToListAsync();
+            foreach (var group in groups)
+            {
+                _context.GroupMembers.Add(new GroupMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    GroupId = group.Id,
+                    Status = "active"
+                });
+            }
+        }
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+
+        var createdUserGroupNames = request.GroupNames ?? new List<string>();
 
         return new UserListDto(user.Id, user.FirstName, user.LastName, user.Email, user.Username,
             user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
-            user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
+            user.IsActive, user.CreatedAt, user.LastLoginAt, createdUserGroupNames, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
             user.TcNo);
     }
 
@@ -272,19 +315,13 @@ public class UserService : IUserService
 
         var results = new List<UserListDto>();
         
-        var requestTcs = requests.Where(r => !string.IsNullOrEmpty(r.TcNo)).Select(r => r.TcNo.Trim()).ToList();
         var requestPhones = requests.Where(r => !string.IsNullOrEmpty(r.Phone)).Select(r => CleanPhoneNumber(r.Phone)).Where(p => p != null).ToList();
         var requestEmails = requests.Where(r => !string.IsNullOrEmpty(r.Email)).Select(r => r.Email.Trim()).ToList();
 
         var existingUsersMatch = await _context.Users.IgnoreQueryFilters()
             .Where(u => requestEmails.Contains(u.Email) || 
-                       (!string.IsNullOrEmpty(u.TcNo) && requestTcs.Contains(u.TcNo)) || 
                        (!string.IsNullOrEmpty(u.Phone) && requestPhones.Contains(u.Phone)))
             .ToListAsync();
-
-        var existingUsersByTc = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.TcNo))
-            .GroupBy(u => u.TcNo, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
             
         var existingUsersByPhone = existingUsersMatch.Where(u => !string.IsNullOrEmpty(u.Phone))
             .GroupBy(u => u.Phone, StringComparer.OrdinalIgnoreCase)
@@ -295,7 +332,6 @@ public class UserService : IUserService
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var generatedEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var generatedTcs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var generatedPhones = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         // Track emails across the whole db for generation
@@ -319,21 +355,8 @@ public class UserService : IUserService
 
             User? existingUser = null;
 
-            if (!string.IsNullOrEmpty(tc) && existingUsersByTc.TryGetValue(tc, out var userByTc)) existingUser = userByTc;
-            else if (!string.IsNullOrEmpty(cleanedPhone) && existingUsersByPhone.TryGetValue(cleanedPhone, out var userByPhone)) existingUser = userByPhone;
+            if (!string.IsNullOrEmpty(cleanedPhone) && existingUsersByPhone.TryGetValue(cleanedPhone, out var userByPhone)) existingUser = userByPhone;
             else if (!string.IsNullOrEmpty(email) && existingUsersByEmail.TryGetValue(email, out var userByEmail)) existingUser = userByEmail;
-
-            // Self-duplicate checks in the current batch
-            if (!string.IsNullOrEmpty(tc) && existingUser == null)
-            {
-                if (generatedTcs.Contains(tc))
-                {
-                    importResult.FailedCount++;
-                    importResult.Details.Add(new BulkImportItemResultDto { FirstName = req.FirstName, LastName = req.LastName, Email = req.Email ?? "", Status = "Başarısız", Reason = "Bu excel listesinde aynı TC mükerrer girilmiş" });
-                    continue;
-                }
-                generatedTcs.Add(tc);
-            }
 
             if (!string.IsNullOrEmpty(cleanedPhone) && existingUser == null)
             {
@@ -535,12 +558,57 @@ public class UserService : IUserService
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
         if (request.TcNo != null) user.TcNo = request.TcNo;
 
+        if (request.GroupNames != null)
+        {
+            var currentMemberships = await _context.GroupMembers
+                .Where(gm => gm.UserId == userId && gm.Status == "active")
+                .Include(gm => gm.Group)
+                .ToListAsync();
+
+            var toRemove = currentMemberships
+                .Where(gm => !request.GroupNames.Contains(gm.Group.Name))
+                .ToList();
+
+            _context.GroupMembers.RemoveRange(toRemove);
+
+            var existingGroupNames = currentMemberships.Select(gm => gm.Group.Name).ToList();
+            var toAddNames = request.GroupNames.Except(existingGroupNames).ToList();
+
+            if (toAddNames.Any())
+            {
+                var groupsToAdd = await _context.Groups
+                    .Where(g => toAddNames.Contains(g.Name))
+                    .ToListAsync();
+
+                foreach (var group in groupsToAdd)
+                {
+                    _context.GroupMembers.Add(new GroupMember
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = userId,
+                        GroupId = group.Id,
+                        Status = "active"
+                    });
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"users:");
+        await _cache.RemoveByPrefixAsync($"groups:");
+
+        var updatedGroupNames = request.GroupNames;
+        if (updatedGroupNames == null)
+        {
+            updatedGroupNames = await _context.GroupMembers
+                .Where(gm => gm.UserId == userId && gm.Status == "active")
+                .Select(gm => gm.Group.Name)
+                .ToListAsync();
+        }
 
         return new UserListDto(user.Id, user.FirstName, user.LastName, user.Email, user.Username,
             user.Phone, user.Role.ToString(), user.StudentType?.ToString(),
-            user.IsActive, user.CreatedAt, user.LastLoginAt, null, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
+            user.IsActive, user.CreatedAt, user.LastLoginAt, updatedGroupNames, user.PasswordHash.StartsWith("$2") ? null : user.PasswordHash,
             user.TcNo);
     }
 
