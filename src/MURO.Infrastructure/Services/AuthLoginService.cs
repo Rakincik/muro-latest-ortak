@@ -36,13 +36,7 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
                                    || (u.Phone != null && u.Phone == lookupEmail)
                                    || (u.Phone != null && u.Phone == phoneWithoutZero));
 
-        if (user?.LockoutUntil.HasValue == true && user.LockoutUntil > DateTime.UtcNow)
-        {
-            await LogSecurityEventAsync(user.Id, "ACCOUNT_LOCKED", ipAddress, userAgent,
-                JsonSerializer.Serialize(new { until = user.LockoutUntil }));
-            throw new UnauthorizedAccessException(
-                $"Hesabınız geçici olarak kilitlendi. {user.LockoutUntil:HH:mm} sonra tekrar deneyin.");
-        }
+        // Lockout bypass (Lockout policy disabled)
 
         bool isPasswordValid = false;
         if (user != null)
@@ -62,21 +56,9 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
             if (user != null)
             {
                 user.FailedLoginCount++;
-                if (user.FailedLoginCount >= MaxFailedAttempts)
-                {
-                    user.LockoutUntil = DateTime.UtcNow.Add(LockoutDuration);
-                    user.FailedLoginCount = 0;
-                    await _context.SaveChangesAsync();
-
-                    await LogSecurityEventAsync(user.Id, "BRUTE_FORCE_DETECTED", ipAddress, userAgent,
-                        JsonSerializer.Serialize(new { lockoutUntil = user.LockoutUntil }));
-                }
-                else
-                {
-                    await _context.SaveChangesAsync();
-                    await LogSecurityEventAsync(user.Id, "LOGIN_FAILED", ipAddress, userAgent,
-                        JsonSerializer.Serialize(new { attempt = user.FailedLoginCount }));
-                }
+                await _context.SaveChangesAsync();
+                await LogSecurityEventAsync(user.Id, "LOGIN_FAILED", ipAddress, userAgent,
+                    JsonSerializer.Serialize(new { attempt = user.FailedLoginCount }));
             }
             else
             {
