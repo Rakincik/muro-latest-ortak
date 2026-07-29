@@ -3,6 +3,7 @@ import { api } from './core';
 export interface BbbRecordingInfo {
     recordingId: string;
     meetingId: string;
+    name: string;
     playbackUrl: string | null;
     durationSeconds: number;
     startTime: string;

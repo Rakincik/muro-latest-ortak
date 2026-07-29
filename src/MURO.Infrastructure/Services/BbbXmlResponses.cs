@@ -151,6 +151,9 @@ public class BbbXmlRecording
     [XmlElement("meetingID")]
     public string? MeetingId { get; set; }
 
+    [XmlElement("name")]
+    public string? Name { get; set; }
+
     [XmlElement("state")]
     public string? State { get; set; }
 

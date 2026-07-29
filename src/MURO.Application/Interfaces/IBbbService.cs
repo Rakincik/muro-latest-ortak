@@ -80,6 +80,7 @@ public record BbbJoinOptions(
 public record BbbRecordingInfo(
     string RecordingId,
     string MeetingId,
+    string Name,
     string? PlaybackUrl,       // BBB'nin verdiği oynatma URL'i
     int DurationSeconds,
     DateTime StartTime,

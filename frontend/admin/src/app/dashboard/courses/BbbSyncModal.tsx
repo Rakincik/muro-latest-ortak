@@ -243,13 +243,18 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                                         <span className="text-[10px] font-mono bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
-                                                            ID: {rec.recordingId.substring(0, 15)}...
+                                                            Kayıt ID: {rec.recordingId.substring(0, 8)}...
                                                         </span>
                                                         <span className="text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded">
                                                             {rec.status}
                                                         </span>
                                                     </div>
-                                                    <p className="text-sm font-bold text-[#0A1931] truncate" title={rec.meetingId}>{rec.meetingId}</p>
+                                                    <p className="text-sm font-bold text-[#0A1931] truncate" title={rec.name || rec.meetingId}>
+                                                        {rec.name || rec.meetingId}
+                                                    </p>
+                                                    <p className="text-[10px] text-[#A0AEC0] truncate mt-0.5" title={rec.meetingId}>
+                                                        Toplantı ID: {rec.meetingId}
+                                                    </p>
                                                     <div className="flex items-center gap-3 text-[11px] text-[#A0AEC0] mt-1">
                                                         <span className="flex items-center gap-1"><Calendar size={12} /> {dateStr}</span>
                                                         <span className="flex items-center gap-1"><Clock size={12} /> {durationMin} dakika</span>

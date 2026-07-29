@@ -240,6 +240,7 @@ public class BbbService : IBbbService
                     .Select(r => new BbbRecordingInfo(
                         RecordingId: r.RecordId ?? "",
                         MeetingId: r.MeetingId ?? (meetingId ?? ""),
+                        Name: r.Name ?? r.MeetingId ?? "",
                         PlaybackUrl: r.PlaybackFormats?.FirstOrDefault()?.Url,
                         DurationSeconds: ParseRecordingDuration(r),
                         StartTime: ParseUnixTimestamp(r.StartTime),
