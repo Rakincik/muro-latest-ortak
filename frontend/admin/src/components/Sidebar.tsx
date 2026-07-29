@@ -247,12 +247,10 @@ export default function Sidebar({
                 {sections.map((section) => {
                     const filteredItems = section.items.filter(item => {
                         const hasRole = !user?.role || item.roles.includes(user.role);
-                        const hasFeature = !("featureKey" in item) || featuresDict[(item as any).featureKey] === true;
-                        
-                        // Eğer kuruma özel özellik tanımı yoksa (features boşsa), varsayılan olarak açık kabul et 
-                        // veya kapalı kabul et. Åimdilik kapalı kabul ediyoruz (sadece olanlar girsin)
-                        // Ancak features objesi hiç yoksa (eski tenant), hepsine izin ver:
-                        const finalHasFeature = currentTenant?.features ? hasFeature : true;
+                        const hasFeature = !("featureKey" in item) || featuresDict[(item as any).featureKey] !== false;
+                        const finalHasFeature = branding 
+                            ? hasFeature 
+                            : (currentTenant?.features ? hasFeature : true);
 
                         return hasRole && finalHasFeature;
                     });

@@ -19,24 +19,24 @@ const sections = [
             { href: "/dashboard", label: "Ana Sayfa", icon: LayoutDashboard },
             { href: "/dashboard/courses", label: "Derslerim", icon: BookOpen },
             { href: "/dashboard/live", label: "Canlı Dersler", icon: Radio, liveIndicator: true },
-            { href: "/dashboard/calendar", label: "Takvim", icon: CalendarDays },
+            { href: "/dashboard/calendar", label: "Takvim", icon: CalendarDays, featureKey: "calendar" },
         ]
     },
     {
         title: "AKADEMİK",
         items: [
-            { href: "/dashboard/assignments", label: "Ödevlerim", icon: ClipboardList },
-            { href: "/dashboard/exams", label: "Sınavlarım", icon: FileText },
+            { href: "/dashboard/assignments", label: "Ödevlerim", icon: ClipboardList, featureKey: "assignments" },
+            { href: "/dashboard/exams", label: "Sınavlarım", icon: FileText, featureKey: "exams" },
             { href: "/dashboard/notes", label: "Notlarım", icon: BookMarked },
-            { href: "/dashboard/attendance", label: "Devam Takibim", icon: CalendarCheck },
+            { href: "/dashboard/attendance", label: "Devam Takibim", icon: CalendarCheck, featureKey: "attendance" },
         ]
     },
     {
         title: "İLETİŞİM & EKSTRA",
         items: [
-            { href: "/dashboard/podcast", label: "Podcast", icon: Mic2 },
-            { href: "/dashboard/questions", label: "Soru Sor", icon: MessageCircleQuestion },
-            { href: "/dashboard/support", label: "Teknik Destek", icon: Headset },
+            { href: "/dashboard/podcast", label: "Podcast", icon: Mic2, featureKey: "podcast" },
+            { href: "/dashboard/questions", label: "Soru Sor", icon: MessageCircleQuestion, featureKey: "questions" },
+            { href: "/dashboard/support", label: "Teknik Destek", icon: Headset, featureKey: "support" },
         ]
     }
 ];
@@ -72,7 +72,19 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
     const primaryColor = branding?.primaryColor || "#0A1931";
     const accentColor = branding?.accentColor || "#1B3B6F";
 
-    const tenantName = user?.tenants?.find((t: UserTenantDto) => t.tenantId === currentTenantId)?.tenantName
+    const currentTenant = user?.tenants?.find((t: UserTenantDto) => t.tenantId === currentTenantId);
+    let featuresDict: Record<string, boolean> = {};
+    if (branding?.featuresJson) {
+        try {
+            featuresDict = JSON.parse(branding.featuresJson);
+        } catch { }
+    } else if (currentTenant?.features) {
+        try {
+            featuresDict = JSON.parse(currentTenant.features);
+        } catch { }
+    }
+
+    const tenantName = currentTenant?.tenantName
         || user?.tenants?.[0]?.tenantName
         || "Öğrenci Portalı";
 
@@ -118,49 +130,61 @@ export default function Sidebar({ isOpen }: { isOpen?: boolean }) {
 
             {/* Nav */}
             <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5">
-                {sections.map((section) => (
-                    <div key={section.title}>
-                        <button 
-                            onClick={() => toggleSection(section.title)}
-                            className="w-full flex items-center justify-between px-3 mb-2 group"
-                        >
-                            <p className="text-xs font-bold tracking-wider text-[#A9A9A9] uppercase group-hover:text-white transition-colors">
-                                {section.title}
-                            </p>
-                            <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections[section.title] === false ? 'rotate-180' : ''}`} />
-                        </button>
-                        <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${expandedSections[section.title] === false ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
-                            {section.items.map((item) => {
-                                const isActive = item.href === "/dashboard"
-                                    ? pathname === "/dashboard"
-                                    : pathname.startsWith(item.href);
-                                const Icon = item.icon;
-                                
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        prefetch={false}
-                                        className={`group relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive
-                                            ? "text-white shadow-lg shadow-[#0A1931]/40"
-                                            : "text-[#A0AEC0] hover:bg-[#1B3B6F]/20 hover:text-[#E2E8F0]"
-                                            }`}
-                                        style={isActive ? { backgroundColor: accentColor } : undefined}
-                                    >
-                                        <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} className={isActive ? "text-white" : "text-[#A9A9A9] group-hover:text-[#E2E8F0]"} />
-                                        <span className="flex-1">{item.label}</span>
-                                        {item.liveIndicator && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
-                                        )}
-                                        {isActive && (
-                                            <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-[#A9A9A9] shadow-[0_0_8px_rgba(169,169,169,0.5)]" />
-                                        )}
-                                    </Link>
-                                );
-                            })}
+                {sections.map((section) => {
+                    const filteredItems = section.items.filter(item => {
+                        const hasFeature = !("featureKey" in item) || featuresDict[(item as any).featureKey] !== false;
+                        const finalHasFeature = branding 
+                            ? hasFeature 
+                            : (currentTenant?.features ? hasFeature : true);
+                        return finalHasFeature;
+                    });
+
+                    if (filteredItems.length === 0) return null;
+
+                    return (
+                        <div key={section.title}>
+                            <button 
+                                onClick={() => toggleSection(section.title)}
+                                className="w-full flex items-center justify-between px-3 mb-2 group"
+                            >
+                                <p className="text-xs font-bold tracking-wider text-[#A9A9A9] uppercase group-hover:text-white transition-colors">
+                                    {section.title}
+                                </p>
+                                <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections[section.title] === false ? 'rotate-180' : ''}`} />
+                            </button>
+                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${expandedSections[section.title] === false ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+                                {filteredItems.map((item) => {
+                                    const isActive = item.href === "/dashboard"
+                                        ? pathname === "/dashboard"
+                                        : pathname.startsWith(item.href);
+                                    const Icon = item.icon;
+                                    
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            prefetch={false}
+                                            className={`group relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive
+                                                ? "text-white shadow-lg shadow-[#0A1931]/40"
+                                                : "text-[#A0AEC0] hover:bg-[#1B3B6F]/20 hover:text-[#E2E8F0]"
+                                                }`}
+                                            style={isActive ? { backgroundColor: accentColor } : undefined}
+                                        >
+                                            <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} className={isActive ? "text-white" : "text-[#A9A9A9] group-hover:text-[#E2E8F0]"} />
+                                            <span className="flex-1">{item.label}</span>
+                                            {item.liveIndicator && (
+                                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse flex-shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                                            )}
+                                            {isActive && (
+                                                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-[#A9A9A9] shadow-[0_0_8px_rgba(169,169,169,0.5)]" />
+                                            )}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {/* SİSTEM Area Section */}
                 <div>

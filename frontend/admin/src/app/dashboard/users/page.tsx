@@ -1073,8 +1073,8 @@ export default function UsersPage() {
         };
 
         const handleSave = () => {
-            if ((f.role === "Student" || f.role === "Öğrenci") && (!f.tcNo || f.tcNo.length !== 11)) {
-                alert("Öğrenci eklemek için 11 haneli TC Kimlik Numarası zorunludur.");
+            if ((f.role === "Student" || f.role === "Öğrenci") && f.tcNo && f.tcNo.length !== 11) {
+                alert("TC Kimlik Numarası boş bırakılabilir veya 11 haneli olmalıdır.");
                 return;
             }
             if (!f.firstName || !f.lastName) {
@@ -1133,7 +1133,7 @@ export default function UsersPage() {
                         )}
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">TC Kimlik No {(f.role === "Student" || f.role === "Öğrenci") && "*"}</label><input type="text" value={f.tcNo} onChange={e => u("tcNo", e.target.value.replace(/\D/g, "").substring(0, 11))} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="11 haneli TC No" /></div>
+                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">TC Kimlik No (Opsiyonel)</label><input type="text" value={f.tcNo} onChange={e => u("tcNo", e.target.value.replace(/\D/g, "").substring(0, 11))} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="TC Kimlik No (Opsiyonel)" /></div>
                             <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Telefon</label><div className="relative"><Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" /><input type="tel" value={f.phone} onChange={e => u("phone", cleanPhone(e.target.value))} maxLength={10} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="532 000 0000" /></div></div>
                         </div>
 
