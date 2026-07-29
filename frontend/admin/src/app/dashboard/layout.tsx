@@ -56,23 +56,17 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const currentTenant = user?.tenants?.find(t => t.tenantId === currentTenantId);
 
-    // Sync isSidebarCollapsed with localStorage and handle auto-expand on other routes
+    // Sync isSidebarCollapsed with localStorage globally
     useEffect(() => {
-        if (pathname === "/dashboard/media") {
-            const stored = localStorage.getItem("sidebar-collapsed");
-            if (stored === "true") {
-                setIsSidebarCollapsed(true);
-            }
-        } else {
-            setIsSidebarCollapsed(false);
+        const stored = localStorage.getItem("sidebar-collapsed");
+        if (stored === "true") {
+            setIsSidebarCollapsed(true);
         }
     }, [pathname]);
 
     const setCollapsedState = (collapsed: boolean) => {
         setIsSidebarCollapsed(collapsed);
-        if (pathname === "/dashboard/media") {
-            localStorage.setItem("sidebar-collapsed", String(collapsed));
-        }
+        localStorage.setItem("sidebar-collapsed", String(collapsed));
     };
 
     useAdminHub({
@@ -133,10 +127,10 @@ export default function DashboardLayout({
                     isOpen={isSidebarOpen} 
                     onClose={() => setIsSidebarOpen(false)} 
                     isCollapsed={isSidebarCollapsed}
-                    onToggleCollapse={pathname === "/dashboard/media" ? () => setCollapsedState(true) : undefined}
+                    onToggleCollapse={() => setCollapsedState(true)}
                 />
                 
-                {isSidebarCollapsed && pathname === "/dashboard/media" && (
+                {isSidebarCollapsed && (
                     <Tooltip content="Menüyü Göster" position="right" className="hidden lg:inline-flex fixed left-0 top-6 z-40">
                         <button
                             onClick={() => setCollapsedState(false)}
