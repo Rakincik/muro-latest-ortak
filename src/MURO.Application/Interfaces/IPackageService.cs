@@ -3,7 +3,7 @@ namespace MURO.Application.Interfaces;
 // DTO'lar
 public record PackageGroupDto(Guid Id, Guid GroupId, string GroupName, string ContentMode);
 public record PackageDto(
-    Guid Id, string Name, string? Description,
+    Guid Id, string Name, string Code, string? Description,
     decimal Price, int DurationDays, bool IsActive, DateTime CreatedAt,
     List<PackageGroupDto> Groups, int ActiveUserCount);
 public record UserPackageDto(

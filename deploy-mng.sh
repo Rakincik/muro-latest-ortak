@@ -17,17 +17,24 @@ echo "🚀 Starting MNG Tenant sync and build..."
 echo "📥 Pulling latest codebase from git..."
 git pull || true
 
+# =====================================================================
+# Configuration (Adjust domains/paths here if needed)
+# =====================================================================
+NEXT_PUBLIC_API_URL="https://online-api.dereceuzem.com/api/v1"
+NEXT_PUBLIC_BASE_PATH="/admin"
+
 # 2. Build tenant-specific admin frontend with correct build args
 # This prevents the 404 / basePath error and login loop issue!
 echo "📦 Building Admin Frontend (muro-admin-mng)..."
 docker build --no-cache -t muro-admin-mng:latest \
-  --build-arg NEXT_PUBLIC_API_URL="https://mng-api.muro.click/api/v1" \
-  --build-arg NEXT_PUBLIC_BASE_PATH="" \
+  --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
+  --build-arg NEXT_PUBLIC_BASE_PATH="$NEXT_PUBLIC_BASE_PATH" \
   -f frontend/admin/Dockerfile ./frontend/admin
 
 # 3. Build tenant-specific student frontend
 echo "📦 Building Student Frontend (muro-student-mng)..."
 docker build --no-cache -t muro-student-mng:latest \
+  --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
   -f frontend/student/Dockerfile ./frontend/student
 
 # 4. Rebuild the shared API and Worker images

@@ -17,6 +17,7 @@ public class WebhookHandlerService : IWebhookHandlerService
     private readonly IAuthLoginService _auth;
     private readonly INotificationService _notificationService;
     private readonly IBbbService _bbbService;
+    private readonly ICacheService _cache;
     private readonly ILogger<WebhookHandlerService> _logger;
 
     public WebhookHandlerService(
@@ -25,6 +26,7 @@ public class WebhookHandlerService : IWebhookHandlerService
         IAuthLoginService auth,
         INotificationService notificationService,
         IBbbService bbbService,
+        ICacheService cache,
         ILogger<WebhookHandlerService> logger)
     {
         _context = context;
@@ -32,6 +34,7 @@ public class WebhookHandlerService : IWebhookHandlerService
         _auth = auth;
         _notificationService = notificationService;
         _bbbService = bbbService;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -44,11 +47,6 @@ public class WebhookHandlerService : IWebhookHandlerService
             if (duplicate)
                 return new PurchaseWebhookResponse(true, null, null, null, "Sipariş zaten işlendi.", true);
         }
-
-        var package = await _context.Packages
-            .FirstOrDefaultAsync(p => p.Id == request.PackageId && p.IsActive);
-        if (package is null)
-            throw new KeyNotFoundException("Paket bulunamadı veya aktif değil.");
 
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == request.UserEmail);
@@ -66,13 +64,72 @@ public class WebhookHandlerService : IWebhookHandlerService
                 .FirstAsync(u => u.Email == request.UserEmail);
         }
 
-        var userPackage = await _packages.ActivateUserPackageAsync(
-            userId: user.Id,
-            packageId: package.Id,
-            orderId: request.OrderId,
-            source: "webhook");
+        Package? package = null;
+        Group? group = null;
 
-        return new PurchaseWebhookResponse(true, user.Id, userPackage.Id, userPackage.ExpiresAt, "Paket başarıyla aktive edildi.");
+        if (Guid.TryParse(request.PackageIdentifier, out var parsedGuid))
+        {
+            package = await _context.Packages
+                .FirstOrDefaultAsync(p => (p.Id == parsedGuid || p.Code == request.PackageIdentifier) && p.IsActive);
+
+            if (package == null)
+            {
+                group = await _context.Groups
+                    .FirstOrDefaultAsync(g => (g.Id == parsedGuid || g.Code == request.PackageIdentifier) && !g.IsDeleted);
+            }
+        }
+        else
+        {
+            package = await _context.Packages
+                .FirstOrDefaultAsync(p => p.Code == request.PackageIdentifier && p.IsActive);
+
+            if (package == null)
+            {
+                group = await _context.Groups
+                    .FirstOrDefaultAsync(g => g.Code == request.PackageIdentifier && !g.IsDeleted);
+            }
+        }
+
+        if (package != null)
+        {
+            var userPackage = await _packages.ActivateUserPackageAsync(
+                userId: user.Id,
+                packageId: package.Id,
+                orderId: request.OrderId,
+                source: "webhook");
+
+            return new PurchaseWebhookResponse(true, user.Id, userPackage.Id, userPackage.ExpiresAt, "Paket başarıyla aktive edildi.");
+        }
+        else if (group != null)
+        {
+            var exists = await _context.GroupMembers
+                .AnyAsync(gm => gm.UserId == user.Id && gm.GroupId == group.Id);
+
+            if (!exists)
+            {
+                _context.GroupMembers.Add(new GroupMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    GroupId = group.Id,
+                    Status = "active",
+                    AddedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                var gm = await _context.GroupMembers
+                    .FirstAsync(gm => gm.UserId == user.Id && gm.GroupId == group.Id);
+                gm.Status = "active";
+            }
+
+            await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync("groups:"); // Cache temizliği
+
+            return new PurchaseWebhookResponse(true, user.Id, null, null, "Gruba başarıyla kayıt edildi.");
+        }
+
+        throw new KeyNotFoundException("Belirtilen Paket veya Grup kodu/ID'si bulunamadı ya da aktif değil.");
     }
 
     public async Task<CancelWebhookResponse> HandleCancelAsync(CancelWebhookRequest request)

@@ -43,7 +43,7 @@ public class GroupService : IGroupService
                 .OrderBy(g => g.Name)
                 .Skip((page - 1) * pageSize).Take(pageSize)
                 .Select(g => new GroupListDto(
-                    g.Id, g.Name, g.Description,
+                    g.Id, g.Name, g.Code, g.Description,
                     g.ParentId, g.Parent != null ? g.Parent.Name : null,
                     g.Color, g.EducationType,
                     g.Members.Count(m => m.Status == "active"),
@@ -64,13 +64,13 @@ public class GroupService : IGroupService
             var allGroups = await _context.Groups.AsNoTracking()
                 .Where(g => true)
                 .Include(g => g.Members)
-                .Select(g => new { g.Id, g.Name, g.ParentId, MemberCount = g.Members.Count(m => m.Status == "active") })
+                .Select(g => new { g.Id, g.Name, g.Code, g.ParentId, MemberCount = g.Members.Count(m => m.Status == "active") })
                 .ToListAsync();
 
             List<GroupTreeDto> BuildChildren(Guid? parentId) =>
                 allGroups
                     .Where(g => g.ParentId == parentId)
-                    .Select(g => new GroupTreeDto(g.Id, g.Name, g.MemberCount, BuildChildren(g.Id)))
+                    .Select(g => new GroupTreeDto(g.Id, g.Name, g.Code, g.MemberCount, BuildChildren(g.Id)))
                     .ToList();
 
             return BuildChildren(null);
@@ -92,7 +92,7 @@ public class GroupService : IGroupService
                 ?? throw new KeyNotFoundException("Grup bulunamadı.");
 
             return new GroupDetailDto(
-                group.Id, group.Name, group.Description,
+                group.Id, group.Name, group.Code, group.Description,
                 group.ParentId, group.Parent?.Name,
                 group.Color, group.EducationType,
                 group.Members.Count(m => m.Status == "active"),
@@ -122,9 +122,20 @@ public class GroupService : IGroupService
             if (!parentExists) throw new KeyNotFoundException("Üst grup bulunamadı.");
         }
 
+        var maxCode = await _context.Groups
+            .Select(g => g.Code)
+            .OrderByDescending(c => c)
+            .FirstOrDefaultAsync();
+
+        int nextNum = 1;
+        if (!string.IsNullOrEmpty(maxCode) && int.TryParse(maxCode, out var parsed))
+        {
+            nextNum = parsed + 1;
+        }
+
         var group = new Group
         {
-            Id = Guid.NewGuid(), Name = request.Name, Description = request.Description,
+            Id = Guid.NewGuid(), Name = request.Name, Code = nextNum.ToString("D3"), Description = request.Description,
             Color = request.Color, EducationType = request.EducationType,
             ExpirationDate = request.ExpirationDate,
             ParentId = request.ParentGroupId
@@ -134,7 +145,7 @@ public class GroupService : IGroupService
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"groups:");
 
-        return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType, 0, 0, group.ExpirationDate, group.CreatedAt);
+        return new GroupListDto(group.Id, group.Name, group.Code, group.Description, group.ParentId, null, group.Color, group.EducationType, 0, 0, group.ExpirationDate, group.CreatedAt);
     }
 
     public async Task<GroupListDto> UpdateGroupAsync(Guid groupId, UpdateGroupRequest request)
@@ -177,7 +188,7 @@ public class GroupService : IGroupService
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"groups:");
 
-        return new GroupListDto(group.Id, group.Name, group.Description, group.ParentId, null, group.Color, group.EducationType,
+        return new GroupListDto(group.Id, group.Name, group.Code, group.Description, group.ParentId, null, group.Color, group.EducationType,
             group.Members.Count(m => m.Status == "active"), group.CourseGroups.Count, group.ExpirationDate, group.CreatedAt);
     }
 
@@ -229,10 +240,22 @@ public class GroupService : IGroupService
             .FirstOrDefaultAsync(g => g.Id == groupId )
             ?? throw new KeyNotFoundException("Klonlanacak grup bulunamadı.");
 
+        var maxCode = await _context.Groups
+            .Select(g => g.Code)
+            .OrderByDescending(c => c)
+            .FirstOrDefaultAsync();
+
+        int nextNum = 1;
+        if (!string.IsNullOrEmpty(maxCode) && int.TryParse(maxCode, out var parsed))
+        {
+            nextNum = parsed + 1;
+        }
+
         var newGroup = new Group
         {
             Id = Guid.NewGuid(),
             Name = newName,
+            Code = nextNum.ToString("D3"),
             Description = group.Description,
             Color = group.Color,
             EducationType = group.EducationType,
@@ -279,7 +302,7 @@ public class GroupService : IGroupService
         var finalMemberCount = copyMembers ? group.Members.Count(m => m.Status == "active") : 0;
         var finalCourseCount = copyCourses ? group.CourseGroups.Count : 0;
 
-        return new GroupListDto(newGroup.Id, newGroup.Name, newGroup.Description, newGroup.ParentId, null, newGroup.Color, newGroup.EducationType, finalMemberCount, finalCourseCount, newGroup.ExpirationDate, newGroup.CreatedAt);
+        return new GroupListDto(newGroup.Id, newGroup.Name, newGroup.Code, newGroup.Description, newGroup.ParentId, null, newGroup.Color, newGroup.EducationType, finalMemberCount, finalCourseCount, newGroup.ExpirationDate, newGroup.CreatedAt);
     }
 
     public async Task AddMembersAsync(Guid groupId, List<Guid> userIds)

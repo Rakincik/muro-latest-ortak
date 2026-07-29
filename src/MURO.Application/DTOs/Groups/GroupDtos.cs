@@ -3,6 +3,7 @@ namespace MURO.Application.DTOs.Groups;
 public record GroupListDto(
     Guid Id,
     string Name,
+    string Code,
     string? Description,
     Guid? ParentGroupId,
     string? ParentGroupName,
@@ -17,6 +18,7 @@ public record GroupListDto(
 public record GroupDetailDto(
     Guid Id,
     string Name,
+    string Code,
     string? Description,
     Guid? ParentGroupId,
     string? ParentGroupName,
@@ -38,6 +40,7 @@ public record GroupChildDto(Guid Id, string Name, int MemberCount);
 public record GroupTreeDto(
     Guid Id,
     string Name,
+    string Code,
     int MemberCount,
     List<GroupTreeDto> Children
 );

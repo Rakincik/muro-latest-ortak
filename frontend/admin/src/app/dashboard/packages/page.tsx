@@ -60,6 +60,7 @@ function PackageCard({ pkg, onEdit, onDelete }: {
     onDelete: (p: PackageDto) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const { toast } = useToast();
 
     return (
         <div className={`bg-white rounded-2xl border shadow-sm transition-all ${pkg.isActive ? "border-[#E2E8F0]/60" : "border-[#E2E8F0] opacity-60"}`}>
@@ -79,6 +80,30 @@ function PackageCard({ pkg, onEdit, onDelete }: {
                             {pkg.description && (
                                 <p className="text-sm text-[#A9A9A9] truncate mt-0.5">{pkg.description}</p>
                             )}
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                <div className="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer px-2.5 py-0.5 rounded-lg text-[11px] font-bold text-emerald-700 border border-emerald-200"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(pkg.code);
+                                        toast("success", "Paket kısa kodu kopyalandı!");
+                                    }}
+                                    title="Kısa Kod (Kopyalamak için tıklayın)"
+                                >
+                                    <Zap size={10} className="text-emerald-500" />
+                                    <span>Kod: {pkg.code}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-[#E2E8F0]/30 hover:bg-[#E2E8F0]/50 transition-colors cursor-pointer px-2.5 py-0.5 rounded-lg text-[11px] font-mono text-[#1B3B6F]"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigator.clipboard.writeText(pkg.id);
+                                        toast("success", "Paket ID kopyalandı!");
+                                    }}
+                                    title="UUID (Kopyalamak için tıklayın)"
+                                >
+                                    <Copy size={10} className="text-[#A9A9A9]" />
+                                    <span className="truncate max-w-[150px]">{pkg.id}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

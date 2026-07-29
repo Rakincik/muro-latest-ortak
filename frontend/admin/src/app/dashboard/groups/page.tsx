@@ -23,6 +23,7 @@ import {
     PiChartBarDuotone as BarChart3,
     PiCalendarDuotone as Calendar,
     PiCopyDuotone as Copy,
+    PiLightningDuotone as Zap,
     PiVideoCameraDuotone,
     PiTentDuotone,
     PiNotePencilDuotone,
@@ -66,6 +67,7 @@ function GroupTreeItem({
 }) {
     const isEmpty = group.memberCount === 0;
     const [isHovered, setIsHovered] = useState(false);
+    const { success } = useToast();
     return (
         <div
             className={`flex items-center gap-2 p-1.5 pr-3 rounded-lg cursor-pointer group transition-all duration-200 select-none ${selected ? "bg-blue-50/80 border border-blue-100/80 border-l-4 shadow-sm" : "border border-transparent hover:bg-slate-50"}`}
@@ -83,10 +85,20 @@ function GroupTreeItem({
                 {expanded || isHovered ? <PiFolderOpenDuotone size={18} /> : <PiFolderDuotone size={18} />}
             </div>
             
-            <div className="flex-1 min-w-0">
-                <Tooltip content={group.name} position="bottom" className="w-full">
-                    <span className={`text-[13px] truncate block w-full text-left ${selected ? "font-bold text-blue-900" : "font-medium text-slate-700 group-hover:text-slate-900"}`}>{group.name}</span>
+            <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                <Tooltip content={`${group.name} (Kod: ${group.code})`} position="bottom" className="w-full">
+                    <span className={`text-[13px] truncate block text-left ${selected ? "font-bold text-blue-900" : "font-medium text-slate-700 group-hover:text-slate-900"}`}>{group.name}</span>
                 </Tooltip>
+                <span className="shrink-0 text-[9px] bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-colors border border-slate-200 px-1 py-0.2 rounded font-mono text-slate-500 font-bold"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(group.code);
+                        success("Başarılı", "Grup kısa kodu kopyalandı!");
+                    }}
+                    title="Kısa Kod (Kopyalamak için tıklayın)"
+                >
+                    {group.code}
+                </span>
             </div>
             
             {/* Quick Actions (Shown in the middle on hover) */}
@@ -701,6 +713,26 @@ export default function GroupsPage() {
                                             <span className="whitespace-nowrap px-2 py-0.5 bg-white border border-[#E2E8F0] text-[#475569] text-[10px] rounded-md font-bold shadow-sm">{detail.courseCount} ders</span>
                                             {detail.educationType && <span className="whitespace-nowrap px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-md font-bold border border-indigo-200 flex items-center gap-1">{getEducationIcon(detail.educationType, 12)} {detail.educationType}</span>}
                                             {detail.parentGroupName && <span className="whitespace-nowrap px-2 py-0.5 bg-[#F8FAFC] text-[#64748B] text-[10px] rounded-md border border-[#E2E8F0] font-bold shadow-sm">↑ {detail.parentGroupName}</span>}
+                                            <span className="whitespace-nowrap px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 text-emerald-700 text-[10px] rounded-md font-bold shadow-sm cursor-pointer flex items-center gap-1"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(detail.code);
+                                                    success("Başarılı", "Grup kısa kodu kopyalandı!");
+                                                }}
+                                                title="Kısa Kod (Kopyalamak için tıklayın)"
+                                            >
+                                                <Zap size={10} className="text-emerald-500 animate-pulse" />
+                                                Kod: {detail.code}
+                                            </span>
+                                            <span className="whitespace-nowrap px-2.5 py-0.5 bg-[#E2E8F0]/30 hover:bg-[#E2E8F0]/50 transition-colors border border-[#E2E8F0] text-[#1B3B6F] text-[10px] rounded-md font-mono shadow-sm cursor-pointer flex items-center gap-1"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(detail.id);
+                                                    success("Başarılı", "Grup ID kopyalandı!");
+                                                }}
+                                                title="UUID (Kopyalamak için tıklayın)"
+                                            >
+                                                <Copy size={10} className="text-[#A9A9A9]" />
+                                                ID: {detail.id.substring(0, 8)}...
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="w-full 2xl:w-auto overflow-x-auto hide-scrollbar shrink-0">

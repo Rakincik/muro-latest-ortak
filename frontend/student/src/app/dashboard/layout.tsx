@@ -88,8 +88,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     const isDev = window.location.hostname === "localhost";
                     if (isDev) {
                         window.location.href = `http://localhost:3001/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
-                    } else if (window.location.hostname.includes("monopol")) {
-                        // Single-domain setup for Monopol (e.g. online.monopoluzem.com.tr)
+                    } else if (window.location.hostname.includes("monopol") || window.location.hostname.includes("dereceuzem")) {
+                        // Single-domain setup for Monopol & Dereceuzem (e.g. online.monopoluzem.com.tr)
                         window.location.href = `/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
                     } else {
                         // Subdomain architecture for demo and other tenants

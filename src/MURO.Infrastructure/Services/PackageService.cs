@@ -30,7 +30,7 @@ public class PackageService : IPackageService
                 .Where(p => true)
                 .Include(p => p.PackageGroups).ThenInclude(pg => pg.Group)
                 .Select(p => new PackageDto(
-                    p.Id,  p.Name, p.Description, p.Price,
+                    p.Id,  p.Name, p.Code, p.Description, p.Price,
                     p.DurationDays, p.IsActive, p.CreatedAt,
                     p.PackageGroups.Select(pg => new PackageGroupDto(
                         pg.Id, pg.GroupId, pg.Group.Name, pg.ContentMode.ToString())).ToList(),
@@ -51,7 +51,7 @@ public class PackageService : IPackageService
                 ?? throw new KeyNotFoundException("Paket bulunamadı.");
 
             return new PackageDto(
-                p.Id,  p.Name, p.Description, p.Price,
+                p.Id,  p.Name, p.Code, p.Description, p.Price,
                 p.DurationDays, p.IsActive, p.CreatedAt,
                 p.PackageGroups.Select(pg => new PackageGroupDto(
                     pg.Id, pg.GroupId, pg.Group.Name, pg.ContentMode.ToString())).ToList(),
@@ -61,10 +61,22 @@ public class PackageService : IPackageService
 
     public async Task<PackageDto> CreatePackageAsync(CreatePackageRequest request)
     {
+        var maxCode = await _context.Packages
+            .Select(p => p.Code)
+            .OrderByDescending(c => c)
+            .FirstOrDefaultAsync();
+
+        int nextNum = 1;
+        if (!string.IsNullOrEmpty(maxCode) && int.TryParse(maxCode, out var parsed))
+        {
+            nextNum = parsed + 1;
+        }
+
         var package = new Package
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
+            Code = nextNum.ToString("D3"),
             Description = request.Description,
             Price = request.Price,
             DurationDays = request.DurationDays,

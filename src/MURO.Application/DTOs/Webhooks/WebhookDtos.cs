@@ -2,7 +2,7 @@ namespace MURO.Application.DTOs.Webhooks;
 
 public record PurchaseWebhookRequest(
     string TenantCode,
-    Guid PackageId,
+    string PackageIdentifier,
     string UserEmail,
     string UserFirstName,
     string UserLastName,
