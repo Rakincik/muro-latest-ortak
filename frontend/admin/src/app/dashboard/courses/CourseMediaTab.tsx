@@ -265,24 +265,48 @@ export function CourseMediaTab({
                 return null;
             };
 
+            const extractTimestamp = (text: string) => {
+                if (!text) return null;
+                const match = text.match(/[-_](\d{10,13})(?!\d)/);
+                if (match) {
+                    const ts = parseInt(match[1]);
+                    const ms = ts < 9999999999 ? ts * 1000 : ts;
+                    return new Date(ms).toISOString();
+                }
+                return null;
+            };
+
             const getItemDetails = (item: any) => {
                 let title = "";
                 let date = "";
+                let sourceUrl = "";
+                let sourceMeetingId = "";
+
                 if (item.type === "Session" && item.sessionId) {
                     const sess = sessions.find(s => s.id === item.sessionId);
                     title = item.sessionTitle || sess?.title || "";
                     date = sess?.scheduledStart || sess?.createdAt || "";
+
+                    const rec = recordings.find(r => r.sessionId === item.sessionId);
+                    sourceUrl = rec?.playbackUrl || sess?.videoUrl || "";
+                    sourceMeetingId = sess?.bbbMeetingId || rec?.recordingId || "";
                 } else if (item.type === "Media" && item.mediaAsset) {
                     title = item.customTitle || item.mediaAsset.title || "";
                     date = item.mediaAsset.createdAt || "";
+                    sourceUrl = item.mediaAsset.filePath || "";
                 } else {
                     title = item.examTitle || "";
                     date = item.createdAt || "";
                 }
                 
-                const parsedDate = extractDateFromTitle(title);
-                if (parsedDate) {
-                    date = parsedDate;
+                const urlDate = extractTimestamp(sourceUrl) || extractTimestamp(sourceMeetingId);
+                if (urlDate) {
+                    date = urlDate;
+                } else {
+                    const parsedDate = extractDateFromTitle(title);
+                    if (parsedDate) {
+                        date = parsedDate;
+                    }
                 }
                 
                 return { title, date };
