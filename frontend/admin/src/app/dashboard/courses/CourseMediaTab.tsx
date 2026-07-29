@@ -253,6 +253,72 @@ export function CourseMediaTab({
         }
     };
 
+    const handleBulkSort = async (criteria: 'date-asc' | 'date-desc' | 'alpha-asc' | 'alpha-desc') => {
+        try {
+            const sorted = [...medias];
+            
+            const extractDateFromTitle = (title: string) => {
+                const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                if (match) {
+                    return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
+                }
+                return null;
+            };
+
+            const getItemDetails = (item: any) => {
+                let title = "";
+                let date = "";
+                if (item.type === "Session" && item.sessionId) {
+                    const sess = sessions.find(s => s.id === item.sessionId);
+                    title = item.sessionTitle || sess?.title || "";
+                    date = sess?.scheduledStart || sess?.createdAt || "";
+                } else if (item.type === "Media" && item.mediaAsset) {
+                    title = item.customTitle || item.mediaAsset.title || "";
+                    date = item.mediaAsset.createdAt || "";
+                } else {
+                    title = item.examTitle || "";
+                    date = item.createdAt || "";
+                }
+                
+                const parsedDate = extractDateFromTitle(title);
+                if (parsedDate) {
+                    date = parsedDate;
+                }
+                
+                return { title, date };
+            };
+
+            sorted.sort((a, b) => {
+                const detA = getItemDetails(a);
+                const detB = getItemDetails(b);
+
+                if (criteria === 'date-asc') {
+                    if (detA.date !== detB.date) {
+                        return detA.date.localeCompare(detB.date);
+                    }
+                    return detA.title.localeCompare(detB.title, 'tr', { numeric: true });
+                } else if (criteria === 'date-desc') {
+                    if (detA.date !== detB.date) {
+                        return detB.date.localeCompare(detA.date);
+                    }
+                    return detB.title.localeCompare(detA.title, 'tr', { numeric: true });
+                } else if (criteria === 'alpha-asc') {
+                    return detA.title.localeCompare(detB.title, 'tr', { numeric: true });
+                } else {
+                    return detB.title.localeCompare(detA.title, 'tr', { numeric: true });
+                }
+            });
+
+            const reordered = sorted.map((m, i) => ({ ...m, orderIndex: i }));
+            
+            await mediaLibraryApi.reorderCourseMedias(courseId, reordered.map(m => m.id));
+            setMedias(reordered);
+            success("Tüm içerikler başarıyla sıralandı ve veritabanına kaydedildi.");
+        } catch (error) {
+            toastError("Hata", "Toplu sıralama kaydedilirken bir hata oluştu.");
+        }
+    };
+
     const isReorderEnabled = filter === 'all' && pageSize === -1;
 
     const combinedMedias = useMemo(() => {
@@ -418,6 +484,21 @@ export function CourseMediaTab({
                             { label: "Tümü (Sıralamaya İzin Ver)", value: -1 }
                         ]}
                     />
+                    {(user?.role === 'SuperAdmin' || user?.role === 'Admin') && (
+                        <CustomSelect 
+                            value=""
+                            onChange={(val) => {
+                                if (val) handleBulkSort(val as any);
+                            }}
+                            options={[
+                                { label: "⚡ Toplu Sırala", value: "" },
+                                { label: "Tarihe Göre (Eskiden Yeniye)", value: "date-asc" },
+                                { label: "Tarihe Göre (Yeniden Eskiye)", value: "date-desc" },
+                                { label: "Alfabetik (A-Z)", value: "alpha-asc" },
+                                { label: "Alfabetik (Z-A)", value: "alpha-desc" }
+                            ]}
+                        />
+                    )}
                     {user?.role === 'SuperAdmin' && (
                         <button 
                             onClick={() => setIsBbbSyncOpen(true)}
