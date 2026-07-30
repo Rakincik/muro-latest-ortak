@@ -36,10 +36,11 @@ docker build -t muro-student:latest -f frontend/student/Dockerfile ./frontend/st
 echo "✅ Ortak Frontend imajları hazır."
 echo ""
 
-# 3. AKM Özel Admin İmajı
-echo "📦 4. AKM özel Admin imajı derleniyor..."
+# 3. AKM Özel Admin İmaji ve 3U Özel Student İmajı
+echo "📦 4. AKM özel Admin ve 3U özel Student imajları derleniyor..."
 docker build -t muro-admin-akm:latest -f frontend/admin/Dockerfile ./frontend/admin
-echo "✅ AKM özel imajı hazır."
+docker build -t muro-student:3u-ozel -f frontend/student/Dockerfile ./frontend/student
+echo "✅ AKM ve 3U özel imajları hazır."
 echo ""
 
 # 4. MNG (DereceUzem) Özel İmajları
