@@ -3,9 +3,9 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { api, type UserTenantDto, API_URL } from "@/lib/api";
+import { api, API_URL } from "@/lib/api";
 import { lightTap } from "@/hooks/useHaptics";
-import { Camera, Lock, LogOut, User2, Shield, Building2, Calendar, Upload, ClipboardList, FileText, BookMarked, CalendarCheck, Mic2, MessageCircleQuestion, Headset, ArrowRight, Layers } from "lucide-react";
+import { Camera, Lock, LogOut, User2, Shield, Calendar, Upload, ClipboardList, FileText, BookMarked, CalendarCheck, Mic2, MessageCircleQuestion, Headset, ArrowRight, Layers } from "lucide-react";
 
 export default function ProfilePage() {
     const { user, token, currentTenantId, logout } = useAuth();
@@ -17,8 +17,7 @@ export default function ProfilePage() {
     const fileRef = useRef<HTMLInputElement>(null);
 
     const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
-    const activeTenant: UserTenantDto | undefined =
-        user?.tenants?.find((t: UserTenantDto) => t.tenantId === currentTenantId) ?? user?.tenants?.[0];
+
 
     const handlePasswordChange = async () => {
         if (pwForm.next !== pwForm.confirm) {
@@ -121,7 +120,6 @@ export default function ProfilePage() {
                     {[
                         { icon: User2, label: "Ad Soyad", val: `${user?.firstName ?? ""} ${user?.lastName ?? ""}` },
                         { icon: Shield, label: "E-posta", val: user?.email ?? "—" },
-                        activeTenant ? { icon: Building2, label: "Kurum", val: activeTenant.tenantName } : null,
                         {
                             icon: Calendar, label: "Üyelik Tarihi", val: user?.createdAt
                                 ? new Date(user.createdAt).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })
