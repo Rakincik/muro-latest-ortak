@@ -142,7 +142,7 @@ export default function Sidebar({
                 />
             )}
             <aside 
-                style={{ backgroundColor: isCollapsed ? `${primaryColor}CC` : primaryColor }} // 80% opacity (CC) in hex for premium glassmorphism
+                style={{ backgroundColor: primaryColor }}
                 className={`flex flex-col transition-all duration-300 ease-in-out z-50 border border-white/10 ${
                     isOpen 
                         ? 'w-[260px] h-screen fixed left-0 top-0 translate-x-0' 
@@ -156,14 +156,24 @@ export default function Sidebar({
                 {/* Logo + Bell */}
                 <div className={`px-4 py-7 flex ${isCollapsed ? 'flex-col items-center gap-4' : 'items-center justify-between px-6'} relative transition-all duration-300`}>
                     {isCollapsed ? (
-                        <div 
-                            style={{ backgroundColor: accentColor }} 
-                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-extrabold shadow-lg border border-white/15 shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200"
-                            onClick={onToggleCollapse}
-                            title={brandName}
-                        >
-                            {brandName.substring(0, 1).toUpperCase()}
-                        </div>
+                        branding?.faviconUrl ? (
+                            <img 
+                                src={branding.faviconUrl} 
+                                alt={brandName} 
+                                className="w-10 h-10 object-contain rounded-xl shadow-lg border border-white/15 shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200"
+                                onClick={onToggleCollapse}
+                                title={brandName}
+                            />
+                        ) : (
+                            <div 
+                                style={{ backgroundColor: accentColor }} 
+                                className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-extrabold shadow-lg border border-white/15 shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200"
+                                onClick={onToggleCollapse}
+                                title={brandName}
+                            >
+                                {brandName.substring(0, 1).toUpperCase()}
+                            </div>
+                        )
                     ) : (
                         branding?.useWhiteLogoBackground ? (
                             <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-white/20 flex items-center justify-center shrink-0">
