@@ -58,21 +58,51 @@ echo "✅ MNG özel imajları hazır."
 echo ""
 
 # 5. Bütün Kurumları Sırayla Recreate Etme
-echo "🔄 6. Kurum konteynerları yeni imajlarla güncelleniyor..."
+echo "🔄 6. Kurum klasörlerine gidilip kodlar güncelleniyor ve konteynerlar yeniden başlatılıyor..."
 
-TENANTS=("akm" "mng" "ens" "hll" "mvz" "omr" "trk" "3u")
+# Kurumların sunucudaki klasör yolları
+TENANT_DIRS=(
+    "/opt/akm"
+    "/opt/mng"
+    "/opt/ens"
+    "/opt/hll"
+    "/opt/mvz"
+    "/opt/omr"
+    "/opt/trk"
+    "/opt/3u"
+    "/opt/odin"
+)
 
-for tenant in "${TENANTS[@]}"; do
+# Ana derleme yaptığımız klasörü kaydet (geri dönmek için)
+BUILD_DIR=$(pwd)
+
+for dir in "${TENANT_DIRS[@]}"; do
     echo "--------------------------------------------------"
-    echo "🔹 Kurum güncelleniyor: $tenant"
+    echo "🔹 Dizin kontrol ediliyor: $dir"
     echo "--------------------------------------------------"
-    if [ -f "docker-compose.${tenant}.yml" ]; then
-        # docker compose up -d komutu yeni derlenen imajları algılar ve 
-        # veritabanına zarar vermeden sadece ilgili konteynerları yeniden oluşturur (recreate).
-        docker compose -f docker-compose.${tenant}.yml up -d
-        echo "✅ $tenant başarıyla güncellendi ve başlatıldı!"
+    if [ -d "$dir" ]; then
+        cd "$dir"
+        echo "📥 Git reposu güncelleniyor..."
+        git pull || true
+        
+        echo "🔄 Konteynerlar yeni imajlarla yeniden başlatılıyor..."
+        # docker-compose.yml, docker-compose.prod.yml veya tenant yml dosyalarını çalıştırır
+        if [ -f "docker-compose.yml" ]; then
+            docker compose up -d
+        elif [ -f "docker-compose.prod.yml" ]; then
+            docker compose -f docker-compose.prod.yml up -d
+        else
+            COMPOSE_FILE=$(find . -maxdepth 1 -name "docker-compose.*.yml" | head -n 1)
+            if [ -n "$COMPOSE_FILE" ]; then
+                docker compose -f "$COMPOSE_FILE" up -d
+            else
+                echo "⚠️  Docker Compose dosyası bulunamadı!"
+            fi
+        fi
+        echo "✅ $dir başarıyla güncellendi!"
+        cd "$BUILD_DIR"
     else
-        echo "⚠️  docker-compose.${tenant}.yml bulunamadı, atlanıyor."
+        echo "⚠️  $dir dizini bulunamadı, atlanıyor."
     fi
 done
 
