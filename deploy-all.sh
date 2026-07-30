@@ -37,8 +37,9 @@ echo "✅ Ortak Frontend imajları hazır."
 echo ""
 
 # 3. AKM Özel Admin İmaji ve 3U Özel Student İmajı
-echo "📦 4. AKM özel Admin ve 3U özel Student imajları derleniyor..."
-docker build -t muro-admin-akm:latest -f frontend/admin/Dockerfile ./frontend/admin
+docker build -t muro-admin-akm:latest \
+  --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
+  -f frontend/admin/Dockerfile ./frontend/admin
 docker build -t muro-student:3u-ozel -f frontend/student/Dockerfile ./frontend/student
 echo "✅ AKM ve 3U özel imajları hazır."
 echo ""
