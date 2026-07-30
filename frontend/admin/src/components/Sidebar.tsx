@@ -142,39 +142,73 @@ export default function Sidebar({
                 />
             )}
             <aside 
-                style={{ backgroundColor: primaryColor }}
-                className={`w-[260px] flex flex-col h-screen fixed left-0 top-0 z-50 border-r border-[#1B3B6F]/20 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} ${isCollapsed ? 'lg:-translate-x-full' : 'lg:translate-x-0'}`}
+                style={{ backgroundColor: isCollapsed ? `${primaryColor}CC` : primaryColor }} // 80% opacity (CC) in hex for premium glassmorphism
+                className={`flex flex-col transition-all duration-300 ease-in-out z-50 border border-white/10 ${
+                    isOpen 
+                        ? 'w-[260px] h-screen fixed left-0 top-0 translate-x-0' 
+                        : '-translate-x-full fixed left-0 top-0 h-screen'
+                } ${
+                    isCollapsed 
+                        ? 'lg:w-[76px] lg:h-[calc(100vh-2rem)] lg:my-4 lg:ml-4 lg:rounded-[24px] lg:shadow-2xl lg:shadow-black/40 lg:translate-x-0 lg:backdrop-blur-xl' 
+                        : 'w-[260px] h-screen lg:translate-x-0 lg:rounded-none'
+                }`}
             >
                 {/* Logo + Bell */}
-                <div className="px-6 py-7 flex items-center justify-between relative">
-                    {branding?.useWhiteLogoBackground ? (
-                        <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-white/20 flex items-center justify-center shrink-0">
+                <div className={`px-4 py-7 flex ${isCollapsed ? 'flex-col items-center gap-4' : 'items-center justify-between px-6'} relative transition-all duration-300`}>
+                    {isCollapsed ? (
+                        <div 
+                            style={{ backgroundColor: accentColor }} 
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-base font-extrabold shadow-lg border border-white/15 shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200"
+                            onClick={onToggleCollapse}
+                            title={brandName}
+                        >
+                            {brandName.substring(0, 1).toUpperCase()}
+                        </div>
+                    ) : (
+                        branding?.useWhiteLogoBackground ? (
+                            <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm border border-white/20 flex items-center justify-center shrink-0">
+                                <img 
+                                    src={branding?.sidebarLogoUrl || branding?.logoUrl || "/logo.png"} 
+                                    alt={brandName} 
+                                    className="w-32 max-h-10 h-auto object-contain" 
+                                />
+                            </div>
+                        ) : (
                             <img 
                                 src={branding?.sidebarLogoUrl || branding?.logoUrl || "/logo.png"} 
                                 alt={brandName} 
-                                className="w-32 max-h-10 h-auto object-contain" 
+                                className="w-36 max-h-12 h-auto object-contain drop-shadow-md" 
                             />
-                        </div>
-                    ) : (
-                        <img 
-                            src={branding?.sidebarLogoUrl || branding?.logoUrl || "/logo.png"} 
-                            alt={brandName} 
-                            className="w-36 max-h-12 h-auto object-contain drop-shadow-md" 
-                        />
+                        )
                     )}
-                    <div className="hidden lg:flex items-center gap-1.5">
-                        <NotificationBell />
-                        {onToggleCollapse && (
-                            <Tooltip content="Menüyü Gizle" position="bottom">
-                                <button
-                                    onClick={onToggleCollapse}
-                                    className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-white hover:bg-white/10 transition-colors"
-                                >
-                                    <ChevronRight size={18} className="rotate-180" />
-                                </button>
-                            </Tooltip>
-                        )}
-                    </div>
+                    
+                    {!isCollapsed && (
+                        <div className="hidden lg:flex items-center gap-1.5">
+                            <NotificationBell />
+                            {onToggleCollapse && (
+                                <Tooltip content="Menüyü Gizle" position="bottom">
+                                    <button
+                                        onClick={onToggleCollapse}
+                                        className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-white hover:bg-white/10 transition-colors"
+                                    >
+                                        <ChevronRight size={18} className="rotate-180" />
+                                    </button>
+                                </Tooltip>
+                            )}
+                        </div>
+                    )}
+                    
+                    {isCollapsed && onToggleCollapse && (
+                        <Tooltip content="Menüyü Genişlet" position="right">
+                            <button
+                                onClick={onToggleCollapse}
+                                className="hidden lg:flex p-1.5 rounded-lg text-[#A9A9A9] hover:text-white hover:bg-white/10 transition-colors hover:scale-110 active:scale-90 duration-200"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </Tooltip>
+                    )}
+
                     <button 
                         onClick={onClose}
                         className="lg:hidden p-1.5 absolute right-4 top-1/2 -translate-y-1/2 text-[#A9A9A9] hover:text-white rounded-lg hover:bg-white/10"
@@ -185,30 +219,41 @@ export default function Sidebar({
 
             {/* Tenant Switcher — sadece birden fazla kurum varsa göster */}
             {user && user.tenants.length > 1 && (
-                <div className="px-3 pb-3">
+                <div className={`px-3 pb-3 transition-all duration-300 ${isCollapsed ? 'flex justify-center' : ''}`}>
                     <div className="relative">
-                        <button
-                            onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
-                            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#1B3B6F]/15 border border-[#1B3B6F]/20 hover:bg-[#1B3B6F]/25 transition-all group"
-                        >
-                            <div className="w-7 h-7 rounded-lg bg-[#1B3B6F]/30 flex items-center justify-center shrink-0">
-                                <Building2 size={14} className="text-[#A0AEC0]" />
-                            </div>
-                            <div className="flex-1 min-w-0 text-left">
-                                <p className="text-[11px] text-[#A0AEC0]/70 font-medium leading-none mb-0.5">Aktif Kurum</p>
-                                <p className="text-[12px] text-white font-semibold truncate">
-                                    {currentTenant?.tenantName || "Kurum Seçilmedi"}
-                                </p>
-                            </div>
-                            <ChevronDown
-                                size={14}
-                                className={`text-[#A0AEC0] transition-transform duration-200 ${tenantDropdownOpen ? "rotate-180" : ""}`}
-                            />
-                        </button>
+                        {isCollapsed ? (
+                            <Tooltip content="Kurum Değiştir" position="right">
+                                <button
+                                    onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+                                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 flex items-center justify-center text-white transition-all duration-200 hover:scale-110 active:scale-95 group"
+                                >
+                                    <Building2 size={16} className="text-[#A9A9A9] group-hover:text-white" />
+                                </button>
+                            </Tooltip>
+                        ) : (
+                            <button
+                                onClick={() => setTenantDropdownOpen(!tenantDropdownOpen)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                            >
+                                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                                    <Building2 size={14} className="text-[#A0AEC0]" />
+                                </div>
+                                <div className="flex-1 min-w-0 text-left">
+                                    <p className="text-[11px] text-[#A0AEC0]/70 font-medium leading-none mb-0.5">Aktif Kurum</p>
+                                    <p className="text-[12px] text-white font-semibold truncate">
+                                        {currentTenant?.tenantName || "Kurum Seçilmedi"}
+                                    </p>
+                                </div>
+                                <ChevronDown
+                                    size={14}
+                                    className={`text-[#A0AEC0] transition-transform duration-200 ${tenantDropdownOpen ? "rotate-180" : ""}`}
+                                />
+                            </button>
+                        )}
 
                         {/* Dropdown */}
                         {tenantDropdownOpen && (
-                            <div className="absolute left-0 right-0 top-full mt-1 bg-[#0F2847] border border-[#1B3B6F]/30 rounded-xl shadow-2xl shadow-black/40 overflow-hidden z-50">
+                            <div className={`absolute left-0 top-full mt-1 bg-[#0F2847]/95 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl shadow-black/55 overflow-hidden z-50 ${isCollapsed ? 'w-56 left-12' : 'right-0'}`}>
                                 {user.tenants
                                     .filter(t => t.status === "active" || t.status === "Active")
                                     .map((tenant) => (
@@ -220,8 +265,8 @@ export default function Sidebar({
                                             }}
                                             className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-all ${
                                                 tenant.tenantId === currentTenantId
-                                                    ? "bg-[#1B3B6F]/30 text-white"
-                                                    : "text-[#A0AEC0] hover:bg-[#1B3B6F]/15 hover:text-white"
+                                                    ? "bg-white/10 text-white"
+                                                    : "text-[#A0AEC0] hover:bg-white/5 hover:text-white"
                                             }`}
                                         >
                                             <div className={`w-2 h-2 rounded-full shrink-0 ${
@@ -243,7 +288,7 @@ export default function Sidebar({
             )}
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5">
+            <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {sections.map((section) => {
                     const filteredItems = section.items.filter(item => {
                         const hasRole = !user?.role || item.roles.includes(user.role);
@@ -259,40 +304,60 @@ export default function Sidebar({
 
                     return (
                         <div key={section.title}>
-                            <button 
-                                onClick={() => toggleSection(section.title)}
-                                className="w-full flex items-center justify-between px-3 mb-2 group"
-                            >
-                                <p className="text-xs font-bold tracking-wider text-[#A9A9A9] uppercase group-hover:text-white transition-colors">
-                                    {section.title}
-                                </p>
-                                {section.title !== "ANA MENÜ" && (
-                                    <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections[section.title] === false ? 'rotate-180' : ''}`} />
-                                )}
-                            </button>
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${expandedSections[section.title] === false ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+                            {isCollapsed ? (
+                                <div className="w-8 h-px bg-white/10 mx-auto my-4 first:hidden" />
+                            ) : (
+                                <button 
+                                    onClick={() => toggleSection(section.title)}
+                                    className="w-full flex items-center justify-between px-3 mb-2 group"
+                                >
+                                    <p className="text-xs font-bold tracking-wider text-[#A9A9A9] uppercase group-hover:text-white transition-colors">
+                                        {section.title}
+                                    </p>
+                                    {section.title !== "ANA MENÜ" && (
+                                        <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections[section.title] === false ? 'rotate-180' : ''}`} />
+                                    )}
+                                </button>
+                            )}
+                            <div className={`space-y-1.5 overflow-hidden transition-all duration-300 ${(!isCollapsed && expandedSections[section.title] === false) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
                                 {filteredItems.map((item) => {
                                     const isActive = pathname === item.href ||
                                         (item.href !== "/dashboard" && pathname?.startsWith(item.href));
                                     const Icon = item.icon;
-                                    return (
+                                    
+                                    const linkContent = (
                                         <Link
                                             key={item.href}
                                             href={item.href}
                                             prefetch={false}
-                                            className={`group flex items-center gap-3 px-4 py-2.5 rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${isActive
-                                                ? "text-white shadow-lg shadow-[#0A1931]/40"
-                                                : "text-[#A0AEC0] hover:bg-[#1B3B6F]/20 hover:text-[#E2E8F0]"
+                                            className={`group relative flex items-center rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${
+                                                isCollapsed ? "justify-center w-11 h-11 mx-auto hover:scale-115 active:scale-90" : "px-4 py-2.5 gap-3"
+                                            } ${isActive
+                                                ? "text-white shadow-lg shadow-black/20"
+                                                : "text-[#A0AEC0] hover:bg-white/10 hover:text-white"
                                                 }`}
                                             style={isActive ? { backgroundColor: accentColor } : undefined}
                                         >
-                                            <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} className={isActive ? "text-white" : "text-[#A9A9A9] group-hover:text-[#E2E8F0]"} />
-                                            <span className="flex-1">{item.label}</span>
-                                            {isActive && (
-                                                <div className="w-1.5 h-1.5 rounded-full bg-[#A9A9A9] shadow-[0_0_8px_rgba(169,169,169,0.5)]" />
+                                            <Icon size={18} strokeWidth={isActive ? 2.5 : 1.5} className={isActive ? "text-white" : "text-[#A9A9A9] group-hover:text-white transition-colors duration-200"} />
+                                            {!isCollapsed && <span className="flex-1">{item.label}</span>}
+                                            {isActive && !isCollapsed && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.6)]" />
+                                            )}
+                                            {isActive && isCollapsed && (
+                                                <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-1 h-3.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)] animate-pulse" />
                                             )}
                                         </Link>
                                     );
+
+                                    if (isCollapsed) {
+                                        return (
+                                            <Tooltip key={item.href} content={item.label} position="right">
+                                                {linkContent}
+                                            </Tooltip>
+                                        );
+                                    }
+
+                                    return linkContent;
                                 })}
                             </div>
                         </div>
@@ -301,26 +366,48 @@ export default function Sidebar({
             </nav>
 
             {/* User Section */}
-            <div className="p-4 mx-3 mb-6 rounded-2xl bg-[#1B3B6F]/15 border border-[#1B3B6F]/20">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-xs font-bold shrink-0 bg-[#1B3B6F] border border-[#A0AEC0]/10">
-                        {user?.firstName?.[0]}{user?.lastName?.[0]}
+            <div className={`transition-all duration-300 ${
+                isCollapsed 
+                    ? "mx-auto mb-6 flex flex-col items-center gap-3 py-4" 
+                    : "p-4 mx-3 mb-6 rounded-2xl bg-white/5 border border-white/10"
+            }`}>
+                {isCollapsed ? (
+                    <>
+                        <Tooltip content={`${user?.firstName} ${user?.lastName} (${user?.role ? (roleTranslations[user.role] || user.role) : ""})`} position="right">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold bg-white/10 border border-white/10 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 shadow-inner">
+                                {user?.firstName?.[0]}{user?.lastName?.[0]}
+                            </div>
+                        </Tooltip>
+                        <Tooltip content="Çıkış Yap" position="right">
+                            <button
+                                onClick={logout}
+                                className="p-2 rounded-xl text-[#A9A9A9] hover:text-red-400 hover:bg-red-400/10 transition-all hover:scale-110 active:scale-90 duration-200"
+                            >
+                                <LogOut size={16} />
+                            </button>
+                        </Tooltip>
+                    </>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-xs font-bold shrink-0 bg-[#1B3B6F] border border-[#A0AEC0]/10">
+                            {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-white truncate">
+                                {user?.firstName} {user?.lastName}
+                            </p>
+                            <p className="text-[11px] text-[#A9A9A9] truncate">{user?.role ? (roleTranslations[user.role] || user.role) : ""}</p>
+                        </div>
+                        <Tooltip content="Çıkış Yap">
+                            <button
+                                onClick={logout}
+                                className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-red-400 hover:bg-red-400/10 transition-all"
+                            >
+                                <LogOut size={16} />
+                            </button>
+                        </Tooltip>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-white truncate">
-                            {user?.firstName} {user?.lastName}
-                        </p>
-                        <p className="text-[11px] text-[#A9A9A9] truncate">{user?.role ? (roleTranslations[user.role] || user.role) : ""}</p>
-                    </div>
-                    <Tooltip content="Çıkış Yap">
-                        <button
-                            onClick={logout}
-                            className="p-1.5 rounded-lg text-[#A9A9A9] hover:text-red-400 hover:bg-red-400/10 transition-all"
-                        >
-                            <LogOut size={16} />
-                        </button>
-                    </Tooltip>
-                </div>
+                )}
             </div>
         </aside>
         </>

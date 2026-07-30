@@ -12,6 +12,7 @@ import { useToast } from "@/components/toast";
 import { GlobalUploadProvider } from "@/components/ui/GlobalUploadManager";
 import NotificationBell from "@/components/NotificationBell";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { tenantApi, type TenantBrandingDto } from "@/lib/api";
 
 const routeRoles: Record<string, string[]> = {
     "/dashboard/users": ["Admin", "SuperAdmin", "Assistant"],
@@ -55,6 +56,14 @@ export default function DashboardLayout({
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const pathname = usePathname();
     const currentTenant = user?.tenants?.find(t => t.tenantId === currentTenantId);
+
+    const [branding, setBranding] = useState<TenantBrandingDto | null>(null);
+
+    useEffect(() => {
+        tenantApi.getBranding(currentTenantId ?? undefined)
+            .then(setBranding)
+            .catch(() => { /* use defaults */ });
+    }, [currentTenantId]);
 
     // Sync isSidebarCollapsed with localStorage globally
     useEffect(() => {
@@ -127,27 +136,24 @@ export default function DashboardLayout({
                     isOpen={isSidebarOpen} 
                     onClose={() => setIsSidebarOpen(false)} 
                     isCollapsed={isSidebarCollapsed}
-                    onToggleCollapse={() => setCollapsedState(true)}
+                    onToggleCollapse={() => setCollapsedState(!isSidebarCollapsed)}
                 />
-                
-                {isSidebarCollapsed && (
-                    <Tooltip content="Menüyü Göster" position="right" className="hidden lg:inline-flex fixed left-0 top-6 z-40">
-                        <button
-                            onClick={() => setCollapsedState(false)}
-                            className="p-2 text-[#A9A9A9] hover:text-white bg-[#0A1931] hover:bg-[#1B3B6F] rounded-r-xl shadow-md border-y border-r border-[#1B3B6F]/20 hover:scale-105 hover:pl-3.5 transition-all flex items-center justify-center animate-fade-in"
-                        >
-                            <Menu size={18} />
-                        </button>
-                    </Tooltip>
-                )}
 
-                <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-0' : 'lg:ml-[260px]'}`}>
+                <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-[76px]' : 'lg:ml-[260px]'}`}>
                     {/* Mobile Header */}
                     <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-[#E2E8F0] sticky top-0 z-30 shadow-sm">
                         <div className="flex items-center gap-3">
-                            <h1 className="text-lg font-bold text-[#1B3B6F] tracking-tight pl-1">
-                                {currentTenant?.tenantName || "Yönetim Paneli"}
-                            </h1>
+                            {branding?.logoUrl || branding?.sidebarLogoUrl ? (
+                                <img 
+                                    src={branding.logoUrl || branding.sidebarLogoUrl} 
+                                    alt={currentTenant?.tenantName || "Yönetim Paneli"} 
+                                    className="max-h-8 w-auto object-contain pl-1" 
+                                />
+                            ) : (
+                                <h1 className="text-lg font-bold text-[#1B3B6F] tracking-tight pl-1">
+                                    {currentTenant?.tenantName || "Yönetim Paneli"}
+                                </h1>
+                            )}
                         </div>
                         <NotificationBell />
                     </header>

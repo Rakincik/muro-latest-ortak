@@ -209,7 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (!exp) return;
                 const remaining = exp * 1000 - Date.now();
 
-                if (remaining < 5 * 60_000 && remaining > 0) {
+                if (remaining < 5 * 60_000) {
                     const refresh = localStorage.getItem("muro_refresh");
                     if (refresh) {
                         try {
@@ -220,10 +220,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             logout();
                             window.dispatchEvent(new CustomEvent("toast:show", { detail: { type: "warning", title: "⏰ Oturum Süresi", message: "Oturumunuz sona erdi. Lütfen tekrar giriş yapın." } }));
                         }
+                    } else {
+                        logout();
+                        window.dispatchEvent(new CustomEvent("toast:show", { detail: { type: "warning", title: "⏰ Oturum Süresi", message: "Oturumunuz sona erdi. Lütfen tekrar giriş yapın." } }));
                     }
-                } else if (remaining <= 0) {
-                    logout();
-                    window.dispatchEvent(new CustomEvent("toast:show", { detail: { type: "warning", title: "⏰ Oturum Süresi", message: "Oturumunuz sona erdi. Lütfen tekrar giriş yapın." } }));
                 }
             } catch { /* invalid token format */ }
         };

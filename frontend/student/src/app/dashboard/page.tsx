@@ -80,11 +80,11 @@ export default function StudentDashboardPage() {
     return (
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 space-y-6">
             {/* ── Hero Welcome ── */}
-            <div className="hero-continue pt-16 sm:pt-10 pb-10 sm:pb-10 px-6 sm:px-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10">
+            <div className="bg-gradient-to-br from-[#0A1931] to-[#1B3B6F] sm:rounded-[2rem] sm:shadow-xl sm:shadow-[#0a1931]/10 pt-16 pb-8 px-5 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10 max-sm:bg-none max-sm:shadow-none max-sm:border-0 max-sm:px-1 max-sm:pb-2 max-sm:pt-16">
                 <div className="relative z-10">
-                    <p className="text-white/50 text-sm font-medium mb-1">{greeting}</p>
-                    <h1 className="text-3xl font-bold text-white mb-2">{user?.firstName} {user?.lastName}</h1>
-                    <p className="text-white/40 text-sm">
+                    <p className="text-[#64748B] sm:text-white/60 text-xs sm:text-sm font-semibold mb-0.5">{greeting},</p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0A1931] sm:text-white mb-1 tracking-tight">{user?.firstName} {user?.lastName}</h1>
+                    <p className="text-[#64748B]/70 sm:text-white/40 text-xs sm:text-sm">
                         {new Date().toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                     </p>
                 </div>

@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const exp = payload.exp * 1000;
             const remaining = exp - Date.now();
 
-            if (remaining < 5 * 60_000 && remaining > 0) {
+            if (remaining < 5 * 60_000) {
                 const refresh = localStorage.getItem("muro_student_refresh");
                 if (refresh) {
                     try {
@@ -149,10 +149,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         logout();
                         window.dispatchEvent(new CustomEvent("toast:show", { detail: { message: "Oturumunuz sona erdi. Lütfen tekrar giriş yapın.", type: "warning", title: "🔐 Oturum Süresi" } }));
                     }
+                } else {
+                    logout();
+                    setTimeout(() => alert("🔐 Oturumunuz sona erdi. Lütfen tekrar giriş yapın."), 200);
                 }
-            } else if (remaining <= 0) {
-                logout();
-                setTimeout(() => alert("🔐 Oturumunuz sona erdi. Lütfen tekrar giriş yapın."), 200);
             }
         } catch { /* invalid token format */ }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps

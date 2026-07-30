@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MURO.Application.DTOs;
 using MURO.Application.DTOs.Users;
 using MURO.Application.Interfaces;
+using MURO.Application.Exceptions;
 using MURO.Domain.Entities;
 using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
@@ -139,13 +140,16 @@ public class UserService : IUserService
         // Quota Enforcement
         if (role == UserRole.Student)
         {
-            var isDemo = request.StudentType != null && Enum.TryParse<StudentType>(request.StudentType, true, out var stType) && stType == StudentType.Demo;
-            
-            if (isDemo)
+            var maxStudentsStr = Environment.GetEnvironmentVariable("MAX_STUDENTS");
+            if (!string.IsNullOrEmpty(maxStudentsStr) && int.TryParse(maxStudentsStr, out var maxStudents) && maxStudents > 0)
             {
-                var currentDemo = await _context.Users
-                    .CountAsync(m => m.IsActive && m.Role == UserRole.Student && m.StudentType == StudentType.Demo);
-                // No hard quota in single-tenant mode, but keep the structure for future use
+                var activeStudentsCount = await _context.Users
+                    .CountAsync(u => u.IsActive && u.Role == UserRole.Student);
+
+                if (activeStudentsCount >= maxStudents)
+                {
+                    throw new QuotaExceededException("Öğrenci kotanız dolmuştur. Kapasite arttırımı için ilgili kişilerle iletişime geçiniz.");
+                }
             }
         }
 
@@ -304,13 +308,21 @@ public class UserService : IUserService
     {
         var importResult = new BulkImportResultDto { TotalAttempted = requests.Count };
 
-        // Quota Enforcement (Bulk) - single-tenant mode
+        // Quota Enforcement (Bulk)
         var studentRequests = requests.Where(r => Enum.TryParse<UserRole>(r.Role, true, out var ro) && ro == UserRole.Student).ToList();
         if (studentRequests.Any())
         {
-            var newDemoCount = studentRequests.Count(r => r.StudentType != null && Enum.TryParse<StudentType>(r.StudentType, true, out var st) && st == StudentType.Demo);
-            var newActiveCount = studentRequests.Count - newDemoCount;
-            // Quota checks available for future use
+            var maxStudentsStr = Environment.GetEnvironmentVariable("MAX_STUDENTS");
+            if (!string.IsNullOrEmpty(maxStudentsStr) && int.TryParse(maxStudentsStr, out var maxStudents) && maxStudents > 0)
+            {
+                var activeStudentsCount = await _context.Users
+                    .CountAsync(u => u.IsActive && u.Role == UserRole.Student);
+
+                if (activeStudentsCount + studentRequests.Count > maxStudents)
+                {
+                    throw new QuotaExceededException("Öğrenci kotanız dolmuştur. Kapasite arttırımı için ilgili kişilerle iletişime geçiniz.");
+                }
+            }
         }
 
         var results = new List<UserListDto>();

@@ -436,8 +436,33 @@ export default function CourseDetailPage() {
                         <div className={`flex flex-col md:flex-row border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-lg ${isFullscreen ? 'h-screen rounded-none border-0' : ''}`}>
                             {/* ── Left: Video + Bottom Tabs ── */}
                             <div className="flex-1 flex flex-col min-w-0">
+                                {/* ── Player Header Bar ── */}
+                                {!isFullscreen && (
+                                    <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-[#E2E8F0] shrink-0 select-none">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-xs font-bold text-[#0A1931] truncate">{activeRec.sessionTitle}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {/* Sidebar toggle */}
+                                            <button onClick={() => setSidebarOpen(prev => !prev)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-[#D0D5DD] text-[#0A1931] text-[11px] font-semibold rounded-lg shadow-sm transition-all"
+                                                title={sidebarOpen ? 'İçeriği Gizle' : 'İçeriği Göster'}>
+                                                {sidebarOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+                                                <span>{sidebarOpen ? 'Gizle' : 'İçerik'}</span>
+                                            </button>
+                                            {/* Fullscreen */}
+                                            <button onClick={toggleFullscreen}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-[11px] font-semibold rounded-lg shadow-sm transition-all"
+                                                title={isFullscreen ? 'Küçült' : 'Tam Ekran'}>
+                                                {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                                                <span>{isFullscreen ? 'Küçült' : 'Tam Ekran'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Video iframe area */}
-                                <div className={`bg-[#F8F9FA] relative group/player ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
+                                <div className={`bg-[#F8F9FA] relative group/player min-h-[260px] sm:min-h-[360px] lg:min-h-[400px] ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
                                     {/* Loading skeleton */}
                                     {!iframeLoaded && (
                                         <div className="absolute inset-0 z-[5] bg-[#F8F9FA] flex items-center justify-center">
@@ -526,23 +551,17 @@ export default function CourseDetailPage() {
                                         );
                                     })()}
 
-                                    {/* ── Floating Controls Overlay ── */}
-                                    <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
-                                        {/* Sidebar toggle */}
-                                        <button onClick={() => setSidebarOpen(prev => !prev)}
-                                            className="flex items-center gap-1.5 px-3 py-2 bg-white/95 hover:bg-white shadow-lg rounded-lg border border-[#E2E8F0] text-[#0A1931] text-xs font-semibold transition-all hover:shadow-xl"
-                                            title={sidebarOpen ? 'İçeriği Gizle' : 'İçeriği Göster'}>
-                                            {sidebarOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-                                            <span className="hidden sm:inline">{sidebarOpen ? 'Gizle' : 'İçerik'}</span>
-                                        </button>
-                                        {/* Fullscreen */}
-                                        <button onClick={toggleFullscreen}
-                                            className="flex items-center gap-1.5 px-3 py-2 bg-[#1B3B6F] hover:bg-[#0A1931] shadow-lg rounded-lg text-white text-xs font-semibold transition-all hover:shadow-xl"
-                                            title={isFullscreen ? 'Küçült' : 'Tam Ekran'}>
-                                            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                                            <span className="hidden sm:inline">{isFullscreen ? 'Küçült' : 'Tam Ekran'}</span>
-                                        </button>
-                                    </div>
+                                    {/* ── Immersive Fullscreen Exit Button ── */}
+                                    {isFullscreen && (
+                                        <div className="absolute top-3 right-3 z-50">
+                                            <button onClick={toggleFullscreen}
+                                                className="flex items-center gap-1.5 px-3 py-2 bg-black/60 hover:bg-black/85 text-white text-xs font-semibold rounded-lg backdrop-blur-sm transition-all"
+                                                title="Tam Ekrandan Çık">
+                                                <Minimize2 size={16} />
+                                                <span>Küçült</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Bottom Tabs area */}

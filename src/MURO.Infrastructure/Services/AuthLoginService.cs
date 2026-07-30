@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MURO.Application.DTOs.Auth;
 using MURO.Application.Interfaces;
+using MURO.Application.Exceptions;
 using MURO.Domain.Entities;
 using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
@@ -156,6 +157,18 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
+        var maxStudentsStr = Environment.GetEnvironmentVariable("MAX_STUDENTS");
+        if (!string.IsNullOrEmpty(maxStudentsStr) && int.TryParse(maxStudentsStr, out var maxStudents) && maxStudents > 0)
+        {
+            var activeStudentsCount = await _context.Users
+                .CountAsync(u => u.IsActive && u.Role == UserRole.Student);
+
+            if (activeStudentsCount >= maxStudents)
+            {
+                throw new QuotaExceededException("Öğrenci kotanız dolmuştur. Kapasite arttırımı için ilgili kişilerle iletişime geçiniz.");
+            }
+        }
+
         if (await _context.Users.AnyAsync(u => u.Email == request.Email))
             throw new InvalidOperationException("Bu e-posta adresi zaten kayıtlı.");
 
