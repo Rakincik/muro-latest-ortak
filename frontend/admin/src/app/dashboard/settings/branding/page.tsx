@@ -21,7 +21,7 @@ import {
 
 // Presets kanka, kullanıcı kolay seçsin diye
 const PRESET_COLORS = [
-    { name: "Monopol Lacivert", hex: "#1B3B6F" },
+    { name: "Koyu Lacivert", hex: "#1B3B6F" },
     { name: "Kraliyet Mavi", hex: "#1D4ED8" },
     { name: "Zümrüt Yeşil", hex: "#059669" },
     { name: "Yakut Kırmızı", hex: "#DC2626" },
@@ -34,7 +34,7 @@ export default function BrandingSettingsPage() {
     const { success, error } = useToast();
 
     // Form state
-    const [name, setName] = useState("Monopoluzem");
+    const [name, setName] = useState("MURO");
     const [primaryColor, setPrimaryColor] = useState("#0A1931");
     const [accentColor, setAccentColor] = useState("#3B82F6");
     const [footerText, setFooterText] = useState("");
@@ -88,7 +88,7 @@ export default function BrandingSettingsPage() {
         tenantApi.getAdminBranding(token, currentTenantId)
             .then(res => {
                 if (res) {
-                    setName(res.tenantName || "Monopoluzem");
+                    setName(res.tenantName || "MURO");
                     setPrimaryColor(res.primaryColor || "#0A1931");
                     setAccentColor(res.accentColor || "#3B82F6");
                     setFooterText(res.footerText || "");

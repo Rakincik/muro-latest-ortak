@@ -9,7 +9,7 @@ import DynamicTitle from "@/components/DynamicTitle";
 
 export const metadata: Metadata = {
   title: "Öğrenci Paneli",
-  description: "Derece Uzaktan Eğitim Platformu",
+  description: "MURO Uzaktan Eğitim Platformu",
   viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no",
   other: {
     "mobile-web-app-capable": "yes",

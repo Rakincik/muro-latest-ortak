@@ -40,8 +40,8 @@ export default function StudentLoginPage() {
         
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else if (window.location.hostname.includes("monopol") || window.location.hostname.includes("dereceuzem")) {
-          // Monopol & Dereceuzem: Redirect directly to the /admin/dashboard subpath
+        } else if (!window.location.hostname.endsWith("muro.click") && !window.location.hostname.endsWith("4takademi.com")) {
+          // Custom / Single domain setup -> redirect to local subpath
           targetUrl = `/admin/dashboard`;
         } else {
           // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click, uzem.4takademi.com -> uzem-adm.4takademi.com

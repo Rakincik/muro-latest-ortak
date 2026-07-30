@@ -322,7 +322,7 @@ export function BbbSyncModal({ isOpen, onClose, courseId, sessions, onSuccess }:
                                 <input 
                                     type="url" 
                                     required
-                                    placeholder="Örn: https://canli.monopoluzem.com.tr/playback/presentation/2.3/..."
+                                    placeholder="Örn: https://canli.uzeminiz.com/playback/presentation/2.3/..."
                                     value={manualUrl} 
                                     onChange={e => setManualUrl(e.target.value)}
                                     className="w-full px-4 py-3 text-sm font-bold border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#0A1931] focus:bg-white placeholder:text-[#A0AEC0] placeholder:font-medium transition-all" 
