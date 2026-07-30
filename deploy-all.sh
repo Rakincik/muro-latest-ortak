@@ -86,11 +86,16 @@ for dir in "${TENANT_DIRS[@]}"; do
         git pull || true
         
         echo "🔄 Konteynerlar yeni imajlarla yeniden başlatılıyor..."
-        # docker-compose.yml, docker-compose.prod.yml veya tenant yml dosyalarını çalıştırır
-        if [ -f "docker-compose.yml" ]; then
+        # Klasör adını alıp tenant ismini belirler (örn: /opt/akm -> akm)
+        TENANT_NAME=$(basename "$dir")
+        
+        # docker-compose.<tenant>.yml, docker-compose.yml veya docker-compose.prod.yml dosyalarını sırayla dener
+        if [ -f "docker-compose.${TENANT_NAME}.yml" ]; then
+            docker compose -f "docker-compose.${TENANT_NAME}.yml" up -d
+        elif [ -f "docker-compose.yml" ]; then
             docker compose up -d
         elif [ -f "docker-compose.prod.yml" ]; then
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f "docker-compose.prod.yml" up -d
         else
             COMPOSE_FILE=$(find . -maxdepth 1 -name "docker-compose.*.yml" | head -n 1)
             if [ -n "$COMPOSE_FILE" ]; then
