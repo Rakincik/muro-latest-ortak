@@ -33,7 +33,6 @@ public static class DatabaseSeeder
         }
         else
         {
-            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
             admin.IsActive     = true;
             admin.Role         = UserRole.Admin;
             db.Users.Update(admin);
@@ -61,7 +60,6 @@ public static class DatabaseSeeder
         }
         else
         {
-            student.PasswordHash = "123456";
             student.IsActive     = true;
             db.Users.Update(student);
         }
@@ -87,7 +85,6 @@ public static class DatabaseSeeder
         }
         else
         {
-            rustem.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
             rustem.IsActive     = true;
             rustem.Role         = UserRole.SuperAdmin;
             db.Users.Update(rustem);
@@ -114,7 +111,8 @@ public static class DatabaseSeeder
         }
         else
         {
-            osman.PasswordHash = BCrypt.Net.BCrypt.HashPassword("osman6363");
+            osman.IsActive     = true;
+            osman.Role         = UserRole.SuperAdmin;
             db.Users.Update(osman);
         }
 
@@ -139,7 +137,8 @@ public static class DatabaseSeeder
         }
         else
         {
-            volkan.PasswordHash = BCrypt.Net.BCrypt.HashPassword("vc0606");
+            volkan.IsActive     = true;
+            volkan.Role         = UserRole.SuperAdmin;
             db.Users.Update(volkan);
         }
 
