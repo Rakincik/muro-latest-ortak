@@ -71,7 +71,17 @@ export default function StudentDashboardPage() {
     const hours = stats ? Math.floor((stats.totalWatchedMinutes || 0) / 60) : 0;
     const mins = stats ? (stats.totalWatchedMinutes || 0) % 60 : 0;
     const now = new Date();
-    const greeting = now.getHours() < 12 ? "Günaydın" : now.getHours() < 18 ? "İyi günler" : "İyi akşamlar";
+    
+    // Gece 00:00 - 05:00 arası İyi Geceler diyelim kanka :)
+    const currentHour = now.getHours();
+    const greeting = currentHour >= 5 && currentHour < 12 
+        ? "Günaydın" 
+        : currentHour >= 12 && currentHour < 18 
+            ? "İyi günler" 
+            : currentHour >= 18 && currentHour < 24 
+                ? "İyi akşamlar" 
+                : "İyi geceler";
+
     const streak = stats?.consecutiveDays || 0;
 
     // Weekly activity comes from API now, ensure it falls back to empty array if null
@@ -80,7 +90,7 @@ export default function StudentDashboardPage() {
     return (
         <div className="w-full max-w-[1600px] mx-auto px-4 lg:px-8 space-y-6">
             {/* ── Hero Welcome ── */}
-            <div className="bg-gradient-to-br from-[#0A1931] to-[#1B3B6F] sm:rounded-[2rem] sm:shadow-xl sm:shadow-[#0a1931]/10 pt-16 pb-8 px-5 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10 max-sm:bg-none max-sm:shadow-none max-sm:border-0 max-sm:px-1 max-sm:pb-2 max-sm:pt-16">
+            <div className="bg-gradient-to-br from-[#0A1931] to-[#1B3B6F] sm:rounded-[2rem] sm:shadow-xl sm:shadow-[#0a1931]/10 pt-16 pb-8 px-5 sm:p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-0 animate-fade-in relative z-10 max-sm:bg-none max-sm:shadow-none max-sm:border-0 max-sm:px-1 max-sm:pb-2 max-sm:pt-4">
                 <div className="relative z-10">
                     <p className="text-[#64748B] sm:text-white/60 text-xs sm:text-sm font-semibold mb-0.5">{greeting},</p>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0A1931] sm:text-white mb-1 tracking-tight">{user?.firstName} {user?.lastName}</h1>

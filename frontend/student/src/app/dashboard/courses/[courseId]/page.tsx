@@ -438,28 +438,38 @@ export default function CourseDetailPage() {
                             <div className="flex-1 flex flex-col min-w-0">
                                 {/* ── Player Header Bar ── */}
                                 {!isFullscreen && (
-                                    <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-[#E2E8F0] shrink-0 select-none">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-xs font-bold text-[#0A1931] truncate">{activeRec.sessionTitle}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {/* Sidebar toggle */}
-                                            <button onClick={() => setSidebarOpen(prev => !prev)}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-50 border border-[#D0D5DD] text-[#0A1931] text-[11px] font-semibold rounded-lg shadow-sm transition-all"
-                                                title={sidebarOpen ? 'İçeriği Gizle' : 'İçeriği Göster'}>
-                                                {sidebarOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-                                                <span>{sidebarOpen ? 'Gizle' : 'İçerik'}</span>
-                                            </button>
-                                            {/* Fullscreen */}
-                                            <button onClick={toggleFullscreen}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-[11px] font-semibold rounded-lg shadow-sm transition-all"
-                                                title={isFullscreen ? 'Normal ekrana dön' : 'Kamera, slayt ve sohbet arayüzünü tamamen ekranı kaplayacak şekilde büyütür. Sadece sunum slaytını büyütmek için slayt üzerindeki mavi ikonu kullanabilirsiniz.'}>
-                                                {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                                                <span>{isFullscreen ? 'Küçült' : 'Tam Ekran (Dersi Büyüt)'}</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
+                                     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#E2E8F0] shrink-0 select-none">
+                                         <div className="flex items-center gap-2 min-w-0">
+                                             <span className="text-xs font-bold text-[#0A1931] truncate">{activeRec.sessionTitle}</span>
+                                         </div>
+                                         <div className="flex items-center gap-2 shrink-0">
+                                             {/* Sidebar toggle */}
+                                             <button onClick={() => setSidebarOpen(prev => !prev)}
+                                                 className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-[#D0D5DD] text-[#0A1931] text-xs font-bold rounded-xl shadow-sm transition-all transform active:scale-95"
+                                                 title={sidebarOpen ? 'İçeriği Gizle' : 'İçeriği Göster'}>
+                                                 {sidebarOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+                                                 <span>{sidebarOpen ? 'Gizle' : 'İçerik'}</span>
+                                             </button>
+                                             {/* Fullscreen */}
+                                             <button onClick={toggleFullscreen}
+                                                 className="flex items-center gap-2 px-4 py-2 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all transform active:scale-95"
+                                                 title={isFullscreen ? 'Normal ekrana dön' : 'Kamera, slayt ve sohbet arayüzünü tamamen ekranı kaplayacak şekilde büyütür. Sadece sunum slaytını büyütmek için slayt üzerindeki mavi ikonu kullanabilirsiniz.'}>
+                                                 {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                                                 <span>{isFullscreen ? 'Küçült' : 'Tam Ekran (Dersi Büyüt)'}</span>
+                                             </button>
+                                         </div>
+                                     </div>
+                                 )}
+
+                                 {/* Bilgilendirme Uyarı Banner'ı */}
+                                 {!isFullscreen && (
+                                     <div className="bg-red-50/70 border-b border-red-100/50 px-4 py-2 text-[10px] sm:text-[11px] text-red-600 font-semibold flex items-start sm:items-center gap-2 select-none">
+                                         <span className="shrink-0 flex items-center justify-center w-4 h-4 rounded-full bg-red-100 text-red-600 font-black text-[11px]">*</span>
+                                         <span className="leading-normal">
+                                             Slaytı tek başına büyütmek için slaytın sağ üstündeki <b>mavi ikonu</b>, tüm ders ekranını büyütmek için yukarıdaki <b>"Tam Ekran"</b> butonunu kullanabilirsiniz.
+                                         </span>
+                                     </div>
+                                 )}
 
                                 {/* Video iframe area */}
                                 <div ref={playerContainerRef} className={`bg-[#F8F9FA] relative group/player min-h-[260px] sm:min-h-[360px] lg:min-h-[400px] ${isFullscreen ? 'fixed inset-0 z-[100] bg-black flex items-center justify-center' : 'aspect-video'}`}>
