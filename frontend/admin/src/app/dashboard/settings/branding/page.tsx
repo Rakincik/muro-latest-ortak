@@ -583,6 +583,14 @@ export default function BrandingSettingsPage() {
                                     <span className="font-bold block mb-0.5">E-posta + Telefon Son 2</span>
                                     <span className="opacity-70 text-[10px]">{`{email}.{phone_last2}`}</span>
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPasswordRule("{last_name}{phone_last2}")}
+                                    className={`px-3 py-2.5 rounded-xl border transition-all text-left text-xs sm:col-span-2 ${passwordRule === "{last_name}{phone_last2}" ? 'border-[#3B82F6] bg-[#3B82F6] text-white shadow-md shadow-blue-500/20' : 'border-[#E2E8F0] hover:bg-[#F1F5F9] text-[#64748B]'}`}
+                                >
+                                    <span className="font-bold block mb-0.5">Soyad + Telefon Son 2</span>
+                                    <span className="opacity-70 text-[10px]">{`{last_name}{phone_last2}`}</span>
+                                </button>
                             </div>
 
                             {/* Custom Formula input */}
