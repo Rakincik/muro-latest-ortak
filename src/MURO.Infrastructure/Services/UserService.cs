@@ -821,16 +821,33 @@ public class UserService : IUserService
         var tcnoVal = user.TcNo ?? "";
         var tcnoLast4Val = tcnoVal.Length >= 4 ? tcnoVal.Substring(tcnoVal.Length - 4) : "0000";
 
-        var result = rule
-            .Replace("{first_name}", cleanFirstName)
-            .Replace("{last_name}", cleanLastName)
-            .Replace("{last_name_first_char}", lastCharVal)
-            .Replace("{phone}", phoneVal)
-            .Replace("{phone_last2}", lastTwoVal)
-            .Replace("{email}", emailVal)
-            .Replace("{tcno}", tcnoVal)
-            .Replace("{tcno_last4}", tcnoLast4Val);
+        // Türkçe ve İngilizce tüm varyasyonları case-insensitive (büyük-küçük harf duyarsız) olarak eşleştiriyoruz kanka
+        var result = rule;
+        
+        result = ReplacePlaceholder(result, new[] { "first_name", "first-name", "firstName", "ad", "isim" }, cleanFirstName);
+        result = ReplacePlaceholder(result, new[] { "last_name", "last-name", "lastName", "soyad", "soyisim" }, cleanLastName);
+        result = ReplacePlaceholder(result, new[] { "last_name_first_char", "last-name-first-char", "lastNameFirstChar", "soyad_ilk_harfi", "soyad_ilk_harf", "soyad-ilk-harf" }, lastCharVal);
+        result = ReplacePlaceholder(result, new[] { "phone", "telefon", "tel" }, phoneVal);
+        result = ReplacePlaceholder(result, new[] { "phone_last2", "phone-last2", "phoneLast2", "telefon_son2", "tel_son2" }, lastTwoVal);
+        result = ReplacePlaceholder(result, new[] { "email", "eposta", "e-posta" }, emailVal);
+        result = ReplacePlaceholder(result, new[] { "tcno", "tc", "tckn" }, tcnoVal);
+        result = ReplacePlaceholder(result, new[] { "tcno_last4", "tcno-last4", "tcnoLast4", "tc_son4", "tckn_son4" }, tcnoLast4Val);
 
+        return result;
+    }
+
+    private static string ReplacePlaceholder(string template, string[] keys, string value)
+    {
+        var result = template;
+        foreach (var key in keys)
+        {
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result, 
+                @"\{" + System.Text.RegularExpressions.Regex.Escape(key) + @"\}", 
+                value ?? "", 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase
+            );
+        }
         return result;
     }
 
