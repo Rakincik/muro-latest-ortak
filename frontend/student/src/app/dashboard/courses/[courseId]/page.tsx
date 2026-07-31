@@ -418,7 +418,7 @@ export default function CourseDetailPage() {
                     </div>
                 );
                 return (
-                    <div ref={playerContainerRef} className={`${isFullscreen ? 'fixed inset-0 z-[100] bg-white' : ''}`}>
+                    <div className="w-full">
                         {/* ── Resume Banner ── */}
                         {!selectedRec && lastWatchedRec && (
                             <button onClick={() => setSelectedRec(lastWatchedRec)}
@@ -433,7 +433,7 @@ export default function CourseDetailPage() {
                         )}
 
                         {/* ── Player + Sidebar Row ── */}
-                        <div className={`flex flex-col md:flex-row border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-lg ${isFullscreen ? 'h-screen rounded-none border-0' : ''}`}>
+                        <div className="flex flex-col md:flex-row border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-lg">
                             {/* ── Left: Video + Bottom Tabs ── */}
                             <div className="flex-1 flex flex-col min-w-0">
                                 {/* ── Player Header Bar ── */}
@@ -453,16 +453,16 @@ export default function CourseDetailPage() {
                                             {/* Fullscreen */}
                                             <button onClick={toggleFullscreen}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-[11px] font-semibold rounded-lg shadow-sm transition-all"
-                                                title={isFullscreen ? 'Küçült' : 'Tam Ekran'}>
+                                                title={isFullscreen ? 'Normal ekrana dön' : 'Kamera, slayt ve sohbet arayüzünü tamamen ekranı kaplayacak şekilde büyütür. Sadece sunum slaytını büyütmek için slayt üzerindeki mavi ikonu kullanabilirsiniz.'}>
                                                 {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                                                <span>{isFullscreen ? 'Küçült' : 'Tam Ekran'}</span>
+                                                <span>{isFullscreen ? 'Küçült' : 'Tam Ekran (Dersi Büyüt)'}</span>
                                             </button>
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Video iframe area */}
-                                <div className={`bg-[#F8F9FA] relative group/player min-h-[260px] sm:min-h-[360px] lg:min-h-[400px] ${isFullscreen ? 'flex-1' : 'aspect-video'}`}>
+                                <div ref={playerContainerRef} className={`bg-[#F8F9FA] relative group/player min-h-[260px] sm:min-h-[360px] lg:min-h-[400px] ${isFullscreen ? 'fixed inset-0 z-[100] bg-black flex items-center justify-center' : 'aspect-video'}`}>
                                     {/* Loading skeleton */}
                                     {!iframeLoaded && (
                                         <div className="absolute inset-0 z-[5] bg-[#F8F9FA] flex items-center justify-center">
