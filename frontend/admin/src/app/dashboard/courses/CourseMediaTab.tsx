@@ -80,6 +80,7 @@ export function CourseMediaTab({
     const [filter, setFilter] = useState<'all' | 'video' | 'recording'>('all');
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
+    const [showMobileActionsMenu, setShowMobileActionsMenu] = useState(false);
 
     useEffect(() => {
         loadMedias();
@@ -489,65 +490,127 @@ export function CourseMediaTab({
                             </button>
                         )
                     )}
-                    <CustomSelect 
-                        value={filter}
-                        onChange={(val) => setFilter(val as any)}
-                        options={[
-                            { label: "Filtre: Tümü", value: "all" },
-                            { label: "Filtre: Videolar", value: "video" },
-                            { label: "Filtre: Kayıtlar", value: "recording" }
-                        ]}
-                    />
-                    <CustomSelect 
-                        value={pageSize}
-                        onChange={(val) => setPageSize(Number(val))}
-                        options={[
-                            { label: "10'lu Göster", value: 10 },
-                            { label: "20'li Göster", value: 20 },
-                            { label: "50'li Göster", value: 50 },
-                            { label: "Tümü (Sıralamaya İzin Ver)", value: -1 }
-                        ]}
-                    />
-                    {(user?.role === 'SuperAdmin' || user?.role === 'Admin') && (
+                    {/* Desktop Toolbar Controls */}
+                    <div className="hidden lg:flex items-center gap-3 flex-wrap">
                         <CustomSelect 
-                            value=""
-                            onChange={(val) => {
-                                if (val) handleBulkSort(val as any);
-                            }}
+                            value={filter}
+                            onChange={(val) => setFilter(val as any)}
                             options={[
-                                { label: "⚡ Toplu Sırala", value: "" },
-                                { label: "Tarihe Göre (Eskiden Yeniye)", value: "date-asc" },
-                                { label: "Tarihe Göre (Yeniden Eskiye)", value: "date-desc" },
-                                { label: "Alfabetik (A-Z)", value: "alpha-asc" },
-                                { label: "Alfabetik (Z-A)", value: "alpha-desc" }
+                                { label: "Filtre: Tümü", value: "all" },
+                                { label: "Filtre: Videolar", value: "video" },
+                                { label: "Filtre: Kayıtlar", value: "recording" }
                             ]}
                         />
-                    )}
-                    {user?.role === 'SuperAdmin' && (
+                        <CustomSelect 
+                            value={pageSize}
+                            onChange={(val) => setPageSize(Number(val))}
+                            options={[
+                                { label: "10'lu Göster", value: 10 },
+                                { label: "20'li Göster", value: 20 },
+                                { label: "50'li Göster", value: 50 },
+                                { label: "Tümü (Sıralamaya İzin Ver)", value: -1 }
+                            ]}
+                        />
+                        {(user?.role === 'SuperAdmin' || user?.role === 'Admin') && (
+                            <CustomSelect 
+                                value=""
+                                onChange={(val) => {
+                                    if (val) handleBulkSort(val as any);
+                                }}
+                                options={[
+                                    { label: "⚡ Toplu Sırala", value: "" },
+                                    { label: "Tarihe Göre (Eskiden Yeniye)", value: "date-asc" },
+                                    { label: "Tarihe Göre (Yeniden Eskiye)", value: "date-desc" },
+                                    { label: "Alfabetik (A-Z)", value: "alpha-asc" },
+                                    { label: "Alfabetik (Z-A)", value: "alpha-desc" }
+                                ]}
+                            />
+                        )}
+                        {user?.role === 'SuperAdmin' && (
+                            <button 
+                                onClick={() => setIsBbbSyncOpen(true)}
+                                className="flex items-center gap-2 bg-[#0A1931] hover:bg-[#1B3B6F] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
+                            >
+                                <Video size={16} />
+                                BBB Kayıt Aktar
+                            </button>
+                        )}
                         <button 
-                            onClick={() => setIsBbbSyncOpen(true)}
-                            className="flex items-center gap-2 bg-[#0A1931] hover:bg-[#1B3B6F] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
-                        >
-                            <Video size={16} />
-                            BBB Kayıt Aktar
-                        </button>
-                    )}
-                    <button 
-                        onClick={() => setIsLibraryModalOpen(true)}
-                        className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
-                    >
-                        <Plus size={16} />
-                        Medya Ekle
-                    </button>
-                    {hasExamsFeature && (
-                        <button 
-                            onClick={() => setIsExamModalOpen(true)}
+                            onClick={() => setIsLibraryModalOpen(true)}
                             className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
                         >
-                            <FileText size={16} />
-                            Quiz Ekle
+                            <Plus size={16} />
+                            Medya Ekle
                         </button>
-                    )}
+                        {hasExamsFeature && (
+                            <button 
+                                onClick={() => setIsExamModalOpen(true)}
+                                className="flex items-center gap-2 bg-[#1B3B6F] hover:bg-[#152a51] text-white px-5 py-2.5 rounded-2xl font-bold transition-all shadow-md active:scale-95"
+                            >
+                                <FileText size={16} />
+                                Quiz Ekle
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Mobile Toolbar Controls (Saves ~70% vertical space!) */}
+                    <div className="flex lg:hidden flex-col gap-3 w-full">
+                        <div className="grid grid-cols-2 gap-2">
+                            <CustomSelect 
+                                value={filter}
+                                onChange={(val) => setFilter(val as any)}
+                                options={[
+                                    { label: "Filtre: Tümü", value: "all" },
+                                    { label: "Filtre: Videolar", value: "video" },
+                                    { label: "Filtre: Kayıtlar", value: "recording" }
+                                ]}
+                            />
+                            <CustomSelect 
+                                value={pageSize}
+                                onChange={(val) => setPageSize(Number(val))}
+                                options={[
+                                    { label: "10'lu Göster", value: 10 },
+                                    { label: "20'li Göster", value: 20 },
+                                    { label: "50'li Göster", value: 50 },
+                                    { label: "Tümü", value: -1 }
+                                ]}
+                            />
+                        </div>
+                        <div className="relative w-full">
+                            <button 
+                                onClick={() => setShowMobileActionsMenu(!showMobileActionsMenu)}
+                                className="w-full py-2.5 px-4 rounded-xl bg-[#0A1931] hover:bg-[#1B3B6F] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                            >
+                                <Plus size={14} className="shrink-0" />
+                                Medya / İşlem Ekle ▾
+                            </button>
+                            {showMobileActionsMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowMobileActionsMenu(false)} />
+                                    <div className="absolute right-0 left-0 top-full mt-1 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in-50 slide-in-from-top-1 duration-150 max-h-[300px] overflow-y-auto">
+                                        <p className="text-[9px] font-black uppercase tracking-wider text-[#A0AEC0] px-4 py-1.5 border-b border-[#E2E8F0]/60 mb-1">Kursa Ekle</p>
+                                        <button onClick={() => { setShowMobileActionsMenu(false); setIsLibraryModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-2"><Plus size={14} /> Medya Ekle</button>
+                                        {hasExamsFeature && (
+                                            <button onClick={() => { setShowMobileActionsMenu(false); setIsExamModalOpen(true); }} className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-2"><FileText size={14} /> Quiz Ekle</button>
+                                        )}
+                                        {user?.role === 'SuperAdmin' && (
+                                            <button onClick={() => { setShowMobileActionsMenu(false); setIsBbbSyncOpen(true); }} className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#0A1931] hover:bg-[#E2E8F0]/20 flex items-center gap-2"><Video size={14} /> BBB Kayıt Aktar</button>
+                                        )}
+                                        
+                                        {(user?.role === 'SuperAdmin' || user?.role === 'Admin') && (
+                                            <>
+                                                <p className="text-[9px] font-black uppercase tracking-wider text-[#A0AEC0] px-4 py-1.5 border-t border-b border-[#E2E8F0]/60 my-1">Toplu Sıralama</p>
+                                                <button onClick={() => { setShowMobileActionsMenu(false); handleBulkSort("date-asc"); }} className="w-full text-left px-4 py-2 text-xs font-bold text-[#0A1931] hover:bg-[#E2E8F0]/20 flex items-center gap-2">⚡ Tarihe Göre (Eskiden Yeniye)</button>
+                                                <button onClick={() => { setShowMobileActionsMenu(false); handleBulkSort("date-desc"); }} className="w-full text-left px-4 py-2 text-xs font-bold text-[#0A1931] hover:bg-[#E2E8F0]/20 flex items-center gap-2">⚡ Tarihe Göre (Yeniden Eskiye)</button>
+                                                <button onClick={() => { setShowMobileActionsMenu(false); handleBulkSort("alpha-asc"); }} className="w-full text-left px-4 py-2 text-xs font-bold text-[#0A1931] hover:bg-[#E2E8F0]/20 flex items-center gap-2">⚡ Alfabetik (A-Z)</button>
+                                                <button onClick={() => { setShowMobileActionsMenu(false); handleBulkSort("alpha-desc"); }} className="w-full text-left px-4 py-2 text-xs font-bold text-[#0A1931] hover:bg-[#E2E8F0]/20 flex items-center gap-2">⚡ Alfabetik (Z-A)</button>
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

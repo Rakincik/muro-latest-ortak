@@ -48,6 +48,15 @@ export function useStudentHub(callbacks: StudentHubCallbacks) {
             callbackRef.current.onNewNotification?.(data);
         });
 
+        // Oturum başka cihazdan açıldıysa (SignalR real-time kick)
+        connection.on("KickSession", (data) => {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("session:kicked", { 
+                    detail: { message: data?.message || "Hesabınıza başka bir cihazdan giriş yapıldı. Lütfen tekrar giriş yapın." } 
+                }));
+            }
+        });
+
         connection.start().catch(() => {
             // SignalR bağlantı hatası — sessizce devam et
         });

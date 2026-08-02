@@ -17,6 +17,11 @@ public class NotificationHub : Hub
         if (!string.IsNullOrEmpty(userId))
             await Groups.AddToGroupAsync(Context.ConnectionId, userId);
 
+        // Session validation / kick group
+        var sessionId = Context.User?.FindFirst("sessionId")?.Value;
+        if (!string.IsNullOrEmpty(sessionId))
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"session:{sessionId}");
+
         await base.OnConnectedAsync();
     }
 
@@ -25,6 +30,10 @@ public class NotificationHub : Hub
         var userId = Context.UserIdentifier;
         if (!string.IsNullOrEmpty(userId))
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, userId);
+
+        var sessionId = Context.User?.FindFirst("sessionId")?.Value;
+        if (!string.IsNullOrEmpty(sessionId))
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"session:{sessionId}");
 
         await base.OnDisconnectedAsync(exception);
     }

@@ -119,8 +119,8 @@ export function useVideoPlayer(
         };
     }, [selectedRec?.id, markWatched, lastWatchedKey]);
 
-    // ── Heartbeat: send progress every 60s + flush on unmount ──
-    // 🚀 10K optimization: 60s interval = half the API calls vs 30s
+    // ── Heartbeat: send progress every 5 minutes + flush on unmount ──
+    // 🚀 10K optimization: 5 minutes (300s) interval to minimize API traffic
     useEffect(() => {
         if (!selectedRec || !token || !tenantId) return;
 
@@ -142,7 +142,7 @@ export function useVideoPlayer(
             videoApi.updateProgress(token, tenantId, targetId, payload).catch(() => { });
         };
 
-        heartbeatRef.current = setInterval(sendProgress, 120_000);
+        heartbeatRef.current = setInterval(sendProgress, 300_000);
 
         // Tab kapanırken/video değişirken son veriyi gönder (sendBeacon ile)
         const flushOnUnload = () => {

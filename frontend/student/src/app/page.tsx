@@ -21,7 +21,20 @@ export default function StudentLoginPage() {
 
   // Tenant branding yükle
   useEffect(() => {
-    tenantApi.getBranding().then(setBranding).catch(() => { });
+    tenantApi.getBranding().then((data) => {
+      if (!data) return setBranding(null);
+      // featuresJson içinden login alanlarını çıkar (backend top-level dönmüyorsa fallback)
+      const brandingData = { ...data } as any;
+      if (brandingData.featuresJson && !brandingData.loginUsernameLabel) {
+        try {
+          const parsed = JSON.parse(brandingData.featuresJson);
+          if (parsed.loginUsernameLabel) brandingData.loginUsernameLabel = parsed.loginUsernameLabel;
+          if (parsed.loginUsernamePlaceholder) brandingData.loginUsernamePlaceholder = parsed.loginUsernamePlaceholder;
+          if (parsed.loginWarningText !== undefined) brandingData.loginWarningText = parsed.loginWarningText;
+        } catch { /* featuresJson parse hatası, varsayılanlar kullanılır */ }
+      }
+      setBranding(brandingData);
+    }).catch(() => { });
   }, []);
 
   // Giriş yapılmışsa role göre yönlendir
@@ -144,19 +157,32 @@ export default function StudentLoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">Kullanıcı Adı</label>
+              <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">{branding?.loginUsernameLabel || "Kullanıcı Adı"}</label>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 bg-[#1B3B6F]/15 border border-[#1B3B6F]/30 rounded-xl text-white placeholder-[#A9A9A9] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F] focus:border-transparent transition-all text-sm"
-                placeholder="Kullanıcı adınızı girin"
+                placeholder={branding?.loginUsernamePlaceholder || "Kullanıcı adınızı girin"}
               />
-              <p className="mt-1.5 text-[11px] text-[#A0AEC0]/70 italic leading-relaxed">
-                <span className="text-red-400 font-medium not-italic">* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.</span> <br />
-                Örnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen
-              </p>
+              {(branding?.loginWarningText !== undefined ? branding.loginWarningText : "* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.\nÖrnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen") && (
+                <p className="mt-1.5 text-[11px] text-[#A0AEC0]/70 italic leading-relaxed">
+                  {(() => {
+                    const warningText = branding?.loginWarningText !== undefined 
+                      ? branding.loginWarningText 
+                      : "* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.\nÖrnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen";
+                    if (!warningText) return null;
+                    const lines = warningText.split('\n');
+                    return (
+                      <>
+                        <span className="text-red-400 font-medium not-italic">{lines[0]}</span>
+                        {lines[1] && <><br />{lines[1]}</>}
+                      </>
+                    );
+                  })()}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-[#A0AEC0] mb-1.5 uppercase tracking-wide">Şifre</label>

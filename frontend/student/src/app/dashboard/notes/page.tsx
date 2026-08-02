@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { courseApi, videoApi, sessionRecordingApi, type VideoNoteDto, type CourseDto, type RecordingDto } from "@/lib/api";
+import { courseApi, videoApi, type VideoNoteDto, type CourseDto } from "@/lib/api";
 import { Trash2, Search, StickyNote, Clock } from "lucide-react";
+import Link from "next/link";
 
 interface NoteWithContext extends VideoNoteDto {
     courseTitle?: string;
     sessionTitle?: string;
+    courseId?: string;
+    recordingId?: string;
 }
 
 const fmtClockTime = (iso: string) => {
@@ -25,41 +28,38 @@ export default function MyNotesPage() {
         if (!token || !tenantId) return;
 
         const fetchNotes = async () => {
-            const courses: CourseDto[] = await courseApi.list(token, tenantId);
-            const allNotes: NoteWithContext[] = [];
-
-            // 1) Session-based notes (eski yöntem)
-            for (const course of courses) {
-                const sessions = await courseApi.getSessions(token, tenantId, course.id);
-                for (const session of sessions) {
-                    if (session.videoUrl) {
-                        try {
-                            const sessionNotes = await videoApi.getNotes(token, tenantId, session.id);
-                            sessionNotes.forEach(n => allNotes.push({ ...n, courseTitle: course.title, sessionTitle: session.title }));
-                        } catch { /* session may not have notes */ }
-                    }
-                }
-            }
-
-            // 2) Recording-based notes
             try {
-                const recs: RecordingDto[] = await sessionRecordingApi.list(token, tenantId);
-                for (const rec of recs) {
-                    if (rec.status !== "Ready") continue;
-                    try {
-                        const recNotes = await videoApi.getNotes(token, tenantId, rec.id);
-                        recNotes.forEach(n => {
-                            // Deduplicate: skip if already added from session
-                            if (!allNotes.some(existing => existing.id === n.id)) {
-                                allNotes.push({ ...n, courseTitle: rec.courseTitle, sessionTitle: rec.sessionTitle });
-                            }
-                        });
-                    } catch { /* recording may not have notes */ }
-                }
-            } catch { /* ignore recording fetch error */ }
+                const courses: CourseDto[] = await courseApi.list(token, tenantId);
+                const allNotes: NoteWithContext[] = [];
 
-            allNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            setNotes(allNotes);
+                for (const course of courses) {
+                    try {
+                        const courseMedias = await courseApi.getCourseMedias(token, tenantId, course.id);
+                        for (const cm of courseMedias) {
+                            const targetId = cm.mediaAssetId || cm.id;
+                            try {
+                                const recNotes = await videoApi.getNotes(token, tenantId, targetId);
+                                recNotes.forEach(n => {
+                                    if (!allNotes.some(existing => existing.id === n.id)) {
+                                        allNotes.push({
+                                            ...n,
+                                            courseTitle: course.title,
+                                            sessionTitle: cm.mediaAsset?.title || cm.sessionTitle || cm.examTitle || 'İçerik',
+                                            courseId: course.id,
+                                            recordingId: cm.id
+                                        });
+                                    }
+                                });
+                            } catch { /* ignore notes for this media */ }
+                        }
+                    } catch { /* ignore course medias error */ }
+                }
+
+                allNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                setNotes(allNotes);
+            } catch (e) {
+                console.error(e);
+            }
         };
 
         fetchNotes().catch(console.error).finally(() => setLoading(false));
@@ -126,29 +126,51 @@ export default function MyNotesPage() {
                             <h2 className="text-[#A9A9A9] text-xs font-semibold uppercase tracking-widest mb-3">{day}</h2>
                             <div className="space-y-2">
                                 {dayNotes.map(note => (
-                                    <div key={note.id} className="glass-card p-4 group hover:border-violet-500/20 transition-all">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                    <span className="font-mono text-[#1B3B6F] text-xs bg-[#1B3B6F]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Clock size={10} /> {fmtClockTime(note.createdAt)}
-                                                    </span>
-                                                    {note.courseTitle && (
-                                                        <span className="text-[#A0AEC0] text-xs truncate">{note.courseTitle}</span>
-                                                    )}
-                                                    {note.sessionTitle && (
-                                                        <span className="text-[#A0AEC0] text-[10px] truncate">• {note.sessionTitle}</span>
-                                                    )}
+                                    <div key={note.id} className="glass-card p-0 group border border-[#E2E8F0] hover:border-indigo-400 hover:shadow-md transition-all rounded-xl overflow-hidden bg-white">
+                                        <div className="flex items-stretch">
+                                            {note.courseId && note.recordingId ? (
+                                                <Link 
+                                                    href={`/dashboard/courses/${note.courseId}/watch/${note.recordingId}`}
+                                                    className="flex-1 p-4 min-w-0 flex flex-col justify-center"
+                                                >
+                                                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                        <span className="font-mono text-[#1B3B6F] text-[10px] bg-[#1B3B6F]/5 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                                                            <Clock size={10} /> {fmtClockTime(note.createdAt)}
+                                                        </span>
+                                                        {note.courseTitle && (
+                                                            <span className="text-[#1B3B6F] text-xs font-semibold hover:underline truncate">{note.courseTitle}</span>
+                                                        )}
+                                                        {note.sessionTitle && (
+                                                            <span className="text-[#A0AEC0] text-[10px] truncate">• {note.sessionTitle}</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[#0A1931] text-sm leading-relaxed">{note.text}</p>
+                                                </Link>
+                                            ) : (
+                                                <div className="flex-1 p-4 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                        <span className="font-mono text-[#1B3B6F] text-[10px] bg-[#1B3B6F]/5 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                                                            <Clock size={10} /> {fmtClockTime(note.createdAt)}
+                                                        </span>
+                                                        {note.courseTitle && (
+                                                            <span className="text-[#A0AEC0] text-xs truncate">{note.courseTitle}</span>
+                                                        )}
+                                                        {note.sessionTitle && (
+                                                            <span className="text-[#A0AEC0] text-[10px] truncate">• {note.sessionTitle}</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[#5A6A7A] text-sm leading-relaxed">{note.text}</p>
                                                 </div>
-                                                <p className="text-[#5A6A7A] text-sm leading-relaxed">{note.text}</p>
+                                            )}
+                                            <div className="flex items-center justify-center px-4 border-l border-[#E2E8F0]/40 shrink-0">
+                                                <button
+                                                    onClick={() => deleteNote(note.id)}
+                                                    className="text-[#A0AEC0] hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50"
+                                                    title="Notu sil"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
                                             </div>
-                                            <button
-                                                onClick={() => deleteNote(note.id)}
-                                                className="text-[#A0AEC0] hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 mt-1"
-                                                title="Notu sil"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
                                         </div>
                                     </div>
                                 ))}

@@ -34,17 +34,39 @@ public class QuestionsController : ControllerBase
         [FromQuery] string? status = null, [FromQuery] Guid? instructorId = null)
     {
         var role = User.FindFirstValue(ClaimTypes.Role);
+        Guid? studentId = null;
+
         if (role?.Equals("Instructor", StringComparison.OrdinalIgnoreCase) == true)
         {
             instructorId = GetUserId();
         }
+        else if (role?.Equals("Student", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            studentId = GetUserId();
+            instructorId = null; // Clear any query-supplied instructorId parameter for student privacy
+        }
 
-        return Ok(await _questionService.GetQuestionsAsync(page, pageSize, status, instructorId));
+        return Ok(await _questionService.GetQuestionsAsync(page, pageSize, status, instructorId, studentId));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<QuestionDto>> GetQuestion(Guid id)
-        => Ok(await _questionService.GetByIdAsync(id));
+    {
+        var q = await _questionService.GetByIdAsync(id);
+        var role = User.FindFirstValue(ClaimTypes.Role);
+
+        if (role?.Equals("Student", StringComparison.OrdinalIgnoreCase) == true && q.UserId != GetUserId())
+        {
+            return Forbid();
+        }
+
+        if (role?.Equals("Instructor", StringComparison.OrdinalIgnoreCase) == true && q.InstructorId != GetUserId())
+        {
+            return Forbid();
+        }
+
+        return Ok(q);
+    }
 
     [HttpPost]
     public async Task<ActionResult<QuestionDto>> Ask([FromBody] CreateQuestionRequest request)

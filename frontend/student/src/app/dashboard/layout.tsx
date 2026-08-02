@@ -21,6 +21,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const router = useRouter();
     const pathname = usePathname();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
     const { showToast } = useToast();
@@ -32,6 +33,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             .then(setUnreadCount)
             .catch(() => {});
     }, [token, tenantId]);
+
+    // Sync isSidebarCollapsed with localStorage globally
+    useEffect(() => {
+        const stored = localStorage.getItem("sidebar-collapsed");
+        if (stored === "true") {
+            setIsSidebarCollapsed(true);
+        }
+    }, []);
+
+    const setCollapsedState = (collapsed: boolean) => {
+        setIsSidebarCollapsed(collapsed);
+        localStorage.setItem("sidebar-collapsed", String(collapsed));
+    };
 
     const getPageTitle = (path: string) => {
         if (!path) return "ÖĞRENCİ PORTALI";
@@ -196,10 +210,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             {/* Sidebar */}
             <div className="relative z-[60]">
-                <Sidebar isOpen={sidebarOpen} />
+                <Sidebar 
+                    isOpen={sidebarOpen} 
+                    onClose={() => setSidebarOpen(false)}
+                    isCollapsed={isSidebarCollapsed}
+                    onToggleCollapse={() => setCollapsedState(!isSidebarCollapsed)}
+                />
             </div>
 
-            <main className="main-content" key={pathname}>
+            <main className={`main-content transition-all duration-300 ${isSidebarCollapsed ? 'md:ml-[76px]' : 'md:ml-[260px]'}`} key={pathname}>
                 <ErrorBoundary pageName="Öğrenci Paneli">
                     <PullToRefresh>
                         <div className="animate-fade-in">

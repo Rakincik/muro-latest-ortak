@@ -7,7 +7,8 @@ import {
     GraduationCap, Briefcase, Mail, Phone, Calendar as CalendarIcon,
     BookOpen, ClipboardList, Activity, ToggleLeft, ToggleRight,
     KeyRound, Clock, TrendingUp, Award, BarChart3, ChevronUp, ChevronDown, Lock, RefreshCw, Copy,
-    ArrowLeft, Flame, Target, CreditCard, Eye, EyeOff, Zap, MessageCircle, AlertTriangle, ExternalLink
+    ArrowLeft, Flame, Target, CreditCard, Eye, EyeOff, Zap, MessageCircle, AlertTriangle, ExternalLink,
+    SlidersHorizontal, FileText
 } from "lucide-react";
 import { API_URL } from "@/lib/api/core";
 import { KpiGrid } from "@/components/ui/KpiGrid";
@@ -260,6 +261,8 @@ export default function UsersPage() {
     const [detailUser, setDetailUser] = useState<User | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null); const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
     const [sortField, setSortField] = useState<SortField>("name"); const [sortDir, setSortDir] = useState<SortDir>("asc");
+    const [showMobileExcelMenu, setShowMobileExcelMenu] = useState(false);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     useEffect(() => {
         const urlUserId = searchParams?.get("userId");
@@ -567,15 +570,39 @@ export default function UsersPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1931] tracking-tight flex items-center gap-3">Kullanıcılar</h1>
                     <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Kullanıcı ve Rol Yönetimi</p>
                 </div>
-                <div className="flex flex-row items-center gap-2 sm:gap-3 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar">
-                    <button className="shrink-0 snap-start px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm" onClick={downloadTemplate}><Download size={16} className="shrink-0" /> Şablon</button>
-                    <Tooltip content="Excel olarak indir">
-                        <button onClick={exportExcel} className="shrink-0 snap-start px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm">
-                            <Download size={16} className="shrink-0" /> İndir
+                <div className="flex flex-row items-center gap-2 sm:gap-3">
+                    <button className="hidden md:flex shrink-0 px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all items-center justify-center gap-2 shadow-sm" onClick={downloadTemplate}><Download size={16} className="shrink-0" /> Şablon</button>
+                    <div className="hidden md:block">
+                        <Tooltip content="Excel olarak indir">
+                            <button onClick={exportExcel} className="shrink-0 px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                <Download size={16} className="shrink-0" /> İndir
+                            </button>
+                        </Tooltip>
+                    </div>
+                    <button className="hidden md:flex shrink-0 px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all items-center justify-center gap-2 shadow-sm" onClick={() => { setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }}><Upload size={16} className="shrink-0" /> Toplu Ekle</button>
+                    
+                    {/* Excel/Bulk Action Dropdown for Mobile only */}
+                    <div className="relative md:hidden shrink-0">
+                        <button 
+                            onClick={() => setShowMobileExcelMenu(!showMobileExcelMenu)}
+                            className="shrink-0 px-3.5 py-2.5 text-xs font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                            <FileText size={15} />
+                            Excel ▾
                         </button>
-                    </Tooltip>
-                    <button onClick={() => { setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }} className="shrink-0 snap-start px-4 py-2.5 text-xs sm:text-sm font-bold bg-white text-[#1B3B6F] border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center justify-center gap-2 shadow-sm"><Upload size={16} className="shrink-0" /> Toplu Ekle</button>
-                    <button onClick={() => { setEditUser(null); setShowAddModal(true); }} className="shrink-0 snap-start px-6 py-2.5 text-sm sm:text-base font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A1931]/20"><UserPlus size={18} className="shrink-0" /> Yeni Kullanıcı</button>
+                        {showMobileExcelMenu && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setShowMobileExcelMenu(false)} />
+                                <div className="absolute right-0 top-full mt-1 bg-white border border-[#E2E8F0] rounded-xl shadow-xl z-50 py-1.5 min-w-[140px] animate-in fade-in-50 slide-in-from-top-1 duration-150">
+                                    <button onClick={() => { setShowMobileExcelMenu(false); downloadTemplate(); }} className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#0A1931] hover:bg-[#E2E8F0]/20 flex items-center gap-2"><Download size={14} /> Şablon İndir</button>
+                                    <button onClick={() => { setShowMobileExcelMenu(false); exportExcel(); }} className="w-full text-left px-4 py-2.5 text-xs font-bold text-emerald-600 hover:bg-emerald-50/50 flex items-center gap-2"><Download size={14} /> Dışa Aktar</button>
+                                    <button onClick={() => { setShowMobileExcelMenu(false); setBulkModalOpen(true); setBulkFile(null); setBulkResult(null); }} className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#1B3B6F] hover:bg-[#E2E8F0]/20 flex items-center gap-2"><Upload size={14} /> Toplu Ekle</button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    <button onClick={() => { setEditUser(null); setShowAddModal(true); }} className="shrink-0 px-4 sm:px-6 py-2.5 text-xs sm:text-base font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center justify-center gap-2 shadow-xl shadow-[#0A1931]/20"><UserPlus size={16} className="shrink-0" /> Yeni Kullanıcı</button>
                 </div>
             </div>
             <KpiGrid 
@@ -587,49 +614,69 @@ export default function UsersPage() {
                 ]}
                 className="flex xl:grid xl:grid-cols-4 gap-4 overflow-x-auto pb-2 snap-x snap-mandatory hide-scrollbar"
             />
-            <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
-                <div className="w-full lg:flex-1 relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
-                    <input type="text" placeholder="İsim, kullanıcı adı veya telefon ile ara..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-9 pr-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
+            <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 flex flex-col gap-3">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex-1 relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                        <input type="text" placeholder="İsim, kullanıcı adı veya telefon ile ara..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-full pl-9 pr-4 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
+                    </div>
+                    {/* Mobile Filter Toggle Button */}
+                    <button 
+                        onClick={() => setShowMobileFilters(!showMobileFilters)}
+                        className={`lg:hidden flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-sm ${
+                            showMobileFilters 
+                                ? "bg-[#0A1931] text-white border-[#0A1931]" 
+                                : "bg-white text-[#1B3B6F] border-[#E2E8F0] hover:bg-[#E2E8F0]/20"
+                        }`}
+                    >
+                        <SlidersHorizontal size={15} />
+                        Filtrele
+                    </button>
                 </div>
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto pb-1 sm:pb-0">
-                    <FilterDropdown 
-                        value={groupFilter} 
-                        onChange={v => { setGroupFilter(v); setPage(1); }}
-                        icon={Users}
-                        searchable={true}
-                        widthClass="w-full lg:w-64"
-                        options={[
-                            { value: "all", label: "Tüm Gruplar", icon: Users },
-                            ...groupOptions.map(g => ({ value: g, label: g, icon: BookOpen }))
-                        ]}
-                    />
-                    <FilterDropdown 
-                        value={roleFilter} 
-                        onChange={v => { setRoleFilter(v); setPage(1); }}
-                        icon={Shield}
-                        options={[
-                            { value: "all", label: "Tüm Roller", icon: Shield },
-                            { value: "Admin", label: "Admin", icon: Shield },
-                            { value: "Eğitmen", label: "Eğitmen", icon: Briefcase },
-                            { value: "Öğrenci", label: "Öğrenci", icon: GraduationCap },
-                            { value: "Muhasebe", label: "Muhasebe", icon: CreditCard },
-                            { value: "Asistan", label: "Asistan", icon: UserCheck }
-                        ]}
-                    />
-                    <FilterDropdown 
-                        value={statusFilter} 
-                        onChange={v => { setStatusFilter(v); setPage(1); }}
-                        icon={Activity}
-                        options={[
-                            { value: "all", label: "Tüm Durum", icon: Activity },
-                            { value: "active", label: "Aktif", icon: ToggleRight },
-                            { value: "inactive", label: "Pasif", icon: ToggleLeft },
-                            { value: "demo", label: "Demo", icon: CalendarIcon }
-                        ]}
-                    />
+
+                {/* Filters container - on desktop always visible, on mobile visible when toggled */}
+                <div className={`flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 ${
+                    showMobileFilters ? "flex animate-in fade-in-50 duration-200" : "hidden lg:flex"
+                }`}>
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto pb-1 sm:pb-0">
+                        <FilterDropdown 
+                            value={groupFilter} 
+                            onChange={v => { setGroupFilter(v); setPage(1); }}
+                            icon={Users}
+                            searchable={true}
+                            widthClass="w-full lg:w-64"
+                            options={[
+                                { value: "all", label: "Tüm Gruplar", icon: Users },
+                                ...groupOptions.map(g => ({ value: g, label: g, icon: BookOpen }))
+                            ]}
+                        />
+                        <FilterDropdown 
+                            value={roleFilter} 
+                            onChange={v => { setRoleFilter(v); setPage(1); }}
+                            icon={Shield}
+                            options={[
+                                { value: "all", label: "Tüm Roller", icon: Shield },
+                                { value: "Admin", label: "Admin", icon: Shield },
+                                { value: "Eğitmen", label: "Eğitmen", icon: Briefcase },
+                                { value: "Öğrenci", label: "Öğrenci", icon: GraduationCap },
+                                { value: "Muhasebe", label: "Muhasebe", icon: CreditCard },
+                                { value: "Asistan", label: "Asistan", icon: UserCheck }
+                            ]}
+                        />
+                        <FilterDropdown 
+                            value={statusFilter} 
+                            onChange={v => { setStatusFilter(v); setPage(1); }}
+                            icon={Activity}
+                            options={[
+                                { value: "all", label: "Tüm Durum", icon: Activity },
+                                { value: "active", label: "Aktif", icon: ToggleRight },
+                                { value: "inactive", label: "Pasif", icon: ToggleLeft },
+                                { value: "demo", label: "Demo", icon: CalendarIcon }
+                            ]}
+                        />
+                    </div>
+                    {selected.size > 0 && <button onClick={() => setBulkDeleteOpen(true)} className="w-full lg:w-auto px-4 py-2.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center gap-2"><Trash2 size={16} /> {selected.size} Seçiliyi Sil</button>}
                 </div>
-                {selected.size > 0 && <button onClick={() => setBulkDeleteOpen(true)} className="w-full lg:w-auto px-4 py-2.5 text-sm font-medium bg-red-50 text-red-600 rounded-xl hover:bg-red-100 flex items-center justify-center gap-2"><Trash2 size={16} /> {selected.size} Seçiliyi Sil</button>}
             </div>
             <div className="bg-white rounded-xl border border-[#E2E8F0]/60 overflow-hidden">
                 {/* ── DESKTOP TABLE ── */}
@@ -653,7 +700,7 @@ export default function UsersPage() {
                                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(u.id)} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931]" /></td>
                                         <td className="px-4 py-3"><div className="flex items-center gap-3"><div className={`w-10 h-10 rounded-xl ${c.avatar} flex items-center justify-center text-white text-[10px] font-bold shadow-sm border border-white/10`}>{ini(u)}</div><div><p className="text-sm font-bold text-[#0A1931] tracking-tight">{u.firstName} {u.lastName}</p><p className="text-[11px] text-[#A0AEC0] font-medium">{u.username || u.email}</p></div></div></td>
                                         <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{roleLabel[u.role] || u.role}</span></td>
-                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.groupNames.length > 0 ? <div className="relative group/grp inline-flex"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg bg-[#1B3B6F]/10 text-[#1B3B6F] border border-[#1B3B6F]/20 cursor-default"><Users size={12} className="text-[#A0AEC0]" />{u.groupNames.length}</span><div className="absolute left-0 bottom-full mb-1 z-50 hidden group-hover/grp:block"><div className="bg-[#0A1931] text-white rounded-xl shadow-2xl p-3 min-w-[160px] border border-[#1B3B6F]/30"><p className="text-[10px] font-bold uppercase tracking-wider text-[#A0AEC0] mb-2">Gruplar</p><div className="space-y-1">{u.groupNames.map(g => <div key={g} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-white/10">{g}</div>)}</div></div></div></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
+                                        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>{u.groupNames.length > 0 ? <div className="relative group/grp inline-flex"><span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-1 rounded-lg bg-[#1B3B6F]/10 text-[#1B3B6F] border border-[#1B3B6F]/20 cursor-default"><Users size={12} className="text-[#A0AEC0]" />{u.groupNames.length}</span><div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 hidden group-hover/grp:block animate-in fade-in-50 duration-150"><div className="relative bg-[#0A1931] text-white rounded-xl shadow-2xl p-3 min-w-[160px] border border-[#1B3B6F]/30"><div className="absolute bottom-full left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[#0A1931] rotate-45 border-l border-t border-[#1B3B6F]/30 translate-y-1/2" /><p className="text-[10px] font-bold uppercase tracking-wider text-[#A0AEC0] mb-2 relative z-10">Gruplar</p><div className="space-y-1 relative z-10">{u.groupNames.map(g => <div key={g} className="text-[11px] font-medium px-2 py-1 rounded-lg bg-white/10">{g}</div>)}</div></div></div></div> : <span className="text-[11px] text-[#A0AEC0]">—</span>}</td>
                                         <td className="px-4 py-3">
                                             {u.role === "Student" ? (
                                                 !u.isActive ? (
@@ -719,57 +766,49 @@ export default function UsersPage() {
                         const c = rc[u.role] || _default;
                         const isSelected = selected.has(u.id);
                         return (
-                            <div key={u.id} className={`relative p-4 rounded-xl border transition-all duration-300 shadow-sm ${isSelected ? "bg-blue-50/50 border-blue-300 ring-1 ring-blue-500/20" : "bg-white border-[#E2E8F0]/60 hover:shadow-md"}`}>
-                                <div className="absolute top-4 right-4 z-10">
-                                    <input type="checkbox" checked={isSelected} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931] focus:ring-[#0A1931]" />
-                                </div>
-                                <div className="flex flex-col gap-3" onClick={() => setDetailUser(u)}>
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex items-center gap-3 pr-8">
-                                            <div className={`w-12 h-12 rounded-full ${c.avatar} flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0 border border-white`}>
-                                                {ini(u)}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-bold text-[#0A1931] tracking-tight truncate">{u.firstName} {u.lastName}</p>
-                                                <p className="text-[11px] text-[#A0AEC0] font-medium truncate mt-0.5">{u.username || u.email}</p>
-                                                <div className="flex items-center gap-2 mt-1 text-[10px]">
-                                                    <span className={`font-bold uppercase tracking-widest ${c.text}`}>{roleLabel[u.role] || u.role}</span>
-                                                    <span className="text-[#E2E8F0]">•</span>
-                                                    {u.role === "Student" ? (
-                                                        !u.isActive ? (
-                                                            <span className="font-bold text-[#A0AEC0]">PASİF (Kilitli)</span>
-                                                        ) : u.studentType === "Demo" ? (
-                                                            <span className="font-bold text-amber-600 uppercase tracking-widest">DEMO</span>
-                                                        ) : u.studentType === "Passive" ? (
-                                                            <span className="font-bold text-[#A0AEC0] uppercase tracking-widest">PASİF</span>
-                                                        ) : (
-                                                            <span className="font-bold text-emerald-600">AKTİF</span>
-                                                        )
+                            <div 
+                                key={u.id} 
+                                onClick={() => setDetailUser(u)}
+                                className={`relative p-3 rounded-xl border transition-all duration-300 shadow-sm cursor-pointer ${
+                                    isSelected 
+                                        ? "bg-blue-50/50 border-blue-300 ring-1 ring-blue-500/20" 
+                                        : "bg-white border-[#E2E8F0]/60 hover:shadow-md"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                        {/* Selection Checkbox */}
+                                        <div onClick={e => e.stopPropagation()} className="shrink-0 flex items-center">
+                                            <input type="checkbox" checked={isSelected} onChange={() => toggleSel(u.id)} className="w-4 h-4 rounded border-[#A0AEC0] text-[#0A1931] focus:ring-[#0A1931]" />
+                                        </div>
+                                        {/* Small Avatar */}
+                                        <div className={`w-9 h-9 rounded-full ${c.avatar} flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0 border border-white`}>
+                                            {ini(u)}
+                                        </div>
+                                        {/* User Details */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-[#0A1931] tracking-tight truncate leading-tight">{u.firstName} {u.lastName}</p>
+                                            <p className="text-[11px] text-[#A0AEC0] font-medium truncate mt-0.5 leading-none">{u.username || u.email}</p>
+                                            <div className="flex items-center gap-1.5 mt-1 text-[9px] font-bold uppercase tracking-wider">
+                                                <span className={c.text}>{roleLabel[u.role] || u.role}</span>
+                                                <span className="text-[#E2E8F0]">•</span>
+                                                {u.role === "Student" ? (
+                                                    !u.isActive ? (
+                                                        <span className="text-[#A0AEC0]">PASİF</span>
+                                                    ) : u.studentType === "Demo" ? (
+                                                        <span className="text-amber-600">DEMO</span>
                                                     ) : (
-                                                        <span className={`font-bold ${u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}`}>{u.isActive ? "AKTİF" : "PASİF"}</span>
-                                                    )}
-                                                </div>
+                                                        <span className="text-emerald-600">AKTİF</span>
+                                                    )
+                                                ) : (
+                                                    <span className={u.isActive ? "text-emerald-600" : "text-[#A0AEC0]"}>{u.isActive ? "AKTİF" : "PASİF"}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between mt-1 pt-3 border-t border-[#E2E8F0]/60" onClick={e => e.stopPropagation()}>
-                                        <button onClick={() => setDetailUser(u)} className="text-[11px] font-bold text-[#1B3B6F] hover:text-[#0A1931] transition-colors flex items-center gap-1">
-                                            <Eye size={14} /> Profili İncele
-                                        </button>
-                                        <div className="flex items-center gap-1">
-                                            {u.phone && (
-                                                <a href={`https://wa.me/${u.phone.replace(/\s/g, '').replace(/^\+?0?/, '+90')}`} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-[#25D366]/10 text-[#25D366] flex items-center justify-center hover:bg-[#25D366]/20 transition-colors mr-1">
-                                                    <MessageCircle size={14} />
-                                                </a>
-                                            )}
-                                            {canEditUser(u) && (
-                                                <>
-                                                    <button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-amber-50 hover:text-amber-600 transition-colors"><Edit3 size={14} /></button>
-                                                    <button onClick={() => toggleActive(u.id)} className={`w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center transition-colors ${u.isActive ? "hover:bg-orange-50 hover:text-orange-500" : "hover:bg-emerald-50 hover:text-emerald-500"}`}>{u.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}</button>
-                                                    <button onClick={() => setDeleteTarget(u.id)} className="w-8 h-8 rounded-lg bg-[#E2E8F0]/30 text-[#A0AEC0] flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
-                                                </>
-                                            )}
-                                        </div>
+                                    {/* Chevron Right indicating detail page link */}
+                                    <div className="text-slate-300 pr-1 flex items-center shrink-0">
+                                        <ChevronRight size={16} />
                                     </div>
                                 </div>
                             </div>
@@ -1072,6 +1111,12 @@ export default function UsersPage() {
             return combined.split('').map(c => trMap[c] || c).join('').replace(/[^a-z0-9]/g, '');
         };
 
+        const CleanUsernameInput = (val: string) => {
+            const trMap: Record<string, string> = { 'ç':'c', 'ğ':'g', 'ı':'i', 'ö':'o', 'ş':'s', 'ü':'u', 'Ç':'c', 'Ğ':'g', 'İ':'i', 'Ö':'o', 'Ş':'s', 'Ü':'u' };
+            const lower = val.toLowerCase();
+            return lower.split('').map(c => trMap[c] || c).join('').replace(/\s+/g, '');
+        };
+
         const handleSave = () => {
             if ((f.role === "Student" || f.role === "Öğrenci") && f.tcNo && f.tcNo.length !== 11) {
                 alert("TC Kimlik Numarası boş bırakılabilir veya 11 haneli olmalıdır.");
@@ -1103,34 +1148,35 @@ export default function UsersPage() {
                             <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Soyad</label><input type="text" value={f.lastName} onChange={e => handleLastNameChange(e.target.value)} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Soyad" /></div>
                         </div>
                         
-                        {(f.role === "Student" || f.role === "Öğrenci") ? (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Kullanıcı Adı</label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text" 
-                                            value={f.username} 
-                                            onChange={e => {
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Kullanıcı Adı</label>
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        value={f.username} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val.trim() === "") {
+                                                setIsUsernameManuallyEdited(false);
+                                            } else {
                                                 setIsUsernameManuallyEdited(true);
-                                                u("username", ToEnglishUsernameSlug(e.target.value, ""));
-                                            }} 
-                                            className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] font-bold text-[#1B3B6F]" 
-                                            placeholder="kullaniciadi" 
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">E-posta</label>
-                                    <div className="relative">
-                                        <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
-                                        <input type="email" value={f.email} onChange={e => u("email", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Örn: kullanici@mail.com" />
-                                    </div>
+                                            }
+                                            u("username", CleanUsernameInput(val));
+                                        }} 
+                                        className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] font-bold text-[#1B3B6F]" 
+                                        placeholder="kullaniciadi" 
+                                    />
                                 </div>
                             </div>
-                        ) : (
-                            <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">Kullanıcı Adı / E-posta</label><div className="relative"><Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" /><input type="text" value={f.email} onChange={e => u("email", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="kullaniciadi veya email@sirket.com" /></div></div>
-                        )}
+                            <div>
+                                <label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">E-posta</label>
+                                <div className="relative">
+                                    <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                    <input type="email" value={f.email} onChange={e => u("email", e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="Örn: kullanici@mail.com" />
+                                </div>
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div><label className="block text-xs font-medium text-[#1B3B6F] mb-1.5">TC Kimlik No (Opsiyonel)</label><input type="text" value={f.tcNo} onChange={e => u("tcNo", e.target.value.replace(/\D/g, "").substring(0, 11))} className="w-full px-3 py-2.5 text-sm bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0]" placeholder="TC Kimlik No (Opsiyonel)" /></div>

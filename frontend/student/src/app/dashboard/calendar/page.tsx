@@ -305,18 +305,18 @@ export default function StudentCalendarPage() {
                                 {DAYS_TR.map(d => <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-[#A0AEC0] py-2">{d}</div>)}
                             </div>
                             <div className="grid grid-cols-7 gap-1">
-                                {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-24 rounded-xl bg-[#E2E8F0]/20 animate-pulse" />) :
+                                {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-11 sm:h-24 rounded-xl bg-[#E2E8F0]/20 animate-pulse" />) :
                                     cells.map((cell, i) => {
-                                        if (!cell.day) return <div key={`empty-${i}`} className="h-24" />;
+                                        if (!cell.day) return <div key={`empty-${i}`} className="h-11 sm:h-24 bg-slate-50/20 border border-slate-100/30 rounded-xl" />;
                                         const dayEvents = getEventsForDate(cell.date);
                                         const isSelected = selectedDate === cell.date;
                                         const isToday = cell.date === today;
                                         return (
                                             <button key={cell.date} onClick={() => setSelectedDate(cell.date)}
                                                 onDoubleClick={() => { setSelectedDate(cell.date); setCurrentDate(new Date(cell.date)); setViewMode("day"); }}
-                                                className={`aspect-square sm:h-24 sm:aspect-auto rounded-lg sm:rounded-xl p-1 sm:p-2 text-center sm:text-left flex flex-col transition-all hover:bg-[#E2E8F0]/20
-                                                    ${isSelected ? "bg-[#1B3B6F]/5 ring-2 ring-[#1B3B6F]/20" : ""}
-                                                    ${isToday && !isSelected ? "bg-[#E2E8F0]/20" : ""}`}>
+                                                className={`h-11 sm:h-24 rounded-xl p-1 sm:p-2 text-center sm:text-left flex flex-col justify-between transition-all border hover:shadow-sm
+                                                    ${isSelected ? "bg-[#1B3B6F]/10 border-[#1B3B6F] ring-1 ring-[#1B3B6F]/20" : "bg-white border-[#E2E8F0]/60"}
+                                                    ${isToday && !isSelected ? "bg-[#1B3B6F]/5 border-[#1B3B6F]/30" : ""}`}>
                                                 <span className={`text-[10px] sm:text-xs font-bold mb-1 mx-auto sm:mx-0 ${isToday ? "w-5 h-5 sm:w-6 sm:h-6 bg-[#1B3B6F] text-white rounded-full flex items-center justify-center" : "text-[#1B3B6F]"}`}>{cell.day}</span>
                                                 
                                                 {/* Desktop: Texts */}
@@ -343,14 +343,24 @@ export default function StudentCalendarPage() {
                             </div>
                         </div>
                         <div className="lg:col-span-3 bg-white rounded-2xl border border-[#E2E8F0] p-5 max-h-[650px] overflow-y-auto">
-                            <h3 className="text-sm font-bold text-[#0A1931] mb-4">
-                                {selectedDate ? `${parseInt(selectedDate.split("-")[2])} ${MONTHS_TR[parseInt(selectedDate.split("-")[1]) - 1]}` : "Tarih Seçin"}
-                            </h3>
+                            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-[#E2E8F0]/60">
+                                <div className="p-1.5 rounded-lg bg-[#1B3B6F]/5 text-[#1B3B6F]">
+                                    <Clock size={16} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xs font-bold text-[#A9A9A9] uppercase tracking-wider">Seçili Günün Programı</h3>
+                                    <p className="text-sm font-bold text-[#0A1931]">
+                                        {selectedDate ? `${parseInt(selectedDate.split("-")[2])} ${MONTHS_TR[parseInt(selectedDate.split("-")[1]) - 1]} ${year}` : "Tarih Seçilmedi"}
+                                    </p>
+                                </div>
+                            </div>
                             {selectedEvents.length > 0 ? (
                                 <div className="space-y-3">{selectedEvents.map(ev => <EventCard key={ev.id} ev={ev} />)}</div>
                             ) : (
-                                <div className="flex flex-col items-center justify-center py-12 text-[#A0AEC0]">
-                                    <CalIcon size={32} className="mx-auto opacity-20 mb-2" /><p className="text-sm">Bu tarihte etkinlik yok</p>
+                                <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 rounded-xl border border-dashed border-[#E2E8F0] p-4 text-[#A0AEC0]">
+                                    <CalIcon size={24} className="opacity-40 mb-2 text-[#1B3B6F]" />
+                                    <p className="text-xs font-semibold text-[#0A1931]">Program Boş</p>
+                                    <p className="text-[10px] text-[#A0AEC0] mt-0.5 text-center">Bu tarihte programınızda herhangi bir ders veya etkinlik bulunmuyor.</p>
                                 </div>
                             )}
                             <div className="mt-5 pt-4 border-t border-[#E2E8F0]">

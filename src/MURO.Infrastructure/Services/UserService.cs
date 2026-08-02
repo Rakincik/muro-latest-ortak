@@ -886,4 +886,26 @@ public class UserService : IUserService
             .Replace("ö", "o")
             .Replace("ç", "c");
     }
+
+    public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId)
+            ?? throw new KeyNotFoundException("Kullanıcı bulunamadı.");
+
+        bool isPasswordValid = false;
+        if (user.PasswordHash.StartsWith("$2"))
+            isPasswordValid = BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash);
+        else
+            isPasswordValid = (currentPassword == user.PasswordHash);
+
+        if (!isPasswordValid)
+            throw new InvalidOperationException("Mevcut şifreniz hatalı.");
+
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            throw new ArgumentException("Şifreniz en az 6 haneli olmalıdır.");
+
+        user.PasswordHash = newPassword; // Stored as plain text as requested
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync("users:");
+    }
 }

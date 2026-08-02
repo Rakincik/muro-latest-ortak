@@ -16,7 +16,8 @@ import {
     Eye,
     ChevronRight,
     Lock,
-    LayoutGrid
+    LayoutGrid,
+    LogIn
 } from "lucide-react";
 
 // Presets kanka, kullanıcı kolay seçsin diye
@@ -47,6 +48,11 @@ export default function BrandingSettingsPage() {
     const [videoSortRule, setVideoSortRule] = useState("custom");
     const [applyToStudents, setApplyToStudents] = useState(false);
     const [applyToAllUsers, setApplyToAllUsers] = useState(false);
+
+    // Login Ekranı Özelleştirme
+    const [loginUsernameLabel, setLoginUsernameLabel] = useState("Kullanıcı Adı");
+    const [loginUsernamePlaceholder, setLoginUsernamePlaceholder] = useState("Kullanıcı adınızı girin");
+    const [loginWarningText, setLoginWarningText] = useState("* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.\nÖrnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen");
     const [features, setFeatures] = useState<Record<string, boolean>>({
         exams: true,
         calendar: true,
@@ -103,7 +109,13 @@ export default function BrandingSettingsPage() {
                     if (data.featuresJson) {
                         try {
                             const parsed = JSON.parse(data.featuresJson);
-                            setFeatures(prev => ({ ...prev, ...parsed }));
+                            // Login özelleştirme alanlarını ayıkla
+                            if (parsed.loginUsernameLabel !== undefined) setLoginUsernameLabel(parsed.loginUsernameLabel);
+                            if (parsed.loginUsernamePlaceholder !== undefined) setLoginUsernamePlaceholder(parsed.loginUsernamePlaceholder);
+                            if (parsed.loginWarningText !== undefined) setLoginWarningText(parsed.loginWarningText);
+                            // Geri kalan modül toggle'ları
+                            const { loginUsernameLabel: _a, loginUsernamePlaceholder: _b, loginWarningText: _c, ...moduleFeatures } = parsed;
+                            setFeatures(prev => ({ ...prev, ...moduleFeatures }));
                         } catch (e) { console.error("featuresJson load failed:", e); }
                     }
                 }
@@ -171,7 +183,12 @@ export default function BrandingSettingsPage() {
                 videoSortRule,
                 applyToStudents,
                 applyToAllUsers,
-                featuresJson: JSON.stringify(features)
+                featuresJson: JSON.stringify({
+                    ...features,
+                    loginUsernameLabel,
+                    loginUsernamePlaceholder,
+                    loginWarningText
+                })
             });
             success("Kaydedildi", "Kurum temalandırma ayarları başarıyla kaydedildi!");
             
@@ -502,6 +519,86 @@ export default function BrandingSettingsPage() {
                         </div>
                     </div>
 
+                    {/* Giriş Ekranı Özelleştirme */}
+                    <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm space-y-6">
+                        <h2 className="text-md font-semibold text-[#1B3B6F] flex items-center gap-2 border-b border-[#1B3B6F]/20 pb-3">
+                            <LogIn size={18} className="text-[#3B82F6]" />
+                            Giriş Ekranı Özelleştirme
+                        </h2>
+                        <p className="text-xs text-[#64748B] leading-relaxed">
+                            Öğrenci giriş sayfasında görünen alan etiketlerini, placeholder yazılarını ve uyarı mesajlarını tenant bazında özelleştirin.
+                        </p>
+
+                        {/* Kullanıcı Adı Etiketi */}
+                        <div>
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2">
+                                Giriş Alanı Etiketi
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+                                {[
+                                    { label: "Kullanıcı Adı", value: "Kullanıcı Adı" },
+                                    { label: "Telefon Numarası", value: "Telefon Numarası" },
+                                    { label: "E-posta Adresi", value: "E-posta Adresi" },
+                                    { label: "TC Kimlik No", value: "TC Kimlik No" },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => {
+                                            setLoginUsernameLabel(opt.value);
+                                            // Placeholder'ı da otomatik güncelle
+                                            const placeholders: Record<string, string> = {
+                                                "Kullanıcı Adı": "Kullanıcı adınızı girin",
+                                                "Telefon Numarası": "05XX XXX XX XX",
+                                                "E-posta Adresi": "ornek@email.com",
+                                                "TC Kimlik No": "TC Kimlik numaranızı girin",
+                                            };
+                                            setLoginUsernamePlaceholder(placeholders[opt.value] || "");
+                                        }}
+                                        className={`px-3 py-2.5 rounded-xl border transition-all text-xs font-medium ${loginUsernameLabel === opt.value ? 'border-[#3B82F6] bg-[#3B82F6] text-white shadow-md shadow-blue-500/20' : 'border-[#E2E8F0] hover:bg-[#F1F5F9] text-[#64748B]'}`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <input
+                                type="text"
+                                value={loginUsernameLabel}
+                                onChange={(e) => setLoginUsernameLabel(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm"
+                                placeholder="Özel etiket yazın..."
+                            />
+                        </div>
+
+                        {/* Placeholder Metni */}
+                        <div>
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2">
+                                Giriş Alanı Placeholder (İpucu Yazısı)
+                            </label>
+                            <input
+                                type="text"
+                                value={loginUsernamePlaceholder}
+                                onChange={(e) => setLoginUsernamePlaceholder(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm"
+                                placeholder="Örn: Kullanıcı adınızı girin"
+                            />
+                        </div>
+
+                        {/* Kırmızı Uyarı Metni */}
+                        <div>
+                            <label className="block text-xs font-bold text-[#64748B] uppercase tracking-wider mb-2">
+                                Alt Uyarı Metni <span className="text-[#94A3B8] normal-case font-normal">(kırmızı yıldızlı yazı — boş bırakılırsa gizlenir)</span>
+                            </label>
+                            <textarea
+                                value={loginWarningText}
+                                onChange={(e) => setLoginWarningText(e.target.value)}
+                                rows={3}
+                                className="w-full px-4 py-2.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-transparent transition-all text-sm resize-none"
+                                placeholder="Boş bırakılırsa uyarı gösterilmez"
+                            />
+                        </div>
+                    </div>
+
                     {/* Kullanıcı Oluşturma ve Şifre Güvenlik Kuralları */}
                     <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 shadow-sm space-y-6">
                         <h2 className="text-md font-semibold text-[#1B3B6F] flex items-center gap-2 border-b border-[#1B3B6F]/20 pb-3">
@@ -809,6 +906,56 @@ export default function BrandingSettingsPage() {
                                     <span className="text-[10px] font-semibold text-white/90 truncate">{name}</span>
                                 </div>
                                 <div className="text-white/20 text-xs font-semibold">+</div>
+                            </div>
+                        </div>
+
+                        {/* Önizleme 3: Giriş Ekranı Önizlemesi */}
+                        <div className="space-y-2">
+                            <span className="text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">Öğrenci Giriş Ekranı Önizlemesi</span>
+                            <div className="rounded-xl border border-white/10 overflow-hidden shadow-lg bg-gradient-to-br from-[#060E1A] via-[#0A1931] to-[#060E1A] p-5">
+                                {/* Logo */}
+                                <div className="flex justify-center mb-4">
+                                    {logoUrl ? (
+                                        <img src={logoUrl} alt="Logo" className="max-h-8 max-w-[140px] object-contain drop-shadow-md" />
+                                    ) : (
+                                        <span className="text-sm font-bold text-white tracking-wider font-mono">{name}</span>
+                                    )}
+                                </div>
+                                {/* Login Card */}
+                                <div className="bg-[#1B3B6F]/15 border border-[#1B3B6F]/30 rounded-xl p-4 space-y-3">
+                                    <span className="text-[11px] font-semibold text-white block">Giriş Yap</span>
+                                    {/* Username Field */}
+                                    <div>
+                                        <span className="text-[8px] font-medium text-[#A0AEC0] uppercase tracking-wide block mb-1">
+                                            {loginUsernameLabel}
+                                        </span>
+                                        <div className="w-full h-7 bg-[#1B3B6F]/15 border border-[#1B3B6F]/30 rounded-lg flex items-center px-2">
+                                            <span className="text-[8px] text-[#A9A9A9] truncate">{loginUsernamePlaceholder}</span>
+                                        </div>
+                                        {loginWarningText && (
+                                            <p className="mt-1 text-[7px] leading-tight">
+                                                <span className="text-red-400 font-medium">{loginWarningText.split('\n')[0]}</span>
+                                                {loginWarningText.split('\n')[1] && (
+                                                    <>
+                                                        <br />
+                                                        <span className="text-[#A0AEC0]/70 italic">{loginWarningText.split('\n')[1]}</span>
+                                                    </>
+                                                )}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {/* Password Field */}
+                                    <div>
+                                        <span className="text-[8px] font-medium text-[#A0AEC0] uppercase tracking-wide block mb-1">Şifre</span>
+                                        <div className="w-full h-7 bg-[#1B3B6F]/15 border border-[#1B3B6F]/30 rounded-lg flex items-center px-2">
+                                            <span className="text-[8px] text-[#A9A9A9]">••••••••</span>
+                                        </div>
+                                    </div>
+                                    {/* Button */}
+                                    <div className="w-full h-7 bg-gradient-to-r from-[#1B3B6F] to-[#0A1931] rounded-lg flex items-center justify-center">
+                                        <span className="text-[8px] text-white font-semibold">Giriş Yap →</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

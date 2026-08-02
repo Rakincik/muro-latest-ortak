@@ -54,8 +54,9 @@ public class AuthController : ControllerBase
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var userAgent = Request.Headers["User-Agent"].ToString();
+        var deviceId = Request.Headers["X-Device-Id"].ToString();
         
-        var result = await _loginService.LoginAsync(request, ipAddress, userAgent);
+        var result = await _loginService.LoginAsync(request, ipAddress, userAgent, deviceId);
         
         // 🔐 HttpOnly cookie — XSS ile çalınamaz
         CookieAuthMiddleware.SetAuthCookie(HttpContext, result.Token, result.ExpiresAt);

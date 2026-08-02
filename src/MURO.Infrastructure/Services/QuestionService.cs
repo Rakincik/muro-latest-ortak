@@ -25,15 +25,16 @@ public class QuestionService : IQuestionService
             q.CourseId, courseTitle,
             q.Answer, q.AnsweredAt, q.Status, q.CreatedAt, q.Note);
 
-    public async Task<PagedResult<QuestionDto>> GetQuestionsAsync(int page, int pageSize, string? status, Guid? instructorId)
+    public async Task<PagedResult<QuestionDto>> GetQuestionsAsync(int page, int pageSize, string? status, Guid? instructorId, Guid? studentId = null)
     {
-        var cacheKey = $"questions:list:{page}:{pageSize}:{status}:{instructorId}";
+        var cacheKey = $"questions:list:{page}:{pageSize}:{status}:{instructorId}:{studentId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Questions.AsNoTracking().Where(q => true);
 
             if (!string.IsNullOrWhiteSpace(status)) query = query.Where(q => q.Status == status);
             if (instructorId.HasValue) query = query.Where(q => q.InstructorId == instructorId);
+            if (studentId.HasValue) query = query.Where(q => q.UserId == studentId);
 
             var totalCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);

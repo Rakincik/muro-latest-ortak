@@ -8,7 +8,7 @@ import {
     BarChart3, TrendingUp, Target, Award, Zap,
     FolderOpen, Settings, Loader2, StopCircle, ChevronLeft,
     Flame, PlayCircle, LayoutGrid, List as ListIcon, ArrowUpDown,
-    Upload, Image as ImageIcon, UploadCloud
+    Upload, Image as ImageIcon, UploadCloud, SlidersHorizontal
 } from "lucide-react";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -169,6 +169,7 @@ export default function CoursesPage() {
     const [courseSortDesc, setCourseSortDesc] = useState(true);
     const [coursePage, setCoursePage] = useState(0);
     const [coursesPerPage, setCoursesPerPage] = useState(15);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     // ── Fetch courses from API ────────────────────────────────────────────────
     const fetchCourses = useCallback(async () => {
@@ -641,7 +642,8 @@ export default function CoursesPage() {
                         {/* ── OVERVIEW ────────────────────────────────────────── */}
                         {tab === "overview" && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Desktop view metrics grids */}
+                                <div className="hidden md:grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="p-4 rounded-2xl bg-white border border-[#E2E8F0]/60 hover:shadow-lg transition-all group flex flex-col justify-between">
                                         <div>
                                             <Users size={14} className="text-[#A0AEC0] mb-2 group-hover:text-[#A0AEC0] transition-colors" />
@@ -662,9 +664,7 @@ export default function CoursesPage() {
                                     </div>
                                 </div>
 
-
-                                {/* Hızlı İşlemler + Bilgi */}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="hidden md:grid grid-cols-2 gap-4">
                                     <div className="p-5 rounded-2xl bg-[#E2E8F0]/20 border border-[#E2E8F0]/60">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mb-1">Oluşturulma</p>
                                         <p className="text-sm font-bold text-[#0A1931]">{formatDisplayDate(c.createdAt)}</p>
@@ -672,6 +672,48 @@ export default function CoursesPage() {
                                     <div className="p-5 rounded-2xl bg-[#E2E8F0]/20 border border-[#E2E8F0]/60">
                                         <p className="text-[10px] font-bold uppercase tracking-widest text-[#A0AEC0] mb-1">Kayıt Sayısı</p>
                                         <p className="text-sm font-bold text-[#0A1931]">{mediaCount}</p>
+                                    </div>
+                                </div>
+
+                                {/* Mobile View: Single Compact List Card */}
+                                <div className="flex md:hidden flex-col bg-white rounded-2xl border border-[#E2E8F0] p-4 divide-y divide-[#E2E8F0]/60 shadow-sm">
+                                    <div className="flex items-center justify-between py-3 first:pt-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                                <Users size={15} />
+                                            </div>
+                                            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Kayıtlı Grup</span>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-sm font-bold text-[#0A1931]">{c.groupCount}</span>
+                                            {c.groups && c.groups.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1 justify-end max-w-[200px]">
+                                                    {c.groups.map(g => (
+                                                        <span key={g.id} className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#F8FAFC] text-[#1B3B6F] border border-[#E2E8F0] whitespace-nowrap">
+                                                            {g.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                                <Cal size={15} />
+                                            </div>
+                                            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Oluşturulma</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-[#0A1931]">{formatDisplayDate(c.createdAt)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-3 last:pb-0">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                                <Play size={15} />
+                                            </div>
+                                            <span className="text-xs font-bold text-[#64748B] uppercase tracking-wider">Kayıt Sayısı</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-[#0A1931]">{mediaCount}</span>
                                     </div>
                                 </div>
 
@@ -838,20 +880,20 @@ export default function CoursesPage() {
     // LIST VIEW
     // ════════════════════════════════════════════════════════════════════════════
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-[#0A1931] tracking-tight">Dersler</h1>
-                    <p className="text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Müfredat ve İçerik Yönetimi</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-[#0A1931] tracking-tight">Dersler</h1>
+                    <p className="hidden sm:block text-sm font-semibold uppercase tracking-widest text-[#A9A9A9] mt-1 opacity-60">Müfredat ve İçerik Yönetimi</p>
                 </div>
                 <button onClick={() => { setEditCourse(null); setShowWizard(true); }}
-                    className="px-6 py-3 text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center gap-2 shadow-lg shadow-black/10">
-                    <Plus size={18} /> Yeni Ders
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold bg-[#0A1931] text-white rounded-xl hover:bg-[#1B3B6F] transition-all flex items-center gap-2 shadow-lg shadow-black/10">
+                    <Plus size={16} /> Yeni Ders
                 </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Stats - Hidden on Mobile */}
+            <div className="hidden md:grid grid-cols-2 gap-4">
                 {[
                     { l: "Toplam Ders", v: stats.total, icon: BookOpen },
                     { l: "Yayında", v: stats.published, icon: Play },
@@ -869,44 +911,64 @@ export default function CoursesPage() {
             </div>
 
             {/* Toolbar: Search + Filters + Sort + View Toggle */}
-            <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row flex-wrap gap-3 pb-1">
+            <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 p-4 shadow-sm space-y-3">
+                <div className="flex items-center gap-2.5">
                     {/* Search */}
-                    <div className="w-full sm:flex-1 shrink-0 relative">
+                    <div className="flex-1 relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
                         <input type="text" placeholder="Ders ara..." value={search}
                             onChange={e => { setSearch(e.target.value); setCoursePage(0); }}
                             className="w-full pl-9 pr-3 py-2.5 text-xs font-bold bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#A0AEC0] transition-all" />
                     </div>
-                    {/* Status Filter */}
-                    <div className="shrink-0 w-full sm:w-auto">
-                        <CustomSelect 
-                            value={statusFilter}
-                            onChange={(val) => { setStatusFilter(val as string); setCoursePage(0); }}
-                            icon={Layers}
-                            options={[
-                                { label: "Tüm Durumlar", value: "all", icon: Layers },
-                                { label: "Yayında", value: "published", icon: Eye },
-                                { label: "Taslak", value: "draft", icon: FileText }
-                            ]}
-                        />
-                    </div>
-                    {/* Sort */}
-                    <div className="shrink-0 w-full sm:w-auto">
-                        <CustomSelect 
-                            value={sortBy}
-                            onChange={(val) => setSortBy(val as any)}
-                            icon={ArrowUpDown}
-                            options={[
-                                { label: "Tarihe Göre", value: "date", icon: Cal },
-                                { label: "İsme Göre", value: "name", icon: ArrowUpDown },
-                                { label: "Oturum Sayısı", value: "sessions", icon: Radio },
-                                { label: "Duruma Göre", value: "status", icon: Layers }
-                            ]}
-                        />
+                    {/* Mobile Filter Toggle Button */}
+                    <button 
+                        onClick={() => setShowMobileFilters(!showMobileFilters)}
+                        className={`lg:hidden flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-sm ${
+                            showMobileFilters 
+                                ? "bg-[#0A1931] text-white border-[#0A1931]" 
+                                : "bg-white text-[#1B3B6F] border-[#E2E8F0] hover:bg-[#E2E8F0]/20"
+                        }`}
+                    >
+                        <SlidersHorizontal size={15} />
+                        Filtrele
+                    </button>
+                </div>
+
+                {/* Filters container - on desktop always visible, on mobile visible when toggled */}
+                <div className={`flex-col lg:flex-row lg:items-center gap-3 lg:gap-4 ${
+                    showMobileFilters ? "flex animate-in fade-in-50 duration-200" : "hidden lg:flex"
+                }`}>
+                    <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full lg:w-auto pb-1 sm:pb-0">
+                        {/* Status Filter */}
+                        <div className="shrink-0 w-full sm:w-auto">
+                            <CustomSelect 
+                                value={statusFilter}
+                                onChange={(val) => { setStatusFilter(val as string); setCoursePage(0); }}
+                                icon={Layers}
+                                options={[
+                                    { label: "Tüm Durumlar", value: "all", icon: Layers },
+                                    { label: "Yayında", value: "published", icon: Eye },
+                                    { label: "Taslak", value: "draft", icon: FileText }
+                                ]}
+                            />
+                        </div>
+                        {/* Sort */}
+                        <div className="shrink-0 w-full sm:w-auto">
+                            <CustomSelect 
+                                value={sortBy}
+                                onChange={(val) => setSortBy(val as any)}
+                                icon={ArrowUpDown}
+                                options={[
+                                    { label: "Tarihe Göre", value: "date", icon: Cal },
+                                    { label: "İsme Göre", value: "name", icon: ArrowUpDown },
+                                    { label: "Video Sayısı", value: "sessions", icon: Radio },
+                                    { label: "Duruma Göre", value: "status", icon: Layers }
+                                ]}
+                            />
+                        </div>
                     </div>
                     {/* View Toggle */}
-                    <div className="shrink-0 flex rounded-xl border border-[#E2E8F0] overflow-hidden ml-auto sm:ml-0">
+                    <div className="shrink-0 flex rounded-xl border border-[#E2E8F0] overflow-hidden ml-auto lg:ml-0">
                         <button onClick={() => setViewMode("grid")}
                             className={`p-2.5 transition-all ${viewMode === "grid" ? "bg-[#0A1931] text-white" : "bg-white text-[#A0AEC0] hover:bg-[#E2E8F0]/30"}`}>
                             <LayoutGrid size={14} />
@@ -918,7 +980,7 @@ export default function CoursesPage() {
                     </div>
                 </div>
                 {/* Result count */}
-                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mt-3">{filtered.length} ders bulundu</p>
+                <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest pt-1">{filtered.length} ders bulundu</p>
             </div>
 
             {/* Course List */}

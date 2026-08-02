@@ -21,4 +21,7 @@ public class SignalRNotificationPush : INotificationPush
 
     public Task PushToUsersAsync(IReadOnlyList<string> userIds, NotificationDto dto)
         => _hub.Clients.Groups(userIds).SendAsync("ReceiveNotification", dto);
+
+    public Task PushSessionKickAsync(string sessionId)
+        => _hub.Clients.Group($"session:{sessionId}").SendAsync("KickSession", new { error = "SESSION_KICKED", message = "Hesabınıza başka bir cihazdan giriş yapıldı. Lütfen tekrar giriş yapın." });
 }

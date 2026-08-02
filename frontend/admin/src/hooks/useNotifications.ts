@@ -43,6 +43,14 @@ export function useNotifications({ onReceive }: UseNotificationsOptions) {
             onReceiveRef.current(notif);
         });
 
+        connection.on("KickSession", (data) => {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("session:kicked", { 
+                    detail: { message: data?.message || "Hesabınıza başka bir cihazdan giriş yapıldı. Lütfen tekrar giriş yapın." } 
+                }));
+            }
+        });
+
         connection.start().catch(console.warn);
         connectionRef.current = connection;
     }, [token]); // Only depends on token — no reconnect on callback change

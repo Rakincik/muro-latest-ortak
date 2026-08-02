@@ -5,7 +5,7 @@ namespace MURO.Application.Interfaces;
 
 public interface IQuestionService
 {
-    Task<PagedResult<QuestionDto>> GetQuestionsAsync(int page, int pageSize, string? status, Guid? instructorId);
+    Task<PagedResult<QuestionDto>> GetQuestionsAsync(int page, int pageSize, string? status, Guid? instructorId, Guid? studentId = null);
     Task<QuestionDto> GetByIdAsync(Guid questionId);
     Task<QuestionDto> AskAsync(Guid userId, CreateQuestionRequest request);
     Task<QuestionDto> AnswerAsync(Guid questionId, AnswerQuestionRequest request);

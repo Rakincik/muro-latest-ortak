@@ -97,6 +97,17 @@ export async function api<T = unknown>(endpoint: string, options: FetchOptions =
     if (token) headers["Authorization"] = `Bearer ${token}`;
     if (tenantId) headers["X-Tenant-Id"] = tenantId;
 
+    if (typeof window !== "undefined") {
+        let deviceId = localStorage.getItem("muro_device_id");
+        if (!deviceId) {
+            deviceId = typeof crypto !== "undefined" && crypto.randomUUID 
+                ? crypto.randomUUID() 
+                : Math.random().toString(36).substring(2) + Date.now().toString(36);
+            localStorage.setItem("muro_device_id", deviceId);
+        }
+        headers["X-Device-Id"] = deviceId;
+    }
+
     const fetchOptions: RequestInit = {
         ...rest,
         headers,
@@ -763,6 +774,14 @@ export interface TenantBrandingDto {
     accentColor: string | null;
     footerText: string | null;
     videoSortRule?: string | null;
+
+    // Login ekranı özelleştirme (featuresJson içinden gelir)
+    loginUsernameLabel?: string | null;
+    loginUsernamePlaceholder?: string | null;
+    loginWarningText?: string | null;
+
+    // Backend featuresJson'ı raw string olarak dönerse parse etmek için
+    featuresJson?: string | null;
 }
 
 export const tenantApi = {

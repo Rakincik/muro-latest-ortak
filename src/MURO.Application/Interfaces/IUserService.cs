@@ -16,4 +16,5 @@ public interface IUserService
     Task AssignToCourseAsync(Guid userId, Guid courseId, string mode);
     Task<byte[]> ExportUsersAsync(string? role);
     Task ApplyBrandingRulesRetroactivelyAsync(bool applyToStudentsOnly);
+    Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword);
 }

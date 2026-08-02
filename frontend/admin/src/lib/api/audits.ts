@@ -25,6 +25,19 @@ export const securityApi = {
             method: "POST",
             body: JSON.stringify({ ipAddress })
         });
+    },
+    getSecuritySummary: (token: string, tenantId: string) => {
+        return api<any>("/admin/security/summary", { token, tenantId });
+    },
+    getLockedAccounts: (token: string, tenantId: string) => {
+        return api<any>("/admin/security/locked-accounts", { token, tenantId });
+    },
+    unlockAccount: (token: string, tenantId: string, userId: string) => {
+        return api<{ success: boolean; message: string }>(`/admin/security/unlock-account/${userId}`, {
+            token,
+            tenantId,
+            method: "POST"
+        });
     }
 };
 

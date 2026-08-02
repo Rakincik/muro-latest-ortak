@@ -41,16 +41,35 @@ const parseUserAgent = (ua?: string) => {
     };
 };
 
+// Global in-memory cache and pending lookup promises to prevent race conditions and duplicate API requests
+const ipLocMemoryCache = new Map<string, string>();
+const ipLocPendingLookups = new Map<string, Promise<string>>();
+
 function IpLocation({ ip }: { ip?: string }) {
     const [loc, setLoc] = useState<string>("");
     
     useEffect(() => {
         if (!ip || ip === "Bilinmiyor" || ip.startsWith("127.") || ip.startsWith("192.168") || ip === "::1" || ip === "localhost") return;
         
-        // 1. Önbelleği localStorage'dan oku (Kalıcı önbellek)
+        // 1. Check in-memory cache
+        if (ipLocMemoryCache.has(ip)) {
+            setLoc(ipLocMemoryCache.get(ip)!);
+            return;
+        }
+
+        // 2. Check localStorage
         const cached = localStorage.getItem(`iploc_${ip}`);
         if (cached) {
+            ipLocMemoryCache.set(ip, cached);
             setLoc(cached);
+            return;
+        }
+
+        // 3. Check if there's already a pending lookup for this IP
+        if (ipLocPendingLookups.has(ip)) {
+            ipLocPendingLookups.get(ip)!.then(finalVal => {
+                if (finalVal) setLoc(finalVal);
+            });
             return;
         }
 
@@ -77,54 +96,56 @@ function IpLocation({ ip }: { ip?: string }) {
                 : (locationString || ispFriendly || "");
         };
 
-        // 2. Birinci Sağlayıcı (ipapi.co)
-        fetch(`https://ipapi.co/${ip}/json/`)
-            .then(res => {
-                if (res.status === 429) throw new Error("Rate limit");
-                return res.json();
-            })
-            .then(data => {
-                if (data && !data.error) {
-                    const finalVal = formatLocation(data.city, data.region, data.org);
-                    if (finalVal) {
-                        setLoc(finalVal);
-                        localStorage.setItem(`iploc_${ip}`, finalVal);
-                        return;
-                    }
+        // Create the promise for fetching
+        const lookupPromise = (async () => {
+            try {
+                // Provider 1 (ipwho.is)
+                const res = await fetch(`https://ipwho.is/${ip}`);
+                const data = await res.json();
+                if (data && data.success) {
+                    const val = formatLocation(data.city, data.region, data.connection?.isp);
+                    if (val) return val;
                 }
                 throw new Error("Failed validation");
-            })
-            .catch(() => {
-                // 3. İkinci Sağlayıcı Fallback (freeipapi.com - Çok yüksek limitli)
-                fetch(`https://freeipapi.com/api/json/${ip}`)
-                    .then(res => res.json())
-                    .then(data => {
+            } catch {
+                try {
+                    // Provider 2 (ipwhois.app)
+                    const res = await fetch(`https://ipwhois.app/json/${ip}`);
+                    const data = await res.json();
+                    if (data && data.success) {
+                        const val = formatLocation(data.city, data.region, data.isp);
+                        if (val) return val;
+                    }
+                    throw new Error("Failed validation");
+                } catch {
+                    try {
+                        // Provider 3 (freeipapi.com)
+                        const res = await fetch(`https://freeipapi.com/api/json/${ip}`);
+                        const data = await res.json();
                         if (data && data.cityName) {
-                            const finalVal = formatLocation(data.cityName, data.regionName, "");
-                            if (finalVal) {
-                                setLoc(finalVal);
-                                localStorage.setItem(`iploc_${ip}`, finalVal);
-                                return;
-                            }
+                            const val = formatLocation(data.cityName, data.regionName, "");
+                            if (val) return val;
                         }
-                        throw new Error("Failed validation");
-                    })
-                    .catch(() => {
-                        // 4. Üçüncü Sağlayıcı Fallback (ipwho.is)
-                        fetch(`https://ipwho.is/${ip}`)
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data && data.success) {
-                                    const finalVal = formatLocation(data.city, data.region, data.connection?.isp);
-                                    if (finalVal) {
-                                        setLoc(finalVal);
-                                        localStorage.setItem(`iploc_${ip}`, finalVal);
-                                    }
-                                }
-                            })
-                            .catch(() => {});
-                    });
-            });
+                    } catch {
+                        // Ignore
+                    }
+                }
+            }
+            return "";
+        })();
+
+        // Register the promise
+        ipLocPendingLookups.set(ip, lookupPromise);
+
+        lookupPromise.then(finalVal => {
+            ipLocPendingLookups.delete(ip);
+            if (finalVal) {
+                ipLocMemoryCache.set(ip, finalVal);
+                localStorage.setItem(`iploc_${ip}`, finalVal);
+                setLoc(finalVal);
+            }
+        });
+
     }, [ip]);
 
     if (!loc) return null;
@@ -452,6 +473,8 @@ export default function AuditTrailPage() {
     const [users, setUsers] = useState<UserAuditSummaryDto[]>([]);
     const [suspicious, setSuspicious] = useState<SuspiciousUserDto[]>([]);
     const [blockedIps, setBlockedIps] = useState<Array<{ ipAddress: string; blockedUntil: string }>>([]);
+    const [lockedAccounts, setLockedAccounts] = useState<Array<{ id: string; firstName: string; lastName: string; email: string; failedLoginCount: number; lockoutUntil: string }>>([]);
+    const [securitySummary, setSecuritySummary] = useState<any>(null);
     const [totalUsers, setTotalUsers] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     
@@ -460,6 +483,7 @@ export default function AuditTrailPage() {
     const [sortBy, setSortBy] = useState<"date" | "count">("date");
     const [loading, setLoading] = useState(true);
     const [loadingBlockedIps, setLoadingBlockedIps] = useState(false);
+    const [loadingLockedAccounts, setLoadingLockedAccounts] = useState(false);
 
     // Detail Modal States
     const [selectedUser, setSelectedUser] = useState<{ id: string | null; name: string | null; avatarUrl?: string | null; email?: string | null } | null>(null);
@@ -471,22 +495,28 @@ export default function AuditTrailPage() {
         if (!token || !tenantId) return;
         setLoading(true);
         setLoadingBlockedIps(true);
+        setLoadingLockedAccounts(true);
         try {
-            const [usersRes, suspRes, blockedRes] = await Promise.all([
+            const [usersRes, suspRes, blockedRes, lockedRes, summaryRes] = await Promise.all([
                 auditApi.getUserAudits(token, tenantId, { page, pageSize: 10, search, sortBy }),
                 auditApi.getSuspiciousUsers(token, tenantId),
-                securityApi.getBlockedIps(token, tenantId)
+                securityApi.getBlockedIps(token, tenantId),
+                securityApi.getLockedAccounts(token, tenantId).catch(() => ({ items: [] })),
+                securityApi.getSecuritySummary(token, tenantId).catch(() => null)
             ]);
             setUsers(usersRes.items);
             setTotalUsers(usersRes.totalCount);
             setTotalPages(usersRes.totalPages);
             setSuspicious(suspRes);
             setBlockedIps(blockedRes.items || []);
+            setLockedAccounts(lockedRes.items || lockedRes || []);
+            setSecuritySummary(summaryRes);
         } catch (e) {
             console.error("Failed to load audit data", e);
         } finally {
             setLoading(false);
             setLoadingBlockedIps(false);
+            setLoadingLockedAccounts(false);
         }
     }, [token, tenantId, page, search, sortBy]);
 
@@ -498,12 +528,35 @@ export default function AuditTrailPage() {
                 toastSuccess("IP Engeli Kaldırıldı", res.message || `${ip} engeli başarıyla kaldırıldı.`);
                 const blockedRes = await securityApi.getBlockedIps(token, tenantId);
                 setBlockedIps(blockedRes.items || []);
+                // İstatistikleri de yenileyelim kanka
+                const summaryRes = await securityApi.getSecuritySummary(token, tenantId).catch(() => null);
+                setSecuritySummary(summaryRes);
             } else {
                 toastError("Hata", "IP engeli kaldırılamadı.");
             }
         } catch (e: any) {
             console.error("Failed to unblock IP", e);
             toastError("Hata", e.message || "IP engeli kaldırılırken bir hata oluştu.");
+        }
+    };
+
+    const handleUnlockAccount = async (userId: string, userName: string) => {
+        if (!token || !tenantId) return;
+        try {
+            const res = await securityApi.unlockAccount(token, tenantId, userId);
+            if (res.success) {
+                toastSuccess("Hesap Kilidi Kaldırıldı", `${userName} kullanıcısının hesap kilidi başarıyla kaldırıldı.`);
+                const lockedRes = await securityApi.getLockedAccounts(token, tenantId).catch(() => ({ items: [] }));
+                setLockedAccounts(lockedRes.items || lockedRes || []);
+                // İstatistikleri yenileyelim kanka
+                const summaryRes = await securityApi.getSecuritySummary(token, tenantId).catch(() => null);
+                setSecuritySummary(summaryRes);
+            } else {
+                toastError("Hata", "Hesap kilidi kaldırılamadı.");
+            }
+        } catch (e: any) {
+            console.error("Failed to unlock account", e);
+            toastError("Hata", e.message || "Hesap kilidi kaldırılırken bir hata oluştu.");
         }
     };
 
@@ -597,6 +650,61 @@ export default function AuditTrailPage() {
                 <button onClick={fetchMasterData} className="p-2 rounded-xl bg-white border border-[#E2E8F0] hover:bg-[#E2E8F0]/20 text-[#A9A9A9] transition-all shadow-sm">
                     <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                 </button>
+            </div>
+
+            {/* ── SECURITY KPI DASHBOARD ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-300">
+                {/* Brute Force Card */}
+                <div className="bg-white border border-[#E2E8F0] p-4 rounded-2xl shadow-sm flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-500 shrink-0">
+                        <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider">Şüpheli Denemeler (24s)</p>
+                        <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
+                            {securitySummary?.events24h?.bruteForce ?? 0}
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Failed Logins Card */}
+                <div className="bg-white border border-[#E2E8F0] p-4 rounded-2xl shadow-sm flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500 shrink-0">
+                        <Lock size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider">Hatalı Girişler (24s)</p>
+                        <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
+                            {securitySummary?.events24h?.failedLogins ?? 0}
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Giriş Sorunu Yaşayanlar Card */}
+                <div className="bg-white border border-[#E2E8F0] p-4 rounded-2xl shadow-sm flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-500 shrink-0">
+                        <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider">Giriş Sorunu Yaşayanlar</p>
+                        <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
+                            {lockedAccounts.length}
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Sessions Kicked Card */}
+                <div className="bg-white border border-[#E2E8F0] p-4 rounded-2xl shadow-sm flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-500 shrink-0">
+                        <Activity size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-wider">Oturum Engelleme (24s)</p>
+                        <h3 className="text-lg font-black text-slate-800 font-mono mt-0.5">
+                            {securitySummary?.events24h?.sessionsKicked ?? 0}
+                        </h3>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -841,6 +949,53 @@ export default function AuditTrailPage() {
                                                 title="Engeli Kaldır"
                                             >
                                                 <Unlock size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Giriş Sorunu Yaşayanlar Paneli */}
+                    <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="p-4 bg-slate-50/50 border-b border-[#E2E8F0] flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-[#0A1931] flex items-center gap-2">
+                                <AlertTriangle size={16} className="text-amber-500" /> Giriş Sorunu Yaşayanlar
+                            </h2>
+                            <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg border border-amber-100 shadow-sm font-sans">
+                                {lockedAccounts.length} Aktif
+                            </span>
+                        </div>
+
+                        <div className="p-5">
+                            {loadingLockedAccounts || loading ? (
+                                <div className="space-y-3">
+                                    {[...Array(2)].map((_, i) => (
+                                        <div key={i} className="h-10 bg-slate-100 rounded-xl animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : lockedAccounts.length === 0 ? (
+                                <p className="text-xs text-[#A9A9A9] italic text-center py-4 font-sans">Şu an giriş sorunu (5+ hatalı deneme) yaşayan kullanıcı bulunmuyor.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {lockedAccounts.map((u, i) => (
+                                        <div key={u.id || i} className="flex items-center justify-between p-3 bg-amber-50/10 hover:bg-amber-50/20 border border-amber-100 rounded-xl transition-all duration-200 shadow-sm">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-xs font-bold text-[#0A1931] truncate">{u.firstName} {u.lastName}</span>
+                                                    <span className="text-[9px] bg-red-50 text-red-600 border border-red-100 px-1 py-0.2 rounded font-sans font-bold">
+                                                        {u.failedLoginCount} Hatalı Giriş
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-[#A9A9A9] truncate font-sans">{u.email}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleUnlockAccount(u.id, `${u.firstName} ${u.lastName}`)}
+                                                className="p-1.5 bg-white hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 rounded-lg border border-slate-200 hover:border-emerald-200 transition-all shadow-sm shrink-0 ml-2"
+                                                title="Hatalı Giriş Sayacını Sıfırla"
+                                            >
+                                                <RefreshCw size={14} />
                                             </button>
                                         </div>
                                     ))}

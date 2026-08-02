@@ -13,15 +13,19 @@ namespace MURO.Infrastructure.Services;
 
 public class AuthLoginService : AuthServiceBase, IAuthLoginService
 {
-    private const int MaxFailedAttempts = 5;
-    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(5);
+    private readonly INotificationPush _push;
 
-    public AuthLoginService(MuroDbContext context, IConfiguration config, IConnectionMultiplexer? redis = null)
+    public AuthLoginService(
+        MuroDbContext context, 
+        IConfiguration config, 
+        INotificationPush push,
+        IConnectionMultiplexer? redis = null)
         : base(context, config, redis)
     {
+        _push = push;
     }
 
-    public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null)
+    public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null, string? userAgent = null, string? deviceId = null)
     {
         var lookupEmail = request.Email?.Trim();
         var phoneWithoutZero = lookupEmail;
@@ -84,8 +88,11 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
             .Where(s => s.UserId == user.Id && s.IsActive)
             .ToListAsync();
 
-
         var newDeviceInfo = ParseDeviceInfo(userAgent);
+        if (!string.IsNullOrEmpty(deviceId))
+        {
+            newDeviceInfo = $"{newDeviceInfo}|{deviceId}";
+        }
 
         foreach (var old in existingSessions)
         {
@@ -104,6 +111,16 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
                 {
                     // Redis connection issues shouldn't block the login flow, fail silently
                 }
+            }
+
+            // ⚡ Real-time kick via SignalR WebSocket group push
+            try
+            {
+                await _push.PushSessionKickAsync(old.Id.ToString());
+            }
+            catch (Exception)
+            {
+                // SignalR push failure should fail silently to not interrupt login process
             }
             
             if (old.IpAddress == ipAddress && old.DeviceInfo == newDeviceInfo)

@@ -133,7 +133,8 @@ export default function CourseDetailPage() {
 
     // ── Custom hooks — extracted player & notes state ──
     const player = useVideoPlayer(courseId, sortedRecordings, token, tenantId, activeTab);
-    const playerNotes = usePlayerNotes(player.selectedRec?.mediaAssetId || player.selectedRec?.id || null, token, tenantId);
+    const activeRec = player.selectedRec || sortedRecordings[0];
+    const playerNotes = usePlayerNotes(activeRec?.mediaAssetId || activeRec?.id || null, token, tenantId);
 
     // Aliases for backward compatibility with render code
     const { selectedRec, setSelectedRec, isFullscreen, toggleFullscreen, sidebarOpen, setSidebarOpen,
@@ -429,7 +430,7 @@ export default function CourseDetailPage() {
                                     <p className="text-[10px] text-white/70">{lastWatchedRec.sessionTitle}</p>
                                 </div>
                                 <ArrowRight size={14} className="shrink-0 group-hover:translate-x-1 transition-transform" />
-                            </button>
+                        </button>
                         )}
 
                         {/* ── Player + Sidebar Row ── */}
@@ -438,31 +439,31 @@ export default function CourseDetailPage() {
                             <div className="flex-1 flex flex-col min-w-0">
                                 {/* ── Player Header Bar ── */}
                                 {!isFullscreen && (
-                                     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#E2E8F0] shrink-0 select-none">
-                                         <div className="flex items-center gap-2 min-w-0">
-                                             <span className="text-xs font-bold text-[#0A1931] truncate">{activeRec.sessionTitle}</span>
-                                         </div>
-                                         <div className="flex items-center gap-2 shrink-0">
-                                             {/* Sidebar toggle */}
-                                             <button onClick={() => setSidebarOpen(prev => !prev)}
-                                                 className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-[#D0D5DD] text-[#0A1931] text-xs font-bold rounded-xl shadow-sm transition-all transform active:scale-95"
-                                                 title={sidebarOpen ? 'İçeriği Gizle' : 'İçeriği Göster'}>
-                                                 {sidebarOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-                                                 <span>{sidebarOpen ? 'Gizle' : 'İçerik'}</span>
-                                             </button>
-                                             {/* Fullscreen */}
-                                             <button onClick={toggleFullscreen}
-                                                 className="flex items-center gap-2 px-4 py-2 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all transform active:scale-95"
-                                                 title={isFullscreen ? 'Normal ekrana dön' : 'Tam Ekran'}>
-                                                 {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                                                 <span>{isFullscreen ? 'Küçült' : 'Tam Ekran'}</span>
-                                             </button>
-                                         </div>
-                                     </div>
-                                 )}
+                                    <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 bg-white border-b border-[#E2E8F0] shrink-0 select-none">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-xs font-bold text-[#0A1931] truncate">{activeRec.sessionTitle}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            {/* Sidebar toggle */}
+                                            <button onClick={() => setSidebarOpen(prev => !prev)}
+                                                className="flex items-center gap-1.5 p-2 sm:px-4 sm:py-2 bg-white hover:bg-gray-50 border border-[#D0D5DD] text-[#0A1931] text-xs font-bold rounded-xl shadow-sm transition-all transform active:scale-95"
+                                                title={sidebarOpen ? 'İçeriği Gizle' : 'İçeriği Göster'}>
+                                                {sidebarOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+                                                <span className="hidden sm:inline">{sidebarOpen ? 'Gizle' : 'İçerik'}</span>
+                                            </button>
+                                            {/* Fullscreen */}
+                                            <button onClick={toggleFullscreen}
+                                                className="flex items-center gap-1.5 p-2 sm:px-4 sm:py-2 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all transform active:scale-95"
+                                                title={isFullscreen ? 'Normal ekrana dön' : 'Tam Ekran'}>
+                                                {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                                                <span className="hidden sm:inline">{isFullscreen ? 'Küçült' : 'Tam Ekran'}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Video iframe area */}
-                                <div ref={playerContainerRef} className={`bg-[#F8F9FA] relative group/player min-h-[260px] sm:min-h-[360px] lg:min-h-[400px] ${isFullscreen ? 'fixed inset-0 z-[100] bg-black flex items-center justify-center' : 'aspect-video'}`}>
+                                <div ref={playerContainerRef} className={`bg-[#F8F9FA] relative group/player min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] lg:min-h-[450px] ${isFullscreen ? 'fixed inset-0 z-[100] bg-black flex items-center justify-center' : 'aspect-video'}`}>
                                     {/* Loading skeleton */}
                                     {!iframeLoaded && (
                                         <div className="absolute inset-0 z-[5] bg-[#F8F9FA] flex items-center justify-center">

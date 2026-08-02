@@ -97,12 +97,12 @@ public class AdminSecurityService : IAdminSecurityService
     {
         var now = DateTime.UtcNow;
         var locked = await _db.Users
-            .Where(u => u.LockoutUntil != null && u.LockoutUntil > now)
+            .Where(u => u.FailedLoginCount >= 5)
             .Select(u => new
             {
                 u.Id, u.FirstName, u.LastName, u.Email,
                 role = u.Role.ToString(),
-                u.FailedLoginCount, u.LockoutUntil
+                u.FailedLoginCount, lockoutUntil = (DateTime?)null
             })
             .ToListAsync();
         return (200, new { items = locked, count = locked.Count });

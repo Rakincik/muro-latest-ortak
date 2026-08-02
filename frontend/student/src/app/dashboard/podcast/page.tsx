@@ -45,7 +45,7 @@ export default function PodcastPage() {
     return (
         <div className="max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold text-[#0A1931] mb-2">🎙️ Podcast</h1>
-            <p className="text-[#A9A9A9] text-sm mb-8">AI tarafından üretilen ders ses içerikleri</p>
+            <p className="text-[#A9A9A9] text-sm mb-8">Derslerin ses içerikleri</p>
 
             {/* Sticky player bar */}
             {playing && (

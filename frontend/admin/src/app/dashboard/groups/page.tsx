@@ -31,7 +31,8 @@ import {
     PiFilePlusDuotone,
     PiFileArrowDownDuotone,
     PiFolderDuotone,
-    PiFolderOpenDuotone
+    PiFolderOpenDuotone,
+    PiCaretLeftBold as ChevronLeft
 } from "react-icons/pi";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -651,7 +652,7 @@ export default function GroupsPage() {
             {/* Main Content */}
             <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
                 {/* Left Panel - Group Tree */}
-                <div className={`w-full lg:w-[35%] lg:min-w-[320px] lg:max-w-[480px] h-[350px] lg:h-auto flex-col bg-white rounded-2xl sm:rounded-[1.5rem] border border-[#E2E8F0] shadow-sm overflow-hidden shrink-0 lg:shrink-0 ${isSidebarVisible ? 'flex lg:flex' : 'hidden'}`}>
+                <div className={`w-full lg:w-[35%] lg:min-w-[320px] lg:max-w-[480px] h-[350px] lg:h-auto flex-col bg-white rounded-2xl sm:rounded-[1.5rem] border border-[#E2E8F0] shadow-sm overflow-hidden shrink-0 lg:shrink-0 ${isSidebarVisible ? (selectedId ? 'hidden lg:flex' : 'flex') : 'hidden'}`}>
                     <div className="p-3 border-b border-[#E2E8F0] shrink-0">
                         <div className="relative">
                             <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -675,7 +676,7 @@ export default function GroupsPage() {
                 </div>
 
                 {/* Right Panel - Group Details */}
-                <div className="flex-1 flex flex-col bg-white rounded-2xl sm:rounded-[1.5rem] border border-[#E2E8F0] shadow-sm overflow-hidden min-h-[500px] lg:min-h-0">
+                <div className={`flex-1 flex flex-col bg-white rounded-2xl sm:rounded-[1.5rem] border border-[#E2E8F0] shadow-sm overflow-hidden min-h-[500px] lg:min-h-0 ${selectedId ? 'flex' : 'hidden lg:flex'}`}>
                     {!selectedId ? (
                         <div className="flex-1 flex items-center justify-center text-[#A0AEC0] p-8">
                             <div className="text-center">
@@ -692,6 +693,14 @@ export default function GroupsPage() {
                                 <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3">
                                     <div className="flex flex-col gap-2 flex-1 min-w-0 pr-4">
                                         <div className="flex items-center flex-wrap gap-2.5">
+                                            {/* Mobile Back Button */}
+                                            <button 
+                                                onClick={() => { setSelectedId(null); setDetail(null); }}
+                                                className="lg:hidden p-1.5 rounded-lg border border-[#E2E8F0] bg-white hover:bg-slate-50 text-slate-500 mr-1 flex items-center justify-center shrink-0 shadow-sm active:scale-95"
+                                                title="Geri Dön"
+                                            >
+                                                <ChevronLeft size={14} />
+                                            </button>
                                             <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm border border-[#E2E8F0] bg-white relative overflow-hidden shrink-0">
                                                 <div className="absolute inset-0 opacity-10" style={{ background: detail.color ?? "#6366f1" }} />
                                                 <FolderTree size={14} style={{ color: detail.color ?? "#6366f1" }} />

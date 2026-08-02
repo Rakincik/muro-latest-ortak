@@ -10,4 +10,5 @@ public interface INotificationPush
 {
     Task PushToUserAsync(string userId, NotificationDto dto);
     Task PushToUsersAsync(IReadOnlyList<string> userIds, NotificationDto dto);
+    Task PushSessionKickAsync(string sessionId);
 }

@@ -120,6 +120,17 @@ export async function api<T = unknown>(
     if (finalToken) headers["Authorization"] = `Bearer ${finalToken}`;
     if (finalTenantId) headers["X-Tenant-Id"] = finalTenantId;
 
+    if (typeof window !== "undefined") {
+        let deviceId = localStorage.getItem("muro_device_id");
+        if (!deviceId) {
+            deviceId = typeof crypto !== "undefined" && crypto.randomUUID 
+                ? crypto.randomUUID() 
+                : Math.random().toString(36).substring(2) + Date.now().toString(36);
+            localStorage.setItem("muro_device_id", deviceId);
+        }
+        headers["X-Device-Id"] = deviceId;
+    }
+
     const response = await fetch(`${API_URL}${endpoint}`, {
         cache: "no-store",
         ...rest,
