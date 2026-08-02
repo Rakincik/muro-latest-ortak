@@ -234,7 +234,7 @@ export default function Sidebar({
                                     <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections[section.title] === false ? 'rotate-180' : ''}`} />
                                 </button>
                             )}
-                            <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${(!isCollapsed && expandedSections[section.title] === false) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+                            <div className={`flex flex-col space-y-0.5 overflow-hidden transition-all duration-300 ${(!isCollapsed && expandedSections[section.title] === false) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
                                 {filteredItems.map((item) => {
                                     const isActive = item.href === "/dashboard"
                                         ? pathname === "/dashboard"
@@ -300,7 +300,7 @@ export default function Sidebar({
                             <ChevronDown size={12} className={`text-[#A9A9A9] transition-transform duration-200 ${expandedSections['SİSTEM'] === false ? 'rotate-180' : ''}`} />
                         </button>
                     )}
-                    <div className={`space-y-0.5 overflow-hidden transition-all duration-300 ${(!isCollapsed && expandedSections['SİSTEM'] === false) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
+                    <div className={`flex flex-col space-y-0.5 overflow-hidden transition-all duration-300 ${(!isCollapsed && expandedSections['SİSTEM'] === false) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
                         {isCollapsed ? (
                             <Tooltip content="Bildirimler" position="right">
                                 <button
