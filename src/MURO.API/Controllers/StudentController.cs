@@ -98,7 +98,10 @@ public class StudentController : ControllerBase
 
         async Task<List<MURO.Application.DTOs.Analytics.StudentGroupDto>> SafeGetGroups() {
             try { return await _studentService.GetActiveGroupsAsync(userId); }
-            catch { return new List<MURO.Application.DTOs.Analytics.StudentGroupDto>(); }
+            catch (Exception ex) { 
+                Console.WriteLine("GROUPS ERROR: " + ex.ToString());
+                return new List<MURO.Application.DTOs.Analytics.StudentGroupDto>(); 
+            }
         }
 
         // Sıralı çağrılar — DbContext thread-safe değildir, paralel kullanılamaz!
