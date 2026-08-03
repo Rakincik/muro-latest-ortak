@@ -280,10 +280,10 @@ export default function CoursesPage() {
                         const groupColor = group.color || "#1B3B6F";
                         const groupCoursesCount = group.courseIds?.length ?? 0;
                         return (
-                            <button
+                            <div
                                 key={group.id}
                                 onClick={() => handleSelectGroup(group.id)}
-                                className="glass-card p-6 flex flex-col items-start text-left group hover:border-[#1B3B6F]/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden h-[180px]"
+                                className="cursor-pointer glass-card p-6 flex flex-col items-start text-left group hover:border-[#1B3B6F]/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden h-[180px]"
                             >
                                 <div 
                                     className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 pointer-events-none group-hover:scale-110 transition-transform duration-300"
@@ -313,15 +313,15 @@ export default function CoursesPage() {
                                     </span>
                                     <ChevronRight size={16} className="text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-[#1B3B6F] transition-all" />
                                 </div>
-                            </button>
+                            </div>
                         );
                     })}
 
                     {/* Bireysel Dersler Klasörü */}
                     {individualCourses.length > 0 && (
-                        <button
+                        <div
                             onClick={() => handleSelectGroup("individual")}
-                            className="glass-card p-6 flex flex-col items-start text-left group hover:border-slate-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden h-[180px]"
+                            className="cursor-pointer glass-card p-6 flex flex-col items-start text-left group hover:border-slate-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden h-[180px]"
                         >
                             <div 
                                 className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 pointer-events-none bg-slate-500 group-hover:scale-110 transition-transform duration-300"
@@ -345,7 +345,7 @@ export default function CoursesPage() {
                                 </span>
                                 <ChevronRight size={16} className="text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-slate-600 transition-all" />
                             </div>
-                        </button>
+                        </div>
                     )}
                 </div>
             ) : filteredAndSorted.length === 0 ? (
