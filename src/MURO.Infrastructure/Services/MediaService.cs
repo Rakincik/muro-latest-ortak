@@ -204,7 +204,11 @@ public class MediaService : IMediaService
 
         try
         {
-            var hlsDir = Path.Combine(_hlsOutputDir, Guid.Empty.ToString(), assetId.ToString());
+            var hlsDir = Path.Combine(_hlsOutputDir, "monopol", assetId.ToString());
+            if (!Directory.Exists(hlsDir))
+            {
+                hlsDir = Path.Combine(_hlsOutputDir, Guid.Empty.ToString(), assetId.ToString());
+            }
             if (Directory.Exists(hlsDir))
             {
                 try

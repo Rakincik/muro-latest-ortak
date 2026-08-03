@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { API_URL } from "@/lib/api/core";
-import { mediaLibraryApi, courseApi, type CourseMediaDto } from "@/lib/api";
+import { mediaLibraryApi, courseApi, tenantApi, type CourseMediaDto } from "@/lib/api";
 import { GripVertical, Plus, Trash2, Video, Play, Users, Check, X, Edit2, Loader2, FileText, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import { ExamSelectorModal } from "@/components/ui/ExamSelectorModal";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { BbbSyncModal } from "./BbbSyncModal";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+// @ts-ignore
 import Plyr from 'plyr';
 import 'plyr/dist/plyr.css';
 
@@ -47,7 +48,8 @@ export function CourseMediaTab({
     sessions = [],
     onViewAttendance,
     onPlay,
-    onRefreshDetail
+    onRefreshDetail,
+    videoSortRule
 }: { 
     courseId: string;
     recordings?: any[];
@@ -55,6 +57,7 @@ export function CourseMediaTab({
     onViewAttendance?: (sessionId: string) => void;
     onPlay?: (title: string, url: string, type: "video" | "iframe") => void;
     onRefreshDetail?: () => Promise<void>;
+    videoSortRule?: string;
 }) {
     const { user, currentTenantId } = useAuth();
     const { success, error: toastError } = useToast();
@@ -66,6 +69,7 @@ export function CourseMediaTab({
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [isBbbSyncOpen, setIsBbbSyncOpen] = useState(false);
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+    const [resolvedSortRule, setResolvedSortRule] = useState("custom");
     
     // Inline confirmation states
     const [inlineDeleteConfirm, setInlineDeleteConfirm] = useState<string | null>(null);
@@ -85,6 +89,22 @@ export function CourseMediaTab({
     useEffect(() => {
         loadMedias();
     }, [courseId]);
+
+    useEffect(() => {
+        const resolveSortRule = async () => {
+            if (videoSortRule && videoSortRule !== "default") {
+                setResolvedSortRule(videoSortRule);
+                return;
+            }
+            try {
+                const branding = await tenantApi.getBranding(currentTenantId || undefined);
+                setResolvedSortRule(branding?.videoSortRule || "custom");
+            } catch {
+                setResolvedSortRule("custom");
+            }
+        };
+        resolveSortRule();
+    }, [courseId, videoSortRule, currentTenantId]);
 
     const hasExamsFeature = useMemo(() => {
         const t = user?.tenants.find(x => x.tenantId === currentTenantId);
@@ -259,9 +279,12 @@ export function CourseMediaTab({
             const sorted = [...medias];
             
             const extractDateFromTitle = (title: string) => {
-                const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                const match = title.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
                 if (match) {
-                    return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
+                    const day = match[1].padStart(2, '0');
+                    const month = match[2].padStart(2, '0');
+                    const year = match[3];
+                    return `${year}-${month}-${day}T00:00:00Z`;
                 }
                 return null;
             };
@@ -348,19 +371,34 @@ export function CourseMediaTab({
 
     const combinedMedias = useMemo(() => {
         const list = [...medias];
+        
+        const extractDateFromTitle = (title: string) => {
+            const match = title.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
+            if (match) {
+                const day = match[1].padStart(2, '0');
+                const month = match[2].padStart(2, '0');
+                const year = match[3];
+                return `${year}-${month}-${day}T00:00:00Z`;
+            }
+            return null;
+        };
+
+        const getRecordingDate = (media: any, title: string) => {
+            const titleDate = extractDateFromTitle(title);
+            if (titleDate) return titleDate;
+            
+            if (media.type === "Session" && media.sessionId) {
+                const sess = sessions.find(s => s.id === media.sessionId);
+                return sess?.scheduledStart || sess?.createdAt || "";
+            } else if (media.type === "Media" && media.mediaAsset) {
+                return media.mediaAsset.createdAt || "";
+            }
+            return "";
+        };
+
         list.sort((a, b) => {
-            let dateA = "";
-            let dateB = "";
             let titleA = "";
             let titleB = "";
-            
-            const extractDateFromTitle = (title: string) => {
-                const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-                if (match) {
-                    return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
-                }
-                return null;
-            };
             
             if (a.type === "Session" && a.sessionId) {
                 const sess = sessions.find(s => s.id === a.sessionId);
@@ -380,57 +418,47 @@ export function CourseMediaTab({
                 titleB = b.examTitle || "";
             }
 
-            // 1. Her zaman ilk öncelik: Eğer manuel bir sıralama (orderIndex) yapılmışsa onu kullan
-            // İster 50'li göster, ister Tümü olsun, adminin yaptığı sıralama ezilmemeli.
+            // Apply selected sorting rules first, fallback to orderIndex if needed
+            if (resolvedSortRule === 'date_asc') {
+                const dateValA = getRecordingDate(a, titleA);
+                const dateValB = getRecordingDate(b, titleB);
+                if (dateValA !== dateValB) return dateValA.localeCompare(dateValB);
+            } else if (resolvedSortRule === 'date_desc') {
+                const dateValA = getRecordingDate(a, titleA);
+                const dateValB = getRecordingDate(b, titleB);
+                if (dateValA !== dateValB) return dateValB.localeCompare(dateValA);
+            } else if (resolvedSortRule === 'alpha_asc') {
+                if (titleA !== titleB) return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
+            } else if (resolvedSortRule === 'alpha_desc') {
+                if (titleA !== titleB) return titleB.localeCompare(titleA, 'tr', { numeric: true, sensitivity: 'base' });
+            }
+
+            // Fallback to custom/orderIndex order (manual admin ordering)
             if (a.orderIndex !== b.orderIndex) {
                 return (a.orderIndex || 0) - (b.orderIndex || 0);
             }
-
-            // 2. Sıralama önceliği: Title'dan çıkarılan tarihe göre (varsa)
+            
+            // Additional fallbacks
             const parsedDateA = extractDateFromTitle(titleA);
             const parsedDateB = extractDateFromTitle(titleB);
-            
             if (parsedDateA && parsedDateB && parsedDateA !== parsedDateB) {
                 return parsedDateA.localeCompare(parsedDateB);
             }
             
-            // 3. Sıralama önceliği: Alfabetik (numeric: true ile DERS-2 ve DERS-10'u doğru sıralar)
             if (titleA !== titleB) {
                 return titleA.localeCompare(titleB, 'tr', { numeric: true, sensitivity: 'base' });
             }
-
-            // 4. Sıralama önceliği: Admin elle sıralama yaptıysa (orderIndex)
-            if (a.orderIndex !== b.orderIndex) {
-                return (a.orderIndex || 0) - (b.orderIndex || 0);
-            }
             
-            // 5. En son çare: Oluşturulma tarihi
-            let fallbackDateA = "";
-            let fallbackDateB = "";
-            
-            if (a.type === "Session" && a.sessionId) {
-                const sess = sessions.find(s => s.id === a.sessionId);
-                fallbackDateA = sess?.scheduledStart || sess?.createdAt || "";
-            } else if (a.type === "Media" && a.mediaAsset) {
-                fallbackDateA = a.mediaAsset.createdAt || "";
-            }
-            
-            if (b.type === "Session" && b.sessionId) {
-                const sess = sessions.find(s => s.id === b.sessionId);
-                fallbackDateB = sess?.scheduledStart || sess?.createdAt || "";
-            } else if (b.type === "Media" && b.mediaAsset) {
-                fallbackDateB = b.mediaAsset.createdAt || "";
-            }
-            
+            const fallbackDateA = getRecordingDate(a, titleA);
+            const fallbackDateB = getRecordingDate(b, titleB);
             if (fallbackDateA !== fallbackDateB) {
                 return fallbackDateA.localeCompare(fallbackDateB);
             }
 
-            // 6. Sıralama önceliği: ID'ye göre (Son çare)
             return a.id.localeCompare(b.id);
         });
         return list;
-    }, [medias, sessions]);
+    }, [medias, sessions, resolvedSortRule]);
 
     const filteredMedias = combinedMedias.filter(media => {
         const isRecording = media.type === "Session" || !!recordings.find(r => r.mediaAssetId && r.mediaAssetId === media?.mediaAsset?.id);
@@ -1114,7 +1142,7 @@ function HlsVideoPlayer({ src, mediaId, vttPath }: { src: string; mediaId: strin
                     hls.attachMedia(video);
                     // @ts-ignore
                     window.hls = hls;
-                    hls.on(Hls.Events.MANIFEST_PARSED, (event: any, data: any) => {
+                    (hls as any).on(Hls.Events.MANIFEST_PARSED, (event: any, data: any) => {
                         const qualities = data.levels.map((l: any) => l.height).sort((a: number, b: number) => b - a);
                         initPlyr(qualities);
                     });

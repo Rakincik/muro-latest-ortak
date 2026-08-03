@@ -161,7 +161,7 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
         const plyrInstance = plyrRef.current?.plyr;
         if (plyrInstance) {
             plyrInstance.currentTime = 0;
-            plyrInstance.play().catch(() => {});
+            (plyrInstance.play() as any)?.catch?.(() => {});
         }
         if (mediaId) {
             try { localStorage.removeItem(`muro_video_time_${mediaId}`); } catch { }

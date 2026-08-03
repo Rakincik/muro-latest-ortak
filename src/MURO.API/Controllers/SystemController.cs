@@ -81,7 +81,7 @@ public class SystemController : ControllerBase
             PrimaryColor = settings.PrimaryColor,
             AccentColor = settings.AccentColor,
             FooterText = settings.FooterText,
-            VideoSortRule = settings.VideoSortRule ?? "custom",
+            VideoSortRule = !string.IsNullOrEmpty(settings.VideoSortRule) ? settings.VideoSortRule : "custom",
             FeaturesJson = settings.FeaturesJson
         });
     }

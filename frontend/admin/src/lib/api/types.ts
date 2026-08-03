@@ -582,8 +582,11 @@ export interface AuditSummaryDto {
 export interface UserAuditSummaryDto {
     userId: string | null;
     userName: string | null;
+    email?: string;
+    avatarUrl?: string;
     actionCount: number;
     lastActionAt: string;
+    lastAction?: string;
 }
 
 export interface SuspiciousUserDto {
@@ -605,6 +608,7 @@ export interface TenantBrandingDto {
     accentColor: string | null;
     footerText: string | null;
     featuresJson?: string | null;
+    videoSortRule?: string | null;
 }
 
 export interface SubmissionDto {
@@ -672,20 +676,3 @@ export interface CourseStudentListDto {
     expiresAt?: string | null;
 }
 
-export interface UserAuditSummaryDto {
-    userId?: string;
-    userName?: string;
-    email?: string;
-    avatarUrl?: string;
-    actionCount: number;
-    lastActionAt: string;
-    lastAction?: string;
-}
-
-export interface SuspiciousUserDto {
-    userId?: string;
-    userName?: string;
-    alertType: string;
-    eventCount: number;
-    lastEventAt: string;
-}

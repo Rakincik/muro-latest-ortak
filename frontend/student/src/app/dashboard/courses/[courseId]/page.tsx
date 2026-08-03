@@ -73,8 +73,13 @@ export default function CourseDetailPage() {
         
         const extractDateFromTitle = (title: string) => {
             if (!title) return null;
-            const match = title.match(/(\d{2})\.(\d{2})\.(\d{4})/);
-            if (match) return `${match[3]}-${match[2]}-${match[1]}T00:00:00Z`;
+            const match = title.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})/);
+            if (match) {
+                const day = match[1].padStart(2, '0');
+                const month = match[2].padStart(2, '0');
+                const year = match[3];
+                return `${year}-${month}-${day}T00:00:00Z`;
+            }
             return null;
         };
 

@@ -30,7 +30,7 @@ public class CourseMaterialService : ICourseMaterialService
         var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId )
             ?? throw new KeyNotFoundException("Kurs bulunamadı.");
 
-        var uploadsDir = Path.Combine(webRootPath, "uploads", "materials", Guid.Empty.ToString());
+        var uploadsDir = Path.Combine(webRootPath, "uploads", "materials");
         Directory.CreateDirectory(uploadsDir);
 
         var uniqueName = $"{Guid.NewGuid()}{Path.GetExtension(fileName)}";
@@ -68,6 +68,12 @@ public class CourseMaterialService : ICourseMaterialService
 
         var diskPath = Path.Combine(webRootPath, material.FilePath.TrimStart('/'));
         if (File.Exists(diskPath)) File.Delete(diskPath);
+        else
+        {
+            // Fallback for old files uploaded to Guid.Empty folder
+            var oldDiskPath = Path.Combine(webRootPath, "uploads", "materials", Guid.Empty.ToString(), Path.GetFileName(material.FilePath));
+            if (File.Exists(oldDiskPath)) File.Delete(oldDiskPath);
+        }
 
         _context.CourseMaterials.Remove(material);
         await _context.SaveChangesAsync();

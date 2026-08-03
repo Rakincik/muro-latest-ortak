@@ -744,6 +744,7 @@ export default function CoursesPage() {
                                 onRefreshDetail={async () => {
                                     if (detail) openDetail(detail, "recordings");
                                 }}
+                                videoSortRule={detail.videoSortRule}
                             />
                         )}
 
