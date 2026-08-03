@@ -272,7 +272,7 @@ export default function Sidebar({
 
                                     if (isCollapsed) {
                                         return (
-                                            <Tooltip key={item.href} content={item.label} position="right">
+                                            <Tooltip key={item.href} content={item.label} position="right" className="w-full justify-center">
                                                 {linkContent}
                                             </Tooltip>
                                         );
@@ -302,7 +302,7 @@ export default function Sidebar({
                     )}
                     <div className={`flex flex-col space-y-0.5 overflow-hidden transition-all duration-300 ${(!isCollapsed && expandedSections['SİSTEM'] === false) ? 'max-h-0 opacity-0' : 'max-h-[500px] opacity-100'}`}>
                         {isCollapsed ? (
-                            <Tooltip content="Bildirimler" position="right">
+                            <Tooltip content="Bildirimler" position="right" className="w-full justify-center">
                                 <button
                                     onClick={() => setShowNotifications(true)}
                                     className={`group relative flex items-center justify-center w-11 h-11 mx-auto rounded-xl text-[13px] font-bold uppercase tracking-wider transition-all duration-200 ${showNotifications
@@ -349,12 +349,12 @@ export default function Sidebar({
             }`}>
                 {isCollapsed ? (
                     <>
-                        <Tooltip content={`${user?.firstName} ${user?.lastName} (Öğrenci)`} position="right">
+                        <Tooltip content={`${user?.firstName} ${user?.lastName} (Öğrenci)`} position="right" className="w-full justify-center">
                             <Link href="/dashboard/profile" className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold bg-[#1B3B6F] border border-[#A0AEC0]/10 cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 shadow-inner shrink-0">
                                 {user?.firstName?.[0]}{user?.lastName?.[0]}
                             </Link>
                         </Tooltip>
-                        <Tooltip content="Çıkış Yap" position="right">
+                        <Tooltip content="Çıkış Yap" position="right" className="w-full justify-center">
                             <button
                                 onClick={handleLogout}
                                 className="p-2 rounded-xl text-[#A9A9A9] hover:text-red-400 hover:bg-red-400/10 transition-all hover:scale-110 active:scale-90 duration-200"

@@ -81,7 +81,6 @@ button:active,
   position: fixed;
   top: 0;
   left: 0;
-  width: var(--sidebar-width);
   height: 100vh;
   background: linear-gradient(180deg, #060E1A 0%, #0A1931 100%);
   border-right: 1px solid rgba(27, 59, 111, 0.3);
@@ -92,7 +91,6 @@ button:active,
 }
 
 .main-content {
-  margin-left: var(--sidebar-width);
   min-height: 100vh;
   padding: 36px 40px;
   background: #f8fafc;
