@@ -15,8 +15,28 @@ import {
     ArrowRight, Zap, Trophy, Target, Star, RotateCcw, Megaphone, Layers
 } from "lucide-react";
 import { KpiGrid } from "@/components/ui/KpiGrid";
-
-
+const renderTextWithLinks = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, index) => {
+        if (part.match(urlRegex)) {
+            return (
+                <a
+                    key={index}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#1B3B6F] hover:underline font-bold break-all"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {part}
+                </a>
+            );
+        }
+        return part;
+    });
+};
 
 export default function StudentDashboardPage() {
     const { user, token, currentTenantId: tenantId } = useAuth();
@@ -371,7 +391,7 @@ export default function StudentDashboardPage() {
                                                     </span>
                                                 </div>
                                                 <div className="text-xs text-[#4A5568] font-medium leading-relaxed whitespace-pre-wrap">
-                                                    {group.description}
+                                                    {renderTextWithLinks(group.description)}
                                                 </div>
                                             </div>
                                         </div>

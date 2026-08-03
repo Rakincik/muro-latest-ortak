@@ -9,6 +9,29 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { LayoutGrid, List, Layers, Clock, Activity, CheckCircle2, ArrowUpDown, Search, ChevronRight, Play, ArrowLeft, BookOpen } from "lucide-react";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
+const renderTextWithLinks = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, index) => {
+        if (part.match(urlRegex)) {
+            return (
+                <a
+                    key={index}
+                    href={part}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#1B3B6F] hover:underline font-bold break-all"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {part}
+                </a>
+            );
+        }
+        return part;
+    });
+};
+
 export default function CoursesPage() {
     const { token, currentTenantId: tenantId } = useAuth();
     const [courses, setCourses] = useState<CourseDto[]>([]);
@@ -303,7 +326,7 @@ export default function CoursesPage() {
                                 
                                 {group.description && (
                                     <p className="text-[#A9A9A9] text-xs line-clamp-2 mb-3 leading-relaxed">
-                                        {group.description}
+                                        {renderTextWithLinks(group.description)}
                                     </p>
                                 )}
                                 
