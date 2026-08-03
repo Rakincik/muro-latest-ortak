@@ -39,7 +39,8 @@ docker build --no-cache -t muro-student-mng:latest \
 
 # 4. Rebuild the shared API and Worker images
 echo "📦 Building API and Worker..."
-docker compose -f docker-compose.mng.yml build api worker
+docker build -t muro-api:latest -f Dockerfile.api .
+docker build -t muro-worker:latest -f Dockerfile.worker .
 
 # 5. Start all services under the MNG tenant compose file
 echo "🌐 Starting all services..."
