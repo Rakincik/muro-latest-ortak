@@ -12,7 +12,7 @@ import { lightTap } from "@/hooks/useHaptics";
 import Image from "next/image";
 import {
     Play, Clock, Flame, BookOpen, Calendar, CheckCircle2, Video,
-    ArrowRight, Zap, Trophy, Target, Star, RotateCcw
+    ArrowRight, Zap, Trophy, Target, Star, RotateCcw, Megaphone, Layers
 } from "lucide-react";
 import { KpiGrid } from "@/components/ui/KpiGrid";
 
@@ -256,42 +256,48 @@ export default function StudentDashboardPage() {
                 {/* ── Left Column ── */}
                 <div className="col-span-12 lg:col-span-8 space-y-6">
 
-                    {/* My Courses */}
+                    {/* My Groups */}
                     <div className="animate-fade-in animate-fade-in-delay-2">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-[#0A1931] font-bold text-base flex items-center gap-2">
-                                <BookOpen size={16} className="text-[#1B3B6F]" /> Derslerim
+                                <Layers size={16} className="text-[#1B3B6F]" /> Gruplarım
                             </h2>
                             <Link href="/dashboard/courses" className="text-xs text-[#1B3B6F] font-semibold hover:text-[#0A1931] flex items-center gap-1">
                                 Tümü <ArrowRight size={12} />
                             </Link>
                         </div>
-                        {courses?.length > 0 ? (
+                        {summary?.groups && summary.groups.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {courses.slice(0, 4).map(c => (
-                                    <Link key={c.id} href={`/dashboard/courses/${c.id}`}
-                                        className="glass-card p-4 flex items-center gap-4 group hover:border-[#1B3B6F]/30">
-                                        {c.thumbnailUrl ? (
-                                            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative">
-                                                <Image src={getFileUrl(c.thumbnailUrl)} alt={c.title} fill className="object-cover" unoptimized />
+                                {summary.groups.slice(0, 4).map(g => {
+                                    const groupColor = g.color || "#1B3B6F";
+                                    return (
+                                        <Link key={g.id} href={`/dashboard/courses?groupId=${g.id}`}
+                                            className="glass-card p-4 flex items-center gap-4 group hover:border-[#1B3B6F]/30 relative overflow-hidden">
+                                            <div 
+                                                className="absolute top-0 right-0 w-16 h-16 rounded-full blur-xl opacity-5 pointer-events-none"
+                                                style={{ backgroundColor: groupColor }}
+                                            />
+                                            <div 
+                                                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                                                style={{ backgroundColor: `${groupColor}15`, color: groupColor }}
+                                            >
+                                                <Layers size={20} />
                                             </div>
-                                        ) : (
-                                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#1B3B6F]/10 to-[#0A1931]/10 flex items-center justify-center shrink-0">
-                                                <BookOpen size={18} className="text-[#1B3B6F]" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-[#0A1931] truncate group-hover:text-[#1B3B6F] transition-colors">{g.name}</p>
+                                                <p className="text-[11px] font-medium text-[#4A5568] bg-[#F1F5F9] px-2 py-0.5 rounded inline-flex mt-1 border border-[#E2E8F0]">
+                                                    {g.courseIds?.length ?? 0} ders
+                                                </p>
                                             </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-[#0A1931] truncate group-hover:text-[#1B3B6F] transition-colors">{c.title}</p>
-                                            <p className="text-[11px] font-medium text-[#4A5568] bg-[#F1F5F9] px-2 py-0.5 rounded inline-flex mt-1 border border-[#E2E8F0]">{c.sessionCount} video</p>
-                                        </div>
-                                        <ArrowRight size={14} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors shrink-0" />
-                                    </Link>
-                                ))}
+                                            <ArrowRight size={14} className="text-[#A0AEC0] group-hover:text-[#1B3B6F] transition-colors shrink-0" />
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         ) : (
                             <div className="p-8 text-center bg-[#F8FAFC] rounded-2xl border border-[#E2E8F0]">
-                                <p className="text-[#0A1931] font-semibold">Henüz hiç derse kayıtlı değilsin</p>
-                                <p className="text-sm text-[#A9A9A9] mt-1">Sol menüden tüm derslere göz atabilirsin.</p>
+                                <p className="text-[#0A1931] font-semibold">Henüz aktif bir gruba kayıtlı değilsin</p>
+                                <p className="text-sm text-[#A9A9A9] mt-1">Lütfen yöneticinize danışın.</p>
                             </div>
                         )}
                     </div>
@@ -331,6 +337,49 @@ export default function StudentDashboardPage() {
                             <div className="text-center py-4 text-[#A9A9A9] text-xs">Henüz aktivite yok</div>
                         )}
                     </div>
+
+                    {/* Group Announcements */}
+                    {summary?.groups && summary.groups.filter(g => g.description).length > 0 && (
+                        <div className="glass-card p-5 animate-fade-in animate-fade-in-delay-3 space-y-4">
+                            <h3 className="text-sm font-bold text-[#0A1931] flex items-center gap-2">
+                                <Megaphone size={14} className="text-[#1B3B6F]" /> Sınıf Duyuruları
+                            </h3>
+                            <div className="space-y-4">
+                                {summary.groups.filter(g => g.description).map((group) => {
+                                    const groupColor = group.color || "#1B3B6F";
+                                    return (
+                                        <div 
+                                            key={group.id}
+                                            className="relative overflow-hidden p-4 rounded-2xl border border-gray-100 bg-[#F8FAFC]/50 transition-all duration-200 hover:shadow-sm flex gap-3.5 items-start"
+                                        >
+                                            <div 
+                                                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-sm"
+                                                style={{ backgroundColor: `${groupColor}15`, color: groupColor }}
+                                            >
+                                                <Megaphone size={16} />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-3 mb-1.5">
+                                                    <span 
+                                                        className="font-bold text-[11px] uppercase tracking-wider"
+                                                        style={{ color: groupColor }}
+                                                    >
+                                                        {group.name}
+                                                    </span>
+                                                    <span className="text-[9px] text-[#A0AEC0] font-black uppercase tracking-wider">
+                                                        Sabit Duyuru
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-[#4A5568] font-medium leading-relaxed whitespace-pre-wrap">
+                                                    {group.description}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div >
 
                 {/* ── Right Sidebar ── */}

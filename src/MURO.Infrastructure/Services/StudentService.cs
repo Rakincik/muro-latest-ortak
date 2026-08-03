@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MURO.Application.DTOs.Calendar;
+using MURO.Application.DTOs.Analytics;
 using MURO.Application.Interfaces;
 using MURO.Infrastructure.Persistence;
 
@@ -74,5 +75,20 @@ public class StudentService : IStudentService
                 .OrderBy(e => e.StartDate)
                 .ToList();
         }, TimeSpan.FromMinutes(2));
+    }
+
+    public async Task<List<StudentGroupDto>> GetActiveGroupsAsync(Guid userId)
+    {
+        return await _context.GroupMembers
+            .AsNoTracking()
+            .Where(gm => gm.UserId == userId && gm.Status == "active")
+            .Select(gm => new StudentGroupDto(
+                gm.Group.Id,
+                gm.Group.Name,
+                gm.Group.Description,
+                gm.Group.Color,
+                gm.Group.CourseGroups.Select(cg => cg.CourseId).ToList()
+            ))
+            .ToListAsync();
     }
 }

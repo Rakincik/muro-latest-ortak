@@ -131,12 +131,21 @@ public record WeeklyActivityDto(
     bool IsToday
 );
 
+public record StudentGroupDto(
+    Guid Id,
+    string Name,
+    string? Description,
+    string? Color,
+    List<Guid> CourseIds
+);
+
 // ── BFF (Backend For Frontend) ──────────────────────────────────────────
 public record StudentDashboardSummaryDto(
     StudentDashboardDto Stats,
     List<MURO.Application.DTOs.Courses.CourseListDto> Courses,
     List<MURO.Application.DTOs.Courses.UpcomingSessionDto> UpcomingSessions,
-    int UnreadNotificationCount
+    int UnreadNotificationCount,
+    List<StudentGroupDto> Groups
 );
 
 // ── Admin Dashboard (Charts & KPIs) ───────────────────────────────────────

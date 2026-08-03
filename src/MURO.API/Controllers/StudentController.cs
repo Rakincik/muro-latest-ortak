@@ -96,20 +96,35 @@ public class StudentController : ControllerBase
             catch { return 0; }
         }
 
+        async Task<List<MURO.Application.DTOs.Analytics.StudentGroupDto>> SafeGetGroups() {
+            try { return await _studentService.GetActiveGroupsAsync(userId); }
+            catch { return new List<MURO.Application.DTOs.Analytics.StudentGroupDto>(); }
+        }
+
         // Sıralı çağrılar — DbContext thread-safe değildir, paralel kullanılamaz!
         var stats = await SafeGetStats();
         var courses = await SafeGetCourses();
         var sessions = await SafeGetSessions();
         var unreadCount = await SafeGetUnreadCount();
+        var groups = await SafeGetGroups();
 
         var dto = new MURO.Application.DTOs.Analytics.StudentDashboardSummaryDto(
             stats,
             courses,
             sessions,
-            unreadCount
+            unreadCount,
+            groups
         );
 
         return Ok(dto);
+    }
+
+    [HttpGet("groups")]
+    public async Task<ActionResult<List<MURO.Application.DTOs.Analytics.StudentGroupDto>>> GetMyGroups()
+    {
+        var userId = GetUserId();
+        var groups = await _studentService.GetActiveGroupsAsync(userId);
+        return Ok(groups);
     }
 
     [HttpPost("security-event")]

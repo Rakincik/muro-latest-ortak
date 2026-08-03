@@ -207,11 +207,19 @@ export interface StudentDashboardDto {
 }
 export interface WeeklyActivityDto { dayLabel: string; minutes: number; isToday: boolean; }
 export interface ResumeVideoDto { mediaAssetId: string; title: string; thumbnailPath: string | null; lastPosition: number; totalSeconds: number; completionPercentage: number; }
+export interface StudentGroupDto {
+    id: string;
+    name: string;
+    description: string | null;
+    color: string | null;
+    courseIds: string[];
+}
 export interface StudentDashboardSummaryDto {
     stats: StudentDashboardDto;
     courses: CourseDto[];
     upcomingSessions: UpcomingSessionDto[];
     unreadNotificationCount: number;
+    groups: StudentGroupDto[];
 }
 
 export interface MyAttendanceDto { sessionId: string; sessionTitle: string; courseTitle: string; joinedAt: string; leftAt: string | null; durationMinutes: number | null; }
@@ -504,6 +512,11 @@ export const analyticsApi = {
         , 120_000), // 2 min cache
     dashboardSummary: (token: string, tenantId: string) =>
         api<StudentDashboardSummaryDto>("/student/dashboard-summary", { token, tenantId })
+};
+
+export const groupApi = {
+    myGroups: (token: string, tenantId: string) =>
+        api<StudentGroupDto[]>("/student/groups", { token, tenantId })
 };
 
 export const attendanceApi = {
