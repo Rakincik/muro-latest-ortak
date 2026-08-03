@@ -342,7 +342,7 @@ export default function StudentDashboardPage() {
                     {summary?.groups && summary.groups.filter(g => g.description).length > 0 && (
                         <div className="glass-card p-5 animate-fade-in animate-fade-in-delay-3 space-y-4">
                             <h3 className="text-sm font-bold text-[#0A1931] flex items-center gap-2">
-                                <Megaphone size={14} className="text-[#1B3B6F]" /> Sınıf Duyuruları
+                                <Megaphone size={14} className="text-[#1B3B6F]" /> Grup Duyuruları
                             </h3>
                             <div className="space-y-4">
                                 {summary.groups.filter(g => g.description).map((group) => {
