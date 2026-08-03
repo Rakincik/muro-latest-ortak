@@ -79,16 +79,36 @@ public class StudentService : IStudentService
 
     public async Task<List<StudentGroupDto>> GetActiveGroupsAsync(Guid userId)
     {
-        return await _context.GroupMembers
+        var groupMembers = await _context.GroupMembers
             .AsNoTracking()
             .Where(gm => gm.UserId == userId && gm.Status == "active")
-            .Select(gm => new StudentGroupDto(
+            .Select(gm => new {
                 gm.Group.Id,
                 gm.Group.Name,
                 gm.Group.Description,
-                gm.Group.Color,
-                gm.Group.CourseGroups.Select(cg => cg.CourseId).ToList()
-            ))
+                gm.Group.Color
+            })
             .ToListAsync();
+
+        if (!groupMembers.Any())
+        {
+            return new List<StudentGroupDto>();
+        }
+
+        var groupIds = groupMembers.Select(g => g.Id).ToList();
+
+        var courseGroups = await _context.CourseGroups
+            .AsNoTracking()
+            .Where(cg => groupIds.Contains(cg.GroupId))
+            .Select(cg => new { cg.GroupId, cg.CourseId })
+            .ToListAsync();
+
+        return groupMembers.Select(g => new StudentGroupDto(
+            g.Id,
+            g.Name,
+            g.Description,
+            g.Color,
+            courseGroups.Where(cg => cg.GroupId == g.Id).Select(cg => cg.CourseId).ToList()
+        )).ToList();
     }
 }
