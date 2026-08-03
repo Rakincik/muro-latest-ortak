@@ -289,8 +289,8 @@ export default function CoursesPage() {
             {loading || (isFolderMode && groupsLoading) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {[...Array(6)].map((_, i) => (
-                        <div key={i} className="glass-card p-6 animate-pulse h-[180px]">
-                            <div className="w-12 h-12 bg-[#1B3B6F]/5 rounded-2xl mb-4" />
+                        <div key={i} className="glass-card p-5 animate-pulse min-h-[190px] w-full">
+                            <div className="w-11 h-11 bg-[#1B3B6F]/5 rounded-2xl mb-3" />
                             <div className="h-4 bg-[#1B3B6F]/10 rounded w-2/3 mb-2" />
                             <div className="h-3 bg-[#1B3B6F]/5 rounded w-1/2" />
                         </div>
@@ -306,7 +306,7 @@ export default function CoursesPage() {
                             <div
                                 key={group.id}
                                 onClick={() => handleSelectGroup(group.id)}
-                                className="cursor-pointer glass-card p-6 flex flex-col items-start text-left group hover:border-[#1B3B6F]/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden h-[180px]"
+                                className="cursor-pointer glass-card p-5 flex flex-col items-start text-left group hover:border-[#1B3B6F]/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden min-h-[190px] w-full"
                             >
                                 <div 
                                     className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 pointer-events-none group-hover:scale-110 transition-transform duration-300"
@@ -314,23 +314,23 @@ export default function CoursesPage() {
                                 />
                                 
                                 <div 
-                                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 mb-4 shadow-sm"
+                                    className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 mb-3 shadow-sm"
                                     style={{ backgroundColor: `${groupColor}15`, color: groupColor }}
                                 >
-                                    <Layers size={22} />
+                                    <Layers size={20} />
                                 </div>
                                 
-                                <h3 className="text-[#0A1931] font-bold text-base mb-1.5 line-clamp-1 group-hover:text-[#1B3B6F] transition-colors">
+                                <h3 className="text-[#0A1931] font-bold text-base mb-1 line-clamp-1 group-hover:text-[#1B3B6F] transition-colors shrink-0">
                                     {group.name}
                                 </h3>
                                 
                                 {group.description && (
-                                    <p className="text-[#A9A9A9] text-xs line-clamp-2 mb-3 leading-relaxed">
+                                    <p className="text-[#A9A9A9] text-xs line-clamp-2 mb-2 leading-relaxed shrink-0">
                                         {renderTextWithLinks(group.description)}
                                     </p>
                                 )}
                                 
-                                <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-3">
+                                <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-2.5">
                                     <span className="text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">
                                         {groupCoursesCount} Ders içeriyor
                                     </span>
@@ -344,25 +344,25 @@ export default function CoursesPage() {
                     {individualCourses.length > 0 && (
                         <div
                             onClick={() => handleSelectGroup("individual")}
-                            className="cursor-pointer glass-card p-6 flex flex-col items-start text-left group hover:border-slate-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden h-[180px]"
+                            className="cursor-pointer glass-card p-5 flex flex-col items-start text-left group hover:border-slate-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden min-h-[190px] w-full"
                         >
                             <div 
                                 className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 pointer-events-none bg-slate-500 group-hover:scale-110 transition-transform duration-300"
                             />
                             
-                            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mb-4 shadow-sm">
-                                <BookOpen size={22} />
+                            <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mb-3 shadow-sm">
+                                <BookOpen size={20} />
                             </div>
                             
-                            <h3 className="text-[#0A1931] font-bold text-base mb-1.5 line-clamp-1 group-hover:text-slate-600 transition-colors">
+                            <h3 className="text-[#0A1931] font-bold text-base mb-1 line-clamp-1 group-hover:text-slate-600 transition-colors shrink-0">
                                 Bireysel Derslerim
                             </h3>
                             
-                            <p className="text-[#A9A9A9] text-xs line-clamp-2 mb-3 leading-relaxed">
+                            <p className="text-[#A9A9A9] text-xs line-clamp-2 mb-2 leading-relaxed shrink-0">
                                 Herhangi bir gruba ait olmayan, doğrudan tanımlanmış dersleriniz.
                             </p>
                             
-                            <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-3">
+                            <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-2.5">
                                 <span className="text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">
                                     {individualCourses.length} Ders içeriyor
                                 </span>
