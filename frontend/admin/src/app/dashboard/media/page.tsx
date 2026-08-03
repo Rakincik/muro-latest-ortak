@@ -37,6 +37,11 @@ const FallbackImage = ({ src }: { src: string }) => {
 };
 
 export default function MediaLibraryPage() {
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const [folders, setFolders] = useState<MediaFolderDto[]>([]);
     const [assets, setAssets] = useState<MediaAssetDto[]>([]);
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -522,6 +527,14 @@ export default function MediaLibraryPage() {
         ? filteredAssets 
         : filteredAssets.slice((currentPage - 1) * pageSize, currentPage * pageSize);
     const totalPages = pageSize === "all" ? 1 : Math.ceil(filteredAssets.length / pageSize);
+
+    if (!mounted) {
+        return (
+            <div className="flex-1 flex justify-center items-center min-h-[calc(100vh-120px)] lg:h-screen bg-gray-50">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-[calc(100vh-120px)] md:h-[calc(100vh-120px)] lg:h-screen flex flex-col md:flex-row md:overflow-hidden bg-white -mt-4 -mx-4 -mb-24 lg:-my-8 lg:-mx-8">
