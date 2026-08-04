@@ -820,11 +820,13 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                     .premium-player-wrapper .plyr__time + .plyr__time::before {
                         display: none !important;
                     }
-                    /* Ensure controls don't overlap */
+                    /* Ensure controls don't overlap and don't overflow the screen */
                     .premium-player-wrapper .plyr__controls {
                         padding-left: 8px !important;
                         padding-right: 8px !important;
                         gap: 2px !important;
+                        box-sizing: border-box !important;
+                        width: 100% !important;
                     }
                     .premium-player-wrapper .plyr__controls > button {
                         padding: 6px !important;
