@@ -102,13 +102,6 @@ export default function Sidebar({
 
     return (
         <>
-        {/* Mobile Overlay */}
-        {isOpen && (
-            <div 
-                className="fixed inset-0 bg-black/50 z-[55] md:hidden"
-                onClick={onClose}
-            />
-        )}
         <aside 
             className={`sidebar flex flex-col h-screen fixed left-0 top-0 z-[60] border-r border-[#1B3B6F]/20 transition-all duration-300 ${
                 isOpen 
