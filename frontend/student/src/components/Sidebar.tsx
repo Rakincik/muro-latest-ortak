@@ -89,9 +89,9 @@ export default function Sidebar({
         try {
             featuresDict = JSON.parse(branding.featuresJson);
         } catch { }
-    } else if (currentTenant?.features) {
+    } else if ((currentTenant as any)?.features) {
         try {
-            featuresDict = JSON.parse(currentTenant.features);
+            featuresDict = JSON.parse((currentTenant as any).features);
         } catch { }
     }
 
@@ -105,7 +105,7 @@ export default function Sidebar({
         {/* Mobile Overlay */}
         {isOpen && (
             <div 
-                className="fixed inset-0 bg-black/50 z-[55] md:hidden backdrop-blur-sm"
+                className="fixed inset-0 bg-black/50 z-[55] md:hidden"
                 onClick={onClose}
             />
         )}
@@ -213,7 +213,7 @@ export default function Sidebar({
                         const hasFeature = !("featureKey" in item) || featuresDict[(item as any).featureKey] !== false;
                         const finalHasFeature = branding 
                             ? hasFeature 
-                            : (currentTenant?.features ? hasFeature : true);
+                            : ((currentTenant as any)?.features ? hasFeature : true);
                         return finalHasFeature;
                     });
 

@@ -54,8 +54,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
     const [supported, setSupported] = useState(true);
     const [qualities, setQualities] = useState<number[]>([]);
 
-    const [isLocked, setIsLocked] = useState(false);
-    const [unlockTapActive, setUnlockTapActive] = useState(false);
     const [brightness, setBrightness] = useState(1.0); // 1.0 = normal, 0.2 = dark
 
     // Only run this ONCE when the component mounts or mediaId changes
@@ -196,8 +194,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
     });
 
     const handleStart = (clientX: number, clientY: number, rect: DOMRect) => {
-        if (isLocked) return;
-
         const videoElement = (plyrRef.current?.plyr as any)?.media as HTMLVideoElement;
         if (!videoElement) return;
 
@@ -240,8 +236,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
     };
 
     const handleMove = (clientX: number, clientY: number, rect: DOMRect) => {
-        if (isLocked) return;
-
         const videoElement = (plyrRef.current?.plyr as any)?.media as HTMLVideoElement;
         if (!videoElement) return;
 
@@ -293,8 +287,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
         }
 
         setGestureFeedback(null);
-
-        if (isLocked) return;
 
         if (!touchRef.current.isDragging) {
             plyrInstance.togglePlay();
@@ -358,21 +350,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                     plyrInstance.currentTime = Math.min(plyrInstance.duration || 0, plyrInstance.currentTime + 10);
                 }
             }
-        }
-    };
-
-    const handleLockClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isLocked) {
-            if (unlockTapActive) {
-                setIsLocked(false);
-                setUnlockTapActive(false);
-            } else {
-                setUnlockTapActive(true);
-                setTimeout(() => setUnlockTapActive(false), 2500);
-            }
-        } else {
-            setIsLocked(true);
         }
     };
 
@@ -629,7 +606,7 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
         : undefined;
 
     return (
-        <div className={`w-full h-full premium-player-wrapper bg-black ${isLocked ? "premium-player-locked" : ""}`} onContextMenu={e => e.preventDefault()} onClick={handleWrapperClick}>
+        <div className="w-full h-full premium-player-wrapper bg-black" onContextMenu={e => e.preventDefault()} onClick={handleWrapperClick}>
             <style dangerouslySetInnerHTML={{__html: `
                 .premium-player-wrapper {
                     position: relative;
@@ -667,13 +644,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                 }
                 .plyr__control--custom-forward:hover svg {
                     transform: rotate(15deg);
-                }
-                .premium-player-locked .plyr__controls {
-                    display: none !important;
-                    pointer-events: none !important;
-                }
-                .premium-player-locked .plyr__video-wrapper {
-                    pointer-events: none !important;
                 }
                 /* Defensive layout overrides against global CSS pollution */
                 .premium-player-wrapper .plyr__volume {
@@ -840,6 +810,31 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                     from { transform: translateY(20px); opacity: 0; }
                     to { transform: translateY(0); opacity: 1; }
                 }
+                @media (max-width: 768px) {
+                    /* Hide unnecessary controls on mobile to free up space */
+                    .premium-player-wrapper .plyr__volume,
+                    .premium-player-wrapper .plyr__controls > button[data-plyr="mute"],
+                    .premium-player-wrapper .plyr__controls > button[data-plyr="pip"],
+                    .premium-player-wrapper .plyr__controls > button[data-plyr="airplay"],
+                    .premium-player-wrapper .plyr__time--duration,
+                    .premium-player-wrapper .plyr__time + .plyr__time::before {
+                        display: none !important;
+                    }
+                    /* Ensure controls don't overlap */
+                    .premium-player-wrapper .plyr__controls {
+                        padding-left: 8px !important;
+                        padding-right: 8px !important;
+                        gap: 2px !important;
+                    }
+                    .premium-player-wrapper .plyr__controls > button {
+                        padding: 6px !important;
+                    }
+                    /* Make progress bar more accessible on mobile */
+                    .premium-player-wrapper .plyr__progress {
+                        margin-left: 8px !important;
+                        margin-right: 8px !important;
+                    }
+                }
             `}} />
 
             {brightness < 1.0 && (
@@ -872,26 +867,6 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
             >
-                <button className="lock-btn" onClick={handleLockClick} title={isLocked ? "Kilidi Aç" : "Ekranı Kilitle"}>
-                    {isLocked ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" width="20" height="20">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                    ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" width="20" height="20">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-                        </svg>
-                    )}
-                </button>
-
-                {isLocked && unlockTapActive && (
-                    <div className="unlock-warning">
-                        Kilidi açmak için tekrar dokunun
-                    </div>
-                )}
-
                 {longPressActive && (
                     <div className="speed-indicator">
                         <svg className="w-3.5 h-3.5 animate-pulse" fill="currentColor" viewBox="0 0 24 24" width="14" height="14">
