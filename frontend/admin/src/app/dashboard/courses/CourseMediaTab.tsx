@@ -59,7 +59,7 @@ export function CourseMediaTab({
     onRefreshDetail?: () => Promise<void>;
     videoSortRule?: string;
 }) {
-    const { user, currentTenantId } = useAuth();
+    const { user, currentTenantId, token } = useAuth();
     const { success, error: toastError } = useToast();
     const [activeVideo, setActiveVideo] = useState<{ id: string; url: string; type: "video" | "iframe"; title: string; vttPath?: string } | null>(null);
     const [medias, setMedias] = useState<CourseMediaDto[]>([]);
