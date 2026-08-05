@@ -183,12 +183,48 @@ export function CourseMediaTab({
         setDraggedItemIndex(globalIndex);
     };
 
+    const lockCourseToCustomSort = async () => {
+        if (resolvedSortRule !== "custom") {
+            try {
+                await courseApi.update(token || "", currentTenantId || "", courseId, { videoSortRule: "custom" });
+                setResolvedSortRule("custom");
+                if (onRefreshDetail) {
+                    onRefreshDetail();
+                }
+            } catch (err) {
+                console.error("Failed to update course sort rule", err);
+            }
+        }
+    };
+
     const handleDrop = async () => {
         setDraggedItemIndex(null);
         // Save new order to backend
         try {
             await mediaLibraryApi.reorderCourseMedias(courseId, medias.map(m => m.id));
             success("Sıralama güncellendi.");
+            await lockCourseToCustomSort();
+        } catch (error) {
+            toastError("Hata", "Sıralama kaydedilirken hata oluştu.");
+            loadMedias(); // Revert
+        }
+    };
+
+    const handleManualReorder = async (fromIndex: number, newPosition: number) => {
+        if (fromIndex === newPosition || newPosition < 0 || newPosition >= medias.length) return;
+        
+        const newMedias = [...medias];
+        const item = newMedias[fromIndex];
+        newMedias.splice(fromIndex, 1);
+        newMedias.splice(newPosition, 0, item);
+        
+        const ordered = newMedias.map((m, i) => ({ ...m, orderIndex: i }));
+        setMedias(ordered);
+        
+        try {
+            await mediaLibraryApi.reorderCourseMedias(courseId, ordered.map(m => m.id));
+            success("Sıralama güncellendi.");
+            await lockCourseToCustomSort();
         } catch (error) {
             toastError("Hata", "Sıralama kaydedilirken hata oluştu.");
             loadMedias(); // Revert
@@ -362,6 +398,7 @@ export function CourseMediaTab({
             await mediaLibraryApi.reorderCourseMedias(courseId, reordered.map(m => m.id));
             setMedias(reordered);
             success("Tüm içerikler başarıyla sıralandı ve veritabanına kaydedildi.");
+            await lockCourseToCustomSort();
         } catch (error) {
             toastError("Hata", "Toplu sıralama kaydedilirken bir hata oluştu.");
         }
@@ -708,10 +745,30 @@ export function CourseMediaTab({
                                     onDragEnd={isReorderEnabled ? handleDrop : undefined}
                                     className={`flex items-center gap-1.5 sm:gap-5 bg-white border shadow-sm p-2.5 sm:p-4 rounded-2xl transition-all group ${activeVideo?.id === media.id ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md' : 'border-[#E2E8F0]/60 hover:shadow-md hover:border-blue-300'} ${draggedItemIndex === globalIndex ? 'opacity-50 scale-[1.02]' : ''} ${isReorderEnabled && !(media as any).isFake ? 'cursor-grab active:cursor-grabbing' : ''}`}
                                 >
-                                <div className="hidden sm:flex w-10 items-center justify-center shrink-0 border-r border-[#E2E8F0]/80 pr-3">
-                                    <span className="text-base font-black text-[#1B3B6F]/60 font-mono drop-shadow-sm">
-                                        {(combinedMedias.findIndex(m => m.id === media.id) + 1).toString().padStart(2, '0')}
-                                    </span>
+                                <div className="hidden sm:flex w-14 items-center justify-center shrink-0 border-r border-[#E2E8F0]/80 pr-2">
+                                    {isReorderEnabled && !(media as any).isFake ? (
+                                        <input
+                                            type="number"
+                                            className="w-full text-base font-black text-[#1B3B6F]/80 font-mono bg-transparent border-b-2 border-transparent hover:border-[#1B3B6F]/30 focus:border-[#1B3B6F] focus:outline-none text-center appearance-none"
+                                            defaultValue={(globalIndex + 1).toString()}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const val = parseInt((e.target as HTMLInputElement).value);
+                                                    if (!isNaN(val) && val > 0 && val <= combinedMedias.length) {
+                                                        handleManualReorder(globalIndex, val - 1);
+                                                    }
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                (e.target as HTMLInputElement).value = (globalIndex + 1).toString();
+                                            }}
+                                            title="Değiştirmek için yazıp Enter'a basın"
+                                        />
+                                    ) : (
+                                        <span className="text-base font-black text-[#1B3B6F]/60 font-mono drop-shadow-sm">
+                                            {(combinedMedias.findIndex(m => m.id === media.id) + 1).toString().padStart(2, '0')}
+                                        </span>
+                                    )}
                                 </div>
                                 
                                 <div 

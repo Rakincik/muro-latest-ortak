@@ -72,6 +72,10 @@ public class CourseMediaService : ICourseMediaService
                 return cm.CustomTitle ?? cm.MediaAsset?.Title ?? "";
             }, comparer).ToList();
         }
+        else
+        {
+            courseMedias = courseMedias.OrderBy(cm => cm.OrderIndex).ToList();
+        }
 
         return courseMedias;
     }
