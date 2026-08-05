@@ -878,13 +878,16 @@ public class UserService : IUserService
     private static string NormalizeString(string str)
     {
         if (string.IsNullOrWhiteSpace(str)) return "";
-        return str.Trim().ToLowerInvariant()
+        return str.Trim()
+            .Replace("İ", "i")
+            .Replace("I", "i")
             .Replace("ı", "i")
-            .Replace("ğ", "g")
-            .Replace("ü", "u")
-            .Replace("ş", "s")
-            .Replace("ö", "o")
-            .Replace("ç", "c");
+            .Replace("Ğ", "g").Replace("ğ", "g")
+            .Replace("Ü", "u").Replace("ü", "u")
+            .Replace("Ş", "s").Replace("ş", "s")
+            .Replace("Ö", "o").Replace("ö", "o")
+            .Replace("Ç", "c").Replace("ç", "c")
+            .ToLowerInvariant();
     }
 
     public async Task ChangePasswordAsync(Guid userId, string currentPassword, string newPassword)
