@@ -1112,9 +1112,8 @@ export default function UsersPage() {
         };
 
         const CleanUsernameInput = (val: string) => {
-            const trMap: Record<string, string> = { 'ç':'c', 'ğ':'g', 'ı':'i', 'ö':'o', 'ş':'s', 'ü':'u', 'Ç':'c', 'Ğ':'g', 'İ':'i', 'Ö':'o', 'Ş':'s', 'Ü':'u' };
-            const lower = val.toLowerCase();
-            return lower.split('').map(c => trMap[c] || c).join('').replace(/\s+/g, '');
+            // Sadece boşlukları temizle, büyük-küçük harfe ve karaktere dokunma
+            return val.replace(/\s+/g, '');
         };
 
         const handleSave = () => {
