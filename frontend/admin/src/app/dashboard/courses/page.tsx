@@ -1414,6 +1414,20 @@ function DocsTab({ courseId }: { courseId: string }) {
     const [materials, setMaterials] = useState<CourseMaterialDto[]>([]);
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState("");
+
+    const filteredMaterials = useMemo(() => {
+        if (!search.trim()) return materials;
+        const normalize = (str: string) => str.trim().toLowerCase()
+            .replace(/ı/g, "i").replace(/İ/g, "i").replace(/ğ/g, "g").replace(/Ğ/g, "g")
+            .replace(/ü/g, "u").replace(/Ü/g, "u").replace(/ş/g, "s").replace(/Ş/g, "s")
+            .replace(/ö/g, "o").replace(/Ö/g, "o").replace(/ç/g, "c").replace(/Ç/g, "c");
+        const query = normalize(search);
+        return materials.filter(m => 
+            normalize(m.title || "").includes(query) || 
+            normalize(m.fileName || "").includes(query)
+        );
+    }, [materials, search]);
 
     const fetchMaterials = useCallback(async () => {
         if (!token || !tenantId) return;
@@ -1491,24 +1505,45 @@ function DocsTab({ courseId }: { courseId: string }) {
                     <p className="text-xs text-[#A0AEC0] mt-1">Yukarıdan dosya yükleyerek başlayın</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-3">
-                    {materials.map(m => (
-                        <div key={m.id} className="flex items-center gap-4 p-5 rounded-3xl border border-[#E2E8F0]/60 hover:bg-[#E2E8F0]/20 transition-all group">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${m.contentType.includes("pdf") ? "bg-red-50" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50" : "bg-[#E2E8F0]/20"
-                                }`}>
-                                <FileText size={20} className={`${m.contentType.includes("pdf") ? "text-red-400" : m.contentType.includes("word") || m.contentType.includes("doc") ? "text-blue-400" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "text-emerald-400" : "text-[#A0AEC0]"
-                                    }`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-[#0A1931] truncate">{m.title}</p>
-                                <p className="text-xs text-[#A0AEC0] mt-0.5">{m.fileName} • {formatSize(m.fileSize)} • {new Date(m.createdAt).toLocaleDateString("tr-TR")}</p>
-                            </div>
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href={getFileUrl(m.filePath)} target="_blank" rel="noopener" className="p-2.5 rounded-xl text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/30 transition-all"><Eye size={14} /></a>
-                                <button onClick={() => handleDelete(m.id)} className="p-2.5 rounded-xl text-[#A0AEC0] hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={14} /></button>
-                            </div>
+                <div className="space-y-4">
+                    {/* Search Input */}
+                    <div className="relative w-full max-w-md">
+                        <input
+                            type="text"
+                            placeholder="Doküman ara..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="pl-10 pr-4 py-2 bg-[#E2E8F0]/20 border border-[#E2E8F0] rounded-xl text-[#0A1931] text-xs placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-full transition-all shadow-sm"
+                        />
+                        <Search className="absolute left-3.5 top-3 text-[#A0AEC0]" size={14} />
+                    </div>
+
+                    {filteredMaterials.length === 0 ? (
+                        <div className="text-center py-12 text-[#A0AEC0] bg-white rounded-3xl border border-[#E2E8F0]/60">
+                            <FileText size={32} className="mx-auto opacity-20 mb-2" />
+                            <p className="text-xs font-semibold">Aranan kriterlere uygun doküman bulunamadı</p>
                         </div>
-                    ))}
+                    ) : (
+                        <div className="grid grid-cols-1 gap-3">
+                            {filteredMaterials.map(m => (
+                                <div key={m.id} className="flex items-center gap-4 p-5 rounded-3xl border border-[#E2E8F0]/60 hover:bg-[#E2E8F0]/20 transition-all group">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${m.contentType.includes("pdf") ? "bg-red-50" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50" : "bg-[#E2E8F0]/20"
+                                        }`}>
+                                        <FileText size={20} className={`${m.contentType.includes("pdf") ? "text-red-400" : m.contentType.includes("word") || m.contentType.includes("doc") ? "text-blue-400" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "text-emerald-400" : "text-[#A0AEC0]"
+                                            }`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold text-[#0A1931] truncate">{m.title}</p>
+                                        <p className="text-xs text-[#A0AEC0] mt-0.5">{m.fileName} • {formatSize(m.fileSize)} • {new Date(m.createdAt).toLocaleDateString("tr-TR")}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <a href={getFileUrl(m.filePath)} target="_blank" rel="noopener" className="p-2.5 rounded-xl text-[#A0AEC0] hover:text-[#1B3B6F] hover:bg-[#E2E8F0]/30 transition-all"><Eye size={14} /></a>
+                                        <button onClick={() => handleDelete(m.id)} className="p-2.5 rounded-xl text-[#A0AEC0] hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={14} /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
