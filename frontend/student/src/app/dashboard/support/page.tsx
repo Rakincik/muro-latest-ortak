@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { studentSupportApi, type StudentTicketDto } from "@/lib/api";
 import {
     Headset, Search, Send, Plus, X, Tag, Clock,
-    MessageSquare, AlertCircle, ChevronDown, Check, RefreshCw
+    MessageSquare, AlertCircle, ChevronDown, Check, RefreshCw, ArrowLeft
 } from "lucide-react";
 
 const statusStyles: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -115,7 +115,11 @@ export default function SupportPage() {
         studentSupportApi.list(token, tenantId)
             .then(data => {
                 setTickets(data);
-                if (data.length > 0 && !selectedId) setSelectedId(data[0].id);
+                if (data.length > 0 && !selectedId) {
+                    if (typeof window !== "undefined" && window.innerWidth >= 768) {
+                        setSelectedId(data[0].id);
+                    }
+                }
             })
             .catch(() => setTickets([]))
             .finally(() => setLoading(false));
@@ -211,7 +215,7 @@ export default function SupportPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-[#0A1931] flex items-center gap-2">
                         <Headset size={24} className="text-[#1B3B6F]" /> Teknik Destek
@@ -220,15 +224,15 @@ export default function SupportPage() {
                         Sistemsel ve idari taleplerinizi buradan iletebilirsiniz.
                     </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <div className="flex items-center gap-2 bg-[#25D366]/10 px-3 py-1.5 rounded-xl border border-[#25D366]/20">
                         <div className="flex flex-col">
                             <span className="text-[10px] font-bold text-[#25D366] uppercase">Acil Durum WhatsApp</span>
-                            <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
                                 <a href="https://wa.me/905453724201" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
                                     Rüstem Akıncık (0545 372 4201)
                                 </a>
-                                <span className="text-[#A0AEC0]/40">|</span>
+                                <span className="text-[#A0AEC0]/40 hidden xs:inline">|</span>
                                 <a href="https://wa.me/905536445851" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
                                     Volkan Çetin (0553 644 5851)
                                 </a>
@@ -237,16 +241,16 @@ export default function SupportPage() {
                     </div>
                     <button
                         onClick={() => setShowForm(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
                     >
                         <Plus size={16} /> Yeni Talep
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-5 gap-6" style={{ height: 'calc(100vh - 200px)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6" style={{ height: 'calc(100vh - 200px)' }}>
                 {/* Left Pane: Ticket List */}
-                <div className="col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm">
+                <div className={`md:col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm ${selectedId ? "hidden md:flex" : "flex"}`}>
                     <div className="p-4 border-b border-[#E2E8F0]/60 space-y-3">
                         <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -301,19 +305,28 @@ export default function SupportPage() {
                 </div>
 
                 {/* Right Pane: Detail & Chat */}
-                <div className="col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm">
+                <div className={`md:col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm ${!selectedId ? "hidden md:flex" : "flex"}`}>
                     {selected ? (
                         <>
-                            <div className="px-6 py-4 border-b border-[#E2E8F0]/60 bg-[#F8FAFC]">
-                                <div className="flex items-center justify-between mb-2">
-                                    <h2 className="text-lg font-bold text-[#0A1931]">{selected.subject}</h2>
-                                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${getStatusStyle(selected.status).bg} ${getStatusStyle(selected.status).text}`}>
-                                        {getStatusStyle(selected.status).label}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-4 text-xs text-[#A0AEC0]">
-                                    <span className="flex items-center gap-1"><Tag size={12} /> {selected.category}</span>
-                                    <span className="flex items-center gap-1"><Clock size={12} /> {new Date(selected.createdAt).toLocaleString("tr-TR")}</span>
+                            <div className="px-4 py-3 md:px-6 md:py-4 border-b border-[#E2E8F0]/60 bg-[#F8FAFC] flex items-center gap-3">
+                                {/* Mobile Back Button */}
+                                <button 
+                                    onClick={() => setSelectedId(null)}
+                                    className="md:hidden p-2 rounded-xl border border-[#E2E8F0] bg-white text-[#1B3B6F] hover:bg-gray-50 transition-colors"
+                                >
+                                    <ArrowLeft size={16} />
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1 gap-2">
+                                        <h2 className="text-sm md:text-lg font-bold text-[#0A1931] truncate">{selected.subject}</h2>
+                                        <span className={`text-[10px] md:text-[11px] font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg shrink-0 ${getStatusStyle(selected.status).bg} ${getStatusStyle(selected.status).text}`}>
+                                            {getStatusStyle(selected.status).label}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-[10px] md:text-xs text-[#A0AEC0]">
+                                        <span className="flex items-center gap-1"><Tag size={10} /> {selected.category}</span>
+                                        <span className="flex items-center gap-1"><Clock size={10} /> {new Date(selected.createdAt).toLocaleString("tr-TR")}</span>
+                                    </div>
                                 </div>
                             </div>
 
