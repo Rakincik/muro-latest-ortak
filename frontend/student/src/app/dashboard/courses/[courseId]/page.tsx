@@ -556,7 +556,7 @@ export default function CourseDetailPage() {
                                                 <iframe
                                                     key={activeRec.id}
                                                     src={cleanSrc}
-                                                    className="w-full h-full border-0"
+                                                    className="w-full h-full border-0 absolute inset-0"
                                                     allow="autoplay; fullscreen; camera; microphone; display-capture"
                                                     allowFullScreen
                                                     //@ts-ignore

@@ -398,7 +398,7 @@ export default function WatchPage() {
                                 return (
                                     <iframe 
                                         src={cleanSrc} 
-                                        className="w-full h-full border-0"
+                                        className="w-full h-full border-0 absolute inset-0"
                                         allowFullScreen
                                         //@ts-ignore
                                         webkitallowfullscreen="true"
