@@ -764,3 +764,26 @@ iframe {
   color-scheme: only light !important;
   background-color: white !important;
 }
+
+/* ── Dynamic Immersive Fullscreen (escapes iOS containing block issue) ── */
+body.fullscreen-active {
+  overflow: hidden !important;
+}
+
+body.fullscreen-active .fullscreen-parent {
+  position: static !important;
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+  filter: none !important;
+  perspective: none !important;
+  contain: none !important;
+  will-change: auto !important;
+  overflow: visible !important;
+}
+
+/* Hide mobile bottom tab bar and headers during fullscreen video playback */
+body.fullscreen-active .mobile-tab-bar,
+body.fullscreen-active header {
+  display: none !important;
+}

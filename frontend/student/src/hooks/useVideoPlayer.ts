@@ -116,6 +116,37 @@ export function useVideoPlayer(
         };
     }, []);
 
+    // ── Apply parent CSS adjustments on fullscreen (resolves iOS layout confinement) ──
+    useEffect(() => {
+        const el = playerContainerRef.current;
+        if (!el) return;
+
+        if (isFullscreen) {
+            document.body.classList.add("fullscreen-active");
+            let parent = el.parentElement;
+            while (parent && parent !== document.body) {
+                parent.classList.add("fullscreen-parent");
+                parent = parent.parentElement;
+            }
+        } else {
+            document.body.classList.remove("fullscreen-active");
+            let parent = el.parentElement;
+            while (parent && parent !== document.body) {
+                parent.classList.remove("fullscreen-parent");
+                parent = parent.parentElement;
+            }
+        }
+
+        return () => {
+            document.body.classList.remove("fullscreen-active");
+            let parent = el.parentElement;
+            while (parent && parent !== document.body) {
+                parent.classList.remove("fullscreen-parent");
+                parent = parent.parentElement;
+            }
+        };
+    }, [isFullscreen]);
+
     // ── Watch timer: mark as watched after 30s on same video ──
     useEffect(() => {
         if (!selectedRec) return;
