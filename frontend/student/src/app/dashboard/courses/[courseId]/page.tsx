@@ -9,7 +9,7 @@ import {
     ChevronLeft, Play, BookOpen, Clock, Video, Users, Calendar,
     CheckCircle2, ArrowRight, Layers, FileText, X, Maximize2,
     Minimize2, SkipBack, SkipForward, List, StickyNote, Send, Trash2,
-    PanelRightClose, PanelRightOpen, Check, Keyboard, RotateCcw
+    PanelRightClose, PanelRightOpen, Check, Keyboard, RotateCcw, Search
 } from "lucide-react";
 import { useVideoPlayer, usePlayerNotes } from "@/hooks/useVideoPlayer";
 import { PremiumPlayer } from "@/components/video/PremiumPlayer";
@@ -41,6 +41,19 @@ const fmtClockTime = (iso: string) => {
     catch { return "--:--"; }
 };
 
+const normalizeTurkish = (text: string) => {
+    if (!text) return "";
+    return text
+        .toLocaleLowerCase("tr")
+        .replace(/ı/g, "i")
+        .replace(/ğ/g, "g")
+        .replace(/ü/g, "u")
+        .replace(/ş/g, "s")
+        .replace(/ö/g, "o")
+        .replace(/ç/g, "c")
+        .trim();
+};
+
 export default function CourseDetailPage() {
     const router = useRouter();
     const { token, currentTenantId: tenantId } = useAuth();
@@ -54,6 +67,7 @@ export default function CourseDetailPage() {
     const [materials, setMaterials] = useState<CourseMaterialDto[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<Tab>("sessions");
+    const [materialSearch, setMaterialSearch] = useState("");
     const [joiningId, setJoiningId] = useState<string | null>(null);
     const [isExamOpen, setIsExamOpen] = useState(false);
     const { showToast } = useToast();
@@ -135,6 +149,15 @@ export default function CourseDetailPage() {
 
         return list as RecordingDto[];
     }, [recordings, resolvedSortRule]);
+
+    const filteredMaterials = useMemo(() => {
+        if (!materialSearch.trim()) return materials;
+        const searchWords = normalizeTurkish(materialSearch).split(/\s+/).filter(Boolean);
+        return materials.filter(m => {
+            const normalizedTitle = normalizeTurkish(m.title);
+            return searchWords.every(word => normalizedTitle.includes(word));
+        });
+    }, [materials, materialSearch]);
 
     // ── Custom hooks — extracted player & notes state ──
     const player = useVideoPlayer(courseId, sortedRecordings, token, tenantId, activeTab);
@@ -716,7 +739,7 @@ export default function CourseDetailPage() {
 
             {/* ── Materials Tab ── */}
             {activeTab === "materials" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     {materials.length === 0 ? (
                         <div className="glass-card p-8 md:p-12 text-center border-dashed">
                             <FileText size={32} className="mx-auto text-[#A0AEC0] opacity-30 mb-3" />
@@ -724,21 +747,45 @@ export default function CourseDetailPage() {
                             <p className="text-[#A9A9A9] text-sm">Bu kurs için henüz herhangi bir materyal eklenmemiş.</p>
                         </div>
                     ) : (
-                        materials.map(m => (
-                            <a key={m.id} href={getDownloadUrl(m.filePath, m.fileName)}
-                                className="glass-card p-4 flex items-center justify-between gap-4 hover:shadow-md transition-all group">
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${m.contentType.includes("pdf") ? "bg-red-50 text-red-500" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50 text-blue-500" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50 text-emerald-500" : "bg-[#E2E8F0]/30 text-[#A0AEC0]"}`}>
-                                        <FileText size={18} />
+                        <>
+                            {/* Search Input */}
+                            <div className="relative w-full max-w-md">
+                                <input
+                                    type="text"
+                                    placeholder="Doküman ara..."
+                                    value={materialSearch}
+                                    onChange={e => setMaterialSearch(e.target.value)}
+                                    className="pl-10 pr-4 py-2.5 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-full transition-all shadow-sm"
+                                />
+                                <Search className="absolute left-3.5 top-3.5 text-[#A0AEC0]" size={16} />
+                            </div>
+
+                            {/* Materials Grid/List */}
+                            <div className="space-y-3">
+                                {filteredMaterials.length === 0 ? (
+                                    <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 py-12 flex flex-col items-center justify-center text-[#A0AEC0]">
+                                        <FileText size={40} className="opacity-25 mb-3 text-[#1B3B6F]" />
+                                        <p className="text-sm font-medium">Aradığınız kriterlere uygun doküman bulunamadı</p>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-[#0A1931] font-bold text-xs truncate">{m.title}</h3>
-                                        <p className="text-[10px] text-[#A0AEC0] mt-0.5">{(m.fileSize / 1024 / 1024).toFixed(2)} MB • {new Date(m.createdAt).toLocaleDateString("tr-TR")}</p>
-                                    </div>
-                                </div>
-                                <span className="text-[10px] font-bold text-[#1B3B6F] group-hover:underline">İndir</span>
-                            </a>
-                        ))
+                                ) : (
+                                    filteredMaterials.map(m => (
+                                        <a key={m.id} href={getDownloadUrl(m.filePath, m.fileName)}
+                                            className="glass-card p-4 flex items-center justify-between gap-4 hover:shadow-md transition-all group">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${m.contentType.includes("pdf") ? "bg-red-50 text-red-500" : m.contentType.includes("word") || m.contentType.includes("doc") ? "bg-blue-50 text-blue-500" : m.contentType.includes("sheet") || m.contentType.includes("xls") ? "bg-emerald-50 text-emerald-500" : "bg-[#E2E8F0]/30 text-[#A0AEC0]"}`}>
+                                                    <FileText size={18} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-[#0A1931] font-bold text-xs truncate">{m.title}</h3>
+                                                    <p className="text-[10px] text-[#A0AEC0] mt-0.5">{(m.fileSize / 1024 / 1024).toFixed(2)} MB • {new Date(m.createdAt).toLocaleDateString("tr-TR")}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-[#1B3B6F] group-hover:underline">İndir</span>
+                                        </a>
+                                    ))
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
             )}

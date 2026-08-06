@@ -128,6 +128,7 @@ public class ExamScoringJob : BackgroundService
                 item.Status = "Processed";
                 queuesToRemove.Add(item);
                 cacheKeysToRemove.TryAdd($"exams:", 1);
+                cacheKeysToRemove.TryAdd($"student:dashboard:{item.UserId}", 1);
             }
             catch (Exception ex)
             {

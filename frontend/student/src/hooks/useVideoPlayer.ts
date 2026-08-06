@@ -62,17 +62,27 @@ export function useVideoPlayer(
     // ── Fullscreen toggle ──
     const toggleFullscreen = useCallback(() => {
         if (!playerContainerRef.current) return;
+        const elem = playerContainerRef.current as any;
         const isNative = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
         
         if (!isNative && !isFullscreen) {
-            const elem = playerContainerRef.current as any;
             const reqFs = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
             if (reqFs) {
                 reqFs.call(elem).catch(() => {
-                    setIsFullscreen(true); // CSS fallback
+                    const videoEl = elem.querySelector("video") as any;
+                    if (videoEl && typeof videoEl.webkitEnterFullscreen === "function") {
+                        videoEl.webkitEnterFullscreen();
+                    } else {
+                        setIsFullscreen(true); // CSS fallback
+                    }
                 });
             } else {
-                setIsFullscreen(true); // CSS fallback
+                const videoEl = elem.querySelector("video") as any;
+                if (videoEl && typeof videoEl.webkitEnterFullscreen === "function") {
+                    videoEl.webkitEnterFullscreen();
+                } else {
+                    setIsFullscreen(true); // CSS fallback
+                }
             }
         } else {
             if (isNative) {
@@ -81,6 +91,10 @@ export function useVideoPlayer(
                     exitFs.call(document).catch(() => setIsFullscreen(false));
                 }
             } else {
+                const videoEl = elem.querySelector("video") as any;
+                if (videoEl && typeof videoEl.webkitExitFullscreen === "function") {
+                    videoEl.webkitExitFullscreen();
+                }
                 setIsFullscreen(false); // Disable CSS fallback
             }
         }

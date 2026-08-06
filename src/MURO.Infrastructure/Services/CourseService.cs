@@ -100,7 +100,7 @@ public class CourseService : ICourseService
                 .Select(c => new CourseListDto(
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
-                    c.Sessions.Count, c.CourseGroups.Count,
+                    c.CourseMedias.Count, c.CourseGroups.Count,
                     c.Order, c.StartDate, string.IsNullOrEmpty(c.VideoSortRule) ? "default" : c.VideoSortRule, c.CreatedAt, c.UpdatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null,
@@ -173,7 +173,7 @@ public class CourseService : ICourseService
                 .Select(c => new CourseListDto(
                     c.Id, c.Title, c.Description, c.ThumbnailUrl,
                     c.CourseType.ToString(), c.IsPublished,
-                    c.Sessions.Count, c.CourseGroups.Count,
+                    c.CourseMedias.Count, c.CourseGroups.Count,
                     c.Order, c.StartDate, string.IsNullOrEmpty(c.VideoSortRule) ? "default" : c.VideoSortRule, c.CreatedAt, c.UpdatedAt,
                     c.InstructorId,
                     c.Instructor != null ? c.Instructor.FirstName + " " + c.Instructor.LastName : null,
@@ -352,7 +352,7 @@ public class CourseService : ICourseService
         await _cache.RemoveByPrefixAsync($"courses:");
 
         return new CourseListDto(course.Id, course.Title, course.Description, course.ThumbnailUrl,
-            course.CourseType.ToString(), course.IsPublished, course.Sessions.Count,
+            course.CourseType.ToString(), course.IsPublished, course.CourseMedias.Count,
             course.CourseGroups.Count, course.Order, course.StartDate, string.IsNullOrEmpty(course.VideoSortRule) ? "default" : course.VideoSortRule, course.CreatedAt, course.UpdatedAt,
             course.InstructorId,
             course.Instructor != null ? course.Instructor.FirstName + " " + course.Instructor.LastName : null,

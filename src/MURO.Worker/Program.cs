@@ -48,6 +48,7 @@ builder.Services.AddScoped<ISmsSender, SmsPlaceholderSender>();
 builder.Services.AddHostedService<UploadProcessingJob>();
 builder.Services.AddHostedService<ExamScoringJob>();
 builder.Services.AddHostedService<NotificationProcessingJob>();
+builder.Services.AddHostedService<ScheduledNotificationJob>();
 builder.Services.AddHostedService<GroupExpirationJob>();
 builder.Services.AddHostedService<AuditLogCleanupJob>();
 builder.Services.AddHostedService<BbbRecordingSyncJob>();

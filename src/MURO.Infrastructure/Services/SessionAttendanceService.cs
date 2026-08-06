@@ -103,6 +103,7 @@ public class SessionAttendanceService : ISessionAttendanceService
         _context.SessionAttendances.Add(attendance);
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"attendance:");
+        await _cache.RemoveByPrefixAsync($"student:dashboard:{userId}");
 
         var session = await _context.Sessions.FindAsync(sessionId);
         if (session != null)
@@ -128,6 +129,7 @@ public class SessionAttendanceService : ISessionAttendanceService
         attendance.DurationMinutes = (int)(attendance.LeftAt.Value - attendance.JoinedAt).TotalMinutes;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"attendance:");
+        await _cache.RemoveByPrefixAsync($"student:dashboard:{userId}");
 
         if (attendance.Session != null)
         {

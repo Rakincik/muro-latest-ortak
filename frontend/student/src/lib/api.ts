@@ -404,9 +404,8 @@ export function getVideoPlaybackDetails(url: string) {
         return { url, type: "iframe" as const };
     }
     
-    // Standard video
     const isHls = url.includes(".m3u8") || url.includes("/hls/");
-    return { url, type: (isHls ? "video" : "iframe") as const };
+    return { url, type: (isHls ? "video" : "iframe") as "video" | "iframe" };
 }
 
 export interface RecordingDto {
@@ -425,6 +424,7 @@ export interface RecordingDto {
     examId?: string;
     videoUrl?: string | null;
     mediaAssetId?: string | null;
+    lastPosition?: number | null;
 }
 
 export interface CourseMediaDto {

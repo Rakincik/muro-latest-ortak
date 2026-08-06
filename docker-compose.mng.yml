@@ -63,6 +63,7 @@ services:
       - Jwt__Secret=${JWT_SECRET:?JWT_SECRET is required}
       - Jwt__Issuer=MURO
       - Jwt__Audience=MURO
+      - Jwt__AccessTokenExpiryHours=2
       - Bbb__Url=${BBB_URL:-https://bbb.gikart.com.tr/bigbluebutton/api}
       - Bbb__Secret=${BBB_SECRET:-placeholder}
       - Bbb__WebhookSharedSecret=${BBB_WEBHOOK_SECRET:-placeholder}

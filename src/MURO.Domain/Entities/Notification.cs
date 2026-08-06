@@ -12,6 +12,8 @@ public class Notification
     public bool IsRead { get; set; } = false;
     public NotificationChannel Channel { get; set; } = NotificationChannel.System;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ScheduledAt { get; set; }
+    public bool IsSent { get; set; } = true;
 
     // Navigation
     public User User { get; set; } = null!;

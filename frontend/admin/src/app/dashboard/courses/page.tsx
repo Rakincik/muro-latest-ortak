@@ -1,4 +1,5 @@
 "use client";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -135,6 +136,8 @@ const mapCourse = (c: CourseListDto, sessions: MappedSession[] = [], detail?: Co
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CoursesPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { success, error: toastError } = useToast();
     const { user, token, currentTenantId: tenantId } = useAuth();
     const isInstructor = user?.role === "Instructor" || user?.tenants?.find((t: any) => t.tenantId === tenantId)?.role === "Instructor";
@@ -171,6 +174,19 @@ export default function CoursesPage() {
     const [coursesPerPage, setCoursesPerPage] = useState(15);
     const [showMobileFilters, setShowMobileFilters] = useState(false);
 
+    const handleTabChange = useCallback((newTab: DTab) => {
+        setTab(newTab);
+        if (detail) {
+            router.push(`/dashboard/courses?courseId=${detail.id}&tab=${newTab}`);
+        }
+    }, [router, detail]);
+
+    const handleBack = useCallback(() => {
+        setDetail(null);
+        setTab("overview");
+        router.push("/dashboard/courses");
+    }, [router]);
+
     // ── Fetch courses from API ────────────────────────────────────────────────
     const fetchCourses = useCallback(async () => {
         if (!token || !tenantId) return;
@@ -205,6 +221,7 @@ export default function CoursesPage() {
     // ── Open course detail ────────────────────────────────────────────────────
     const openDetail = useCallback(async (course: MappedCourse, targetTab: DTab = "overview") => {
         setDetail(course); setTab(targetTab);
+        router.push(`/dashboard/courses?courseId=${course.id}&tab=${targetTab}`);
         if (!token || !tenantId) return;
         try {
             const [d, recs, medias] = await Promise.all([
@@ -221,16 +238,17 @@ export default function CoursesPage() {
             setRecordings(recs.filter(r => r.courseTitle === d.title));
             setCourses(prev => prev.map(c => c.id === course.id ? mapped : c));
         } catch { /* ignore */ }
-    }, [token, tenantId]);
+    }, [token, tenantId, router]);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
             const courseIdParam = params.get("courseId");
+            const tabParam = params.get("tab") as DTab | null;
             if (courseIdParam && courses.length > 0 && !detail) {
                 const matchedCourse = courses.find(c => c.id === courseIdParam);
                 if (matchedCourse) {
-                    openDetail(matchedCourse);
+                    openDetail(matchedCourse, tabParam || "overview");
                 }
             }
         }
@@ -243,10 +261,13 @@ export default function CoursesPage() {
             await courseApi.delete(token, tenantId, id);
             setCourses(p => p.filter(c => c.id !== id));
             setDeleteTarget(null);
-            if (detail?.id === id) setDetail(null);
+            if (detail?.id === id) {
+                setDetail(null);
+                router.push("/dashboard/courses");
+            }
             success("Ders silindi");
         } catch { toastError("Hata", "Ders silinemedi."); }
-    }, [token, tenantId, detail]);
+    }, [token, tenantId, detail, router]);
 
     const handleTogglePublish = useCallback(async (id: string, current: boolean) => {
         if (!token || !tenantId) return;
@@ -526,7 +547,7 @@ export default function CoursesPage() {
 
         return (
             <div className="space-y-6 animate-fade-in">
-                <button onClick={() => { setDetail(null); setTab("overview"); }} className="flex items-center gap-2 text-sm text-[#A9A9A9] hover:text-[#0A1931] transition-colors group">
+                <button onClick={handleBack} className="flex items-center gap-2 text-sm text-[#A9A9A9] hover:text-[#0A1931] transition-colors group">
                     <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Ders Listesine Dön
                 </button>
 
@@ -626,7 +647,7 @@ export default function CoursesPage() {
                                 { id: "settings", label: "Ayarlar", icon: <Settings size={14} /> }
                             ].filter(Boolean) as any} 
                             activeTab={tab} 
-                            onChange={(id) => setTab(id as typeof tab)} 
+                            onChange={(id) => handleTabChange(id as DTab)} 
                             className="flex-1 min-w-0 pr-4"
                         />
                         {/* Publish toggle in tab bar */}
@@ -721,7 +742,7 @@ export default function CoursesPage() {
                                 <div>
                                     <h3 className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-4">Hızlı İşlemler</h3>
                                     <div className="flex flex-wrap gap-3">
-                                        <button onClick={() => setTab("recordings")} className="px-5 py-3 text-xs font-bold bg-white border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center gap-2"><PlayCircle size={14} /> Kayıtları Gör</button>
+                                        <button onClick={() => handleTabChange("recordings")} className="px-5 py-3 text-xs font-bold bg-white border border-[#E2E8F0] rounded-xl hover:bg-[#E2E8F0]/20 transition-all flex items-center gap-2"><PlayCircle size={14} /> Kayıtları Gör</button>
                                         <button onClick={() => handleTogglePublish(c.id, c.isPublished)}
                                             className={`px-5 py-3 text-xs font-bold rounded-xl transition-all flex items-center gap-2 ${c.isPublished ? "bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100" : "bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100"}`}>
                                             <Eye size={14} /> {c.isPublished ? "Taslağa Çek" : "Yayına Al"}
@@ -755,7 +776,7 @@ export default function CoursesPage() {
                         {tab === "docs" && <DocsTab courseId={c.id} />}
 
                         {/* ── SETTINGS ────────────────────────────────────────── */}
-                        {tab === "settings" && <SettingsTab course={c} onSave={handleSettingsSave} onDelete={() => { handleDelete(c.id); setDetail(null); }} />}
+                        {tab === "settings" && <SettingsTab course={c} onSave={handleSettingsSave} onDelete={() => { handleDelete(c.id); handleBack(); }} />}
                     </div>
                 </div>
 

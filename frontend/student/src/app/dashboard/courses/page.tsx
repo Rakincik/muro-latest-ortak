@@ -32,6 +32,19 @@ const renderTextWithLinks = (text: string) => {
     });
 };
 
+const normalizeTurkish = (text: string) => {
+    if (!text) return "";
+    return text
+        .toLocaleLowerCase("tr")
+        .replace(/ı/g, "i")
+        .replace(/ğ/g, "g")
+        .replace(/ü/g, "u")
+        .replace(/ş/g, "s")
+        .replace(/ö/g, "o")
+        .replace(/ç/g, "c")
+        .trim();
+};
+
 export default function CoursesPage() {
     const { token, currentTenantId: tenantId } = useAuth();
     const [courses, setCourses] = useState<CourseDto[]>([]);
@@ -39,6 +52,7 @@ export default function CoursesPage() {
     const [loading, setLoading] = useState(true);
     const [groupsLoading, setGroupsLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [groupSearch, setGroupSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "in_progress" | "not_started">("all");
     const [sortBy, setSortBy] = useState<"date" | "name" | "sessions" | "completion">("date");
     const [currentPage, setCurrentPage] = useState(1);
@@ -93,6 +107,25 @@ export default function CoursesPage() {
     const isFolderMode = useMemo(() => {
         return groups.length > 0 && !urlGroupId;
     }, [groups, urlGroupId]);
+
+    const filteredGroups = useMemo(() => {
+        if (!groupSearch.trim()) return groups;
+        const searchWords = normalizeTurkish(groupSearch).split(/\s+/).filter(Boolean);
+        return groups.filter(g => {
+            const name = normalizeTurkish(g.name);
+            const desc = normalizeTurkish(g.description || "");
+            return searchWords.every(word => name.includes(word) || desc.includes(word));
+        });
+    }, [groups, groupSearch]);
+
+    const showIndividualFolder = useMemo(() => {
+        if (individualCourses.length === 0) return false;
+        if (!groupSearch.trim()) return true;
+        const searchWords = normalizeTurkish(groupSearch).split(/\s+/).filter(Boolean);
+        const name = normalizeTurkish("Bireysel Derslerim");
+        const desc = normalizeTurkish("Herhangi bir gruba ait olmayan, doğrudan tanımlanmış dersleriniz.");
+        return searchWords.every(word => name.includes(word) || desc.includes(word));
+    }, [individualCourses, groupSearch]);
 
     const filteredAndSorted = useMemo(() => {
         const normalizeText = (text: string) => {
@@ -161,10 +194,20 @@ export default function CoursesPage() {
             {/* Header */}
             <div className="flex flex-col gap-4 mb-8">
                 {isFolderMode ? (
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h1 className="text-2xl font-bold text-[#0A1931]">Derslerim</h1>
                             <p className="text-[#A9A9A9] text-sm mt-1">Lütfen çalışmak istediğiniz grubu seçin</p>
+                        </div>
+                        <div className="relative w-full sm:w-72 shrink-0">
+                            <input
+                                type="text"
+                                placeholder="Grup ara..."
+                                value={groupSearch}
+                                onChange={e => setGroupSearch(e.target.value)}
+                                className="pl-10 pr-4 py-2.5 bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] text-sm placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:border-[#1B3B6F] w-full transition-all shadow-sm"
+                            />
+                            <Search className="absolute left-3.5 top-3.5 text-[#A0AEC0]" size={16} />
                         </div>
                     </div>
                 ) : urlGroupId ? (
@@ -186,7 +229,7 @@ export default function CoursesPage() {
                                 </span>
                             </div>
                             {selectedGroup?.description && (
-                                <p className="text-xs text-[#A9A9A9] mt-1">{selectedGroup.description}</p>
+                                <p className="text-xs text-[#A9A9A9] mt-1">{renderTextWithLinks(selectedGroup.description)}</p>
                             )}
                         </div>
                     </div>
@@ -298,83 +341,90 @@ export default function CoursesPage() {
                 </div>
             ) : isFolderMode ? (
                 // 📂 KLASÖR GÖRÜNÜMÜ
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
-                    {groups.map((group) => {
-                        const groupColor = group.color || "#1B3B6F";
-                        const groupCoursesCount = group.courseIds?.length ?? 0;
-                        return (
+                filteredGroups.length === 0 && !showIndividualFolder ? (
+                    <div className="bg-white rounded-2xl border border-[#E2E8F0]/60 py-20 flex flex-col items-center justify-center text-[#A0AEC0] w-full col-span-full">
+                        <Layers size={40} className="opacity-25 mb-3 text-[#1B3B6F]" />
+                        <p className="text-sm font-medium">Aradığınız kriterlere uygun grup bulunamadı</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
+                        {filteredGroups.map((group) => {
+                            const groupColor = group.color || "#1B3B6F";
+                            const groupCoursesCount = group.courseIds?.length ?? 0;
+                            return (
+                                <div
+                                    key={group.id}
+                                    onClick={() => handleSelectGroup(group.id)}
+                                    className="cursor-pointer glass-card p-4 sm:p-5 flex flex-col items-start text-left group hover:border-[#1B3B6F]/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden min-h-[160px] sm:min-h-[190px] w-full"
+                                >
+                                    <div 
+                                        className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 pointer-events-none group-hover:scale-110 transition-transform duration-300"
+                                        style={{ backgroundColor: groupColor }}
+                                    />
+                                    
+                                    <div 
+                                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 mb-3 shadow-sm"
+                                        style={{ backgroundColor: `${groupColor}15`, color: groupColor }}
+                                    >
+                                        <Layers size={18} className="sm:hidden" />
+                                        <Layers size={20} className="hidden sm:block" />
+                                    </div>
+                                    
+                                    <h3 className="text-[#0A1931] font-bold text-sm sm:text-base mb-1 line-clamp-1 group-hover:text-[#1B3B6F] transition-colors shrink-0">
+                                        {group.name}
+                                    </h3>
+                                    
+                                    {group.description && (
+                                        <p className="text-[#A9A9A9] text-[11px] sm:text-xs line-clamp-2 mb-2 leading-relaxed shrink-0">
+                                            {renderTextWithLinks(group.description)}
+                                        </p>
+                                    )}
+                                    
+                                    <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-2 sm:pt-2.5">
+                                        <span className="text-[10px] sm:text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">
+                                            {groupCoursesCount} Ders içeriyor
+                                        </span>
+                                        <ChevronRight size={14} className="sm:hidden text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-[#1B3B6F] transition-all" />
+                                        <ChevronRight size={16} className="hidden sm:block text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-[#1B3B6F] transition-all" />
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* Bireysel Dersler Klasörü */}
+                        {showIndividualFolder && (
                             <div
-                                key={group.id}
-                                onClick={() => handleSelectGroup(group.id)}
-                                className="cursor-pointer glass-card p-4 sm:p-5 flex flex-col items-start text-left group hover:border-[#1B3B6F]/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden min-h-[160px] sm:min-h-[190px] w-full"
+                                onClick={() => handleSelectGroup("individual")}
+                                className="cursor-pointer glass-card p-4 sm:p-5 flex flex-col items-start text-left group hover:border-slate-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden min-h-[160px] sm:min-h-[190px] w-full"
                             >
                                 <div 
-                                    className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 pointer-events-none group-hover:scale-110 transition-transform duration-300"
-                                    style={{ backgroundColor: groupColor }}
+                                    className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 bg-slate-500 group-hover:scale-110 transition-transform duration-300"
                                 />
                                 
-                                <div 
-                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 mb-3 shadow-sm"
-                                    style={{ backgroundColor: `${groupColor}15`, color: groupColor }}
-                                >
-                                    <Layers size={18} className="sm:hidden" />
-                                    <Layers size={20} className="hidden sm:block" />
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mb-3 shadow-sm">
+                                    <BookOpen size={18} className="sm:hidden" />
+                                    <BookOpen size={20} className="hidden sm:block" />
                                 </div>
                                 
-                                <h3 className="text-[#0A1931] font-bold text-sm sm:text-base mb-1 line-clamp-1 group-hover:text-[#1B3B6F] transition-colors shrink-0">
-                                    {group.name}
+                                <h3 className="text-[#0A1931] font-bold text-sm sm:text-base mb-1 line-clamp-1 group-hover:text-slate-600 transition-colors shrink-0">
+                                    Bireysel Derslerim
                                 </h3>
                                 
-                                {group.description && (
-                                    <p className="text-[#A9A9A9] text-[11px] sm:text-xs line-clamp-2 mb-2 leading-relaxed shrink-0">
-                                        {renderTextWithLinks(group.description)}
-                                    </p>
-                                )}
+                                <p className="text-[#A9A9A9] text-[11px] sm:text-xs line-clamp-2 mb-2 leading-relaxed shrink-0">
+                                    Herhangi bir gruba ait olmayan, doğrudan tanımlanmış dersleriniz.
+                                </p>
                                 
                                 <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-2 sm:pt-2.5">
                                     <span className="text-[10px] sm:text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">
-                                        {groupCoursesCount} Ders içeriyor
+                                        {individualCourses.length} Ders içeriyor
                                     </span>
-                                    <ChevronRight size={14} className="sm:hidden text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-[#1B3B6F] transition-all" />
-                                    <ChevronRight size={16} className="hidden sm:block text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-[#1B3B6F] transition-all" />
+                                    <ChevronRight size={14} className="sm:hidden text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-slate-600 transition-all" />
+                                    <ChevronRight size={16} className="hidden sm:block text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-slate-600 transition-all" />
                                 </div>
                             </div>
-                        );
-                    })}
-
-                    {/* Bireysel Dersler Klasörü */}
-                    {individualCourses.length > 0 && (
-                        <div
-                            onClick={() => handleSelectGroup("individual")}
-                            className="cursor-pointer glass-card p-4 sm:p-5 flex flex-col items-start text-left group hover:border-slate-300 hover:shadow-lg transition-all duration-300 relative overflow-hidden min-h-[160px] sm:min-h-[190px] w-full"
-                        >
-                            <div 
-                                className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-2xl opacity-10 bg-slate-500 group-hover:scale-110 transition-transform duration-300"
-                            />
-                            
-                            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 mb-3 shadow-sm">
-                                <BookOpen size={18} className="sm:hidden" />
-                                <BookOpen size={20} className="hidden sm:block" />
-                            </div>
-                            
-                            <h3 className="text-[#0A1931] font-bold text-sm sm:text-base mb-1 line-clamp-1 group-hover:text-slate-600 transition-colors shrink-0">
-                                Bireysel Derslerim
-                            </h3>
-                            
-                            <p className="text-[#A9A9A9] text-[11px] sm:text-xs line-clamp-2 mb-2 leading-relaxed shrink-0">
-                                Herhangi bir gruba ait olmayan, doğrudan tanımlanmış dersleriniz.
-                            </p>
-                            
-                            <div className="mt-auto flex items-center justify-between w-full border-t border-slate-100/50 pt-2 sm:pt-2.5">
-                                <span className="text-[10px] sm:text-[11px] font-bold text-[#A0AEC0] uppercase tracking-wider">
-                                    {individualCourses.length} Ders içeriyor
-                                </span>
-                                <ChevronRight size={14} className="sm:hidden text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-slate-600 transition-all" />
-                                <ChevronRight size={16} className="hidden sm:block text-[#A0AEC0] group-hover:translate-x-1 group-hover:text-slate-600 transition-all" />
-                            </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )
             ) : filteredAndSorted.length === 0 ? (
                 <div className="text-center py-20">
                     <p className="text-5xl mb-4">📭</p>

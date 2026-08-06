@@ -67,13 +67,21 @@ function formatPhoneForDisplay(phone?: string): string {
 function resolvePasswordRule(rule: string, user: { firstName: string; lastName: string; email: string; phone: string; tcNo: string }): string {
     const normalize = (str: string) => {
         if (!str) return "";
-        return str.trim().toLowerCase()
+        return str.trim()
+            .replace(/İ/g, "i")
+            .replace(/I/g, "i")
             .replace(/ı/g, "i")
+            .replace(/Ğ/g, "g")
             .replace(/ğ/g, "g")
+            .replace(/Ü/g, "u")
             .replace(/ü/g, "u")
+            .replace(/Ş/g, "s")
             .replace(/ş/g, "s")
+            .replace(/Ö/g, "o")
             .replace(/ö/g, "o")
-            .replace(/ç/g, "c");
+            .replace(/Ç/g, "c")
+            .replace(/ç/g, "c")
+            .toLowerCase();
     };
 
     const cleanFirst = normalize(user.firstName.trim().split(" ")[0]);

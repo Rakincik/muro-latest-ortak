@@ -57,6 +57,7 @@ services:
       - Jwt__Secret=${JWT_SECRET:?JWT_SECRET is required}
       - Jwt__Issuer=MURO.API
       - Jwt__Audience=MURO.Clients
+      - Jwt__AccessTokenExpiryHours=2
       - BunnyCdn__ApiKey=${BUNNY_API_KEY}
       - BunnyCdn__StorageZoneName=${BUNNY_STORAGE_ZONE}
       - BunnyCdn__PullZoneUrl=${BUNNY_PULL_ZONE}

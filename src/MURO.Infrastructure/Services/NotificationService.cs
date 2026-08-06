@@ -43,7 +43,7 @@ public class NotificationService : INotificationService
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
             var query = _context.Notifications.AsNoTracking()
-                .Where(n => n.UserId == userId );
+                .Where(n => n.UserId == userId && n.IsSent);
 
             if (unreadOnly == true) query = query.Where(n => !n.IsRead);
 
@@ -124,6 +124,32 @@ public class NotificationService : INotificationService
 
         if (userIds.Count == 0) return 0;
 
+        if (request.ScheduledAt.HasValue && request.ScheduledAt.Value > DateTime.UtcNow)
+        {
+            var notifications = userIds.Select(uid => new Notification
+            {
+                Id = Guid.NewGuid(),
+                UserId = uid,
+                Title = request.Title ?? string.Empty,
+                Body = request.Body ?? string.Empty,
+                Type = request.Type ?? string.Empty,
+                Channel = NotificationChannel.System,
+                ScheduledAt = request.ScheduledAt.Value,
+                IsSent = false,
+                CreatedAt = request.ScheduledAt.Value
+            }).ToList();
+
+            var batchSize = 1000;
+            for (int i = 0; i < notifications.Count; i += batchSize)
+            {
+                var batch = notifications.Skip(i).Take(batchSize).ToList();
+                _context.Notifications.AddRange(batch);
+                await _context.SaveChangesAsync();
+            }
+
+            return userIds.Count;
+        }
+
         var payload = new NotificationJobPayload
         {
             UserIds = userIds,
@@ -165,7 +191,7 @@ public class NotificationService : INotificationService
         var cacheKey = $"notifications:unread:{userId}";
         return await _cache.GetOrSetAsync(cacheKey, async () =>
         {
-            return await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
+            return await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead && n.IsSent);
         }, TimeSpan.FromMinutes(1));
     }
 

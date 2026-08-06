@@ -58,12 +58,12 @@ public class NotificationProcessingJob : BackgroundService
                     notifications.Add(new Notification
                     {
                         Id = Guid.NewGuid(),
-                        
                         UserId = uid,
                         Title = payload.Title,
                         Body = payload.Body,
                         Type = payload.Type,
-                        Channel = Enum.TryParse<NotificationChannel>(payload.Channel, true, out var ch) ? ch : NotificationChannel.System
+                        Channel = Enum.TryParse<NotificationChannel>(payload.Channel, true, out var ch) ? ch : NotificationChannel.System,
+                        IsSent = true
                     });
                 }
 

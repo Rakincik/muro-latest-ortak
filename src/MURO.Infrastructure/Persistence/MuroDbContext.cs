@@ -230,6 +230,8 @@ public class MuroDbContext : DbContext
             entity.HasIndex(n => new { n.UserId,  n.IsRead });
             // Admin: tenant bazlı gönderilmiş bildirimler (sıralama)
             entity.HasIndex(n => new { n.CreatedAt  });
+            // Scheduled notifications querying
+            entity.HasIndex(n => new { n.IsSent, n.ScheduledAt });
         });
 
         // Podcast

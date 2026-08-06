@@ -308,6 +308,7 @@ public class MediaService : IMediaService
         await _context.SaveChangesAsync();
 
         await _cache.RemoveByPrefixAsync($"videoprogress:{userId}:");
+        await _cache.RemoveByPrefixAsync($"student:dashboard:{userId}");
         await _cache.RemoveAsync($"analytics:scorecard:{userId}");
         await _cache.RemoveAsync($"analytics:admin_dashboard");
         await _cache.RemoveAsync("analytics:scorecards_list");

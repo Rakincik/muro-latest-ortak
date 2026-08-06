@@ -90,7 +90,7 @@ function SendNotifModal({ onClose, onSent, groups, users, courses }: SendModalPr
         try {
             const count = await notificationApi.bulkSend(
                 token, tenantId, userIds, title, body, type, 
-                scheduledAt || undefined, targetGroupId, sendToAll, targetCourseId
+                scheduledAt ? new Date(scheduledAt).toISOString() : undefined, targetGroupId, sendToAll, targetCourseId
             );
             const schedMsg = scheduledAt ? ` (${new Date(scheduledAt).toLocaleString("tr-TR")} için zamanlandı)` : "";
             success("Bildirim Gönderildi", `${count} kullanıcıya gönderildi${schedMsg}.`);
