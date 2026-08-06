@@ -175,15 +175,12 @@ export default function CoursesPage() {
     const [showMobileFilters, setShowMobileFilters] = useState(false);
 
     const handleTabChange = useCallback((newTab: DTab) => {
-        setTab(newTab);
         if (detail) {
             router.push(`/dashboard/courses?courseId=${detail.id}&tab=${newTab}`);
         }
     }, [router, detail]);
 
     const handleBack = useCallback(() => {
-        setDetail(null);
-        setTab("overview");
         router.push("/dashboard/courses");
     }, [router]);
 
@@ -240,19 +237,27 @@ export default function CoursesPage() {
         } catch { /* ignore */ }
     }, [token, tenantId, router]);
 
+    const courseIdParam = searchParams.get("courseId");
+    const tabParam = searchParams.get("tab") as DTab | null;
+
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            const params = new URLSearchParams(window.location.search);
-            const courseIdParam = params.get("courseId");
-            const tabParam = params.get("tab") as DTab | null;
-            if (courseIdParam && courses.length > 0 && !detail) {
-                const matchedCourse = courses.find(c => c.id === courseIdParam);
-                if (matchedCourse) {
-                    openDetail(matchedCourse, tabParam || "overview");
-                }
+        if (!courseIdParam) {
+            setDetail(null);
+            setTab("overview");
+            return;
+        }
+
+        if (tabParam && tabParam !== tab) {
+            setTab(tabParam);
+        }
+
+        if (courses.length > 0) {
+            const matchedCourse = courses.find(c => c.id === courseIdParam);
+            if (matchedCourse && (!detail || detail.id !== courseIdParam)) {
+                openDetail(matchedCourse, tabParam || "overview");
             }
         }
-    }, [courses, detail, openDetail]);
+    }, [courseIdParam, tabParam, courses, openDetail, detail, tab]);
 
     // ── CRUD Handlers ─────────────────────────────────────────────────────────
     const handleDelete = useCallback(async (id: string) => {
