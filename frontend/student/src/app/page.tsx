@@ -50,27 +50,29 @@ export default function StudentLoginPage() {
 
         const isDev = window.location.hostname === "localhost";
         let targetUrl = "";
-        
+
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else if (!window.location.hostname.endsWith("muro.click") && !window.location.hostname.endsWith("4takademi.com")) {
+        } else if (!window.location.hostname.endsWith("muro.click") && !window.location.hostname.endsWith("4takademi.com") && !window.location.hostname.endsWith("mevzuatadam.com")) {
           // Custom / Single domain setup -> redirect to local subpath
           targetUrl = `/admin/dashboard`;
         } else {
           // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click, uzem.4takademi.com -> uzem-adm.4takademi.com
           const currentHost = window.location.hostname;
           let adminHost = currentHost;
-          
+
           if (currentHost.startsWith("3u.")) {
             adminHost = currentHost.replace("3u.", "3u-ad.");
+          } else if (currentHost.includes("mevzuatadam.com")) {
+            adminHost = currentHost.includes("uzem.adm.") ? currentHost : currentHost.replace("uzem.", "uzem.adm.");
           } else if (currentHost.split('.').length > 2) {
-             const parts = currentHost.split('.');
-             parts[0] = parts[0] + '-adm';
-             adminHost = parts.join('.');
+            const parts = currentHost.split('.');
+            parts[0] = parts[0] + '-adm';
+            adminHost = parts.join('.');
           } else {
-             adminHost = "admin." + currentHost;
+            adminHost = "admin." + currentHost;
           }
-          
+
           targetUrl = `https://${adminHost}/dashboard`;
         }
 
@@ -137,10 +139,10 @@ export default function StudentLoginPage() {
 
         {/* Logo — tenant branding */}
         <div className="text-center mb-8">
-          <img 
-            src={branding?.logoUrl || "/logo.png"} 
-            alt={brandName} 
-            className="w-64 h-auto mx-auto object-contain drop-shadow-lg" 
+          <img
+            src={branding?.logoUrl || "/logo.png"}
+            alt={brandName}
+            className="w-64 h-auto mx-auto object-contain drop-shadow-lg"
           />
         </div>
 
@@ -169,8 +171,8 @@ export default function StudentLoginPage() {
               {(branding?.loginWarningText !== undefined ? branding.loginWarningText : "* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.\nÖrnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen") && (
                 <p className="mt-1.5 text-[11px] text-[#A0AEC0]/70 italic leading-relaxed">
                   {(() => {
-                    const warningText = branding?.loginWarningText !== undefined 
-                      ? branding.loginWarningText 
+                    const warningText = branding?.loginWarningText !== undefined
+                      ? branding.loginWarningText
                       : "* Kullanıcı adınızı girerken lütfen Türkçe karakter kullanmayınız.\nÖrnek: İsim Soyisim Çağrı Özüşen, Kullanıcı Adı: cagriozusen";
                     if (!warningText) return null;
                     const lines = warningText.split('\n');
