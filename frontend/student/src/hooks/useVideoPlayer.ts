@@ -200,12 +200,10 @@ export function useVideoPlayer(
         }
 
         return () => {
-            // Cleanup on unmount: make sure we restore everything
+            // Cleanup when isFullscreen toggles: restore if element was transplanted
             const placeholder = placeholderRef.current;
-            if (placeholder && placeholder.parentElement) {
-                if (el.parentElement === document.body) {
-                    placeholder.parentElement.insertBefore(el, placeholder);
-                }
+            if (el.parentElement === document.body && placeholder && placeholder.parentElement) {
+                placeholder.parentElement.insertBefore(el, placeholder);
                 placeholder.remove();
                 placeholderRef.current = null;
             }
@@ -213,6 +211,36 @@ export function useVideoPlayer(
             el.style.cssText = "";
         };
     }, [isFullscreen]);
+
+    // ── Unmount safety net: ALWAYS restore DOM on component teardown ──
+    useEffect(() => {
+        return () => {
+            const el = playerContainerRef.current;
+            if (!el) return;
+
+            // If the element is still in body (user navigated away while fullscreen), restore it
+            if (el.parentElement === document.body) {
+                const placeholder = placeholderRef.current;
+                if (placeholder && placeholder.parentElement) {
+                    placeholder.parentElement.insertBefore(el, placeholder);
+                    placeholder.remove();
+                } else if (originalParentRef.current) {
+                    originalParentRef.current.appendChild(el);
+                } else {
+                    // Last resort: just remove from body to prevent ghost elements
+                    document.body.removeChild(el);
+                }
+            }
+
+            // Always clean up state
+            placeholderRef.current = null;
+            originalParentRef.current = null;
+            originalNextSiblingRef.current = null;
+            isCssFallbackRef.current = false;
+            document.body.classList.remove("fullscreen-active");
+            if (el) el.style.cssText = "";
+        };
+    }, []); // Empty deps = runs ONLY on unmount
 
     // ── Watch timer: mark as watched after 30s on same video ──
     useEffect(() => {
