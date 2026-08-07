@@ -12,10 +12,6 @@ export const getApiUrl = () => {
     if (hostname === "localhost" || hostname === "127.0.0.1") {
         return "http://localhost:5292/api/v1";
     }
-
-    if (hostname.endsWith("mevzuatadam.com")) {
-        return `https://${hostname}/api/v1`;
-    }
     
     // Subdomain patterns:
     // admin-akm.on7medya.com -> api-akm.on7medya.com
