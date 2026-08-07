@@ -142,6 +142,8 @@ export default function AnalyticsPage() {
             else if (info.includes("Mac")) info = "Mac";
             else if (info.includes("iOS") || info.includes("iPhone") || info.includes("iPad")) info = "iOS";
             else if (info.includes("Android")) info = "Android";
+            else if (info.includes("Linux")) info = "Linux";
+            else info = "Diğer";
             map.set(info, (map.get(info) || 0) + 1);
         });
         return Array.from(map.entries())
