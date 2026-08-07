@@ -116,34 +116,86 @@ export function useVideoPlayer(
         };
     }, []);
 
-    // ── Apply parent CSS adjustments on fullscreen (resolves iOS layout confinement) ──
+    // ── iOS Fullscreen: physically move DOM node to body (escapes ALL containing blocks) ──
+    const placeholderRef = useRef<HTMLDivElement | null>(null);
+    const originalParentRef = useRef<HTMLElement | null>(null);
+    const originalNextSiblingRef = useRef<Node | null>(null);
+
     useEffect(() => {
         const el = playerContainerRef.current;
         if (!el) return;
 
         if (isFullscreen) {
+            // Remember original position in the DOM
+            originalParentRef.current = el.parentElement;
+            originalNextSiblingRef.current = el.nextSibling;
+
+            // Insert a placeholder so we know where to put it back
+            const placeholder = document.createElement("div");
+            placeholder.style.display = "none";
+            placeholder.setAttribute("data-fs-placeholder", "true");
+            el.parentElement?.insertBefore(placeholder, el);
+            placeholderRef.current = placeholder;
+
+            // Move the player container to document.body
+            document.body.appendChild(el);
             document.body.classList.add("fullscreen-active");
-            let parent = el.parentElement;
-            while (parent && parent !== document.body) {
-                parent.classList.add("fullscreen-parent");
-                parent = parent.parentElement;
-            }
+
+            // Force fullscreen styles directly on the element
+            el.style.cssText = `
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+                z-index: 99999 !important;
+                background: #000 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+                min-height: unset !important;
+                max-height: unset !important;
+                aspect-ratio: unset !important;
+            `;
         } else {
-            document.body.classList.remove("fullscreen-active");
-            let parent = el.parentElement;
-            while (parent && parent !== document.body) {
-                parent.classList.remove("fullscreen-parent");
-                parent = parent.parentElement;
+            // Restore: move the element back to its original position
+            const placeholder = placeholderRef.current;
+            if (placeholder && placeholder.parentElement) {
+                placeholder.parentElement.insertBefore(el, placeholder);
+                placeholder.remove();
+                placeholderRef.current = null;
+            } else if (originalParentRef.current) {
+                if (originalNextSiblingRef.current && originalNextSiblingRef.current.parentElement === originalParentRef.current) {
+                    originalParentRef.current.insertBefore(el, originalNextSiblingRef.current);
+                } else {
+                    originalParentRef.current.appendChild(el);
+                }
             }
+
+            document.body.classList.remove("fullscreen-active");
+
+            // Remove inline fullscreen styles
+            el.style.cssText = "";
+            originalParentRef.current = null;
+            originalNextSiblingRef.current = null;
         }
 
         return () => {
-            document.body.classList.remove("fullscreen-active");
-            let parent = el.parentElement;
-            while (parent && parent !== document.body) {
-                parent.classList.remove("fullscreen-parent");
-                parent = parent.parentElement;
+            // Cleanup on unmount: make sure we restore everything
+            const placeholder = placeholderRef.current;
+            if (placeholder && placeholder.parentElement) {
+                if (el.parentElement === document.body) {
+                    placeholder.parentElement.insertBefore(el, placeholder);
+                }
+                placeholder.remove();
+                placeholderRef.current = null;
             }
+            document.body.classList.remove("fullscreen-active");
+            el.style.cssText = "";
         };
     }, [isFullscreen]);
 

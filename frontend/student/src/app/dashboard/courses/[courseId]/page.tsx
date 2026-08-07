@@ -491,7 +491,7 @@ export default function CourseDetailPage() {
                                 )}
 
                                 {/* Video iframe area */}
-                                <div ref={playerContainerRef} className={`bg-[#F8F9FA] relative group/player min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] lg:min-h-[450px] ${isFullscreen ? 'fixed inset-0 z-[100] bg-black flex items-center justify-center' : 'aspect-video'}`}>
+                                <div ref={playerContainerRef} className={`bg-[#F8F9FA] relative group/player min-h-[340px] xs:min-h-[380px] sm:min-h-[400px] lg:min-h-[450px] ${isFullscreen ? '' : 'aspect-video'}`}>
                                     {/* Loading skeleton */}
                                     {!iframeLoaded && (
                                         <div className="absolute inset-0 z-[5] bg-[#F8F9FA] flex items-center justify-center">
