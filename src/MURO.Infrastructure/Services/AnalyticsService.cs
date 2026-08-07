@@ -164,8 +164,8 @@ public class AnalyticsService : IAnalyticsService
             .Where(ds => ds.LoginAt >= cutoff && ds.User.Role == UserRole.Student)
             .Include(ds => ds.User)
             .OrderByDescending(ds => ds.LoginAt)
-            // Limit to max 1000 to prevent huge payloads
-            .Take(1000)
+            // Limit to max 10000 to prevent huge payloads
+            .Take(10000)
             .Select(ds => new DeviceSessionDto(ds.Id, ds.UserId,
                 ds.User.FirstName + " " + ds.User.LastName,
                 ds.DeviceInfo, ds.IpAddress, ds.LoginAt, ds.LogoutAt, 
