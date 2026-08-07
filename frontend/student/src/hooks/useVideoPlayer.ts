@@ -26,6 +26,7 @@ export function useVideoPlayer(
     const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
     const watchStartRef = useRef<number>(0);
     const lastSentElapsedRef = useRef<number>(0);
+    const isCssFallbackRef = useRef(false); // true ONLY when native Fullscreen API failed (iOS)
 
     // Sorted recordings for playlist (now trusts the order passed from page.tsx which respects CourseMedia OrderIndex)
     const sortedRecordings = [...recordings];
@@ -68,20 +69,29 @@ export function useVideoPlayer(
         if (!isNative && !isFullscreen) {
             const reqFs = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
             if (reqFs) {
-                reqFs.call(elem).catch(() => {
+                reqFs.call(elem).then(() => {
+                    // Native fullscreen succeeded (Android/Desktop)
+                    isCssFallbackRef.current = false;
+                }).catch(() => {
                     const videoEl = elem.querySelector("video") as any;
                     if (videoEl && typeof videoEl.webkitEnterFullscreen === "function") {
                         videoEl.webkitEnterFullscreen();
+                        isCssFallbackRef.current = false;
                     } else {
-                        setIsFullscreen(true); // CSS fallback
+                        // Native API failed → CSS fallback (iOS iframe scenario)
+                        isCssFallbackRef.current = true;
+                        setIsFullscreen(true);
                     }
                 });
             } else {
                 const videoEl = elem.querySelector("video") as any;
                 if (videoEl && typeof videoEl.webkitEnterFullscreen === "function") {
                     videoEl.webkitEnterFullscreen();
+                    isCssFallbackRef.current = false;
                 } else {
-                    setIsFullscreen(true); // CSS fallback
+                    // No native API available → CSS fallback (iOS iframe scenario)
+                    isCssFallbackRef.current = true;
+                    setIsFullscreen(true);
                 }
             }
         } else {
@@ -95,7 +105,8 @@ export function useVideoPlayer(
                 if (videoEl && typeof videoEl.webkitExitFullscreen === "function") {
                     videoEl.webkitExitFullscreen();
                 }
-                setIsFullscreen(false); // Disable CSS fallback
+                isCssFallbackRef.current = false;
+                setIsFullscreen(false);
             }
         }
     }, [isFullscreen]);
@@ -124,6 +135,10 @@ export function useVideoPlayer(
     useEffect(() => {
         const el = playerContainerRef.current;
         if (!el) return;
+
+        // Only do DOM transplant for CSS fallback mode (iOS).
+        // On Android/Desktop, native Fullscreen API handles everything.
+        if (!isCssFallbackRef.current) return;
 
         if (isFullscreen) {
             // Remember original position in the DOM
