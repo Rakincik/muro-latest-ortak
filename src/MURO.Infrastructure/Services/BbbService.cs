@@ -256,7 +256,7 @@ public class BbbService : IBbbService
                 _logger.LogError(ex, "BBB GetRecordings hatası: {MeetingId}", meetingId ?? "ALL");
                 return new List<BbbRecordingInfo>();
             }
-        }, TimeSpan.FromMinutes(2));
+        }, TimeSpan.FromMinutes(10));
     }
 
     // ─── IsMeetingRunning ──────────────────────────────────────────────────────

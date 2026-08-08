@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   themeColor: "#0A1931",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">
@@ -27,6 +29,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__API_URL__ = ${JSON.stringify(process.env.API_URL || "")};`
+          }}
+        />
       </head>
       <body className="bg-[#E2E8F0]/20 text-[#0A1931] antialiased">
         <AuthProvider>

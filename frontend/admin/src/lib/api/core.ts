@@ -3,6 +3,11 @@ export const getApiUrl = () => {
         return process.env.INTERNAL_API_URL || "http://localhost:5292/api/v1";
     }
 
+    // Check if the server injected a runtime API_URL (for single-domain or custom setups)
+    if (typeof window !== "undefined" && (window as any).__API_URL__) {
+        return (window as any).__API_URL__;
+    }
+
     if (process.env.NEXT_PUBLIC_API_URL) {
         return process.env.NEXT_PUBLIC_API_URL;
     }

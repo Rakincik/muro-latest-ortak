@@ -19,6 +19,8 @@ public class WebhookHandlerService : IWebhookHandlerService
     private readonly IBbbService _bbbService;
     private readonly ICacheService _cache;
     private readonly ILogger<WebhookHandlerService> _logger;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, System.Threading.SemaphoreSlim> _sessionLocks = 
+        new System.Collections.Concurrent.ConcurrentDictionary<Guid, System.Threading.SemaphoreSlim>();
 
     public WebhookHandlerService(
         MuroDbContext context,
@@ -241,82 +243,95 @@ public class WebhookHandlerService : IWebhookHandlerService
             return;
         }
 
-        var recording = session.Recording;
-        if (recording == null)
+        var semaphore = _sessionLocks.GetOrAdd(session.Id, _ => new System.Threading.SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
+        try
         {
-            recording = new SessionRecording
-            {
-                Id = Guid.NewGuid(),
-                SessionId = session.Id,
-                Status = MediaStatus.Processing,
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.SessionRecordings.Add(recording);
-        }
+            var recording = await _context.SessionRecordings
+                .Include(r => r.MediaAsset)
+                .FirstOrDefaultAsync(r => r.SessionId == session.Id);
 
-        if (!string.IsNullOrEmpty(evt.RecordingUrl))
-        {
-            int? durationSeconds = null;
-            if (!string.IsNullOrEmpty(session.BbbMeetingId))
+            if (recording == null)
             {
-                try
-                {
-                    var recordings = await _bbbService.GetRecordingsAsync(session.BbbMeetingId);
-                    var rec = recordings.FirstOrDefault(r => r.PlaybackUrl == evt.RecordingUrl || r.Status == "published");
-                    if (rec != null) durationSeconds = rec.DurationSeconds;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Webhook: BBB'den kayit suresi cekilemedi. SessionId: {SessionId}", session.Id);
-                }
-            }
-
-            var asset = recording.MediaAsset;
-            if (asset == null)
-            {
-                asset = new MediaAsset
+                recording = new SessionRecording
                 {
                     Id = Guid.NewGuid(),
-                    CourseId = session.CourseId,
+                    SessionId = session.Id,
+                    Status = MediaStatus.Processing,
                     CreatedAt = DateTime.UtcNow
                 };
-                _context.MediaAssets.Add(asset);
-                recording.MediaAssetId = asset.Id;
+                _context.SessionRecordings.Add(recording);
             }
 
-            asset.Title = $"{evt.SessionTitle ?? session.Title} — Kayıt";
-            asset.FilePath = evt.RecordingUrl;
-            asset.HlsPath = null;
-            asset.DurationSeconds = durationSeconds;
-            asset.Status = MediaStatus.Ready;
-
-            recording.Status = MediaStatus.Ready;
-
-            var existsInMedia = await _context.CourseMedias.AnyAsync(cm => cm.SessionId == session.Id);
-            if (!existsInMedia)
+            if (!string.IsNullOrEmpty(evt.RecordingUrl))
             {
-                var hasManualSort = await _context.CourseMedias
-                    .AnyAsync(cm => cm.CourseId == session.CourseId && cm.OrderIndex >= 0);
-
-                int orderIndex = -1;
-                if (hasManualSort)
+                int? durationSeconds = null;
+                if (!string.IsNullOrEmpty(session.BbbMeetingId))
                 {
-                    var courseMediaMaxOrder = await _context.CourseMedias
-                        .Where(cm => cm.CourseId == session.CourseId)
-                        .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
-                    orderIndex = courseMediaMaxOrder + 1;
+                    try
+                    {
+                        var recordings = await _bbbService.GetRecordingsAsync(session.BbbMeetingId);
+                        var rec = recordings.FirstOrDefault(r => r.PlaybackUrl == evt.RecordingUrl || r.Status == "published");
+                        if (rec != null) durationSeconds = rec.DurationSeconds;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Webhook: BBB'den kayit suresi cekilemedi. SessionId: {SessionId}", session.Id);
+                    }
                 }
 
-                _context.CourseMedias.Add(new CourseMedia
+                var asset = recording.MediaAsset;
+                if (asset == null)
                 {
-                    CourseId = session.CourseId,
-                    SessionId = session.Id,
-                    OrderIndex = orderIndex
-                });
-            }
-        }
+                    asset = new MediaAsset
+                    {
+                        Id = Guid.NewGuid(),
+                        CourseId = session.CourseId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.MediaAssets.Add(asset);
+                    recording.MediaAssetId = asset.Id;
+                }
 
-        await _context.SaveChangesAsync();
+                asset.Title = $"{evt.SessionTitle ?? session.Title} — Kayıt";
+                asset.FilePath = evt.RecordingUrl;
+                asset.HlsPath = null;
+                asset.ThumbnailPath = null;
+                asset.DurationSeconds = durationSeconds;
+                asset.Status = MediaStatus.Ready;
+
+                recording.Status = MediaStatus.Ready;
+
+                var existsInMedia = await _context.CourseMedias.AnyAsync(cm => cm.SessionId == session.Id);
+                if (!existsInMedia)
+                {
+                    var hasManualSort = await _context.CourseMedias
+                        .AnyAsync(cm => cm.CourseId == session.CourseId && cm.OrderIndex >= 0);
+
+                    int orderIndex = -1;
+                    if (hasManualSort)
+                    {
+                        var courseMediaMaxOrder = await _context.CourseMedias
+                            .Where(cm => cm.CourseId == session.CourseId)
+                            .MaxAsync(cm => (int?)cm.OrderIndex) ?? -1;
+                        orderIndex = courseMediaMaxOrder + 1;
+                    }
+
+                    _context.CourseMedias.Add(new CourseMedia
+                    {
+                        CourseId = session.CourseId,
+                        SessionId = session.Id,
+                        OrderIndex = orderIndex
+                    });
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+        finally
+        {
+            semaphore.Release();
+        }
 
         _logger.LogInformation("recording-ready işlendi ✓ SessionId: {SessionId} | RecordingUrl: {Url}",
             evt.SessionId, evt.RecordingUrl);

@@ -69,7 +69,8 @@ const sections = [
     {
         title: "SİSTEM",
         items: [
-            { label: "Kurum Ayarları", href: "/dashboard/settings/branding", icon: Building2, roles: ["SuperAdmin"] }
+            { label: "Kurum Ayarları", href: "/dashboard/settings/branding", icon: Building2, roles: ["SuperAdmin"] },
+            { label: "Ders Klonlama", href: "/dashboard/courses/media-transfer", icon: FolderTree, roles: ["SuperAdmin"] }
         ]
     }
 ];

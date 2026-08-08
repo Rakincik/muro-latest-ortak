@@ -9,7 +9,7 @@ import {
     BarChart3, TrendingUp, Target, Award, Zap,
     FolderOpen, Settings, Loader2, StopCircle, ChevronLeft,
     Flame, PlayCircle, LayoutGrid, List as ListIcon, ArrowUpDown,
-    Upload, Image as ImageIcon, UploadCloud, SlidersHorizontal
+    Upload, Image as ImageIcon, UploadCloud, SlidersHorizontal, Info
 } from "lucide-react";
 import { useToast } from "@/components/toast";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -1234,7 +1234,7 @@ export default function CoursesPage() {
 // SETTINGS TAB (Zenginleştirilmiş)
 // ════════════════════════════════════════════════════════════════════════════════
 function SettingsTab({ course, onSave, onDelete }: { course: MappedCourse; onSave: (id: string, data: any) => void; onDelete: () => void }) {
-    const { token, currentTenantId: tenantId } = useAuth();
+    const { token, currentTenantId: tenantId, user } = useAuth();
     const { success, error: toastError } = useToast();
     const [uploading, setUploading] = useState(false);
     const [f, sF] = useState({ 
@@ -1282,6 +1282,32 @@ function SettingsTab({ course, onSave, onDelete }: { course: MappedCourse; onSav
             <div>
                 <h3 className="text-[10px] font-bold text-[#A0AEC0] uppercase tracking-widest mb-6 flex items-center gap-2"><BookOpen size={14} /> Temel Bilgiler</h3>
                 <div className="space-y-4">
+                    {user?.role === "SuperAdmin" && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4">
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                                <Info size={12} className="text-[#0A1931]" /> Ders ID (Veritabanı Kimliği)
+                            </label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    readOnly 
+                                    value={course.id} 
+                                    className="flex-1 px-4 py-2.5 text-xs font-mono font-semibold bg-white border border-[#E2E8F0] rounded-xl text-[#0A1931] focus:outline-none"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(course.id);
+                                        success("Kopyalandı", "Ders ID panoya kopyalandı.");
+                                    }}
+                                    className="px-4 py-2.5 bg-[#0A1931] hover:bg-[#1B3B6F] text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0"
+                                >
+                                    Kopyala
+                                </button>
+                            </div>
+                            <p className="text-[9px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Bu alan sadece Süper Admin yetkisine sahip kullanıcılara görünür.</p>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-xs font-bold text-[#A0AEC0] uppercase tracking-widest mb-1.5">Ders Adı</label>
                         <input type="text" value={f.title} onChange={e => sF(p => ({ ...p, title: e.target.value }))}
@@ -1336,6 +1362,7 @@ function SettingsTab({ course, onSave, onDelete }: { course: MappedCourse; onSav
                                 options={instructorOptions}
                                 className="w-full"
                                 placeholder="Eğitmen Seçiniz"
+                                searchable={true}
                             />
                             {f.instructorIds.length > 0 && (
                                 <div className="flex flex-wrap gap-2 mt-3 p-3 bg-slate-50 border border-[#E2E8F0]/80 rounded-xl">
@@ -1672,6 +1699,7 @@ function CourseWizard({ onClose, onSave, isSaving }: {
                                     options={instructorOptions}
                                     className="w-full"
                                     placeholder="Eğitmen Seçiniz"
+                                    searchable={true}
                                 />
                             </div>
                             {/* Kapak Fotoğrafı */}

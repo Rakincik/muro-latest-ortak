@@ -74,6 +74,16 @@ public class BbbRecordingSyncJob : BackgroundService
         var hlsService = scope.ServiceProvider.GetRequiredService<IHlsProcessingService>();
         var httpClient = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("bbb-download");
 
+        // Warm up BBB recordings cache in background to prevent admin panel timeouts and rate limit bans
+        try
+        {
+            await bbbService.GetRecordingsAsync(null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "BBB recordings cache warm-up failed.");
+        }
+
         // Fix #12: Tek sorguda tüm Processing kayıtları çek; in-memory ayır
         var cutoff = DateTime.UtcNow.AddHours(-24);
         var allProcessing = await db.SessionRecordings
