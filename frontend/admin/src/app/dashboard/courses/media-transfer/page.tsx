@@ -5,6 +5,7 @@ import { ArrowLeft, Search, Building2, Check, Loader2, MoveRight, Layers, Video,
 import { courseApi, mediaLibraryApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { CourseListDto, CourseMediaDto } from "@/lib/api/types";
@@ -103,6 +104,17 @@ export default function MediaTransferPage() {
             (m.customTitle && m.customTitle.toLowerCase().includes(q))
         );
     }, [targetMedias, targetSearch]);
+
+    const courseOptions = useMemo(() => {
+        const mapped = courses.map(c => ({
+            label: c.title,
+            value: c.id
+        }));
+        return [
+            { label: "Kurs Seçiniz...", value: "" },
+            ...mapped
+        ];
+    }, [courses]);
 
     const handleToggleSelect = (mediaAssetId: string) => {
         setSelectedSourceIds(prev => 
@@ -293,19 +305,17 @@ export default function MediaTransferPage() {
                     {/* Source Course Dropdown */}
                     <div className="mb-4">
                         <label className="text-[10px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-1.5">Kurs Seçin</label>
-                        <select 
+                        <CustomSelect
                             value={sourceCourseId}
-                            onChange={e => {
-                                setSourceCourseId(e.target.value);
+                            onChange={(val) => {
+                                setSourceCourseId(val as string);
                                 setSourceSearch("");
                             }}
-                            className="w-full px-4 py-3 text-sm font-semibold border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#0A1931] transition-all cursor-pointer"
-                        >
-                            <option value="">— Kaynak Kursu Seçiniz —</option>
-                            {courses.map(c => (
-                                <option key={c.id} value={c.id}>{c.title}</option>
-                            ))}
-                        </select>
+                            options={courseOptions}
+                            placeholder="Kaynak Kursu Seçiniz"
+                            searchable={true}
+                            className="w-full"
+                        />
                     </div>
 
                     {/* Source Search, Bulk Actions & List */}
@@ -430,19 +440,17 @@ export default function MediaTransferPage() {
                     {/* Target Course Dropdown */}
                     <div className="mb-4">
                         <label className="text-[10px] font-extrabold text-[#64748B] uppercase tracking-widest block mb-1.5">Kurs Seçin</label>
-                        <select 
+                        <CustomSelect
                             value={targetCourseId}
-                            onChange={e => {
-                                setTargetCourseId(e.target.value);
+                            onChange={(val) => {
+                                setTargetCourseId(val as string);
                                 setTargetSearch("");
                             }}
-                            className="w-full px-4 py-3 text-sm font-semibold border border-[#E2E8F0] rounded-xl text-[#0A1931] bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#0A1931] transition-all cursor-pointer"
-                        >
-                            <option value="">— Hedef Kursu Seçiniz —</option>
-                            {courses.map(c => (
-                                <option key={c.id} value={c.id}>{c.title}</option>
-                            ))}
-                        </select>
+                            options={courseOptions}
+                            placeholder="Hedef Kursu Seçiniz"
+                            searchable={true}
+                            className="w-full"
+                        />
                     </div>
 
                     {/* Target Search, Drag Drop Area, and List */}
