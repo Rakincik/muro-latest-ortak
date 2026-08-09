@@ -489,7 +489,8 @@ app.MapHub<AdminHub>("/hubs/admin");
             var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
             
             // Geçici olarak her ortamda DatabaseSeeder'ı çalıştırıyoruz
-            await MURO.Infrastructure.Seeds.DatabaseSeeder.SeedAsync(db);
+            var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+            await MURO.Infrastructure.Seeds.DatabaseSeeder.SeedAsync(db, config);
             Log.Information("Database migration ve seeding tamamlandı.");
             break;
         }

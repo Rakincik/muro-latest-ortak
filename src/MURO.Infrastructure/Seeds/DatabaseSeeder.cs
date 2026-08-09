@@ -7,7 +7,7 @@ namespace MURO.Infrastructure.Seeds;
 
 public static class DatabaseSeeder
 {
-    public static async Task SeedAsync(MuroDbContext db)
+    public static async Task SeedAsync(MuroDbContext db, Microsoft.Extensions.Configuration.IConfiguration config)
     {
         // ── Auto Schema Update: Ensure FeaturesJson column exists ──────────────
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"FeaturesJson\" text;");
@@ -15,8 +15,8 @@ public static class DatabaseSeeder
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"BbbSecret\" text;");
 
         // ── Auto Sync BBB settings from environment to database ──────────────
-        var bbbUrl = Environment.GetEnvironmentVariable("Bbb__Url") ?? Environment.GetEnvironmentVariable("BBB_URL");
-        var bbbSecret = Environment.GetEnvironmentVariable("Bbb__Secret") ?? Environment.GetEnvironmentVariable("BBB_SECRET");
+        var bbbUrl = config["Bbb:Url"];
+        var bbbSecret = config["Bbb:Secret"];
         if (!string.IsNullOrEmpty(bbbUrl) && !string.IsNullOrEmpty(bbbSecret))
         {
             var settings = await db.SystemSettings.FirstOrDefaultAsync();
