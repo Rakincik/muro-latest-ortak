@@ -18,19 +18,84 @@ public class BbbService : IBbbService
     private readonly IConfiguration _config;
     private readonly ILogger<BbbService> _logger;
     private readonly ICacheService _cache;
+    private readonly MURO.Infrastructure.Persistence.MuroDbContext _db;
 
-    // Config kısayolları
-    private string BbbUrl => _config["Bbb:Url"]
-        ?? throw new InvalidOperationException("Bbb:Url yapılandırılmamış.");
-    private string BbbSecret => _config["Bbb:Secret"]
-        ?? throw new InvalidOperationException("Bbb:Secret yapılandırılmamış.");
+    private string? _cachedBbbUrl;
+    private string? _cachedBbbSecret;
 
-    public BbbService(HttpClient httpClient, IConfiguration config, ILogger<BbbService> logger, ICacheService cache)
+    private string ResolveBbbUrl()
+    {
+        if (_cachedBbbUrl != null) return _cachedBbbUrl;
+
+        try
+        {
+            var settings = _db.SystemSettings.FirstOrDefault();
+            if (settings != null && !string.IsNullOrEmpty(settings.BbbUrl))
+            {
+                _cachedBbbUrl = settings.BbbUrl;
+                return _cachedBbbUrl;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SystemSettings'den BbbUrl okunamadı. Config/Env denenecek.");
+        }
+
+        var envUrl = Environment.GetEnvironmentVariable("Bbb__Url") ?? Environment.GetEnvironmentVariable("BBB_URL");
+        if (!string.IsNullOrEmpty(envUrl))
+        {
+            _cachedBbbUrl = envUrl;
+            return envUrl;
+        }
+
+        _cachedBbbUrl = _config["Bbb:Url"] ?? throw new InvalidOperationException("Bbb:Url yapılandırılmamış.");
+        return _cachedBbbUrl;
+    }
+
+    private string ResolveBbbSecret()
+    {
+        if (_cachedBbbSecret != null) return _cachedBbbSecret;
+
+        try
+        {
+            var settings = _db.SystemSettings.FirstOrDefault();
+            if (settings != null && !string.IsNullOrEmpty(settings.BbbSecret))
+            {
+                _cachedBbbSecret = settings.BbbSecret;
+                return _cachedBbbSecret;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SystemSettings'den BbbSecret okunamadı. Config/Env denenecek.");
+        }
+
+        var envSecret = Environment.GetEnvironmentVariable("Bbb__Secret") ?? Environment.GetEnvironmentVariable("BBB_SECRET");
+        if (!string.IsNullOrEmpty(envSecret))
+        {
+            _cachedBbbSecret = envSecret;
+            return envSecret;
+        }
+
+        _cachedBbbSecret = _config["Bbb:Secret"] ?? throw new InvalidOperationException("Bbb:Secret yapılandırılmamış.");
+        return _cachedBbbSecret;
+    }
+
+    private string BbbUrl => ResolveBbbUrl();
+    private string BbbSecret => ResolveBbbSecret();
+
+    public BbbService(
+        HttpClient httpClient, 
+        IConfiguration config, 
+        ILogger<BbbService> logger, 
+        ICacheService cache, 
+        MURO.Infrastructure.Persistence.MuroDbContext db)
     {
         _httpClient = httpClient;
         _config = config;
         _logger = logger;
         _cache = cache;
+        _db = db;
     }
 
     // ─── CreateMeeting ─────────────────────────────────────────────────────────

@@ -12,6 +12,8 @@ public class SystemSetting
     public string? FaviconUrl { get; set; }
     public string PrimaryColor { get; set; } = "#0A1931";
     public string? AccentColor { get; set; }
+    public string? BbbUrl { get; set; }
+    public string? BbbSecret { get; set; }
     
 
     public string? FooterText { get; set; }

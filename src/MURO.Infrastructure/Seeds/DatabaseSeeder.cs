@@ -11,6 +11,36 @@ public static class DatabaseSeeder
     {
         // ── Auto Schema Update: Ensure FeaturesJson column exists ──────────────
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"FeaturesJson\" text;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"BbbUrl\" text;");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"BbbSecret\" text;");
+
+        // ── Auto Sync BBB settings from environment to database ──────────────
+        var bbbUrl = Environment.GetEnvironmentVariable("Bbb__Url") ?? Environment.GetEnvironmentVariable("BBB_URL");
+        var bbbSecret = Environment.GetEnvironmentVariable("Bbb__Secret") ?? Environment.GetEnvironmentVariable("BBB_SECRET");
+        if (!string.IsNullOrEmpty(bbbUrl) && !string.IsNullOrEmpty(bbbSecret))
+        {
+            var settings = await db.SystemSettings.FirstOrDefaultAsync();
+            if (settings != null)
+            {
+                if (settings.BbbUrl != bbbUrl || settings.BbbSecret != bbbSecret)
+                {
+                    settings.BbbUrl = bbbUrl;
+                    settings.BbbSecret = bbbSecret;
+                    settings.UpdatedAt = DateTime.UtcNow;
+                    db.SystemSettings.Update(settings);
+                }
+            }
+            else
+            {
+                db.SystemSettings.Add(new SystemSetting
+                {
+                    Id = Guid.NewGuid(),
+                    BbbUrl = bbbUrl,
+                    BbbSecret = bbbSecret,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+        }
 
         // ── Demo student user ──────────────────────────────────────────────────
         var studentEmail = "ogrenci@demo.com";
