@@ -52,16 +52,19 @@ public class AdminConfigService : IAdminConfigService
 
     public async Task<(int, object?)> GetSecrets()
     {
+        var settings = await _db.SystemSettings.FirstOrDefaultAsync();
         var platformSecrets = new List<object>
         {
             new { key = "JWT Secret", category = "auth", value = MaskSecret(_config["Jwt:Secret"]), configured = !string.IsNullOrEmpty(_config["Jwt:Secret"]) },
             new { key = "JWT Issuer", category = "auth", value = _config["Jwt:Issuer"] ?? "not set", configured = !string.IsNullOrEmpty(_config["Jwt:Issuer"]) },
             new { key = "Access Token Süresi", category = "auth", value = $"{_config["Jwt:AccessTokenExpiryHours"] ?? "?"} saat", configured = !string.IsNullOrEmpty(_config["Jwt:AccessTokenExpiryHours"]) },
             new { key = "Refresh Token Süresi", category = "auth", value = $"{_config["Jwt:RefreshTokenExpiryDays"] ?? "?"} gün", configured = !string.IsNullOrEmpty(_config["Jwt:RefreshTokenExpiryDays"]) },
-            new { key = "DB Connection String", category = "database", value = MaskConnectionString(_config.GetConnectionString("DefaultConnection") ?? ""), configured = !string.IsNullOrEmpty(_config.GetConnectionString("DefaultConnection")) },
+            new { key = "DB Connection String", category = "database", value = MaskConnectionString(_db.Database.GetDbConnection().ConnectionString ?? ""), configured = true },
             new { key = "Redis Connection", category = "cache", value = MaskSecret(_config.GetConnectionString("Redis")), configured = !string.IsNullOrEmpty(_config.GetConnectionString("Redis")) },
-            new { key = "BBB Server URL", category = "bbb", value = _config["Bbb:Url"] ?? "not set", configured = !string.IsNullOrEmpty(_config["Bbb:Url"]) },
-            new { key = "BBB Secret", category = "bbb", value = MaskSecret(_config["Bbb:Secret"]), configured = !string.IsNullOrEmpty(_config["Bbb:Secret"]) },
+            new { key = "BBB Server URL (Config)", category = "bbb", value = _config["Bbb:Url"] ?? "not set", configured = !string.IsNullOrEmpty(_config["Bbb:Url"]) },
+            new { key = "BBB Secret (Config)", category = "bbb", value = MaskSecret(_config["Bbb:Secret"]), configured = !string.IsNullOrEmpty(_config["Bbb:Secret"]) },
+            new { key = "BBB Server URL (Database)", category = "bbb", value = settings?.BbbUrl ?? "not set", configured = settings != null && !string.IsNullOrEmpty(settings.BbbUrl) },
+            new { key = "BBB Secret (Database)", category = "bbb", value = MaskSecret(settings?.BbbSecret), configured = settings != null && !string.IsNullOrEmpty(settings.BbbSecret) },
             new { key = "BBB Webhook Secret", category = "bbb", value = MaskSecret(_config["Bbb:WebhookSharedSecret"]), configured = !string.IsNullOrEmpty(_config["Bbb:WebhookSharedSecret"]) },
             new { key = "BBB Default Attendee Pw", category = "bbb", value = MaskSecret(_config["Bbb:DefaultAttendeePw"]), configured = !string.IsNullOrEmpty(_config["Bbb:DefaultAttendeePw"]) },
             new { key = "BBB Default Moderator Pw", category = "bbb", value = MaskSecret(_config["Bbb:DefaultModeratorPw"]), configured = !string.IsNullOrEmpty(_config["Bbb:DefaultModeratorPw"]) },
