@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using MURO.Application.DTOs.Media;
 using MURO.Application.Interfaces;
 using MURO.Domain.Entities;
+using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
 
 namespace MURO.Infrastructure.Services;
@@ -24,9 +25,67 @@ public class CourseMediaService : ICourseMediaService
 
     public async Task<List<CourseMediaDto>> GetCourseMediasAsync(Guid courseId)
     {
-        // CourseMedias only fetch actual assigned videos from the media library.
-        // Live session recordings (SessionRecordings) remain purely within the Session hierarchy
-        // and are NOT auto-synced into CourseMedia.
+        // 1. Auto-reconcile old sessions having a VideoUrl but missing MediaAsset/SessionRecording references
+        var sessionsWithVideo = await _context.CourseMedias
+            .Where(cm => cm.CourseId == courseId && cm.SessionId != null && cm.Session.VideoUrl != null)
+            .Select(cm => cm.Session)
+            .ToListAsync();
+
+        bool hasChanges = false;
+        foreach (var session in sessionsWithVideo)
+        {
+            var recording = await _context.SessionRecordings
+                .Include(r => r.MediaAsset)
+                .FirstOrDefaultAsync(r => r.SessionId == session.Id);
+
+            if (recording == null)
+            {
+                var asset = new MediaAsset
+                {
+                    Id = Guid.NewGuid(),
+                    CourseId = courseId,
+                    Title = $"{session.Title} — Kayıt",
+                    FilePath = session.VideoUrl,
+                    Status = MediaStatus.Ready,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.MediaAssets.Add(asset);
+
+                recording = new SessionRecording
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = session.Id,
+                    MediaAssetId = asset.Id,
+                    Status = MediaStatus.Ready,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.SessionRecordings.Add(recording);
+                hasChanges = true;
+            }
+            else if (recording.MediaAssetId == null && !string.IsNullOrEmpty(session.VideoUrl))
+            {
+                var asset = new MediaAsset
+                {
+                    Id = Guid.NewGuid(),
+                    CourseId = courseId,
+                    Title = $"{session.Title} — Kayıt",
+                    FilePath = session.VideoUrl,
+                    Status = MediaStatus.Ready,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.MediaAssets.Add(asset);
+
+                recording.MediaAssetId = asset.Id;
+                recording.Status = MediaStatus.Ready;
+                _context.SessionRecordings.Update(recording);
+                hasChanges = true;
+            }
+        }
+
+        if (hasChanges)
+        {
+            await _context.SaveChangesAsync();
+        }
 
         // 2. Fetch all CourseMedias (which now includes both educational videos, and exams)
         var courseMedias = await _context.CourseMedias
