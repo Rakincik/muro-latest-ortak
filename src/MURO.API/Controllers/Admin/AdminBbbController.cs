@@ -158,9 +158,9 @@ public class AdminBbbController : ControllerBase
                 {
                     var recordings = await _bbbService.GetRecordingsAsync(null);
                     var matchingRec = recordings.FirstOrDefault(r => r.RecordingId == request.RecordingId);
-                    if (matchingRec != null && !string.IsNullOrEmpty(matchingRec.MeetingId))
+                    if (matchingRec != null && !string.IsNullOrEmpty(matchingRec.Name))
                     {
-                        videoTitle = matchingRec.MeetingId;
+                        videoTitle = matchingRec.Name;
                     }
                     else
                     {
