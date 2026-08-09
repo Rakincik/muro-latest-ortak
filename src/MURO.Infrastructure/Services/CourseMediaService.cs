@@ -38,7 +38,7 @@ public class CourseMediaService : ICourseMediaService
             .Select(cm => new CourseMediaDto(
                 cm.Id,
                 cm.CourseId,
-                cm.MediaAssetId,
+                cm.MediaAssetId ?? (cm.Session != null && cm.Session.Recording != null ? cm.Session.Recording.MediaAssetId : null),
                 cm.OrderIndex,
                 cm.MediaAsset != null ? new MediaAssetDto(
                     cm.MediaAsset.Id,
@@ -53,7 +53,20 @@ public class CourseMediaService : ICourseMediaService
                     cm.MediaAsset.FolderId,
                     cm.MediaAsset.CreatedAt,
                     cm.MediaAsset.Tags
-                ) : null,
+                ) : (cm.Session != null && cm.Session.Recording != null && cm.Session.Recording.MediaAsset != null ? new MediaAssetDto(
+                    cm.Session.Recording.MediaAsset.Id,
+                    cm.Session.Recording.MediaAsset.Title,
+                    cm.Session.Recording.MediaAsset.FilePath,
+                    cm.Session.Recording.MediaAsset.HlsPath,
+                    cm.Session.Recording.MediaAsset.ThumbnailPath,
+                    cm.Session.Recording.MediaAsset.DurationSeconds,
+                    cm.Session.Recording.MediaAsset.Status.ToString(),
+                    cm.CourseId,
+                    cm.Course.Title,
+                    cm.Session.Recording.MediaAsset.FolderId,
+                    cm.Session.Recording.MediaAsset.CreatedAt,
+                    cm.Session.Recording.MediaAsset.Tags
+                ) : null),
                 cm.ExamId,
                 cm.Exam != null ? cm.Exam.Title : null,
                 cm.SessionId,
