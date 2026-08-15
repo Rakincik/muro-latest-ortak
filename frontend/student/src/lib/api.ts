@@ -91,10 +91,11 @@ export const API_BASE = API_URL.replace('/api/v1', '');
 interface FetchOptions extends RequestInit {
     token?: string;
     tenantId?: string;
+    _isRetry?: boolean;
 }
 
 export async function api<T = unknown>(endpoint: string, options: FetchOptions = {}): Promise<T> {
-    const { token, tenantId, headers: customHeaders, ...rest } = options;
+    const { token, tenantId, headers: customHeaders, _isRetry, ...rest } = options;
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         ...(customHeaders as Record<string, string>),
@@ -122,6 +123,42 @@ export async function api<T = unknown>(endpoint: string, options: FetchOptions =
     const response = await fetch(`${API_URL}${endpoint}`, fetchOptions);
     if (!response.ok) {
         const body = await response.json().catch(() => ({}));
+        
+        // 401 Unauthorized silent refresh retry handler (exclude login/refresh routes to avoid recursion)
+        if (response.status === 401 && endpoint !== "/auth/refresh" && endpoint !== "/auth/login" && !_isRetry && typeof window !== "undefined") {
+            const refresh = localStorage.getItem("muro_student_refresh");
+            if (refresh) {
+                try {
+                    const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Tenant-Id": tenantId || ""
+                        },
+                        body: JSON.stringify({ refreshToken: refresh })
+                    });
+                    
+                    if (refreshResponse.ok) {
+                        const refreshData = await refreshResponse.json() as AuthResponse;
+                        localStorage.setItem("muro_student_token", refreshData.token);
+                        localStorage.setItem("muro_student_refresh", refreshData.refreshToken);
+                        
+                        // Dispatch event to sync React context state (AuthContext.tsx)
+                        window.dispatchEvent(new CustomEvent("auth:refreshed", { detail: refreshData }));
+                        
+                        // Retry original request with the new access token
+                        return await api<T>(endpoint, {
+                            ...options,
+                            token: refreshData.token,
+                            _isRetry: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Silent token refresh failed:", e);
+                }
+            }
+        }
+
         // SESSION_KICKED: başka cihazdan giriş yapıldı — global event at
         if (response.status === 401 && body?.error === "SESSION_KICKED") {
             if (typeof window !== "undefined")
@@ -447,6 +484,7 @@ export interface CourseMediaDto {
     sessionStatus?: string | null;
     sessionScheduledStart?: string | null;
     createdAt: string;
+    customTitle?: string | null;
 }
 
 export const courseApi = {
@@ -702,6 +740,7 @@ export interface MediaAssetDto {
     sessionTitle: string | null;
     courseId: string | null;
     courseTitle: string | null;
+    filePath?: string | null;
     hlsPath: string | null;
     thumbnailPath: string | null;
     durationSeconds: number | null;

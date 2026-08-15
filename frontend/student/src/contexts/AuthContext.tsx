@@ -62,6 +62,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => window.removeEventListener("session:kicked", handler);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // auth:refreshed: sessiz token yenilemesi api.ts'de yapıldığında React state'ini senkronize et
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail) {
+                setToken(detail.token);
+                setUser(detail.user);
+                const tid = getActiveTenantId(detail.user);
+                if (tid) setCurrentTenantId(tid);
+            }
+        };
+        window.addEventListener("auth:refreshed", handler);
+        return () => window.removeEventListener("auth:refreshed", handler);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         const init = async () => {
             if (typeof window !== "undefined") {
