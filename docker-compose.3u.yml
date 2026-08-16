@@ -76,7 +76,7 @@ services:
       - Bbb__WebhookSharedSecret=${BBB_WEBHOOK_SECRET}
       - Bbb__DefaultAttendeePw=attendee123
       - Bbb__DefaultModeratorPw=moderator123
-      - Bbb__Defaults__LogoutURL=${ADMIN_URL}/dashboard/courses
+      - Bbb__Defaults__LogoutURL=https://3u-ad.muro.click/dashboard/courses
       - Cors__AllowedOrigins__0=https://3u.muro.click
       - Cors__AllowedOrigins__1=https://3u-ad.muro.click
       - Cors__AllowedOrigins__2=https://3u-ap.muro.click

@@ -58,6 +58,19 @@ docker build -t muro-student-mng:latest \
 echo "✅ MNG özel imajları hazır."
 echo ""
 
+# 4.5. ENS (online.turkceoabtdeyiz.com) Özel İmajları
+echo "📦 5.5. ENS (online.turkceoabtdeyiz.com) özel imajları derleniyor..."
+docker build -t muro-admin-ens:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://online.turkceoabtdeyiz.com/api/v1" \
+  --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
+  -f frontend/admin/Dockerfile ./frontend/admin
+
+docker build -t muro-student-ens:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://online.turkceoabtdeyiz.com/api/v1" \
+  -f frontend/student/Dockerfile ./frontend/student
+echo "✅ ENS özel imajları hazır."
+echo ""
+
 # 5. Bütün Kurumları Sırayla Recreate Etme
 echo "🔄 6. Kurum klasörlerine gidilip kodlar güncelleniyor ve konteynerlar yeniden başlatılıyor..."
 

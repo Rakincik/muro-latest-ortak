@@ -3,10 +3,10 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { studentSupportApi, type StudentTicketDto } from "@/lib/api";
+import { studentSupportApi, type StudentTicketDto, type FaqDto, API_BASE } from "@/lib/api";
 import {
-    Headset, Search, Send, Plus, X, Tag, Clock,
-    MessageSquare, AlertCircle, ChevronDown, Check, RefreshCw, ArrowLeft
+    Headset, Search, Send, Plus, X, Tag, Clock, HelpCircle,
+    MessageSquare, AlertCircle, ChevronDown, Check, RefreshCw, ArrowLeft, BookOpen
 } from "lucide-react";
 
 const statusStyles: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -82,6 +82,19 @@ function CustomCategorySelect({
     );
 }
 
+const getFileUrl = (path: string | null) => {
+    if (!path) return "";
+    if (path.startsWith("http") || path.startsWith("blob:") || path.startsWith("data:")) return path;
+    const base = API_BASE;
+    let cleanPath = path.startsWith("/") ? path : `/${path}`;
+    if (cleanPath.startsWith('/uploads')) {
+        cleanPath = `/api/v1${cleanPath}`;
+    }
+    return `${base}${cleanPath}`;
+};
+
+const FAQ_CATEGORIES = ["Teknik Sorun", "Ödeme İşlemleri", "Kayıt / Üyelik", "Diğer"];
+
 export default function SupportPage() {
     const { token, currentTenantId: tenantId } = useAuth();
     
@@ -93,6 +106,13 @@ export default function SupportPage() {
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     
+    // SSS (FAQ) State
+    const [faqs, setFaqs] = useState<FaqDto[]>([]);
+    const [loadingFaqs, setLoadingFaqs] = useState(false);
+    const [faqSearch, setFaqSearch] = useState("");
+    const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
+    const [showFaqView, setShowFaqView] = useState(false);
+
     // Form Modal
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({ subject: "", category: "Teknik Sorun", message: "" });
@@ -115,7 +135,7 @@ export default function SupportPage() {
         studentSupportApi.list(token, tenantId)
             .then(data => {
                 setTickets(data);
-                if (data.length > 0 && !selectedId) {
+                if (data.length > 0 && !selectedId && !showFaqView) {
                     if (typeof window !== "undefined" && window.innerWidth >= 768) {
                         setSelectedId(data[0].id);
                     }
@@ -123,6 +143,15 @@ export default function SupportPage() {
             })
             .catch(() => setTickets([]))
             .finally(() => setLoading(false));
+    }, [token, tenantId, selectedId, showFaqView]);
+
+    useEffect(() => {
+        if (!token || !tenantId) return;
+        setLoadingFaqs(true);
+        studentSupportApi.listFaqs(token, tenantId)
+            .then(setFaqs)
+            .catch(() => setFaqs([]))
+            .finally(() => setLoadingFaqs(false));
     }, [token, tenantId]);
 
     useEffect(() => {
@@ -134,6 +163,7 @@ export default function SupportPage() {
         studentSupportApi.get(token, tenantId, selectedId)
             .then(data => {
                 setSelected(data);
+                setShowFaqView(false);
             })
             .catch(() => setSelected(null))
             .finally(() => setLoadingDetail(false));
@@ -143,7 +173,7 @@ export default function SupportPage() {
         if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }, [selected?.replies]);
 
-    const filtered = useMemo(() => {
+    const filteredTickets = useMemo(() => {
         return tickets.filter(t => {
             const matchSearch = search === "" || t.subject.toLowerCase().includes(search.toLowerCase());
             const matchStatus = statusFilter === "all" || t.status === statusFilter || 
@@ -153,6 +183,14 @@ export default function SupportPage() {
             return matchSearch && matchStatus;
         });
     }, [tickets, search, statusFilter]);
+
+    const filteredFaqs = useMemo(() => {
+        return faqs.filter(f => 
+            faqSearch === "" || 
+            f.questionText.toLowerCase().includes(faqSearch.toLowerCase()) || 
+            f.answerText.toLowerCase().includes(faqSearch.toLowerCase())
+        );
+    }, [faqs, faqSearch]);
 
     const openCount = tickets.filter(t => t.status === "Open" || t.status === "Açık").length;
     const answeredCount = tickets.filter(t => t.status === "Answered" || t.status === "Yanıtlandı" || t.status === "InProgress").length;
@@ -230,15 +268,23 @@ export default function SupportPage() {
                             <span className="text-[10px] font-bold text-[#25D366] uppercase">Acil Durum WhatsApp</span>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
                                 <a href="https://wa.me/905453724201" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
-                                    Rüstem Akıncık (0545 372 4201)
+                                    Rüstem (0545 372 4201)
                                 </a>
                                 <span className="text-[#A0AEC0]/40 hidden xs:inline">|</span>
                                 <a href="https://wa.me/905536445851" target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0A1931] hover:text-[#25D366] transition-colors">
-                                    Volkan Çetin (0553 644 5851)
+                                    Volkan (0553 644 5851)
                                 </a>
                             </div>
                         </div>
                     </div>
+                    
+                    <button
+                        onClick={() => { setSelectedId(null); setShowFaqView(true); }}
+                        className={`flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-xl transition-all shadow-md ${showFaqView ? "bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-200" : "bg-white border border-[#E2E8F0] hover:bg-gray-50 text-[#1B3B6F]"}`}
+                    >
+                        <BookOpen size={16} /> SSS / Kılavuzlar
+                    </button>
+
                     <button
                         onClick={() => setShowForm(true)}
                         className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1B3B6F] hover:bg-[#0A1931] text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95"
@@ -250,7 +296,7 @@ export default function SupportPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6" style={{ height: 'calc(100vh - 200px)' }}>
                 {/* Left Pane: Ticket List */}
-                <div className={`md:col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm ${selectedId ? "hidden md:flex" : "flex"}`}>
+                <div className={`md:col-span-2 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm ${(selectedId || showFaqView) ? "hidden md:flex" : "flex"}`}>
                     <div className="p-4 border-b border-[#E2E8F0]/60 space-y-3">
                         <div className="relative">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
@@ -263,13 +309,13 @@ export default function SupportPage() {
                             />
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={() => setStatusFilter("all")} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors font-medium ${statusFilter === "all" ? "bg-[#0A1931] text-white" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-[#E2E8F0]/60"}`}>
+                            <button onClick={() => { setStatusFilter("all"); setShowFaqView(false); }} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors font-medium ${statusFilter === "all" && !showFaqView ? "bg-[#0A1931] text-white" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-[#E2E8F0]/60"}`}>
                                 Tümü
                             </button>
-                            <button onClick={() => setStatusFilter("Open")} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors font-medium ${statusFilter === "Open" ? "bg-amber-100 text-amber-700" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-amber-50"}`}>
+                            <button onClick={() => { setStatusFilter("Open"); setShowFaqView(false); }} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors font-medium ${statusFilter === "Open" && !showFaqView ? "bg-amber-100 text-amber-700" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-amber-50"}`}>
                                 Açık ({openCount})
                             </button>
-                            <button onClick={() => setStatusFilter("Answered")} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors font-medium ${statusFilter === "Answered" ? "bg-blue-100 text-blue-700" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-blue-50"}`}>
+                            <button onClick={() => { setStatusFilter("Answered"); setShowFaqView(false); }} className={`flex-1 py-1.5 text-xs rounded-lg transition-colors font-medium ${statusFilter === "Answered" && !showFaqView ? "bg-blue-100 text-blue-700" : "bg-[#E2E8F0]/30 text-[#5A6A7A] hover:bg-blue-50"}`}>
                                 Yanıtlandı ({answeredCount})
                             </button>
                         </div>
@@ -278,16 +324,16 @@ export default function SupportPage() {
                     <div className="flex-1 overflow-y-auto">
                         {loading ? (
                             <div className="p-4 space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 rounded-lg bg-[#E2E8F0]/30 animate-pulse" />)}</div>
-                        ) : filtered.length === 0 ? (
+                        ) : filteredTickets.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-[#A0AEC0]">
                                 <Headset size={32} className="opacity-20 mb-2" />
                                 <p className="text-sm">Talep bulunamadı</p>
                             </div>
-                        ) : filtered.map(t => {
+                        ) : filteredTickets.map(t => {
                             const ss = getStatusStyle(t.status);
                             return (
-                                <button key={t.id} onClick={() => setSelectedId(t.id)}
-                                    className={`w-full text-left px-4 py-4 border-b border-[#E2E8F0]/60 hover:bg-[#E2E8F0]/20 transition-colors ${selectedId === t.id ? "bg-[#F0F4FF] border-l-2 border-l-[#1B3B6F]" : ""}`}>
+                                <button key={t.id} onClick={() => { setSelectedId(t.id); setShowFaqView(false); }}
+                                    className={`w-full text-left px-4 py-4 border-b border-[#E2E8F0]/60 hover:bg-[#E2E8F0]/20 transition-colors ${selectedId === t.id && !showFaqView ? "bg-[#F0F4FF] border-l-2 border-l-[#1B3B6F]" : ""}`}>
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="text-sm font-bold text-[#0A1931] truncate flex-1">{t.subject}</span>
                                         <span className={`w-2 h-2 rounded-full shrink-0 ${ss.dot}`} />
@@ -304,9 +350,96 @@ export default function SupportPage() {
                     </div>
                 </div>
 
-                {/* Right Pane: Detail & Chat */}
-                <div className={`md:col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm ${!selectedId ? "hidden md:flex" : "flex"}`}>
-                    {selected ? (
+                {/* Right Pane: Detail & Chat & FAQ */}
+                <div className={`md:col-span-3 bg-white rounded-2xl border border-[#E2E8F0]/60 flex flex-col overflow-hidden shadow-sm ${!selectedId && !showFaqView ? "hidden md:flex" : "flex"}`}>
+                    {showFaqView ? (
+                        /* SSS (FAQ) View */
+                        <div className="flex-1 flex flex-col overflow-hidden bg-white">
+                            <div className="px-4 py-3 md:px-6 md:py-4 border-b border-[#E2E8F0]/60 bg-[#F8FAFC] flex items-center gap-3">
+                                <button 
+                                    onClick={() => { setSelectedId(null); setShowFaqView(false); }}
+                                    className="md:hidden p-2 rounded-xl border border-[#E2E8F0] bg-white text-[#1B3B6F] hover:bg-gray-50 transition-colors"
+                                >
+                                    <ArrowLeft size={16} />
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                    <h2 className="text-sm md:text-lg font-bold text-[#0A1931] flex items-center gap-2">
+                                        <BookOpen size={18} className="text-[#1B3B6F]" /> Sıkça Sorulan Sorular (SSS)
+                                    </h2>
+                                    <p className="text-[10px] md:text-xs text-[#A0AEC0]">Sorununuzun çözümü burada olabilir. Lütfen bilet oluşturmadan önce göz atın.</p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 border-b border-[#E2E8F0]/60">
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Sorularda ara..." 
+                                        value={faqSearch} 
+                                        onChange={e => setFaqSearch(e.target.value)}
+                                        className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-[#E2E8F0] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1B3B6F]/20 focus:bg-white transition-all" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                                {loadingFaqs ? (
+                                    <div className="flex flex-col justify-center items-center h-full py-12 gap-2 text-gray-400">
+                                        <RefreshCw size={20} className="animate-spin text-[#1B3B6F]" />
+                                        <span className="text-sm">SSS yükleniyor...</span>
+                                    </div>
+                                ) : filteredFaqs.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-[#A0AEC0] py-12">
+                                        <HelpCircle size={32} className="opacity-20 mb-2" />
+                                        <p className="text-sm">Aradığınız soru bulunamadı</p>
+                                    </div>
+                                ) : (
+                                    FAQ_CATEGORIES.map(category => {
+                                        const catFaqs = filteredFaqs.filter(f => f.category === category).sort((a, b) => a.sortOrder - b.sortOrder);
+                                        if (catFaqs.length === 0) return null;
+                                        return (
+                                            <div key={category} className="space-y-3">
+                                                <h3 className="text-xs font-bold text-[#A0AEC0] uppercase tracking-widest border-b pb-1.5 flex items-center gap-1.5">
+                                                    <Tag size={12} /> {category}
+                                                </h3>
+                                                <div className="space-y-2">
+                                                    {catFaqs.map(f => {
+                                                        const isExpanded = expandedFaqId === f.id;
+                                                        return (
+                                                            <div key={f.id} className="border border-[#E2E8F0] rounded-2xl overflow-hidden bg-white hover:border-blue-200 transition-all shadow-sm">
+                                                                <button
+                                                                    onClick={() => setExpandedFaqId(isExpanded ? null : f.id)}
+                                                                    className="w-full text-left px-5 py-4 flex items-center justify-between text-sm font-bold text-[#0A1931] hover:bg-gray-50/50"
+                                                                >
+                                                                    <span className="pr-4">{f.questionText}</span>
+                                                                    <ChevronDown size={16} className={`text-gray-400 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                                                </button>
+                                                                {isExpanded && (
+                                                                    <div className="px-5 pb-5 pt-1 border-t border-[#E2E8F0] bg-gray-50/30 space-y-4">
+                                                                        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap mt-3">{f.answerText}</p>
+                                                                        {f.imageUrl && (
+                                                                            <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm bg-white max-w-full">
+                                                                                <img 
+                                                                                    src={getFileUrl(f.imageUrl)} 
+                                                                                    alt="Çözüm ekran görüntüsü" 
+                                                                                    className="max-h-80 w-auto object-contain mx-auto" 
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    ) : selected ? (
                         <>
                             <div className="px-4 py-3 md:px-6 md:py-4 border-b border-[#E2E8F0]/60 bg-[#F8FAFC] flex items-center gap-3">
                                 {/* Mobile Back Button */}

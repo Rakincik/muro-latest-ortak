@@ -79,6 +79,7 @@ public class SupportController : ControllerBase
         => Ok(await _supportService.GetFaqsAsync());
 
     [HttpPost("faq")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<ActionResult<FaqDto>> CreateFaq([FromBody] CreateFaqRequest request)
     {
         var f = await _supportService.CreateFaqAsync(request);
@@ -87,10 +88,12 @@ public class SupportController : ControllerBase
     }
 
     [HttpPut("faq/{id:guid}")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<ActionResult<FaqDto>> UpdateFaq(Guid id, [FromBody] UpdateFaqRequest request)
         => Ok(await _supportService.UpdateFaqAsync(id, request));
 
     [HttpDelete("faq/{id:guid}")]
+    [Authorize(Roles = "SuperAdmin")]
     public async Task<IActionResult> DeleteFaq(Guid id)
     {
         await _supportService.DeleteFaqAsync(id);

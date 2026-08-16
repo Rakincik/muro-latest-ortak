@@ -496,6 +496,15 @@ export interface TicketReplyDto {
     createdAt: string;
 }
 
+export interface FaqDto {
+    id: string;
+    questionText: string;
+    answerText: string;
+    category?: string;
+    sortOrder: number;
+    imageUrl?: string;
+}
+
 export interface AdminDashboardDto {
     totalStudents: number;
     activeStudents: number;

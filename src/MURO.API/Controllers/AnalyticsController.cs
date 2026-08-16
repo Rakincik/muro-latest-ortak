@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.RateLimiting;
-using MURO.API.Middleware;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MURO.Application.DTOs.Analytics;
@@ -8,10 +6,9 @@ using System.Security.Claims;
 
 namespace MURO.API.Controllers;
 
-[EnableRateLimiting(RateLimitingConfig.ApiPolicy)]
 [ApiController]
 [Route("api/v1/analytics")]
-[Authorize]
+[Authorize(Roles = "SuperAdmin,Admin")]
 public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analyticsService;
@@ -19,14 +16,13 @@ public class AnalyticsController : ControllerBase
     public AnalyticsController(IAnalyticsService analyticsService)
     {
         _analyticsService = analyticsService;
-            }
+    }
 
-    
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     // ── Admin Endpoints ──────────────────────────────────────────────────────
 
-    [HttpGet("dashboard")]
+    [HttpGet("stats")]
     public async Task<ActionResult<DashboardStatsDto>> GetDashboardStats()
     {
         try
@@ -42,14 +38,7 @@ public class AnalyticsController : ControllerBase
     [HttpGet("admin-dashboard")]
     public async Task<ActionResult<AdminDashboardDto>> GetAdminDashboard()
     {
-        try
-        {
-            return Ok(await _analyticsService.GetAdminDashboardAsync());
-        }
-        catch
-        {
-            return Ok(new AdminDashboardDto(0, new List<AdminWeeklyActivityDto>(), new List<AdminTopCourseDto>(), new List<AdminTopStudentDto>()));
-        }
+        return Ok(await _analyticsService.GetAdminDashboardAsync());
     }
 
     [HttpGet("video-stats")]
@@ -101,7 +90,9 @@ public class AnalyticsController : ControllerBase
     /// GET /api/v1/analytics/students/summary — Tüm öğrencilerin toplu karne ortalaması
     [HttpGet("students/summary")]
     public async Task<ActionResult<ScorecardSummaryDto>> GetScorecardSummary()
-        => Ok(await _analyticsService.GetScorecardSummaryAsync());    // ── Öğrenci Endpoint ─────────────────────────────────────────────────────
+        => Ok(await _analyticsService.GetScorecardSummaryAsync());
+
+    // ── Öğrenci Endpoint ─────────────────────────────────────────────────────
 
     /// GET /api/v1/analytics/me/dashboard — Öğrenci kendi dashboard istatistikleri
     [HttpGet("me/dashboard")]

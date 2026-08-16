@@ -161,7 +161,7 @@ export default function StudentCalendarPage() {
             </div>
 
             {/* Stats */}
-            <div className="flex overflow-x-auto sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3 pb-2 snap-x hide-scrollbar">
+            <div className="flex overflow-x-auto sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-3 pb-2 snap-x hide-scrollbar">
                 {Object.entries(eventColors).map(([type, c]) => (
                     <div key={type} className={`${c.bg} rounded-xl p-3 flex items-center gap-2 border ${c.border} shrink-0 w-36 sm:w-auto snap-center`}>
                         <div className={`w-2.5 h-2.5 rounded-full ${c.dot}`} />
@@ -299,33 +299,33 @@ export default function StudentCalendarPage() {
                 {/* Month View */}
                 {viewMode === "month" && (
                     <div className="flex flex-col lg:grid lg:grid-cols-10 gap-5">
-                        <div className="lg:col-span-7 bg-white rounded-2xl border border-[#E2E8F0] p-2 sm:p-5 overflow-x-hidden sm:overflow-x-auto">
+                        <div className="lg:col-span-7 bg-slate-50/50 rounded-2xl border border-[#E2E8F0] p-2 sm:p-5 overflow-x-hidden sm:overflow-x-auto">
                             <div className="min-w-0">
                                 <div className="grid grid-cols-7 mb-2">
                                 {DAYS_TR.map(d => <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-[#A0AEC0] py-2">{d}</div>)}
                             </div>
                             <div className="grid grid-cols-7 gap-1">
-                                {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-11 sm:h-24 rounded-xl bg-[#E2E8F0]/20 animate-pulse" />) :
+                                {loading ? Array.from({ length: 35 }).map((_, i) => <div key={i} className="h-11 sm:h-28 rounded-xl bg-[#E2E8F0]/20 animate-pulse" />) :
                                     cells.map((cell, i) => {
-                                        if (!cell.day) return <div key={`empty-${i}`} className="h-11 sm:h-24 bg-slate-50/20 border border-slate-100/30 rounded-xl" />;
+                                        if (!cell.day) return <div key={`empty-${i}`} className="h-11 sm:h-28 bg-slate-100/30 border border-slate-200/50 rounded-xl" />;
                                         const dayEvents = getEventsForDate(cell.date);
                                         const isSelected = selectedDate === cell.date;
                                         const isToday = cell.date === today;
                                         return (
                                             <button key={cell.date} onClick={() => setSelectedDate(cell.date)}
                                                 onDoubleClick={() => { setSelectedDate(cell.date); setCurrentDate(new Date(cell.date)); setViewMode("day"); }}
-                                                className={`h-11 sm:h-24 rounded-xl p-1 sm:p-2 text-center sm:text-left flex flex-col justify-between transition-all border hover:shadow-sm
-                                                    ${isSelected ? "bg-[#1B3B6F]/10 border-[#1B3B6F] ring-1 ring-[#1B3B6F]/20" : "bg-white border-[#E2E8F0]/60"}
-                                                    ${isToday && !isSelected ? "bg-[#1B3B6F]/5 border-[#1B3B6F]/30" : ""}`}>
+                                                className={`h-11 sm:h-28 rounded-xl p-1 sm:p-2 text-center sm:text-left flex flex-col justify-between transition-all border hover:shadow-md
+                                                    ${isSelected ? "bg-[#1B3B6F]/10 border-[#1B3B6F] ring-1 ring-[#1B3B6F]/20" : "bg-white border-[#E2E8F0] shadow-sm"}
+                                                    ${isToday && !isSelected ? "bg-indigo-50/30 border-[#1B3B6F]/40 shadow-sm" : ""}`}>
                                                 <span className={`text-[10px] sm:text-xs font-bold mb-1 mx-auto sm:mx-0 ${isToday ? "w-5 h-5 sm:w-6 sm:h-6 bg-[#1B3B6F] text-white rounded-full flex items-center justify-center" : "text-[#1B3B6F]"}`}>{cell.day}</span>
                                                 
                                                 {/* Desktop: Texts */}
                                                 <div className="hidden sm:flex flex-1 flex-col space-y-0.5 overflow-hidden w-full">
-                                                    {dayEvents.slice(0, 2).map(ev => {
+                                                    {dayEvents.slice(0, 3).map(ev => {
                                                         const col = getColor(ev.eventType);
                                                         return (<div key={ev.id} className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${col.bg} ${col.text} truncate w-full`}>{ev.title}</div>);
                                                     })}
-                                                    {dayEvents.length > 2 && <span className="text-[9px] text-[#A0AEC0] px-1">+{dayEvents.length - 2}</span>}
+                                                    {dayEvents.length > 3 && <span className="text-[9px] text-[#A0AEC0] px-1">+{dayEvents.length - 3}</span>}
                                                 </div>
 
                                                 {/* Mobile: Dots */}

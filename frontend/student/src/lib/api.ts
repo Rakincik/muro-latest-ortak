@@ -781,6 +781,15 @@ export interface StudentTicketDto {
     replies: { id: string; authorName: string; message: string; isAdmin: boolean; createdAt: string }[];
 }
 
+export interface FaqDto {
+    id: string;
+    questionText: string;
+    answerText: string;
+    category?: string;
+    sortOrder: number;
+    imageUrl?: string;
+}
+
 export const studentSupportApi = {
     list: async (token: string, tenantId: string): Promise<StudentTicketDto[]> => {
         const data = await api<{ items: StudentTicketDto[] } | StudentTicketDto[] | unknown>('/support/tickets?pageSize=50', { token, tenantId });
@@ -816,6 +825,8 @@ export const studentSupportApi = {
     },
     reply: (token: string, tenantId: string, ticketId: string, message: string) =>
         api('/support/tickets/' + ticketId + '/reply', { method: 'POST', token, tenantId, body: JSON.stringify({ body: message }) }),
+    listFaqs: (token: string, tenantId: string): Promise<FaqDto[]> =>
+        api<FaqDto[]>('/support/faq', { token, tenantId }),
 };
 
 // ── Tenant Branding API ──────────────────────────────────────────────────────

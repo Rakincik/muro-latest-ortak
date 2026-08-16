@@ -19,6 +19,6 @@ public record TicketMessageDto(
 public record CreateTicketRequest(string Subject, string Body, string Priority, string Category);
 public record ReplyTicketRequest(string Body);
 
-public record FaqDto(Guid Id, string QuestionText, string AnswerText, string? Category, int SortOrder);
-public record CreateFaqRequest(string QuestionText, string AnswerText, string? Category, int? SortOrder);
-public record UpdateFaqRequest(string? QuestionText, string? AnswerText, string? Category, int? SortOrder);
+public record FaqDto(Guid Id, string QuestionText, string AnswerText, string? Category, int SortOrder, string? ImageUrl);
+public record CreateFaqRequest(string QuestionText, string AnswerText, string? Category, int? SortOrder, string? ImageUrl);
+public record UpdateFaqRequest(string? QuestionText, string? AnswerText, string? Category, int? SortOrder, string? ImageUrl);

@@ -94,7 +94,7 @@ public class LiveMeetingService : ILiveMeetingService
             return new SessionStartResult(session.Id, "", session.VideoUrl, "Live");
         }
 
-        var meetingId = $"monopol_{session.Id}";
+        var meetingId = $"monopol_{courseId}";
         var attendeePw = _config["Bbb:DefaultAttendeePw"] ?? "ap";
         var moderatorPw = _config["Bbb:DefaultModeratorPw"] ?? "mp";
 

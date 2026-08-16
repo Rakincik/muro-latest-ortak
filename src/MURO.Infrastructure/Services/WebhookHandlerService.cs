@@ -153,7 +153,15 @@ public class WebhookHandlerService : IWebhookHandlerService
 
         var session = await _context.Sessions
             .Include(s => s.Course)
-            .FirstOrDefaultAsync(s => s.BbbMeetingId == evt.MeetingId);
+            .FirstOrDefaultAsync(s => (s.BbbMeetingId == evt.MeetingId || s.CourseId == evt.SessionId) && s.Status == SessionStatus.Live);
+
+        if (session == null)
+        {
+            // Fallback: If no live session is found, try finding any session with this meeting ID
+            session = await _context.Sessions
+                .Include(s => s.Course)
+                .FirstOrDefaultAsync(s => s.BbbMeetingId == evt.MeetingId);
+        }
 
         if (session == null)
         {
@@ -168,6 +176,13 @@ public class WebhookHandlerService : IWebhookHandlerService
         }
 
         session.Status = SessionStatus.Ended;
+        
+        // Save the unique timestamped internal meeting ID for matching recordings later
+        if (!string.IsNullOrEmpty(evt.BbbInternalMeetingId))
+        {
+            session.BbbMeetingId = evt.BbbInternalMeetingId;
+        }
+
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Session sonlandırıldı ✓ SessionId: {SessionId} | MeetingId: {MeetingId}",
@@ -228,9 +243,7 @@ public class WebhookHandlerService : IWebhookHandlerService
             .Include(s => s.Recording)
             .AsQueryable();
 
-        var session = evt.SessionId != Guid.Empty
-            ? await sessionQuery.FirstOrDefaultAsync(s => s.Id == evt.SessionId)
-            : await sessionQuery.FirstOrDefaultAsync(s => s.BbbMeetingId == evt.MeetingId);
+        var session = await sessionQuery.FirstOrDefaultAsync(s => s.BbbMeetingId == evt.BbbInternalMeetingId || s.BbbMeetingId == evt.MeetingId);
 
         if (session != null && evt.SessionId == Guid.Empty)
         {

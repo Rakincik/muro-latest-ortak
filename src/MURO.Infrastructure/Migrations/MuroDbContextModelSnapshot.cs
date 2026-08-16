@@ -700,6 +700,9 @@ namespace MURO.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("QuestionText")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1368,6 +1371,12 @@ namespace MURO.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AccentColor")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BbbSecret")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BbbUrl")
                         .HasColumnType("text");
 
                     b.Property<string>("FaviconUrl")

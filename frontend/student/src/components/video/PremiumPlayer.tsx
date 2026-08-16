@@ -13,6 +13,7 @@ interface PremiumPlayerProps {
     poster?: string | null;
     initialTime?: number | null;
     autoResume?: boolean;
+    onTimeUpdate?: (currentTime: number, duration: number) => void;
 }
 
 const fmtTime = (sec: number) => {
@@ -30,7 +31,7 @@ const fmtTime = (sec: number) => {
     return `${s} saniye`;
 };
 
-export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, onLoaded, onEnded, autoplay = false, poster, initialTime, autoResume = false }: PremiumPlayerProps) {
+export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, onLoaded, onEnded, autoplay = false, poster, initialTime, autoResume = false, onTimeUpdate }: PremiumPlayerProps) {
     const plyrRef = useRef<APITypes>(null);
     const hlsRef = useRef<Hls | null>(null);
     
@@ -432,6 +433,10 @@ export const PremiumPlayer = React.memo(function PremiumPlayer({ src, mediaId, o
                             localStorage.setItem(`muro_video_time_${mediaId}`, videoElement.currentTime.toString());
                         }
                     } catch { }
+
+                    if (onTimeUpdate) {
+                        onTimeUpdate(videoElement.currentTime, duration);
+                    }
                 }
             };
             handleTimeUpdateCleanup = handleTimeUpdate;

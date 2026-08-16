@@ -365,10 +365,11 @@ export default function CalendarPage() {
                         {filteredCourses.map(c => (
                             <div key={c.id} draggable onDragStart={() => setDragCourse(c)} onDragEnd={() => { setDragCourse(null); setDropTarget(null); }}
                                 onClick={() => dragCourse?.id === c.id ? setDragCourse(null) : setDragCourse(c)}
+                                title={c.title}
                                 className={`flex items-center gap-2.5 px-3 py-3 rounded-xl transition-all group ${dragCourse?.id === c.id ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-100 shadow-sm' : 'bg-transparent hover:bg-emerald-50 border border-transparent hover:border-emerald-200 cursor-grab active:cursor-grabbing'}`}>
                                 <GripVertical size={14} className="text-[#CBD5E1] group-hover:text-emerald-500 shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-[#1E293B] truncate group-hover:text-emerald-800">{c.title}</p>
+                                    <p className="text-sm font-bold text-[#1E293B] truncate group-hover:text-emerald-800" title={c.title}>{c.title}</p>
                                     <p className="text-[11px] font-medium text-[#64748B] mt-0.5">{c.sessionCount ?? 0} oturum</p>
                                 </div>
                             </div>

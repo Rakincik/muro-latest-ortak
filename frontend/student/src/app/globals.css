@@ -68,12 +68,14 @@ button:active,
   background: white;
   border: 1px solid #E2E8F0;
   border-radius: 16px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(10, 25, 49, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .glass-card:hover {
-  border-color: #A0AEC0;
-  box-shadow: 0 4px 20px rgba(10, 25, 49, 0.06);
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 20px rgba(10, 25, 49, 0.08);
+  transform: translateY(-1px);
 }
 
 /* Sidebar — dark (stays dark for contrast) */

@@ -42,6 +42,8 @@ export default function WatchPage() {
     const [noteText, setNoteText] = useState("");
     const [loading, setLoading] = useState(true);
     const [sideTab, setSideTab] = useState<"playlist" | "notes">("playlist");
+    const [initialTime, setInitialTime] = useState<number | null>(null);
+    const lastSavedTimeRef = useRef<number>(0);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [securityViolation, setSecurityViolation] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -174,6 +176,7 @@ export default function WatchPage() {
 
         const loadData = async () => {
             setLoading(true);
+            setInitialTime(null);
             try {
                 const headers = { "Authorization": `Bearer ${token}`, "X-Tenant-Id": tenantId };
                 const courseRes = await fetch(`${API_URL}/courses/${courseId}`, { headers });
@@ -210,10 +213,10 @@ export default function WatchPage() {
                         return {
                             id: cm.id,
                             sessionId: cm.sessionId || cm.id,
-                            sessionTitle: cm.mediaAsset?.title || cm.sessionTitle || cm.examTitle || 'İçerik',
+                            sessionTitle: cm.customTitle || cm.sessionTitle || cm.mediaAsset?.title || cm.examTitle || 'İçerik',
                             courseId: cm.courseId,
                             courseTitle: courseData?.title || '',
-                            playbackUrl: matchRec?.playbackUrl || '',
+                            playbackUrl: matchRec?.playbackUrl || cm.mediaAsset?.filePath || '',
                             hlsPath: cm.mediaAsset?.hlsPath || null,
                             thumbnailPath: cm.mediaAsset?.thumbnailPath || null,
                             durationSeconds: cm.mediaAsset?.durationSeconds || matchRec?.durationSeconds || 0,
@@ -232,6 +235,26 @@ export default function WatchPage() {
 
                 const current = courseRecs.find((r: RecordingDto) => r.id === recordingId) || courseRecs[0];
                 setCurrentRec(current);
+
+                if (current) {
+                    const targetId = current.mediaAssetId || current.id;
+                    try {
+                        const progress = await videoApi.getProgress(token, tenantId, targetId);
+                        if (progress && progress.lastPosition > 0) {
+                            setInitialTime(progress.lastPosition);
+                            lastSavedTimeRef.current = progress.lastPosition;
+                        } else {
+                            setInitialTime(0);
+                            lastSavedTimeRef.current = 0;
+                        }
+                    } catch {
+                        setInitialTime(0);
+                        lastSavedTimeRef.current = 0;
+                    }
+                } else {
+                    setInitialTime(0);
+                    lastSavedTimeRef.current = 0;
+                }
             } catch (e) { console.error(e); }
             setLoading(false);
         };
@@ -246,6 +269,48 @@ export default function WatchPage() {
             .then(fetchedNotes => { if (Array.isArray(fetchedNotes)) setNotes(fetchedNotes); })
             .catch(() => setNotes([]));
     }, [currentRec?.id, currentRec?.mediaAssetId, token, tenantId]);
+
+    // ── Save video progress (Resume Playback) ──
+    const handleTimeUpdate = useCallback(async (currentTime: number, duration: number) => {
+        if (!token || !tenantId || !currentRec) return;
+        
+        const timeDelta = currentTime - lastSavedTimeRef.current;
+        
+        // Throttling: En az 15 saniye geçtiyse veritabanına kaydet
+        if (Math.abs(timeDelta) >= 15) {
+            // Eğer ileri/geri sarma yoksa normal akışta izlenen süreyi ekle. Aksi halde 0 gönder.
+            const watchedIncremental = (timeDelta > 0 && timeDelta < 30) ? Math.floor(timeDelta) : 0;
+            
+            lastSavedTimeRef.current = currentTime;
+            const targetId = currentRec.mediaAssetId || currentRec.id;
+            try {
+                await videoApi.updateProgress(token, tenantId, targetId, {
+                    watchedSeconds: watchedIncremental,
+                    totalSeconds: Math.floor(duration),
+                    lastPosition: Math.floor(currentTime),
+                    markCompleted: false
+                });
+            } catch (e) {
+                console.error("Failed to update progress:", e);
+            }
+        }
+    }, [token, tenantId, currentRec]);
+
+    const handleVideoEnded = useCallback(async () => {
+        if (!token || !tenantId || !currentRec) return;
+        const targetId = currentRec.mediaAssetId || currentRec.id;
+        try {
+            await videoApi.updateProgress(token, tenantId, targetId, {
+                watchedSeconds: 0,
+                totalSeconds: 0,
+                lastPosition: 0,
+                markCompleted: true
+            });
+            localStorage.removeItem(`muro_video_time_${currentRec.id}`);
+        } catch (e) {
+            console.error("Failed to mark progress completed:", e);
+        }
+    }, [token, tenantId, currentRec]);
 
     // Navigate to next recording
     const playNext = useCallback(() => {
@@ -270,7 +335,7 @@ export default function WatchPage() {
         // Optimistic local add
         const now = new Date().toISOString();
         const tempNote: VideoNoteDto = {
-            id: crypto.randomUUID(),
+            id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36),
             mediaAssetId: targetId,
             timestampSeconds: 0,
             timestampFormatted: fmtClockTime(now),
@@ -335,7 +400,7 @@ export default function WatchPage() {
                     <ChevronLeft size={14} /> {courseTitle || "Derse Dön"}
                 </Link>
                 <div className="h-4 w-px bg-white/10" />
-                <h1 className="text-white/80 text-sm font-medium truncate flex-1">
+                <h1 className="text-white/80 text-sm font-medium truncate flex-1" title={currentRec?.sessionTitle || "Video"}>
                     {currentRec?.sessionTitle || "Video"}
                 </h1>
                 <div className="flex items-center gap-2 text-white/30 text-[10px]">
@@ -361,6 +426,25 @@ export default function WatchPage() {
                     {/* Video Player */}
                     <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden select-none">
                         {(() => {
+                            // Check if this recording will render a PremiumPlayer
+                            const isPremiumPlayer = currentRec?.videoUrl
+                                ? getVideoPlaybackDetails(currentRec.videoUrl).type !== "iframe"
+                                : (() => {
+                                      const src = currentRec?.hlsPath || currentRec?.playbackUrl;
+                                      if (!src) return false;
+                                      if (src.includes("/playback/presentation/") || src.includes("meetingId=")) return false;
+                                      return true;
+                                  })();
+
+                            if (isPremiumPlayer && initialTime === null) {
+                                return (
+                                    <div className="flex flex-col items-center justify-center gap-3 text-white/40">
+                                        <Loader2 className="animate-spin text-indigo-500" size={32} />
+                                        <span className="text-xs">Ders izleme konumu yükleniyor...</span>
+                                    </div>
+                                );
+                            }
+
                             if (currentRec?.videoUrl) {
                                 const details = getVideoPlaybackDetails(currentRec.videoUrl);
                                 if (details.type === "iframe") {
@@ -383,6 +467,10 @@ export default function WatchPage() {
                                             mediaId={currentRec?.id}
                                             poster={currentRec?.thumbnailPath ? getFileUrl(currentRec.thumbnailPath) : undefined}
                                             autoplay={true} 
+                                            initialTime={initialTime}
+                                            autoResume={true}
+                                            onTimeUpdate={handleTimeUpdate}
+                                            onEnded={handleVideoEnded}
                                         />
                                     );
                                 }
@@ -415,6 +503,10 @@ export default function WatchPage() {
                                     mediaId={currentRec?.id}
                                     poster={currentRec?.thumbnailPath ? getFileUrl(currentRec.thumbnailPath) : undefined}
                                     autoplay={true} 
+                                    initialTime={initialTime}
+                                    autoResume={true}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onEnded={handleVideoEnded}
                                 />
                             );
                         })()}
@@ -508,8 +600,8 @@ export default function WatchPage() {
                                                     }`}>
                                                     {isActive ? <Play size={12} className="ml-0.5" /> : isWatched ? <Check size={12} /> : idx + 1}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={`text-xs font-medium truncate ${isActive ? "text-indigo-300" : "text-white/60 group-hover:text-white/80"}`}>
+                                                <div className="flex-1 min-w-0" title={rec.sessionTitle}>
+                                                    <p className={`text-xs font-medium truncate ${isActive ? "text-indigo-300" : "text-white/60 group-hover:text-white/80"}`} title={rec.sessionTitle}>
                                                         {rec.sessionTitle}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-1">

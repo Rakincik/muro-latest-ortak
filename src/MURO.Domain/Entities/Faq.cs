@@ -7,6 +7,7 @@ public class Faq
     public string AnswerText { get; set; } = string.Empty;
     public string? Category { get; set; }
     public int SortOrder { get; set; } = 0;
+    public string? ImageUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation

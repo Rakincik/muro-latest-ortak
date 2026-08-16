@@ -22,6 +22,7 @@ public class BbbEvent
 {
     public string EventType { get; set; } = string.Empty;
     public string MeetingId { get; set; } = string.Empty;
+    public string? BbbInternalMeetingId { get; set; }
     public Guid SessionId { get; set; }
     public Guid UserId { get; set; }
     public Guid TenantId { get; set; }

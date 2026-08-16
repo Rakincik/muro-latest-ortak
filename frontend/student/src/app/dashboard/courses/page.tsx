@@ -457,7 +457,7 @@ export default function CoursesPage() {
                                 </div>
 
                                 <div className="p-3 md:p-5 flex-1 min-w-0 flex flex-col justify-center">
-                                    <h3 className="text-[#0A1931] font-bold text-xs md:text-sm mb-1.5 md:mb-2 line-clamp-2 group-hover:text-[#1B3B6F] transition-colors leading-tight">
+                                    <h3 className="text-[#0A1931] font-bold text-xs md:text-sm mb-1.5 md:mb-2 line-clamp-2 group-hover:text-[#1B3B6F] transition-colors leading-tight" title={course.title}>
                                         {course.title}
                                     </h3>
                                     {course.description && (
@@ -505,8 +505,8 @@ export default function CoursesPage() {
                                             <span className="text-xl opacity-50">📚</span>
                                         )}
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="text-xs sm:text-sm font-semibold text-[#0A1931] group-hover:text-blue-600 transition-colors leading-tight line-clamp-2">{course.title}</h3>
+                                    <div className="min-w-0 flex-1" title={course.title}>
+                                        <h3 className="text-xs sm:text-sm font-semibold text-[#0A1931] group-hover:text-blue-600 transition-colors leading-tight line-clamp-2" title={course.title}>{course.title}</h3>
                                         <div className="text-[10px] sm:text-xs text-[#A0AEC0] mt-1 flex items-center gap-1.5 font-medium">
                                             <Play size={10} className="text-[#1B3B6F]/60 fill-[#1B3B6F]/40" />
                                             {course.sessionCount} video

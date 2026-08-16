@@ -576,16 +576,22 @@ public class AnalyticsService : IAnalyticsService
                 .ToListAsync();
 
             // 4. TopStudents
-            var topStudents = await _context.Users.AsNoTracking()
+            var topStudentsData = await _context.Users.AsNoTracking()
                 .Where(u => u.Role == UserRole.Student)
-                .Select(u => new AdminTopStudentDto(
+                .Select(u => new
+                {
                     u.Id,
-                    u.FirstName + " " + u.LastName,
-                    u.ExamResults.Any() ? u.ExamResults.Average(er => er.Score) : 0
-                ))
+                    u.FirstName,
+                    u.LastName,
+                    Score = u.ExamResults.Any() ? u.ExamResults.Average(er => er.Score) : 0
+                })
                 .OrderByDescending(u => u.Score)
                 .Take(5)
                 .ToListAsync();
+
+            var topStudents = topStudentsData
+                .Select(u => new AdminTopStudentDto(u.Id, u.FirstName + " " + u.LastName, u.Score))
+                .ToList();
 
             return new AdminDashboardDto(
                 totalVideosWatched,

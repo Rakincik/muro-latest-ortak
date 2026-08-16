@@ -173,7 +173,7 @@ public class SupportService : ISupportService
         {
             return await _context.Faqs.AsNoTracking().Where(f => true)
                 .OrderBy(f => f.SortOrder)
-                .Select(f => new FaqDto(f.Id, f.QuestionText, f.AnswerText, f.Category, f.SortOrder))
+                .Select(f => new FaqDto(f.Id, f.QuestionText, f.AnswerText, f.Category, f.SortOrder, f.ImageUrl))
                 .ToListAsync();
         }, TimeSpan.FromMinutes(10));
     }
@@ -184,12 +184,13 @@ public class SupportService : ISupportService
         var faq = new Faq
         {
             Id = Guid.NewGuid(), QuestionText = request.QuestionText, AnswerText = request.AnswerText,
-            Category = request.Category, SortOrder = request.SortOrder ?? maxOrder + 1
+            Category = request.Category, SortOrder = request.SortOrder ?? maxOrder + 1,
+            ImageUrl = request.ImageUrl
         };
         _context.Faqs.Add(faq);
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"support:");
-        return new FaqDto(faq.Id, faq.QuestionText, faq.AnswerText, faq.Category, faq.SortOrder);
+        return new FaqDto(faq.Id, faq.QuestionText, faq.AnswerText, faq.Category, faq.SortOrder, faq.ImageUrl);
     }
 
     public async Task<FaqDto> UpdateFaqAsync(Guid faqId, UpdateFaqRequest request)
@@ -200,9 +201,10 @@ public class SupportService : ISupportService
         if (request.AnswerText != null) faq.AnswerText = request.AnswerText;
         if (request.Category != null) faq.Category = request.Category;
         if (request.SortOrder.HasValue) faq.SortOrder = request.SortOrder.Value;
+        if (request.ImageUrl != null) faq.ImageUrl = string.IsNullOrEmpty(request.ImageUrl) ? null : request.ImageUrl;
         await _context.SaveChangesAsync();
         await _cache.RemoveByPrefixAsync($"support:");
-        return new FaqDto(faq.Id, faq.QuestionText, faq.AnswerText, faq.Category, faq.SortOrder);
+        return new FaqDto(faq.Id, faq.QuestionText, faq.AnswerText, faq.Category, faq.SortOrder, faq.ImageUrl);
     }
 
     public async Task DeleteFaqAsync(Guid faqId)

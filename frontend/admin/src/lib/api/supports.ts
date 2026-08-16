@@ -1,5 +1,5 @@
 import { api, cachedApi, invalidateCache, invalidateCacheByPrefix, API_URL, PagedResult } from './core';
-import { CourseListDto, SessionDto, CourseDetailDto, CourseMaterialDto, AuthResponse, UserDto, UserTenantDto, ExamListDto, ExamDetailDto, ExamAssignmentDto, ExamResultDto, ExamResultSummaryDto, ExamOverallSummaryDto, ScoreRangeDto, AssignmentListDto, StudentScorecardDto, CourseAttendanceDto, DashboardStatsDto, DeviceSessionDto, ScorecardSummaryDto, NotificationDto, AdminSentNotificationDto, GroupSummaryDto, SessionStartResult, RecordingDto, PlanDto, TransactionDto, MonthlyRevenueDto, PlanRevenueDto, AccountingSummaryDto, PaymentMethodBreakdownDto, CreateTransactionRequest, PodcastDto, GeneratePodcastRequest, GroupListDto, GroupMemberDto, GroupDetailDto, CalendarEventDto, CreateCalendarEventRequest, TicketDto, TicketReplyDto, AdminDashboardDto, PackageGroupDto, PackageDto, UserPackageDto, CreatePackageRequest, WebhookInfo, PagedUsersResult, CreateUserRequest, QuestionDto, CreateQuestionRequest, AuditLogDto, PagedAuditResult, AuditSummaryDto, TenantBrandingDto, SubmissionDto, AssignmentDetailDto } from './types';
+import { CourseListDto, SessionDto, CourseDetailDto, CourseMaterialDto, AuthResponse, UserDto, UserTenantDto, ExamListDto, ExamDetailDto, ExamAssignmentDto, ExamResultDto, ExamResultSummaryDto, ExamOverallSummaryDto, ScoreRangeDto, AssignmentListDto, StudentScorecardDto, CourseAttendanceDto, DashboardStatsDto, DeviceSessionDto, ScorecardSummaryDto, NotificationDto, AdminSentNotificationDto, GroupSummaryDto, SessionStartResult, RecordingDto, PlanDto, TransactionDto, MonthlyRevenueDto, PlanRevenueDto, AccountingSummaryDto, PaymentMethodBreakdownDto, CreateTransactionRequest, PodcastDto, GeneratePodcastRequest, GroupListDto, GroupMemberDto, GroupDetailDto, CalendarEventDto, CreateCalendarEventRequest, TicketDto, TicketReplyDto, AdminDashboardDto, PackageGroupDto, PackageDto, UserPackageDto, CreatePackageRequest, WebhookInfo, PagedUsersResult, CreateUserRequest, QuestionDto, CreateQuestionRequest, AuditLogDto, PagedAuditResult, AuditSummaryDto, TenantBrandingDto, SubmissionDto, AssignmentDetailDto, FaqDto } from './types';
 
 export const supportApi = {
     list: (token: string, tenantId: string, params?: { status?: string; page?: number; pageSize?: number }) => {
@@ -17,6 +17,16 @@ export const supportApi = {
         api<TicketDto>(`/support/tickets/${ticketId}/status`, { method: 'PUT', token, tenantId, body: JSON.stringify({ status }) }),
     delete: (token: string, tenantId: string, id: string) =>
         api<void>(`/support/tickets/${id}`, { method: 'DELETE', token, tenantId }),
+    
+    // --- FAQ (SSS) API Endpoints ---
+    listFaqs: (token: string, tenantId: string) =>
+        api<FaqDto[]>('/support/faq', { token, tenantId }),
+    createFaq: (token: string, tenantId: string, data: { questionText: string; answerText: string; category?: string; sortOrder?: number; imageUrl?: string | null }) =>
+        api<FaqDto>('/support/faq', { method: 'POST', token, tenantId, body: JSON.stringify(data) }),
+    updateFaq: (token: string, tenantId: string, id: string, data: { questionText?: string; answerText?: string; category?: string; sortOrder?: number; imageUrl?: string | null }) =>
+        api<FaqDto>(`/support/faq/${id}`, { method: 'PUT', token, tenantId, body: JSON.stringify(data) }),
+    deleteFaq: (token: string, tenantId: string, id: string) =>
+        api<void>(`/support/faq/${id}`, { method: 'DELETE', token, tenantId }),
 };
 
 // ── Analytics Admin Dashboard Types ──────────────────────────────────────────

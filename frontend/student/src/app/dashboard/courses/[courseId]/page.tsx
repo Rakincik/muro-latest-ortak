@@ -261,10 +261,10 @@ export default function CourseDetailPage() {
                     return {
                         id: cm.id, // Using CourseMedia ID as the unique key
                         sessionId: cm.sessionId || cm.id,
-                        sessionTitle: cm.mediaAsset?.title || cm.sessionTitle || cm.examTitle || 'İçerik',
+                        sessionTitle: cm.customTitle || cm.sessionTitle || cm.mediaAsset?.title || cm.examTitle || 'İçerik',
                         courseId: cm.courseId,
                         courseTitle: courseData?.title || '',
-                        playbackUrl: matchRec?.playbackUrl || '', // Get from recordings!
+                        playbackUrl: matchRec?.playbackUrl || cm.mediaAsset?.filePath || '', // Get from recordings or media asset!
                         hlsPath: cm.mediaAsset?.hlsPath || null,
                         thumbnailPath: cm.mediaAsset?.thumbnailPath || null,
                         durationSeconds: cm.mediaAsset?.durationSeconds || matchRec?.durationSeconds || 0,
@@ -468,8 +468,8 @@ export default function CourseDetailPage() {
                                 {/* ── Player Header Bar ── */}
                                 {!isFullscreen && (
                                     <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 bg-white border-b border-[#E2E8F0] shrink-0 select-none">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-xs font-bold text-[#0A1931] truncate">{activeRec.sessionTitle}</span>
+                                        <div className="flex items-center gap-2 min-w-0" title={activeRec.sessionTitle}>
+                                            <span className="text-xs font-bold text-[#0A1931] truncate" title={activeRec.sessionTitle}>{activeRec.sessionTitle}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             {/* Sidebar toggle */}
@@ -692,8 +692,8 @@ export default function CourseDetailPage() {
                                                 <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isActive ? "bg-[#1B3B6F] border-[#1B3B6F]" : watchedMap[rec.id] ? "bg-emerald-500 border-emerald-500" : "border-[#D0D5DD]"}`}>
                                                     {isActive ? <Play size={10} className="text-white ml-0.5" /> : watchedMap[rec.id] ? <Check size={10} className="text-white" /> : <span className="text-[9px] text-[#A0AEC0] font-medium">{idx + 1}</span>}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className={`text-[12px] font-medium leading-tight ${isActive ? "text-[#0A1931]" : "text-[#5A6A7A] group-hover:text-[#0A1931]"}`}>
+                                                <div className="flex-1 min-w-0" title={rec.sessionTitle}>
+                                                    <p className={`text-[12px] font-medium leading-tight ${isActive ? "text-[#0A1931]" : "text-[#5A6A7A] group-hover:text-[#0A1931]"}`} title={rec.sessionTitle}>
                                                         {rec.sessionTitle}
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-1">
