@@ -37,11 +37,18 @@ public class UserService : IUserService
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var s = search.ToLower();
+                var sDigits = new string(search.Where(char.IsDigit).ToArray());
+                var sDigitsNoZero = sDigits.TrimStart('0');
+                var sDigitsNo90 = (sDigitsNoZero.StartsWith("90") && sDigitsNoZero.Length > 2) ? sDigitsNoZero.Substring(2) : sDigitsNoZero;
+
                 query = query.Where(u =>
                     u.FirstName.ToLower().Contains(s) ||
                     u.LastName.ToLower().Contains(s) ||
                     u.Email.ToLower().Contains(s) ||
-                    (u.Phone != null && u.Phone.Contains(s)));
+                    (u.Phone != null && u.Phone.Contains(s)) ||
+                    (u.Phone != null && sDigits.Length > 0 && u.Phone.Contains(sDigits)) ||
+                    (u.Phone != null && sDigitsNoZero.Length > 0 && u.Phone.Contains(sDigitsNoZero)) ||
+                    (u.Phone != null && sDigitsNo90.Length > 0 && u.Phone.Contains(sDigitsNo90)));
             }
 
             // Role filter

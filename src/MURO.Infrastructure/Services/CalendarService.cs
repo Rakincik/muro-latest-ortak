@@ -10,11 +10,25 @@ public class CalendarService : ICalendarService
 {
     private readonly MuroDbContext _context;
     private readonly ICacheService _cache;
+    private readonly IGroupAccessService _groupAccess;
 
-    public CalendarService(MuroDbContext context, ICacheService cache)
+    public CalendarService(MuroDbContext context, ICacheService cache, IGroupAccessService groupAccess)
     {
         _context = context;
         _cache = cache;
+        _groupAccess = groupAccess;
+    }
+
+    private async Task<bool> CanInstructorManageCourseAsync(Guid instructorId, Guid courseId)
+    {
+        var hasDirectAccess = await _context.Courses
+            .AnyAsync(c => c.Id == courseId && 
+                          (c.InstructorId == instructorId || c.Instructors.Any(i => i.Id == instructorId)));
+        
+        if (hasDirectAccess) return true;
+
+        var groupCourseIds = await _groupAccess.GetInstructorGroupCourseIdsAsync(instructorId);
+        return groupCourseIds.Contains(courseId);
     }
 
     public async Task<List<CalendarEventDto>> GetEventsAsync(DateTime from, DateTime to, Guid? groupId, Guid? instructorId = null)
@@ -30,7 +44,13 @@ public class CalendarService : ICalendarService
                 query = query.Where(e => e.GroupId == groupId);
 
             if (instructorId.HasValue)
-                query = query.Where(e => e.CourseId != null && e.Course!.InstructorId == instructorId.Value);
+            {
+                var accessibleIds = await _groupAccess.GetInstructorGroupCourseIdsAsync(instructorId.Value);
+                query = query.Where(e => e.CourseId != null && 
+                    (e.Course!.InstructorId == instructorId.Value || 
+                     e.Course.Instructors.Any(i => i.Id == instructorId.Value) || 
+                     accessibleIds.Contains(e.CourseId.Value)));
+            }
 
             return await query
                 .Include(e => e.Group)
@@ -70,7 +90,7 @@ public class CalendarService : ICalendarService
             if (!request.CourseId.HasValue)
                 throw new UnauthorizedAccessException("Eğitmenler sadece kendilerine ait dersler için etkinlik oluşturabilir.");
             
-            var ownsCourse = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.InstructorId == instructorId.Value);
+            var ownsCourse = await CanInstructorManageCourseAsync(instructorId.Value, request.CourseId.Value);
             if (!ownsCourse)
                 throw new UnauthorizedAccessException("Bu ders üzerinde işlem yapma yetkiniz yok.");
         }
@@ -104,12 +124,12 @@ public class CalendarService : ICalendarService
 
         if (instructorId.HasValue)
         {
-            if (ev.Course == null || ev.Course.InstructorId != instructorId.Value)
+            if (ev.CourseId == null || !await CanInstructorManageCourseAsync(instructorId.Value, ev.CourseId.Value))
                 throw new UnauthorizedAccessException("Bu etkinlik üzerinde işlem yapma yetkiniz yok.");
             
             if (request.CourseId.HasValue && request.CourseId != ev.CourseId)
             {
-                var ownsCourse = await _context.Courses.AnyAsync(c => c.Id == request.CourseId && c.InstructorId == instructorId.Value);
+                var ownsCourse = await CanInstructorManageCourseAsync(instructorId.Value, request.CourseId.Value);
                 if (!ownsCourse)
                     throw new UnauthorizedAccessException("Yeni seçilen ders üzerinde işlem yapma yetkiniz yok.");
             }
@@ -139,7 +159,7 @@ public class CalendarService : ICalendarService
 
         if (instructorId.HasValue)
         {
-            if (ev.Course == null || ev.Course.InstructorId != instructorId.Value)
+            if (ev.CourseId == null || !await CanInstructorManageCourseAsync(instructorId.Value, ev.CourseId.Value))
                 throw new UnauthorizedAccessException("Bu etkinlik üzerinde işlem yapma yetkiniz yok.");
         }
 

@@ -22,6 +22,8 @@ export function UserDirectCoursesTab({ userId, userRole }: { userId: string; use
     const [searchResults, setSearchResults] = useState<CourseListDto[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [addingCourse, setAddingCourse] = useState<string | null>(null);
+    const [selectedCourseIds, setSelectedCourseIds] = useState<Set<string>>(new Set());
+    const [isBulkAdding, setIsBulkAdding] = useState(false);
 
     // For Inline Expiration Date
     const [editingExpirationFor, setEditingExpirationFor] = useState<string | null>(null);
@@ -111,11 +113,39 @@ export function UserDirectCoursesTab({ userId, userRole }: { userId: string; use
             }
             setAddModalOpen(false);
             setSearchQuery("");
+            setSelectedCourseIds(new Set());
             fetchCourses();
         } catch {
             toastError("Hata", "Ders eklenemedi.");
         } finally {
             setAddingCourse(null);
+        }
+    };
+
+    const handleBulkAdd = async () => {
+        if (!token || !tenantId || selectedCourseIds.size === 0) return;
+        setIsBulkAdding(true);
+        try {
+            const courseIds = Array.from(selectedCourseIds);
+            for (const courseId of courseIds) {
+                if (isInstructor) {
+                    const targetCourse = searchResults.find(c => c.id === courseId);
+                    const currentInstructorIds = targetCourse?.instructors?.map(i => i.id) || [];
+                    const updatedInstructorIds = Array.from(new Set([...currentInstructorIds, userId]));
+                    await courseApi.update(token, tenantId, courseId, { instructorIds: updatedInstructorIds });
+                } else {
+                    await courseApi.assignStudent(token, tenantId, courseId, userId);
+                }
+            }
+            success(`${courseIds.length} ders başarıyla atandı.`);
+            setAddModalOpen(false);
+            setSearchQuery("");
+            setSelectedCourseIds(new Set());
+            fetchCourses();
+        } catch {
+            toastError("Hata", "Bazı dersler atanırken hata oluştu.");
+        } finally {
+            setIsBulkAdding(false);
         }
     };
 
@@ -255,7 +285,7 @@ export function UserDirectCoursesTab({ userId, userRole }: { userId: string; use
                     <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-fade-in-up">
                         <div className="flex items-center justify-between p-6 border-b border-[#E2E8F0]/60 bg-[#E2E8F0]/15">
                             <h2 className="text-xl font-black text-[#0A1931]">Ders Seç ve Ata</h2>
-                            <button onClick={() => { setAddModalOpen(false); setSearchQuery(""); }} className="p-2 text-[#A0AEC0] hover:text-[#0A1931] rounded-xl"><X size={20} /></button>
+                            <button onClick={() => { setAddModalOpen(false); setSearchQuery(""); setSelectedCourseIds(new Set()); }} className="p-2 text-[#A0AEC0] hover:text-[#0A1931] rounded-xl"><X size={20} /></button>
                         </div>
                         <div className="p-6">
                             <div className="relative mb-6">
@@ -275,20 +305,50 @@ export function UserDirectCoursesTab({ userId, userRole }: { userId: string; use
                                     <p className="text-center text-sm text-[#A0AEC0] py-4">Ders bulunamadı.</p>
                                 )}
                                 {!searchLoading && searchResults.map(c => (
-                                    <div key={c.id} className="flex items-center justify-between p-4 rounded-xl border border-[#E2E8F0]/60 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all">
-                                        <div>
-                                            <p className="text-sm font-bold text-[#0A1931]">{c.title}</p>
-                                            <p className="text-xs text-[#A0AEC0]">{c.courseType}</p>
+                                    <div key={c.id} onClick={() => {
+                                        const newSet = new Set(selectedCourseIds);
+                                        if (newSet.has(c.id)) newSet.delete(c.id);
+                                        else newSet.add(c.id);
+                                        setSelectedCourseIds(newSet);
+                                    }} className="flex items-center justify-between p-4 rounded-xl border border-[#E2E8F0]/60 hover:border-indigo-200 hover:bg-indigo-50/30 cursor-pointer transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center justify-center w-5 h-5 rounded border bg-white border-[#E2E8F0] overflow-hidden flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={selectedCourseIds.has(c.id)}
+                                                    onChange={(e) => {
+                                                        const newSet = new Set(selectedCourseIds);
+                                                        if (e.target.checked) newSet.add(c.id);
+                                                        else newSet.delete(c.id);
+                                                        setSelectedCourseIds(newSet);
+                                                    }}
+                                                    className="w-full h-full text-indigo-600 cursor-pointer"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-[#0A1931]">{c.title}</p>
+                                                <p className="text-xs text-[#A0AEC0]">{c.courseType}</p>
+                                            </div>
                                         </div>
                                         <button 
-                                            onClick={() => handleAdd(c.id)}
-                                            disabled={addingCourse === c.id}
+                                            onClick={(e) => { e.stopPropagation(); handleAdd(c.id); }}
+                                            disabled={addingCourse === c.id || isBulkAdding}
                                             className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-bold text-xs disabled:opacity-50 flex items-center gap-2">
                                             {addingCourse === c.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Ekle
                                         </button>
                                     </div>
                                 ))}
                             </div>
+                            {selectedCourseIds.size > 0 && (
+                                <div className="mt-4 pt-4 border-t border-[#E2E8F0]/60 flex justify-end">
+                                    <button 
+                                        onClick={handleBulkAdd}
+                                        disabled={isBulkAdding}
+                                        className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold text-sm disabled:opacity-50 flex items-center gap-2 transition-all shadow-md">
+                                        {isBulkAdding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Seçilenleri Ekle ({selectedCourseIds.size})
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>,

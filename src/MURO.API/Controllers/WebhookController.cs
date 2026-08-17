@@ -68,6 +68,31 @@ public class WebhookController : ControllerBase
         }
     }
 
+    [HttpPost("demo-register")]
+    public async Task<IActionResult> DemoRegister([FromQuery] string apiKey, [FromBody] DemoRegistrationWebhookRequest request)
+    {
+        var expectedKey = _config["Webhook:Secret"];
+        
+        // If config is missing, default to a secure fallback for now or reject. Let's just require it.
+        if (string.IsNullOrEmpty(expectedKey) || apiKey != expectedKey)
+        {
+            return Unauthorized(new { error = "Geçersiz API Anahtarı." });
+        }
+
+        try
+        {
+            var result = await _webhookHandler.HandleDemoRegistrationAsync(request);
+            if (!result.Success)
+                return BadRequest(new { error = result.Message });
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
     private bool VerifySignature(object payload, string? signature)
     {
         if (string.IsNullOrEmpty(signature)) return false;

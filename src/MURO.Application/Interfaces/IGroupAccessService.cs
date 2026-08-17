@@ -37,4 +37,10 @@ public interface IGroupAccessService
     /// True ise tüm filtreleme bypass edilir.
     /// </summary>
     Task<bool> IsStaffAsync(Guid userId);
+
+    /// <summary>
+    /// Eğitmenin üyesi olduğu gruplara tanımlanmış derslerin ID'lerini döndürür.
+    /// (Yetki bypass'ı yapmadan, sadece grup atamalarını baz alır).
+    /// </summary>
+    Task<HashSet<Guid>> GetInstructorGroupCourseIdsAsync(Guid instructorId);
 }

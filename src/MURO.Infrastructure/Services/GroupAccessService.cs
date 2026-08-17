@@ -148,4 +148,11 @@ public class GroupAccessService : IGroupAccessService
             .FirstOrDefaultAsync();
         return role is UserRole.Admin or UserRole.Instructor;
     }
+
+    // ── Eğitmen Grup Dersleri (Bypass yapmadan direkt grup derslerini bulur) ──
+    public async Task<HashSet<Guid>> GetInstructorGroupCourseIdsAsync(Guid instructorId)
+    {
+        var dirGroupIds = await GetDirectGroupIdsAsync(instructorId);
+        return await CourseIdsForGroups(dirGroupIds);
+    }
 }

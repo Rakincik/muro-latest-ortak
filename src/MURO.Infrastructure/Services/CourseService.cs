@@ -88,7 +88,12 @@ public class CourseService : ICourseService
                 query = query.Where(c => c.IsPublished == isPublished.Value);
 
             if (instructorId.HasValue)
-                query = query.Where(c => c.InstructorId == instructorId.Value || c.Instructors.Any(i => i.Id == instructorId.Value));
+            {
+                var accessibleIds = await _groupAccess.GetInstructorGroupCourseIdsAsync(instructorId.Value);
+                query = query.Where(c => c.InstructorId == instructorId.Value || 
+                                         c.Instructors.Any(i => i.Id == instructorId.Value) || 
+                                         accessibleIds.Contains(c.Id));
+            }
 
             var totalCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
@@ -333,7 +338,13 @@ public class CourseService : ICourseService
             var dbInstructors = await _context.Users
                 .Where(u => request.InstructorIds.Contains(u.Id))
                 .ToListAsync();
-            course.Instructors = dbInstructors;
+                
+            course.Instructors.Clear();
+            foreach(var inst in dbInstructors)
+            {
+                course.Instructors.Add(inst);
+            }
+
             if (course.Instructors.Any())
             {
                 if (course.InstructorId == null || !request.InstructorIds.Contains(course.InstructorId.Value))

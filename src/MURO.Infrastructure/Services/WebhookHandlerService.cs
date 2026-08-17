@@ -147,6 +147,63 @@ public class WebhookHandlerService : IWebhookHandlerService
         return new CancelWebhookResponse(true, "Paket iptal edildi.");
     }
 
+    public async Task<PurchaseWebhookResponse> HandleDemoRegistrationAsync(DemoRegistrationWebhookRequest request)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+        if (user != null)
+        {
+            return new PurchaseWebhookResponse(false, user.Id, null, null, "Bu e-posta adresi zaten kayıtlı.");
+        }
+
+        var registerRequest = new RegisterRequest(
+            request.FirstName, request.LastName,
+            request.Email, request.Password,
+            request.Phone);
+
+        await _auth.RegisterAsync(registerRequest);
+        
+        user = await _context.Users.FirstAsync(u => u.Email == request.Email);
+        user.StudentType = StudentType.Demo;
+
+        if (request.GroupIds != null && request.GroupIds.Any())
+        {
+            foreach (var gId in request.GroupIds)
+            {
+                Group? group = null;
+                if (Guid.TryParse(gId, out var parsedGuid))
+                {
+                    group = await _context.Groups.FirstOrDefaultAsync(g => (g.Id == parsedGuid || g.Code == gId) && !g.IsDeleted);
+                }
+                else
+                {
+                    group = await _context.Groups.FirstOrDefaultAsync(g => g.Code == gId && !g.IsDeleted);
+                }
+
+                if (group != null)
+                {
+                    var exists = await _context.GroupMembers.AnyAsync(gm => gm.UserId == user.Id && gm.GroupId == group.Id);
+                    if (!exists)
+                    {
+                        _context.GroupMembers.Add(new GroupMember
+                        {
+                            UserId = user.Id,
+                            GroupId = group.Id,
+                            Status = "active",
+                            AddedAt = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        await _cache.RemoveByPrefixAsync("groups:"); 
+        
+        return new PurchaseWebhookResponse(true, user.Id, null, null, "Demo hesabı başarıyla oluşturuldu.");
+    }
+
     public async Task HandleBbbMeetingEndedAsync(BbbEvent evt)
     {
         if (string.IsNullOrEmpty(evt.MeetingId)) return;

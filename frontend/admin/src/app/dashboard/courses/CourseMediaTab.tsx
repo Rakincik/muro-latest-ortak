@@ -82,6 +82,7 @@ export function CourseMediaTab({
     const [isSavingEdit, setIsSavingEdit] = useState(false);
 
     const [filter, setFilter] = useState<'all' | 'video' | 'recording'>('all');
+    const [searchQuery, setSearchQuery] = useState("");
     const [pageSize, setPageSize] = useState<number>(20);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [showMobileActionsMenu, setShowMobileActionsMenu] = useState(false);
@@ -501,16 +502,23 @@ export function CourseMediaTab({
         const isRecording = media.type === "Session" || !!recordings.find(r => r.mediaAssetId && r.mediaAssetId === media?.mediaAsset?.id);
         if (filter === 'video' && isRecording) return false;
         if (filter === 'recording' && !isRecording) return false;
+        
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            const title = (media.title || "").toLowerCase();
+            if (!title.includes(query)) return false;
+        }
+
         return true;
     });
 
     const totalPages = Math.ceil(filteredMedias.length / pageSize);
     const paginatedMedias = pageSize === -1 ? filteredMedias : filteredMedias.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-    // Reset to page 1 if filter or page size changes
+    // Reset to page 1 if filter, page size, or search query changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filter, pageSize]);
+    }, [filter, pageSize, searchQuery]);
 
     if (loading) {
         return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
@@ -557,6 +565,23 @@ export function CourseMediaTab({
                     )}
                     {/* Desktop Toolbar Controls */}
                     <div className="hidden lg:flex items-center gap-3 flex-wrap">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Video Ara..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="h-[42px] pl-10 pr-8 rounded-2xl border border-[#E2E8F0] bg-white text-sm font-bold text-[#0A1931] placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] transition-all w-64"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            </div>
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A0AEC0] hover:text-[#0A1931] bg-gray-100 rounded-full p-0.5">
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
                         <CustomSelect 
                             value={filter}
                             onChange={(val) => setFilter(val as any)}
@@ -620,6 +645,23 @@ export function CourseMediaTab({
 
                     {/* Mobile Toolbar Controls (Saves ~70% vertical space!) */}
                     <div className="flex lg:hidden flex-col gap-3 w-full">
+                        <div className="relative w-full">
+                            <input
+                                type="text"
+                                placeholder="Video Ara..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full h-[42px] pl-10 pr-8 rounded-2xl border border-[#E2E8F0] bg-white text-sm font-bold text-[#0A1931] placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/50 focus:border-[#3B82F6] transition-all"
+                            />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A0AEC0]">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            </div>
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A0AEC0] hover:text-[#0A1931] bg-gray-100 rounded-full p-0.5">
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                             <CustomSelect 
                                 value={filter}

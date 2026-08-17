@@ -8,4 +8,5 @@ public interface IWebhookHandlerService
     Task<CancelWebhookResponse> HandleCancelAsync(CancelWebhookRequest request);
     Task HandleBbbMeetingEndedAsync(BbbEvent evt);
     Task HandleBbbRecordingReadyAsync(BbbEvent evt);
+    Task<PurchaseWebhookResponse> HandleDemoRegistrationAsync(DemoRegistrationWebhookRequest request);
 }

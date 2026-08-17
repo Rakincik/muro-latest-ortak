@@ -123,7 +123,7 @@ services:
   admin:
     image: muro-admin-akm:latest
     volumes:
-      - /opt/akm/logo.png:/app/public/monopol_logo.png
+      - /opt/akm/logo.png:/app/public/logo.png
       - /opt/akm/favicon.png:/app/public/favicon.png
     container_name: muro_akm_admin
     restart: unless-stopped
@@ -140,7 +140,7 @@ services:
   student:
     image: muro-student:latest
     volumes:
-      - /opt/akm/logo.png:/app/public/monopol_logo.png
+      - /opt/akm/logo.png:/app/public/logo.png
       - /opt/akm/favicon.png:/app/public/favicon.png
     container_name: muro_akm_student
     restart: unless-stopped
