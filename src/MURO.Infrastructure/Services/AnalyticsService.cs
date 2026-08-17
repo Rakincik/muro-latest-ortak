@@ -564,16 +564,20 @@ public class AnalyticsService : IAnalyticsService
             }).ToList();
 
             // 3. TopCourses
-            var topCourses = await _context.Courses.AsNoTracking()
-                .Select(c => new AdminTopCourseDto(
+            var topCoursesData = await _context.Courses.AsNoTracking()
+                .Select(c => new 
+                {
                     c.Id,
                     c.Title,
-                    c.CourseGroups.SelectMany(cg => cg.Group.Members).Select(m => m.UserId).Distinct().Count(),
-                    0
-                ))
+                    StudentCount = c.CourseGroups.SelectMany(cg => cg.Group.Members).Select(m => m.UserId).Distinct().Count()
+                })
                 .OrderByDescending(c => c.StudentCount)
                 .Take(5)
                 .ToListAsync();
+
+            var topCourses = topCoursesData
+                .Select(c => new AdminTopCourseDto(c.Id, c.Title, c.StudentCount, 0))
+                .ToList();
 
             // 4. TopStudents
             var topStudentsData = await _context.Users.AsNoTracking()
