@@ -22,7 +22,7 @@ public class AnalyticsController : ControllerBase
 
     // ── Admin Endpoints ──────────────────────────────────────────────────────
 
-    [HttpGet("stats")]
+    [HttpGet("dashboard")]
     public async Task<ActionResult<DashboardStatsDto>> GetDashboardStats()
     {
         try
