@@ -261,6 +261,17 @@ export default function WatchPage() {
         loadData();
     }, [token, tenantId, courseId, recordingId]);
 
+    const isPremiumPlayer = useMemo(() => {
+        if (!currentRec) return true;
+        if (currentRec.videoUrl) {
+            return getVideoPlaybackDetails(currentRec.videoUrl).type !== "iframe";
+        }
+        const src = currentRec.hlsPath || currentRec.playbackUrl;
+        if (!src) return false;
+        if (src.includes("/playback/presentation/") || src.includes("meetingId=")) return false;
+        return true;
+    }, [currentRec]);
+
     // ── Load notes from backend when recording changes ──
     useEffect(() => {
         if (!currentRec || !token || !tenantId) return;
@@ -295,6 +306,23 @@ export default function WatchPage() {
             }
         }
     }, [token, tenantId, currentRec]);
+
+    // ── BBB Mock Progress Tracker ──
+    useEffect(() => {
+        if (loading || isPremiumPlayer || !currentRec || initialTime === null) return;
+
+        // BBB kayıtlarında gerçek zamanı okuyamadığımız için, 
+        // kullanıcı sayfada kaldığı sürece zamanı 15 saniye ileri sararak mock (sahte) bir ilerleme gönderiyoruz.
+        let simulatedTime = initialTime;
+        const duration = currentRec.durationSeconds || 7200; // default 2 hours if unknown
+
+        const interval = setInterval(() => {
+            simulatedTime += 15;
+            handleTimeUpdate(simulatedTime, duration);
+        }, 15000);
+
+        return () => clearInterval(interval);
+    }, [loading, isPremiumPlayer, currentRec, initialTime, handleTimeUpdate]);
 
     const handleVideoEnded = useCallback(async () => {
         if (!token || !tenantId || !currentRec) return;
@@ -426,16 +454,6 @@ export default function WatchPage() {
                     {/* Video Player */}
                     <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden select-none">
                         {(() => {
-                            // Check if this recording will render a PremiumPlayer
-                            const isPremiumPlayer = currentRec?.videoUrl
-                                ? getVideoPlaybackDetails(currentRec.videoUrl).type !== "iframe"
-                                : (() => {
-                                      const src = currentRec?.hlsPath || currentRec?.playbackUrl;
-                                      if (!src) return false;
-                                      if (src.includes("/playback/presentation/") || src.includes("meetingId=")) return false;
-                                      return true;
-                                  })();
-
                             if (isPremiumPlayer && initialTime === null) {
                                 return (
                                     <div className="flex flex-col items-center justify-center gap-3 text-white/40">
@@ -480,9 +498,17 @@ export default function WatchPage() {
                             
                             // Check if it's a BigBlueButton presentation URL
                             if (src.includes("/playback/presentation/") || src.includes("meetingId=")) {
-                                const cleanSrc = isMobile
+                                let cleanSrc = isMobile
                                     ? `${src}${src.includes("?") ? "&" : "?"}showChat=false&showClosedCaptions=false&layout=presentation`
                                     : src;
+                                
+                                // Append time offset hash for BBB (e.g. #t=120 or ?start=120)
+                                if (initialTime && initialTime > 0) {
+                                    const m = Math.floor(initialTime / 60);
+                                    const s = Math.floor(initialTime % 60);
+                                    cleanSrc += `#${m}m${s}s`;
+                                }
+
                                 return (
                                     <iframe 
                                         src={cleanSrc} 
