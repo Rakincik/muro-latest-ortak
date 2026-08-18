@@ -48,12 +48,12 @@ export default function MediaTransferPage() {
     // Folder Collapsed State
     const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
 
-    // Security Guard: Only SuperAdmin allowed
-    const isSuperAdmin = user?.role === "SuperAdmin";
+    // Security Guard: SuperAdmin and Admin allowed
+    const isAllowed = user?.role === "SuperAdmin" || user?.role === "Admin";
 
     // Fetch all courses & folders
     useEffect(() => {
-        if (!isSuperAdmin) return;
+        if (!isAllowed) return;
         if (!token || !tenantId) return;
 
         setLoadingCourses(true);
@@ -363,13 +363,13 @@ export default function MediaTransferPage() {
         }
     };
 
-    if (!isSuperAdmin) {
+    if (!isAllowed) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
                 <Info size={48} className="text-red-500 mb-4 animate-bounce" />
                 <h3 className="text-xl font-black text-[#0A1931]">Erişim Engellendi</h3>
                 <p className="text-xs text-slate-500 font-bold mt-1 max-w-md">
-                    Bu araç sadece Süper Admin özel yetkileriyle erişilebilir. Lütfen ana sayfaya dönün.
+                    Bu araç sadece Yönetici yetkileriyle erişilebilir. Lütfen ana sayfaya dönün.
                 </p>
                 <Link href="/dashboard" className="mt-6 px-4 py-2 bg-[#0A1931] text-white text-xs font-bold rounded-xl shadow-md hover:bg-[#1b3b6f] transition-all">
                     Ana Sayfaya Dön
@@ -387,7 +387,7 @@ export default function MediaTransferPage() {
                         <ArrowLeft size={16} />
                     </Link>
                     <div>
-                        <h3 className="text-lg font-black text-[#0A1931] tracking-tight">Süper Admin Ders Klonlama Paneli</h3>
+                        <h3 className="text-lg font-black text-[#0A1931] tracking-tight">Video Taşıma Paneli</h3>
                         <p className="text-[10px] font-extrabold text-[#64748B] uppercase tracking-widest mt-0.5">Sürükle-Bırak Müfredat Kopyalayıcı (Çoklu Hedef Destekli)</p>
                     </div>
                 </div>
