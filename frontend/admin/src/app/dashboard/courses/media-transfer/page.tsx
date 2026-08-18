@@ -67,7 +67,7 @@ export default function MediaTransferPage() {
             res.forEach(f => map[f.id] = f.name);
             setFolders(map);
         }).catch(() => {});
-    }, [token, tenantId, isSuperAdmin]);
+    }, [token, tenantId, isAllowed]);
 
     // Fetch source course medias
     useEffect(() => {
