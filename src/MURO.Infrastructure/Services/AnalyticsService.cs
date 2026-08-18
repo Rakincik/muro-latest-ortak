@@ -430,7 +430,7 @@ public class AnalyticsService : IAnalyticsService
             // Fix #6: SQL'de topla, belleğe çekme (Tüm Zamanlar)
             var totalWatchedSeconds = await _context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UserId == userId)
-                .SumAsync(vp => (long)vp.WatchedSeconds);
+                .SumAsync(vp => (long?)vp.WatchedSeconds) ?? 0L;
             var totalWatchedMinutes = (int)(totalWatchedSeconds / 60);
 
             // Bu ay katılım
@@ -512,7 +512,7 @@ public class AnalyticsService : IAnalyticsService
                 .Where(vp => vp.UserId == userId
                     && vp.UpdatedAt >= sevenDaysAgo)
                 .GroupBy(vp => vp.UpdatedAt.Date)
-                .Select(g => new { Date = g.Key, Minutes = (int)(g.Sum(vp => (long)vp.WatchedSeconds) / 60) })
+                .Select(g => new { Date = g.Key, Minutes = (int)((g.Sum(vp => (long?)vp.WatchedSeconds) ?? 0) / 60) })
                 .ToListAsync();
 
             var weeklyActivity = Enumerable.Range(0, 7).Select(i =>
@@ -546,7 +546,7 @@ public class AnalyticsService : IAnalyticsService
             var videoStatsThisWeek = await _context.VideoProgresses.AsNoTracking()
                 .Where(vp => vp.UpdatedAt >= sevenDaysAgo)
                 .GroupBy(vp => vp.UpdatedAt.Date)
-                .Select(g => new { Date = g.Key, VideoMinutes = (int)(g.Sum(vp => (long)vp.WatchedSeconds) / 60) })
+                .Select(g => new { Date = g.Key, VideoMinutes = (int)((g.Sum(vp => (long?)vp.WatchedSeconds) ?? 0) / 60) })
                 .ToListAsync();
 
             var sessionStatsThisWeek = await _context.SessionAttendances.AsNoTracking()

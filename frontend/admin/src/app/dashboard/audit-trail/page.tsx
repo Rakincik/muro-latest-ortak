@@ -1190,7 +1190,49 @@ export default function AuditTrailPage() {
                                                                     {log.eventType === "BRUTE_FORCE_DETECTED" && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-lg border border-red-200"><Shield size={10} /> Şüpheli (Brute Force)</span>}
                                                                     {log.eventType === "DEVTOOLS_DETECTED" && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-lg border border-rose-100"><Shield size={10} /> DevTools (F12) Açma Girişimi</span>}
                                                                 </div>
-                                                                {log.details && <p className="text-xs text-[#0A1931] font-medium mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">{log.details}</p>}
+                                                                {(() => {
+                                                                    if (!log.details) return null;
+                                                                    
+                                                                    try {
+                                                                        const parsed = JSON.parse(log.details);
+                                                                        
+                                                                        if (log.eventType === "SESSION_KICKED" && parsed.kickedIp) {
+                                                                            return (
+                                                                                <div className="flex flex-col gap-2 mb-3 mt-1">
+                                                                                    <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                                                                                        <div className="w-6 h-6 rounded-md bg-red-100 flex items-center justify-center shrink-0">
+                                                                                            <span className="text-[10px]">❌</span>
+                                                                                        </div>
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <p className="text-[10px] font-bold text-red-800">ATILAN ESKİ CİHAZ</p>
+                                                                                            <p className="text-xs text-red-600 truncate">{parsed.kickedDeviceInfo?.split('|')[0] || "Bilinmeyen Cihaz"} <span className="font-mono text-[10px] opacity-70">({parsed.kickedIp})</span></p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    
+                                                                                    <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-100 rounded-lg">
+                                                                                        <div className="w-6 h-6 rounded-md bg-amber-100 flex items-center justify-center shrink-0">
+                                                                                            <span className="text-[10px]">⚠️</span>
+                                                                                        </div>
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <p className="text-[10px] font-bold text-amber-800">YENİ GİREN CİHAZ (Şu Anki)</p>
+                                                                                            <p className="text-xs text-amber-600 truncate">{log.userAgent ? parseUserAgent(log.userAgent).os : "Bilinmiyor"} <span className="font-mono text-[10px] opacity-70">({parsed.newIp || log.ipAddress})</span></p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                        
+                                                                        // Eğer JSON ama başka bir event ise, sadece formatlı göster
+                                                                        return (
+                                                                            <pre className="text-[10px] text-[#0A1931] font-mono mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 overflow-x-auto">
+                                                                                {JSON.stringify(parsed, null, 2)}
+                                                                            </pre>
+                                                                        );
+                                                                    } catch (e) {
+                                                                        // Normal metin
+                                                                        return <p className="text-xs text-[#0A1931] font-medium mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100">{log.details}</p>;
+                                                                    }
+                                                                })()}
                                                                 {log.userAgent && (
                                                                     <div className="flex items-center gap-3 text-xs text-[#1B3B6F] font-medium bg-[#F8FAFC] p-2 rounded-lg border border-[#E2E8F0]">
                                                                         {parseUserAgent(log.userAgent).device === "Mobile" ? <Smartphone size={14} /> : <Monitor size={14} />}

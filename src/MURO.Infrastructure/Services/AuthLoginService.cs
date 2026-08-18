@@ -123,10 +123,12 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
                 // SignalR push failure should fail silently to not interrupt login process
             }
             
-            if (old.IpAddress == ipAddress && old.DeviceInfo == newDeviceInfo)
+            bool hasDeviceIdMatch = !string.IsNullOrEmpty(deviceId) && old.DeviceInfo != null && old.DeviceInfo.EndsWith($"|{deviceId}");
+
+            if ((old.IpAddress == ipAddress && old.DeviceInfo == newDeviceInfo) || hasDeviceIdMatch)
             {
                 await LogSecurityEventAsync(user.Id, "SESSION_REPLACED", ipAddress, userAgent,
-                    JsonSerializer.Serialize(new { replacedSessionId = old.Id }));
+                    JsonSerializer.Serialize(new { replacedSessionId = old.Id, reason = hasDeviceIdMatch ? "SAME_DEVICE_ID" : "SAME_IP_AND_AGENT" }));
             }
             else
             {
