@@ -11,7 +11,7 @@ using MURO.Infrastructure.Persistence;
 namespace MURO.API.Controllers.Admin;
 
 [EnableRateLimiting("ApiPolicy")]
-[Authorize(Roles = "SuperAdmin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
 [ApiController]
 [Route("api/v1/admin")]
 public class AdminSecurityController : ControllerBase
