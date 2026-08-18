@@ -505,7 +505,7 @@ export function CourseMediaTab({
         
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
-            const title = (media.title || "").toLowerCase();
+            const title = (media.type === "Exam" ? media.examTitle : media.type === "Session" ? media.sessionTitle : (media.customTitle || media.mediaAsset?.title) || "").toLowerCase();
             if (!title.includes(query)) return false;
         }
 
