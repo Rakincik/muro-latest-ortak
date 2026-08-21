@@ -54,10 +54,16 @@ export const getApiUrl = () => {
         return `https://${tenant}-api.okinar.com/api/v1`;
     }
     
-    // Generic fallback:
-    // {tenant}-ad.domain.com -> {tenant}-api.domain.com
     const domain = hostname.split(".").slice(1).join(".");
     const sub = hostname.split(".")[0];
+
+    // Single domain portals (online.domain.com, uzem.domain.com, lms.domain.com)
+    if (sub === "online" || sub === "uzem" || sub === "lms" || sub === "portal") {
+        return `https://${hostname}/api/v1`;
+    }
+    
+    // Generic fallback:
+    // {tenant}-ad.domain.com -> {tenant}-api.domain.com
     
     let tenant = sub;
     let apiSuffix = "-api";

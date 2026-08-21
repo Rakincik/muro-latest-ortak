@@ -48,17 +48,18 @@ export default function StudentLoginPage() {
         if (t) localStorage.setItem("muro_token", t);
         if (r) localStorage.setItem("muro_refresh", r);
 
-        const isDev = window.location.hostname === "localhost";
+        const currentHost = window.location.hostname;
+        const sub = currentHost.split('.')[0];
+        const isDev = currentHost === "localhost";
         let targetUrl = "";
         
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else if (!window.location.hostname.endsWith("muro.click") && !window.location.hostname.endsWith("4takademi.com")) {
+        } else if (sub === "online" || sub === "uzem" || sub === "lms" || (!currentHost.endsWith("muro.click") && !currentHost.endsWith("4takademi.com"))) {
           // Custom / Single domain setup -> redirect to local subpath
           targetUrl = `/admin/dashboard`;
         } else {
-          // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click, uzem.4takademi.com -> uzem-adm.4takademi.com
-          const currentHost = window.location.hostname;
+          // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click
           let adminHost = currentHost;
           
           if (currentHost.startsWith("3u.")) {
