@@ -9,7 +9,7 @@ using MURO.Infrastructure.Services;
 namespace MURO.API.Controllers.Admin;
 
 [EnableRateLimiting("ApiPolicy")]
-[Authorize(Roles = "SuperAdmin,Admin")]
+[Authorize(Roles = "SuperAdmin")]
 [ApiController]
 [Route("api/v1/admin/integrations")]
 public class AdminIntegrationController : ControllerBase
