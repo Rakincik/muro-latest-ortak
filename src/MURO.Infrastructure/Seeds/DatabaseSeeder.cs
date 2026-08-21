@@ -33,6 +33,36 @@ public static class DatabaseSeeder
         ");
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"IntegrationSettings\" ADD COLUMN IF NOT EXISTS \"TriggerSettingsJson\" text;");
 
+        // ── Auto Schema Update: TenantApiKeys & ConnectApiLogs tables ─────────
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS ""TenantApiKeys"" (
+                ""Id"" uuid PRIMARY KEY,
+                ""TenantId"" uuid NOT NULL,
+                ""KeyPrefix"" text NOT NULL,
+                ""KeyHash"" text NOT NULL,
+                ""Name"" text NOT NULL,
+                ""Scopes"" text NOT NULL,
+                ""IsEnabled"" boolean NOT NULL DEFAULT true,
+                ""LastUsedAt"" timestamp with time zone,
+                ""CreatedAt"" timestamp with time zone NOT NULL,
+                ""CreatedBy"" text
+            );
+
+            CREATE TABLE IF NOT EXISTS ""ConnectApiLogs"" (
+                ""Id"" uuid PRIMARY KEY,
+                ""TenantId"" uuid NOT NULL,
+                ""ApiKeyId"" uuid,
+                ""Endpoint"" text NOT NULL,
+                ""HttpMethod"" text NOT NULL,
+                ""IpAddress"" text,
+                ""StatusCode"" integer NOT NULL,
+                ""RequestBody"" text,
+                ""ResponseBody"" text,
+                ""DurationMs"" bigint NOT NULL,
+                ""CreatedAt"" timestamp with time zone NOT NULL
+            );
+        ");
+
         // ── Seed Default Integration Cards if empty ───────────────────────────
         try
         {
