@@ -119,10 +119,13 @@ services:
 
   # --- Admin Frontend (Next.js) ---
   admin:
-    image: muro-admin:latest
-
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_BASE_PATH: "/admin"
+    image: muro-admin-trk:latest
     volumes:
-
       - /opt/trk/logo.png:/app/public/logo.png
     container_name: muro_trk_admin
     restart: unless-stopped
@@ -138,7 +141,7 @@ services:
 
   # --- Student Frontend (Next.js) ---
   student:
-    image: muro-student:latest
+    image: muro-student-trk:latest
 
     volumes:
 
