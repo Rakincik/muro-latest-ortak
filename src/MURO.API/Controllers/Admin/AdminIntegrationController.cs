@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MURO.Application.DTOs.Integrations;
 using MURO.Application.Interfaces;
+using MURO.Infrastructure.Services;
 
 namespace MURO.API.Controllers.Admin;
 
@@ -15,13 +16,16 @@ public class AdminIntegrationController : ControllerBase
 {
     private readonly IIntegrationService _integrationService;
     private readonly ISmsService _smsService;
+    private readonly TopluSmsService _topluSmsService;
 
     public AdminIntegrationController(
         IIntegrationService integrationService,
-        ISmsService smsService)
+        ISmsService smsService,
+        TopluSmsService topluSmsService)
     {
         _integrationService = integrationService;
         _smsService = smsService;
+        _topluSmsService = topluSmsService;
     }
 
     [HttpGet]
@@ -50,6 +54,12 @@ public class AdminIntegrationController : ControllerBase
     [HttpPost("{providerKey}/test")]
     public async Task<IActionResult> TestIntegration(string providerKey, [FromBody] TestIntegrationRequest request)
     {
+        if (providerKey.Equals("toplusms", StringComparison.OrdinalIgnoreCase))
+        {
+            var result = await _integrationService.TestTopluSmsAsync(request, HttpContext.RequestAborted);
+            return Ok(result);
+        }
+
         if (providerKey.Equals("vatansms", StringComparison.OrdinalIgnoreCase))
         {
             var result = await _integrationService.TestVatanSmsAsync(request, HttpContext.RequestAborted);
@@ -69,6 +79,13 @@ public class AdminIntegrationController : ControllerBase
     [HttpGet("sms/senders")]
     public async Task<IActionResult> GetSmsSenders()
     {
+        var toplusms = await _topluSmsService.GetActiveConfigAsync(null, HttpContext.RequestAborted);
+        if (toplusms != null)
+        {
+            var s = await _topluSmsService.GetSendersAsync(toplusms, HttpContext.RequestAborted);
+            return Ok(s);
+        }
+
         var senders = await _smsService.GetSendersAsync(null, HttpContext.RequestAborted);
         return Ok(senders);
     }
@@ -76,6 +93,13 @@ public class AdminIntegrationController : ControllerBase
     [HttpGet("sms/account-info")]
     public async Task<IActionResult> GetSmsAccountInfo()
     {
+        var toplusms = await _topluSmsService.GetActiveConfigAsync(null, HttpContext.RequestAborted);
+        if (toplusms != null)
+        {
+            var infoToplu = await _topluSmsService.GetAccountInfoAsync(toplusms, HttpContext.RequestAborted);
+            return Ok(infoToplu);
+        }
+
         var info = await _smsService.GetAccountInfoAsync(null, HttpContext.RequestAborted);
         return Ok(info);
     }

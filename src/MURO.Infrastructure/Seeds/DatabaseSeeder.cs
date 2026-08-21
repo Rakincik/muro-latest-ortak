@@ -36,6 +36,23 @@ public static class DatabaseSeeder
         // ── Seed Default Integration Cards if empty ───────────────────────────
         try
         {
+            var hasTopluSms = await db.IntegrationSettings.AnyAsync(i => i.ProviderKey == "toplusms");
+            if (!hasTopluSms)
+            {
+                db.IntegrationSettings.Add(new IntegrationSetting
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderKey = "toplusms",
+                    Category = "SMS",
+                    Title = "Toplu SMS (api.toplusms.app)",
+                    Description = "VatanSMS yeni nesil REST API altyapısı (api.toplusms.app) ile OTP ve toplu SMS gönderim servisi.",
+                    IsEnabled = false,
+                    ConfigJson = "{\"api_key\":\"\",\"sender\":\"\",\"message_type\":\"normal\",\"message_content_type\":\"bilgi\",\"add_cancel_link\":false}",
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+            }
+
             var hasVatanSms = await db.IntegrationSettings.AnyAsync(i => i.ProviderKey == "vatansms");
             if (!hasVatanSms)
             {
@@ -44,8 +61,8 @@ public static class DatabaseSeeder
                     Id = Guid.NewGuid(),
                     ProviderKey = "vatansms",
                     Category = "SMS",
-                    Title = "Vatan SMS",
-                    Description = "Türkiye geneli güvenli OTP, bilgilendirme ve toplu SMS gönderim servisi.",
+                    Title = "Vatan SMS (Eski API)",
+                    Description = "Türkiye geneli güvenli OTP, bilgilendirme ve toplu SMS gönderim servisi (api.vatansms.net).",
                     IsEnabled = false,
                     ConfigJson = "{\"api_id\":\"\",\"api_key\":\"\",\"sender\":\"\",\"message_type\":\"normal\",\"message_content_type\":\"bilgi\"}",
                     UpdatedAt = DateTime.UtcNow

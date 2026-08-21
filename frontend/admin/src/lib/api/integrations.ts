@@ -25,6 +25,14 @@ export interface VatanSmsConfig {
     messageContentType: "bilgi" | "ticari";
 }
 
+export interface TopluSmsConfig {
+    apiKey: string;
+    sender: string;
+    messageType: "normal" | "turkce";
+    messageContentType: "bilgi" | "ticari";
+    addCancelLink: boolean;
+}
+
 export interface SmsAccountInfo {
     success: boolean;
     customerName?: string;
@@ -169,3 +177,64 @@ export const adminSmsCenterApi = {
             body: JSON.stringify(data)
         })
 };
+
+export interface TenantApiKeyInfo {
+    id: string;
+    keyPrefix: string;
+    fullKey?: string | null;
+    name: string;
+    scopes: string;
+    isEnabled: boolean;
+    lastUsedAt?: string | null;
+    createdAt: string;
+}
+
+export interface ConnectApiLogItem {
+    id: string;
+    endpoint: string;
+    httpMethod: string;
+    ipAddress?: string | null;
+    statusCode: number;
+    requestBody?: string | null;
+    responseBody?: string | null;
+    durationMs: number;
+    createdAt: string;
+}
+
+export interface ConnectEnrollResult {
+    success: boolean;
+    action: string;
+    userId: string;
+    username: string;
+    email: string;
+    phone: string;
+    packageName?: string | null;
+    generatedPassword?: string | null;
+    message: string;
+    magicLoginUrl?: string | null;
+}
+
+export const adminConnectApi = {
+    getKey: (token: string, tenantId: string) =>
+        api<TenantApiKeyInfo>('/admin/connect/key', { token, tenantId }),
+
+    regenerateKey: (token: string, tenantId: string, name?: string) =>
+        api<TenantApiKeyInfo>('/admin/connect/key/regenerate', {
+            method: 'POST',
+            token,
+            tenantId,
+            body: JSON.stringify({ name })
+        }),
+
+    getLogs: (token: string, tenantId: string, take: number = 50) =>
+        api<ConnectApiLogItem[]>(`/admin/connect/logs?take=${take}`, { token, tenantId }),
+
+    testEnroll: (token: string, tenantId: string, data: any) =>
+        api<ConnectEnrollResult>('/admin/connect/test-enroll', {
+            method: 'POST',
+            token,
+            tenantId,
+            body: JSON.stringify(data)
+        })
+};
+

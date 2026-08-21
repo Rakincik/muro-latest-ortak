@@ -20,19 +20,42 @@ public class BulkSmsService : IBulkSmsService
 {
     private readonly MuroDbContext _context;
     private readonly ISmsService _smsService;
+    private readonly TopluSmsService _topluSmsService;
     private readonly IConfiguration _config;
     private readonly ILogger<BulkSmsService> _logger;
 
     public BulkSmsService(
         MuroDbContext context,
         ISmsService smsService,
+        TopluSmsService topluSmsService,
         IConfiguration config,
         ILogger<BulkSmsService> logger)
     {
         _context = context;
         _smsService = smsService;
+        _topluSmsService = topluSmsService;
         _config = config;
         _logger = logger;
+    }
+
+    private async Task<SmsSendResult> SendSingleInternalAsync(SendSingleSmsRequest req, CancellationToken ct)
+    {
+        var toplusms = await _topluSmsService.GetActiveConfigAsync(null, ct);
+        if (toplusms != null)
+        {
+            return await _topluSmsService.SendSmsAsync(req, toplusms, ct);
+        }
+        return await _smsService.SendSmsAsync(req, ct);
+    }
+
+    private async Task<SmsSendResult> SendBulkInternalAsync(SendBulkSmsRequest req, CancellationToken ct)
+    {
+        var toplusms = await _topluSmsService.GetActiveConfigAsync(null, ct);
+        if (toplusms != null)
+        {
+            return await _topluSmsService.SendBulkSmsAsync(req, toplusms, ct);
+        }
+        return await _smsService.SendBulkSmsAsync(req, ct);
     }
 
     private static string NormalizePhone(string? phone)
@@ -292,7 +315,7 @@ public class BulkSmsService : IBulkSmsService
         {
             // Hızlı 1toN gönderim
             var staticMessage = RenderMessage(request.MessageTemplate, validRecipients.First().user, validRecipients.First().targetName, tenantName, loginUrl);
-            var bulkRes = await _smsService.SendBulkSmsAsync(new SendBulkSmsRequest
+            var bulkRes = await SendBulkInternalAsync(new SendBulkSmsRequest
             {
                 Phones = phoneList,
                 Message = staticMessage,
@@ -318,7 +341,7 @@ public class BulkSmsService : IBulkSmsService
             foreach (var r in validRecipients)
             {
                 var personalMessage = RenderMessage(request.MessageTemplate, r.user, r.targetName, tenantName, loginUrl);
-                var sendRes = await _smsService.SendSmsAsync(new SendSingleSmsRequest
+                var sendRes = await SendSingleInternalAsync(new SendSingleSmsRequest
                 {
                     Phone = r.CleanPhone,
                     Message = personalMessage,
@@ -373,7 +396,7 @@ public class BulkSmsService : IBulkSmsService
         foreach (var item in validStudents)
         {
             var msg = RenderMessage(triggers.LiveLessonStartedTemplate, item.User, $"{course.Title} - {sessionTitle}", tenantName, loginUrl);
-            await _smsService.SendSmsAsync(new SendSingleSmsRequest
+            await SendSingleInternalAsync(new SendSingleSmsRequest
             {
                 Phone = item.CleanPhone,
                 Message = msg
@@ -415,7 +438,7 @@ public class BulkSmsService : IBulkSmsService
         foreach (var item in validStudents)
         {
             var msg = RenderMessage(triggers.RecordingReadyTemplate, item.User, $"{course.Title} - {sessionTitle}", tenantName, loginUrl);
-            await _smsService.SendSmsAsync(new SendSingleSmsRequest
+            await SendSingleInternalAsync(new SendSingleSmsRequest
             {
                 Phone = item.CleanPhone,
                 Message = msg
@@ -440,7 +463,7 @@ public class BulkSmsService : IBulkSmsService
         var msg = RenderMessage(triggers.WelcomeStudentTemplate, user, "MURO Akademi", tenantName, loginUrl, rawPassword);
 
         _logger.LogInformation("Yeni öğrenci hoş geldin SMS'i gönderiliyor: {Phone}", cleanPhone);
-        await _smsService.SendSmsAsync(new SendSingleSmsRequest
+        await SendSingleInternalAsync(new SendSingleSmsRequest
         {
             Phone = cleanPhone,
             Message = msg

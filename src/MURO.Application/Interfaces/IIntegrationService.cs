@@ -11,4 +11,5 @@ public interface IIntegrationService
     Task<IntegrationItemDto?> GetIntegrationAsync(string providerKey, CancellationToken ct = default);
     Task<IntegrationItemDto> UpdateIntegrationAsync(string providerKey, UpdateIntegrationRequest request, string? updatedBy, CancellationToken ct = default);
     Task<SmsAccountInfoResult> TestVatanSmsAsync(TestIntegrationRequest request, CancellationToken ct = default);
+    Task<SmsAccountInfoResult> TestTopluSmsAsync(TestIntegrationRequest request, CancellationToken ct = default);
 }

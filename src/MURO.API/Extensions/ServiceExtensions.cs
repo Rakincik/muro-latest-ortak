@@ -66,8 +66,13 @@ public static class ServiceExtensions
         {
             client.Timeout = TimeSpan.FromSeconds(15);
         });
+        services.AddHttpClient<TopluSmsService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
         services.AddScoped<IIntegrationService, IntegrationService>();
         services.AddScoped<IBulkSmsService, BulkSmsService>();
+        services.AddScoped<IConnectApiService, ConnectApiService>();
 
         // --- VEP Control Plane ---
         services.AddScoped<ISystemHealthService, SystemHealthService>();

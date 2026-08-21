@@ -44,7 +44,7 @@ const sections = [
         title: "İLETİŞİM",
         items: [
             { label: "Bildirimler", href: "/dashboard/notifications", icon: Bell, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "notifications" },
-            { label: "Toplu SMS Merkezi", href: "/dashboard/sms-center", icon: MessageSquare, roles: ["Admin", "SuperAdmin"] },
+            { label: "Toplu SMS Merkezi", href: "/dashboard/sms-center", icon: MessageSquare, roles: ["Admin", "SuperAdmin"], featureKey: "smsCenter" },
             { label: "Soru Sor", href: "/dashboard/questions", icon: MessageCircleQuestion, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"], featureKey: "questions" },
             { label: "Teknik Destek", href: "/dashboard/support", icon: HeadphonesIcon, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "support" },
         ]

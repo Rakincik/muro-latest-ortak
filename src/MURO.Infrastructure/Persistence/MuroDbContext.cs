@@ -76,6 +76,8 @@ public class MuroDbContext : DbContext
     public DbSet<TelegramMessageMapping> TelegramMessageMappings => Set<TelegramMessageMapping>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<IntegrationSetting> IntegrationSettings => Set<IntegrationSetting>();
+    public DbSet<TenantApiKey> TenantApiKeys => Set<TenantApiKey>();
+    public DbSet<ConnectApiLog> ConnectApiLogs => Set<ConnectApiLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -26,6 +26,9 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
+ARG NEXT_PUBLIC_BASE_PATH
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+
 ENV NODE_ENV=production
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0

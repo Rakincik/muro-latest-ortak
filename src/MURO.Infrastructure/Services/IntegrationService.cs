@@ -17,16 +17,45 @@ public class IntegrationService : IIntegrationService
 {
     private readonly MuroDbContext _context;
     private readonly ISmsService _smsService;
+    private readonly TopluSmsService _topluSmsService;
     private readonly ILogger<IntegrationService> _logger;
+
+    public IntegrationService(
+        MuroDbContext context,
+        ISmsService smsService,
+        TopluSmsService topluSmsService,
+        ILogger<IntegrationService> logger)
+    {
+        _context = context;
+        _smsService = smsService;
+        _topluSmsService = topluSmsService;
+        _logger = logger;
+    }
 
     private static readonly List<IntegrationItemDto> CatalogTemplates = new()
     {
         new IntegrationItemDto
         {
+            ProviderKey = "muro_connect",
+            Category = "Geliştirici & API",
+            Title = "MURO Connect (Web Sitesi & Webhook API)",
+            Description = "Harici web siteleri, Shopier, WordPress ve ödeme sistemlerinden tek tıkla otomatik öğrenci kaydı ve paket tanımlama API'si.",
+            IsEnabled = true
+        },
+        new IntegrationItemDto
+        {
+            ProviderKey = "toplusms",
+            Category = "SMS",
+            Title = "Toplu SMS (api.toplusms.app)",
+            Description = "VatanSMS yeni nesil REST API altyapısı (api.toplusms.app) ile OTP ve toplu SMS gönderim servisi.",
+            IsEnabled = false
+        },
+        new IntegrationItemDto
+        {
             ProviderKey = "vatansms",
             Category = "SMS",
-            Title = "Vatan SMS",
-            Description = "Türkiye geneli güvenli OTP, bilgilendirme ve toplu SMS gönderim servisi.",
+            Title = "Vatan SMS (Eski API)",
+            Description = "Türkiye geneli güvenli OTP, bilgilendirme ve toplu SMS gönderim servisi (api.vatansms.net).",
             IsEnabled = false
         },
         new IntegrationItemDto
@@ -79,15 +108,6 @@ public class IntegrationService : IIntegrationService
         }
     };
 
-    public IntegrationService(
-        MuroDbContext context,
-        ISmsService smsService,
-        ILogger<IntegrationService> logger)
-    {
-        _context = context;
-        _smsService = smsService;
-        _logger = logger;
-    }
 
     public async Task<List<IntegrationItemDto>> GetAllIntegrationsAsync(CancellationToken ct = default)
     {
@@ -261,6 +281,56 @@ public class IntegrationService : IIntegrationService
 
         // Veritabanındaki test logunu güncelle
         var setting = await _context.IntegrationSettings.FirstOrDefaultAsync(i => i.ProviderKey == "vatansms", ct);
+        if (setting != null)
+        {
+            setting.LastTestedAt = DateTime.UtcNow;
+            setting.TestStatus = result.Success ? "Success" : "Failed";
+            setting.TestMessage = result.Message;
+            _context.IntegrationSettings.Update(setting);
+            await _context.SaveChangesAsync(ct);
+        }
+
+        return result;
+    }
+
+    public async Task<SmsAccountInfoResult> TestTopluSmsAsync(TestIntegrationRequest request, CancellationToken ct = default)
+    {
+        TopluSmsConfigDto? cfg = null;
+        if (!string.IsNullOrWhiteSpace(request.ConfigJson))
+        {
+            try
+            {
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                cfg = JsonSerializer.Deserialize<TopluSmsConfigDto>(request.ConfigJson, options);
+            }
+            catch { }
+        }
+
+        var result = await _topluSmsService.GetAccountInfoAsync(cfg, ct);
+
+        // Canlı test SMS'i istenmişse gönder
+        if (result.Success && !string.IsNullOrWhiteSpace(request.TestPhone))
+        {
+            var smsRes = await _topluSmsService.SendSmsAsync(new SendSingleSmsRequest
+            {
+                Phone = request.TestPhone,
+                Message = $"[MURO] TopluSMS entegrasyon test mesajıdır. Tarih: {DateTime.Now:dd.MM.yyyy HH:mm}",
+                Sender = cfg?.Sender
+            }, cfg, ct);
+
+            if (!smsRes.Success)
+            {
+                result.Success = false;
+                result.Message = $"Hesap doğrulandı fakat test SMS gönderilemedi: {smsRes.Message}";
+            }
+            else
+            {
+                result.Message = $"Bağlantı başarılı ve test SMS {request.TestPhone} numarasına iletildi.";
+            }
+        }
+
+        // Veritabanındaki test logunu güncelle
+        var setting = await _context.IntegrationSettings.FirstOrDefaultAsync(i => i.ProviderKey == "toplusms", ct);
         if (setting != null)
         {
             setting.LastTestedAt = DateTime.UtcNow;

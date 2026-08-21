@@ -35,10 +35,12 @@ docker build -t muro-student:latest -f frontend/student/Dockerfile ./frontend/st
 echo "✅ Ortak Frontend imajları hazır."
 echo ""
 
-# 3. AKM Özel Admin İmaji ve 3U Özel Student İmajı
+# 3. AKM Özel Admin ve Student İmajları
 docker build -t muro-admin-akm:latest \
   --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
   -f frontend/admin/Dockerfile ./frontend/admin
+docker build -t muro-student-akm:latest \
+  -f frontend/student/Dockerfile ./frontend/student
 docker build -t muro-student:3u-ozel -f frontend/student/Dockerfile ./frontend/student
 echo "✅ AKM ve 3U özel imajları hazır."
 echo ""
@@ -70,15 +72,15 @@ docker build -t muro-student-ens:latest \
 echo "✅ ENS özel imajları hazır."
 echo ""
 
-# 4.7. TRK (uzem.ataniyorum.com) Özel İmajları (Tek Domain Mimarisi)
-echo "📦 5.7. TRK (uzem.ataniyorum.com) özel imajları derleniyor..."
+# 4.7. TRK (uzem.ataniyorumhocam.com) Özel İmajları (Tek Domain Mimarisi)
+echo "📦 5.7. TRK (uzem.ataniyorumhocam.com) özel imajları derleniyor..."
 docker build -t muro-admin-trk:latest \
-  --build-arg NEXT_PUBLIC_API_URL="https://uzem.ataniyorum.com/api/v1" \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.ataniyorumhocam.com/api/v1" \
   --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
   -f frontend/admin/Dockerfile ./frontend/admin
 
 docker build -t muro-student-trk:latest \
-  --build-arg NEXT_PUBLIC_API_URL="https://uzem.ataniyorum.com/api/v1" \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.ataniyorumhocam.com/api/v1" \
   -f frontend/student/Dockerfile ./frontend/student
 echo "✅ TRK özel imajları hazır."
 echo ""

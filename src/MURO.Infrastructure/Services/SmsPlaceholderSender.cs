@@ -13,15 +13,18 @@ namespace MURO.Infrastructure.Services;
 public class SmsPlaceholderSender : ISmsSender
 {
     private readonly ISmsService _smsService;
+    private readonly TopluSmsService _topluSmsService;
     private readonly IConfiguration _config;
     private readonly ILogger<SmsPlaceholderSender> _logger;
 
     public SmsPlaceholderSender(
         ISmsService smsService,
+        TopluSmsService topluSmsService,
         IConfiguration config, 
         ILogger<SmsPlaceholderSender> logger)
     {
         _smsService = smsService;
+        _topluSmsService = topluSmsService;
         _config = config;
         _logger = logger;
     }
@@ -30,11 +33,22 @@ public class SmsPlaceholderSender : ISmsSender
     {
         try
         {
-            var res = await _smsService.SendSmsAsync(new SendSingleSmsRequest
+            var req = new SendSingleSmsRequest
             {
                 Phone = phoneNumber,
                 Message = message
-            });
+            };
+
+            var toplusms = await _topluSmsService.GetActiveConfigAsync();
+            SmsSendResult res;
+            if (toplusms != null)
+            {
+                res = await _topluSmsService.SendSmsAsync(req, toplusms);
+            }
+            else
+            {
+                res = await _smsService.SendSmsAsync(req);
+            }
 
             if (res.Success)
             {

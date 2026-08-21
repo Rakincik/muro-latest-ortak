@@ -41,6 +41,15 @@ public class VatanSmsConfigDto
     public string MessageContentType { get; set; } = "bilgi"; // "bilgi" | "ticari"
 }
 
+public class TopluSmsConfigDto
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string Sender { get; set; } = string.Empty;
+    public string MessageType { get; set; } = "normal"; // "normal" | "turkce"
+    public string MessageContentType { get; set; } = "bilgi"; // "bilgi" | "ticari"
+    public bool AddCancelLink { get; set; } = false;
+}
+
 public class SendSingleSmsRequest
 {
     public string Phone { get; set; } = string.Empty;

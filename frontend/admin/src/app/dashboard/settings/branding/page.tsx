@@ -69,6 +69,7 @@ export default function BrandingSettingsPage() {
         accounting: true,
         groups: true,
         packages: true,
+        smsCenter: true,
     });
 
     // UX State
@@ -787,6 +788,7 @@ export default function BrandingSettingsPage() {
                                 { key: "studentScorecard", label: "Öğrenci Karnesi", desc: "Bireysel gelişim ve karne modülü" },
                                 { key: "attendance", label: "Devam Raporları", desc: "Canlı ders yoklama ve devam bilgisi" },
                                 { key: "accounting", label: "Muhasebe & Satış Raporu", desc: "Ödeme, ciro ve cüzdan işlemleri" },
+                                { key: "smsCenter", label: "Toplu SMS Merkezi", desc: "Öğrencilere toplu SMS ve anlık duyuru/kampanya gönderimi" },
                             ].map((mod) => (
                                 <div key={mod.key} className="flex items-center justify-between p-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl hover:bg-[#F1F5F9] transition-all">
                                     <div className="flex-1 pr-3">

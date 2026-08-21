@@ -42,6 +42,8 @@ builder.Services.AddScoped<IBbbService, BbbService>();
 builder.Services.AddScoped<IHlsProcessingService, HlsProcessingService>();
 builder.Services.AddSingleton<IJobQueue, RedisJobQueue>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient<ISmsService, VatanSmsService>();
+builder.Services.AddHttpClient<TopluSmsService>();
 builder.Services.AddScoped<ISmsSender, SmsPlaceholderSender>();
 
 // --- Background Jobs ---

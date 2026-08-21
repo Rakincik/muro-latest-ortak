@@ -11,6 +11,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
 import { adminIntegrationApi, type IntegrationItem } from "@/lib/api";
 import { VatanSmsModal } from "./VatanSmsModal";
+import { TopluSmsModal } from "./TopluSmsModal";
+import { MuroConnectModal } from "./MuroConnectModal";
+import { Code2 } from "lucide-react";
 
 export default function IntegrationsPage() {
     const { token, currentTenantId: tenantId, user } = useAuth();
@@ -24,6 +27,8 @@ export default function IntegrationsPage() {
     // Modal state
     const [selectedIntegration, setSelectedIntegration] = useState<IntegrationItem | null>(null);
     const [isVatanModalOpen, setIsVatanModalOpen] = useState(false);
+    const [isTopluSmsModalOpen, setIsTopluSmsModalOpen] = useState(false);
+    const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
     // Load integrations
     const loadIntegrations = useCallback(async () => {
@@ -75,7 +80,11 @@ export default function IntegrationsPage() {
 
     const handleOpenConfigure = (item: IntegrationItem) => {
         setSelectedIntegration(item);
-        if (item.providerKey === "vatansms") {
+        if (item.providerKey === "muro_connect") {
+            setIsConnectModalOpen(true);
+        } else if (item.providerKey === "toplusms") {
+            setIsTopluSmsModalOpen(true);
+        } else if (item.providerKey === "vatansms") {
             setIsVatanModalOpen(true);
         } else {
             toastError("Bilgi", `${item.title} entegrasyonu çok yakında aktif edilecektir.`);
@@ -83,7 +92,8 @@ export default function IntegrationsPage() {
     };
 
     const getProviderIcon = (providerKey: string, category: string) => {
-        if (providerKey === "vatansms" || providerKey === "netgsm") return <MessageSquare size={24} className="stroke-[2.2]" />;
+        if (providerKey === "muro_connect") return <Code2 size={24} className="stroke-[2.2] text-blue-600" />;
+        if (providerKey === "toplusms" || providerKey === "vatansms" || providerKey === "netgsm") return <MessageSquare size={24} className="stroke-[2.2]" />;
         if (category === "Ödeme") return <CreditCard size={24} className="stroke-[2.2]" />;
         if (category === "CDN & Video") return <Video size={24} className="stroke-[2.2]" />;
         if (category === "Yapay Zeka") return <Bot size={24} className="stroke-[2.2]" />;
@@ -98,54 +108,55 @@ export default function IntegrationsPage() {
                 <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2.5">
-                            <span className="px-3 py-1 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full text-[10px] font-extrabold tracking-widest uppercase flex items-center gap-1.5">
-                                <ShieldCheck size={12} className="text-emerald-400" /> SÜPER ADMİN ÖZEL MERKEZİ
-                            </span>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/90 text-xs font-semibold backdrop-blur-md">
+                            <Sparkles size={14} className="text-amber-400" />
+                            <span>Merkezi Entegrasyon Havuzu</span>
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                            Entegrasyonlar Yönetim Merkezi
+                            Entegrasyonlar & Harici Servisler
                         </h1>
-                        <p className="text-sm text-slate-300 max-w-2xl font-normal leading-relaxed">
-                            Sisteminizdeki SMS sağlayıcılarını, sanal POS ödeme sistemlerini, video CDN ağlarını ve üçüncü parti servisleri tek bir merkezden yapılandırın.
+                        <p className="text-sm text-slate-300 max-w-2xl">
+                            SMS sağlayıcıları, ödeme geçitleri, CDN video altyapısı ve otomatik bildirim servislerinizi tek merkezden yapılandırın.
                         </p>
                     </div>
 
-                    <button
+                    <button 
                         onClick={loadIntegrations}
                         disabled={loading}
-                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold rounded-2xl transition-all shadow-sm flex items-center gap-2 self-start md:self-center backdrop-blur-md disabled:opacity-50"
+                        className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-2xl border border-white/15 backdrop-blur-md transition-all flex items-center gap-2 self-start md:self-auto shadow-sm active:scale-95 disabled:opacity-50"
                     >
                         <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                        <span>Yenile</span>
+                        <span>Listeyi Yenile</span>
                     </button>
                 </div>
             </div>
 
-            {/* ── Search & Filter Bar ───────────────────────────────────── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm">
-                <div className="relative flex-1 max-w-md">
-                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            {/* ── Search & Filter Bar ─────────────────────────────────────── */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                     <input 
                         type="text" 
-                        placeholder="Entegrasyon adı veya servis türü ile ara..."
+                        placeholder="Entegrasyon veya sağlayıcı ara..."
                         value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 text-xs font-medium border border-slate-200 rounded-xl text-slate-900 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#0A1931] focus:bg-white transition-all"
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-[#0A1931] placeholder:text-slate-400 focus:outline-none focus:border-[#1B3B6F] focus:bg-white transition-all"
                     />
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                    {categories.map(cat => {
+                {/* Category Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                    {categories.map((cat) => {
+                        const isSelected = selectedCategory === cat;
                         const label = cat === "all" ? "Tümü" : cat;
                         return (
                             <button
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all border shrink-0 ${
-                                    selectedCategory === cat
-                                        ? "bg-[#0A1931] text-white border-[#0A1931] shadow-sm"
-                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                                    isSelected 
+                                        ? "bg-[#0A1931] text-white shadow-sm" 
+                                        : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
                                 }`}
                             >
                                 {label}
@@ -158,8 +169,7 @@ export default function IntegrationsPage() {
             {/* ── Integrations Grid ─────────────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredIntegrations.map((item) => {
-                    const isVatan = item.providerKey === "vatansms";
-                    const isAvailable = isVatan;
+                    const isAvailable = item.providerKey === "muro_connect" || item.providerKey === "toplusms" || item.providerKey === "vatansms";
 
                     return (
                         <div 
@@ -228,15 +238,13 @@ export default function IntegrationsPage() {
                             {/* Bottom row: Actions */}
                             <div className="pt-5 mt-5 border-t border-slate-100 flex items-center justify-between gap-2">
                                 {isAvailable ? (
-                                    <>
-                                        <button
-                                            onClick={() => handleOpenConfigure(item)}
-                                            className="w-full px-4 py-2.5 bg-[#0A1931] hover:bg-[#1B3B6F] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
-                                        >
-                                            <Settings2 size={14} />
-                                            <span>Yapılandır & Test Et</span>
-                                        </button>
-                                    </>
+                                    <button
+                                        onClick={() => handleOpenConfigure(item)}
+                                        className="w-full px-4 py-2.5 bg-[#0A1931] hover:bg-[#1B3B6F] text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
+                                    >
+                                        <Settings2 size={14} />
+                                        <span>Yapılandır & Test Et</span>
+                                    </button>
                                 ) : (
                                     <button
                                         disabled
@@ -250,6 +258,20 @@ export default function IntegrationsPage() {
                     );
                 })}
             </div>
+
+            {/* ── MURO Connect Modal ────────────────────────────────────── */}
+            <MuroConnectModal 
+                isOpen={isConnectModalOpen}
+                onClose={() => setIsConnectModalOpen(false)}
+            />
+
+            {/* ── Toplu SMS Modal ───────────────────────────────────────── */}
+            <TopluSmsModal 
+                isOpen={isTopluSmsModalOpen}
+                onClose={() => setIsTopluSmsModalOpen(false)}
+                integration={selectedIntegration}
+                onSuccess={loadIntegrations}
+            />
 
             {/* ── Vatan SMS Modal ───────────────────────────────────────── */}
             <VatanSmsModal 
