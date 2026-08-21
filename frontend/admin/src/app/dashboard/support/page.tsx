@@ -247,7 +247,7 @@ export default function SupportPage() {
                 answerText: faq.answerText,
                 category: faq.category || "Teknik Sorun",
                 sortOrder: faq.sortOrder,
-                imageUrl: faq.imageUrl
+                imageUrl: faq.imageUrl ?? null
             });
         } else {
             setEditingFaq(null);

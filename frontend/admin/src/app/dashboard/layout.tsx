@@ -145,7 +145,7 @@ export default function DashboardLayout({
                         <div className="flex items-center gap-3">
                             {branding?.logoUrl || branding?.sidebarLogoUrl ? (
                                 <img 
-                                    src={branding.logoUrl || branding.sidebarLogoUrl} 
+                                    src={branding.logoUrl || branding.sidebarLogoUrl || ""} 
                                     alt={currentTenant?.tenantName || "Yönetim Paneli"} 
                                     className="max-h-8 w-auto object-contain pl-1" 
                                 />

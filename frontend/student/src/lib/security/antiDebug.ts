@@ -30,28 +30,38 @@ export function initSecurityKiosk(onViolation: () => void): () => void {
         }
     };
 
-    // 3. DevTools / Debugger Trap
-    // This constantly throws a debugger statement. 
-    // If DevTools is open, it pauses execution and causes a delay.
+    // 3. DevTools / Debugger Trap (Only on Desktop, with false-positive protection)
     let debuggerInterval: NodeJS.Timeout;
     const startDebuggerTrap = () => {
-        let isDevToolsOpen = false;
+        // Mobil ve tabletlerde F12/DevTools yoktur; CPU lag'leri ve video buffer gecikmeleri
+        // öğrenciyi dersten atmasın diye mobilde debugger tuzağını pasif yapıyoruz.
+        if (typeof window === "undefined") return;
+        const isMobileOrTablet = /Mobi|Android|iPhone|iPad|iPod|Tablet/i.test(navigator.userAgent) || 
+                                 (typeof window !== "undefined" && window.innerWidth < 1024);
+        if (isMobileOrTablet) return;
+
+        let consecutiveLagCount = 0;
         
         debuggerInterval = setInterval(() => {
             const start = performance.now();
             
-            // The debugger statement will halt execution if DevTools is open
             // eslint-disable-next-line no-debugger
             debugger;
             
             const end = performance.now();
+            const elapsed = end - start;
             
-            // If the execution took more than 100ms, it means the debugger paused it
-            if (end - start > 100) {
-                isDevToolsOpen = true;
-                onViolation();
+            // DevTools açıksa debugger execution'ı durdurur ve elapsed > 250ms olur.
+            // Tek seferlik CPU/video takılmalarını önlemek için arka arkaya 3 kez kontrol ediyoruz.
+            if (elapsed > 250) {
+                consecutiveLagCount++;
+                if (consecutiveLagCount >= 3) {
+                    onViolation();
+                }
+            } else {
+                consecutiveLagCount = 0;
             }
-        }, 1000);
+        }, 2000);
     };
 
     // Attach events

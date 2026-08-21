@@ -13,7 +13,7 @@ import {
     CalendarDays, ClipboardList, Bell, MessageCircleQuestion,
     HeadphonesIcon, Mic2, BarChart3, Wallet,
     LogOut, ChevronRight, Trophy, User, CalendarCheck, Package, Shield,
-    PlaySquare, ChevronDown, Building2
+    PlaySquare, ChevronDown, Building2, Blocks, MessageSquare
 } from "lucide-react";
 
 const sections = [
@@ -44,6 +44,7 @@ const sections = [
         title: "İLETİŞİM",
         items: [
             { label: "Bildirimler", href: "/dashboard/notifications", icon: Bell, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "notifications" },
+            { label: "Toplu SMS Merkezi", href: "/dashboard/sms-center", icon: MessageSquare, roles: ["Admin", "SuperAdmin"] },
             { label: "Soru Sor", href: "/dashboard/questions", icon: MessageCircleQuestion, roles: ["Admin", "SuperAdmin", "Assistant", "Instructor"], featureKey: "questions" },
             { label: "Teknik Destek", href: "/dashboard/support", icon: HeadphonesIcon, roles: ["Admin", "SuperAdmin", "Assistant"], featureKey: "support" },
         ]
@@ -70,6 +71,7 @@ const sections = [
         title: "SİSTEM",
         items: [
             { label: "Kurum Ayarları", href: "/dashboard/settings/branding", icon: Building2, roles: ["SuperAdmin"] },
+            { label: "Entegrasyonlar", href: "/dashboard/integrations", icon: Blocks, roles: ["SuperAdmin"] },
             { label: "Video Taşıma", href: "/dashboard/courses/media-transfer", icon: FolderTree, roles: ["SuperAdmin", "Admin"] }
         ]
     }

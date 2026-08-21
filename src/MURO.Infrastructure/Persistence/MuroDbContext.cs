@@ -75,6 +75,7 @@ public class MuroDbContext : DbContext
     public DbSet<Faq> Faqs => Set<Faq>();
     public DbSet<TelegramMessageMapping> TelegramMessageMappings => Set<TelegramMessageMapping>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<IntegrationSetting> IntegrationSettings => Set<IntegrationSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

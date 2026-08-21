@@ -15,6 +15,7 @@ public class LiveMeetingService : ILiveMeetingService
     private readonly IBbbService _bbbService;
     private readonly INotificationService _notificationService;
     private readonly IGroupAccessService _groupAccess;
+    private readonly IBulkSmsService _bulkSmsService;
     private readonly IConfiguration _config;
     private readonly ICacheService _cache;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -24,6 +25,7 @@ public class LiveMeetingService : ILiveMeetingService
         IBbbService bbbService,
         INotificationService notificationService,
         IGroupAccessService groupAccess,
+        IBulkSmsService bulkSmsService,
         IConfiguration config,
         ICacheService cache,
         IServiceScopeFactory scopeFactory)
@@ -32,6 +34,7 @@ public class LiveMeetingService : ILiveMeetingService
         _bbbService = bbbService;
         _notificationService = notificationService;
         _groupAccess = groupAccess;
+        _bulkSmsService = bulkSmsService;
         _config = config;
         _cache = cache;
         _scopeFactory = scopeFactory;
@@ -94,7 +97,7 @@ public class LiveMeetingService : ILiveMeetingService
             return new SessionStartResult(session.Id, "", session.VideoUrl, "Live");
         }
 
-        var meetingId = $"monopol_{courseId}";
+        var meetingId = $"muro_{sessionId}";
         var attendeePw = _config["Bbb:DefaultAttendeePw"] ?? "ap";
         var moderatorPw = _config["Bbb:DefaultModeratorPw"] ?? "mp";
 
@@ -108,7 +111,7 @@ public class LiveMeetingService : ILiveMeetingService
             DurationMinutes: 0, // 0 = Sınırsız (Otomatik kapanmayı engeller)
             LogoutURL: _config["Bbb:Defaults:LogoutURL"],
             SessionId: session.Id.ToString(),
-            CourseId: courseId.ToString().ToString()
+            CourseId: courseId.ToString()
         ));
 
         session.BbbMeetingId = meetingId;
@@ -155,6 +158,17 @@ public class LiveMeetingService : ILiveMeetingService
                 $"\"{session.Title}\" dersi şu an canlı! Hemen katıl.",
                 $"SessionStarted:{courseId}"
             ));
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var bulkSms = scope.ServiceProvider.GetRequiredService<IBulkSmsService>();
+                    await bulkSms.TriggerLiveLessonStartedSmsAsync(courseId, session.Title);
+                }
+                catch { }
+            });
         }
 
         return new SessionStartResult(session.Id, meetingId, moderatorJoinUrl, session.Status.ToString());

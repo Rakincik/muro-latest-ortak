@@ -21,7 +21,6 @@ echo "📥 1. Git reposundan en güncel kodlar çekiliyor..."
 git pull
 echo "✅ Kodlar güncellendi."
 echo ""
-
 # 1. Ortak API ve Worker İmajları
 echo "📦 2. Ortak Backend imajları derleniyor..."
 docker build -t muro-api:latest -f Dockerfile.api .
@@ -69,6 +68,19 @@ docker build -t muro-student-ens:latest \
   --build-arg NEXT_PUBLIC_API_URL="https://online.turkceoabtdeyiz.com/api/v1" \
   -f frontend/student/Dockerfile ./frontend/student
 echo "✅ ENS özel imajları hazır."
+echo ""
+
+# 4.7. TRK (uzem.ataniyorum.com) Özel İmajları (Tek Domain Mimarisi)
+echo "📦 5.7. TRK (uzem.ataniyorum.com) özel imajları derleniyor..."
+docker build -t muro-admin-trk:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.ataniyorum.com/api/v1" \
+  --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
+  -f frontend/admin/Dockerfile ./frontend/admin
+
+docker build -t muro-student-trk:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.ataniyorum.com/api/v1" \
+  -f frontend/student/Dockerfile ./frontend/student
+echo "✅ TRK özel imajları hazır."
 echo ""
 
 # 5. Bütün Kurumları Sırayla Recreate Etme

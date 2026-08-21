@@ -16,6 +16,7 @@ public class WebhookHandlerService : IWebhookHandlerService
     private readonly IPackageService _packages;
     private readonly IAuthLoginService _auth;
     private readonly INotificationService _notificationService;
+    private readonly IBulkSmsService _bulkSmsService;
     private readonly IBbbService _bbbService;
     private readonly ICacheService _cache;
     private readonly ILogger<WebhookHandlerService> _logger;
@@ -27,6 +28,7 @@ public class WebhookHandlerService : IWebhookHandlerService
         IPackageService packages,
         IAuthLoginService auth,
         INotificationService notificationService,
+        IBulkSmsService bulkSmsService,
         IBbbService bbbService,
         ICacheService cache,
         ILogger<WebhookHandlerService> logger)
@@ -35,6 +37,7 @@ public class WebhookHandlerService : IWebhookHandlerService
         _packages = packages;
         _auth = auth;
         _notificationService = notificationService;
+        _bulkSmsService = bulkSmsService;
         _bbbService = bbbService;
         _cache = cache;
         _logger = logger;
@@ -292,7 +295,7 @@ public class WebhookHandlerService : IWebhookHandlerService
 
     public async Task HandleBbbRecordingReadyAsync(BbbEvent evt)
     {
-        if (evt.SessionId == Guid.Empty && string.IsNullOrEmpty(evt.MeetingId)) 
+        if (evt.SessionId == Guid.Empty && string.IsNullOrEmpty(evt.MeetingId) && string.IsNullOrEmpty(evt.BbbInternalMeetingId)) 
             return;
 
         var sessionQuery = _context.Sessions
@@ -300,16 +303,40 @@ public class WebhookHandlerService : IWebhookHandlerService
             .Include(s => s.Recording)
             .AsQueryable();
 
-        var session = await sessionQuery.FirstOrDefaultAsync(s => s.BbbMeetingId == evt.BbbInternalMeetingId || s.BbbMeetingId == evt.MeetingId);
+        Session? session = null;
 
-        if (session != null && evt.SessionId == Guid.Empty)
+        // 1. Önce SessionId (GUID) ile eşleştir
+        if (evt.SessionId != Guid.Empty)
         {
-            evt.SessionId = session.Id;
+            session = await sessionQuery.FirstOrDefaultAsync(s => s.Id == evt.SessionId);
+        }
+
+        // 2. Bulunamadıysa BbbMeetingId veya Internal RecordId ile en son oturumu bul
+        if (session == null && !string.IsNullOrEmpty(evt.MeetingId))
+        {
+            session = await sessionQuery
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync(s => s.BbbMeetingId == evt.BbbInternalMeetingId || s.BbbMeetingId == evt.MeetingId);
+        }
+
+        // 3. Eğer meetingId courseId formatındaysa (eski canlı derslerden kalanlar için)
+        if (session == null && !string.IsNullOrEmpty(evt.MeetingId))
+        {
+            var cleanId = evt.MeetingId;
+            if (cleanId.StartsWith("muro_")) cleanId = cleanId.Substring("muro_".Length);
+            else if (cleanId.StartsWith("monopol_")) cleanId = cleanId.Substring("monopol_".Length);
+            if (Guid.TryParse(cleanId, out var possibleCourseId))
+            {
+                session = await sessionQuery
+                    .Where(s => s.CourseId == possibleCourseId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .FirstOrDefaultAsync();
+            }
         }
 
         if (session == null)
         {
-            _logger.LogWarning("recording-ready: Session bulunamadı. SessionId: {SessionId}", evt.SessionId);
+            _logger.LogWarning("recording-ready: Session bulunamadı. SessionId: {SessionId} | MeetingId: {MeetingId}", evt.SessionId, evt.MeetingId);
             return;
         }
 
@@ -317,6 +344,16 @@ public class WebhookHandlerService : IWebhookHandlerService
         await semaphore.WaitAsync();
         try
         {
+            // Session'a BbbMeetingId (recordId) ve VideoUrl değerlerini kalıcı kaydet
+            if (!string.IsNullOrEmpty(evt.BbbInternalMeetingId))
+            {
+                session.BbbMeetingId = evt.BbbInternalMeetingId;
+            }
+            if (!string.IsNullOrEmpty(evt.RecordingUrl))
+            {
+                session.VideoUrl = evt.RecordingUrl;
+            }
+
             var recording = await _context.SessionRecordings
                 .Include(r => r.MediaAsset)
                 .FirstOrDefaultAsync(r => r.SessionId == session.Id);
@@ -341,7 +378,7 @@ public class WebhookHandlerService : IWebhookHandlerService
                     try
                     {
                         var recordings = await _bbbService.GetRecordingsAsync(session.BbbMeetingId);
-                        var rec = recordings.FirstOrDefault(r => r.PlaybackUrl == evt.RecordingUrl || r.Status == "published");
+                        var rec = recordings.FirstOrDefault(r => r.PlaybackUrl == evt.RecordingUrl || r.RecordingId == session.BbbMeetingId || r.Status == "published");
                         if (rec != null) durationSeconds = rec.DurationSeconds;
                     }
                     catch (Exception ex)
@@ -397,6 +434,7 @@ public class WebhookHandlerService : IWebhookHandlerService
             }
 
             await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync("courses:");
         }
         finally
         {
@@ -404,19 +442,41 @@ public class WebhookHandlerService : IWebhookHandlerService
         }
 
         _logger.LogInformation("recording-ready işlendi ✓ SessionId: {SessionId} | RecordingUrl: {Url}",
-            evt.SessionId, evt.RecordingUrl);
+            session.Id, evt.RecordingUrl);
 
-        if (evt.EnrolledUserIds?.Any() == true)
+        try
         {
-            await _notificationService.BulkSendAsync( new BulkNotificationRequest(
-                evt.EnrolledUserIds,
-                "📹 Ders Kaydı Hazır",
-                $"\"{evt.SessionTitle ?? session.Title}\" dersinin kaydı izlemeye hazır.",
-                $"RecordingReady:{session.CourseId}"
-            ));
+            var enrolledUserIds = await _context.CourseGroups
+                .Where(cg => cg.CourseId == session.CourseId)
+                .Join(_context.GroupMembers, cg => cg.GroupId, gm => gm.GroupId, (cg, gm) => gm.UserId)
+                .Distinct()
+                .ToListAsync();
 
-            _logger.LogInformation("Recording-ready bildirimi {Count} öğrenciye gönderildi. Session: {SessionId}",
-                evt.EnrolledUserIds.Count, evt.SessionId);
+            if (enrolledUserIds.Any())
+            {
+                await _notificationService.BulkSendAsync(new BulkNotificationRequest(
+                    enrolledUserIds,
+                    "📹 Ders Kaydı Hazır",
+                    $"\"{evt.SessionTitle ?? session.Title}\" dersinin kaydı izlemeye hazır.",
+                    $"RecordingReady:{session.CourseId}"
+                ));
+
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _bulkSmsService.TriggerRecordingReadySmsAsync(session.CourseId, evt.SessionTitle ?? session.Title);
+                    }
+                    catch { }
+                });
+
+                _logger.LogInformation("Recording-ready bildirimi {Count} öğrenciye gönderildi. Session: {SessionId}",
+                    enrolledUserIds.Count, session.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Recording-ready bildirimi gönderilirken hata. Session: {SessionId}", session.Id);
         }
     }
 

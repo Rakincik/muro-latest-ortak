@@ -61,6 +61,14 @@ public static class ServiceExtensions
         services.AddHttpClient<ITelegramBotService, TelegramBotService>();
         services.AddScoped<ITelegramBotService, TelegramBotService>();
 
+        // --- Integrations & SMS ---
+        services.AddHttpClient<ISmsService, VatanSmsService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddScoped<IIntegrationService, IntegrationService>();
+        services.AddScoped<IBulkSmsService, BulkSmsService>();
+
         // --- VEP Control Plane ---
         services.AddScoped<ISystemHealthService, SystemHealthService>();
 

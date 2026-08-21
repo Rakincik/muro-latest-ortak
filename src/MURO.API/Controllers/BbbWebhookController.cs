@@ -120,6 +120,7 @@ public class BbbWebhookController : ControllerBase
                         {
                             string extMeetingId = "";
                             string recordId = "";
+                            string metaSessionId = "";
 
                             if (dataNode.TryGetProperty("attributes", out var attrNode))
                             {
@@ -129,6 +130,20 @@ public class BbbWebhookController : ControllerBase
                                         extMeetingId = extNode.GetString() ?? "";
                                     else if (meetingNode.TryGetProperty("externalMeetingId", out var extNodeOld))
                                         extMeetingId = extNodeOld.GetString() ?? "";
+
+                                    if (meetingNode.TryGetProperty("metadata", out var metaNode))
+                                    {
+                                        if (metaNode.TryGetProperty("sessionId", out var s1)) metaSessionId = s1.GetString() ?? "";
+                                        else if (metaNode.TryGetProperty("session-id", out var s2)) metaSessionId = s2.GetString() ?? "";
+                                        else if (metaNode.TryGetProperty("meta_sessionId", out var s3)) metaSessionId = s3.GetString() ?? "";
+                                    }
+                                }
+
+                                if (attrNode.TryGetProperty("metadata", out var topMetaNode) && string.IsNullOrEmpty(metaSessionId))
+                                {
+                                    if (topMetaNode.TryGetProperty("sessionId", out var s1)) metaSessionId = s1.GetString() ?? "";
+                                    else if (topMetaNode.TryGetProperty("session-id", out var s2)) metaSessionId = s2.GetString() ?? "";
+                                    else if (topMetaNode.TryGetProperty("meta_sessionId", out var s3)) metaSessionId = s3.GetString() ?? "";
                                 }
 
                                 if (attrNode.TryGetProperty("record-id", out var recIdNode))
@@ -137,12 +152,37 @@ public class BbbWebhookController : ControllerBase
                                     recordId = recIdNodeOld.GetString() ?? "";
                             }
 
+                            Guid parsedSessionId = Guid.Empty;
+                            if (!string.IsNullOrEmpty(metaSessionId))
+                            {
+                                Guid.TryParse(metaSessionId, out parsedSessionId);
+                            }
+
+                            if (parsedSessionId == Guid.Empty && !string.IsNullOrEmpty(extMeetingId))
+                            {
+                                var cleanMeetingId = extMeetingId;
+                                if (cleanMeetingId.StartsWith("muro_"))
+                                {
+                                    cleanMeetingId = cleanMeetingId.Substring("muro_".Length);
+                                }
+                                else if (cleanMeetingId.StartsWith("monopol_"))
+                                {
+                                    cleanMeetingId = cleanMeetingId.Substring("monopol_".Length);
+                                }
+                                Guid.TryParse(cleanMeetingId, out parsedSessionId);
+                            }
+
+                            var bbbUrl = _configuration["Bbb:Url"] ?? $"{Request.Scheme}://{Request.Host}/bigbluebutton/api";
+                            var baseUrl = bbbUrl.Split(new[] { "/bigbluebutton" }, StringSplitOptions.None)[0].TrimEnd('/');
+                            var recordingUrl = $"{baseUrl}/playback/presentation/2.3/{recordId}";
+
                             payload.Events.Add(new BbbEvent
                             {
                                 EventType = "recording-ready",
                                 MeetingId = extMeetingId,
                                 BbbInternalMeetingId = recordId,
-                                RecordingUrl = _configuration["Bbb:Url"]?.Replace("/bigbluebutton/api", $"/playback/presentation/2.3/{recordId}") ?? $"https://canli.monopoluzem.com.tr/playback/presentation/2.3/{recordId}"
+                                SessionId = parsedSessionId,
+                                RecordingUrl = recordingUrl
                             });
                         }
                         else if (id == "user-joined" || id == "user-left" || id == "meeting-ended")
@@ -186,7 +226,11 @@ public class BbbWebhookController : ControllerBase
                             if (!string.IsNullOrEmpty(rawMeetingId))
                             {
                                 var cleanMeetingId = rawMeetingId;
-                                if (cleanMeetingId.StartsWith("monopol_"))
+                                if (cleanMeetingId.StartsWith("muro_"))
+                                {
+                                    cleanMeetingId = cleanMeetingId.Substring("muro_".Length);
+                                }
+                                else if (cleanMeetingId.StartsWith("monopol_"))
                                 {
                                     cleanMeetingId = cleanMeetingId.Substring("monopol_".Length);
                                 }
@@ -267,15 +311,15 @@ public class BbbWebhookController : ControllerBase
 
     private async Task<bool> ValidateChecksumAsync()
     {
-        var sharedSecret = _configuration["Bbb:WebhookSharedSecret"];
+        var sharedSecret = _configuration["Bbb:WebhookSharedSecret"]?.Trim().TrimEnd('\r', '\n');
 
-        if (string.IsNullOrWhiteSpace(sharedSecret))
+        if (string.IsNullOrWhiteSpace(sharedSecret) || sharedSecret == "placeholder")
         {
             _logger.LogWarning("BBB:WebhookSharedSecret yapılandırılmamış — checksum doğrulaması atlanıyor (geliştirme modu).");
             return true;
         }
 
-        var checksum = Request.Query["checksum"].ToString();
+        var checksum = Request.Query["checksum"].ToString()?.Trim();
         if (string.IsNullOrEmpty(checksum))
         {
             _logger.LogWarning("BBB Webhook: checksum query parametresi eksik. Geçici olarak izin veriliyor.");
@@ -288,19 +332,38 @@ public class BbbWebhookController : ControllerBase
         var rawBody = await reader.ReadToEndAsync();
         Request.Body.Seek(0, SeekOrigin.Begin);
 
-        var endpointUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        var dataToHash = endpointUrl + rawBody + sharedSecret;
-
         using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(dataToHash));
-        var expectedChecksum = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
-        var isValid = string.Equals(checksum, expectedChecksum, StringComparison.OrdinalIgnoreCase);
+        // Olası reverse proxy şema ve host varyasyonlarını kontrol et (Nginx/CyberPanel/LiteSpeed)
+        var candidateUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            $"{Request.Scheme}://{Request.Host}{Request.Path}",
+            $"https://{Request.Host}{Request.Path}",
+            $"http://{Request.Host}{Request.Path}",
+            $"https://{Request.Host.Host}{Request.Path}",
+            $"http://{Request.Host.Host}{Request.Path}"
+        };
 
-        if (!isValid)
-            _logger.LogWarning("BBB Webhook: Checksum eşleşmedi. Beklenen: {Expected}, Gelen: {Received}",
-                expectedChecksum, checksum);
+        if (Request.Headers.TryGetValue("X-Forwarded-Proto", out var fwdProto) &&
+            Request.Headers.TryGetValue("X-Forwarded-Host", out var fwdHost))
+        {
+            candidateUrls.Add($"{fwdProto}://{fwdHost}{Request.Path}");
+            candidateUrls.Add($"https://{fwdHost}{Request.Path}");
+        }
 
-        return isValid;
+        foreach (var url in candidateUrls)
+        {
+            var dataToHash = url + rawBody + sharedSecret;
+            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(dataToHash));
+            var expectedChecksum = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+            if (string.Equals(checksum, expectedChecksum, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        _logger.LogWarning("BBB Webhook: Checksum eşleşmedi. Gelen: {Received}", checksum);
+        return false;
     }
 }

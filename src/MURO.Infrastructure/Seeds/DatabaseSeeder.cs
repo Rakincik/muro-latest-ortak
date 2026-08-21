@@ -14,6 +14,47 @@ public static class DatabaseSeeder
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"BbbUrl\" text;");
         await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"SystemSettings\" ADD COLUMN IF NOT EXISTS \"BbbSecret\" text;");
 
+        // ── Auto Schema Update: IntegrationSettings table ──────────────────────
+        await db.Database.ExecuteSqlRawAsync(@"
+            CREATE TABLE IF NOT EXISTS ""IntegrationSettings"" (
+                ""Id"" uuid PRIMARY KEY,
+                ""ProviderKey"" text NOT NULL,
+                ""Category"" text NOT NULL,
+                ""Title"" text NOT NULL,
+                ""Description"" text,
+                ""IsEnabled"" boolean NOT NULL DEFAULT false,
+                ""ConfigJson"" text,
+                ""LastTestedAt"" timestamp with time zone,
+                ""TestStatus"" text,
+                ""TestMessage"" text,
+                ""UpdatedAt"" timestamp with time zone NOT NULL,
+                ""UpdatedBy"" text
+            );
+        ");
+        await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"IntegrationSettings\" ADD COLUMN IF NOT EXISTS \"TriggerSettingsJson\" text;");
+
+        // ── Seed Default Integration Cards if empty ───────────────────────────
+        try
+        {
+            var hasVatanSms = await db.IntegrationSettings.AnyAsync(i => i.ProviderKey == "vatansms");
+            if (!hasVatanSms)
+            {
+                db.IntegrationSettings.Add(new IntegrationSetting
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderKey = "vatansms",
+                    Category = "SMS",
+                    Title = "Vatan SMS",
+                    Description = "Türkiye geneli güvenli OTP, bilgilendirme ve toplu SMS gönderim servisi.",
+                    IsEnabled = false,
+                    ConfigJson = "{\"api_id\":\"\",\"api_key\":\"\",\"sender\":\"\",\"message_type\":\"normal\",\"message_content_type\":\"bilgi\"}",
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+        catch { /* ignore */ }
+
         // ── Auto Sync BBB settings from environment to database ──────────────
         var bbbUrl = config["Bbb:Url"];
         var bbbSecret = config["Bbb:Secret"];

@@ -60,17 +60,17 @@ public class SystemController : ControllerBase
             return Ok(new
             {
                 ThemeColor = "#0A1931",
-                LogoUrl = "/monopol_logo.png",
+                LogoUrl = "/logo.png",
                 FaviconUrl = "/favicon.png",
                 CustomCss = "",
-                Title = "Monopoluzem",
-                Name = "Monopoluzem"
+                Title = "MURO",
+                Name = "MURO"
             });
         }
         return Ok(new
         {
             ThemeColor = settings.PrimaryColor,
-            LogoUrl = settings.LogoUrl ?? "/monopol_logo.png",
+            LogoUrl = settings.LogoUrl ?? "/logo.png",
             SidebarLogoUrl = settings.SidebarLogoUrl,
             UseWhiteLogoBackground = settings.UseWhiteLogoBackground,
             FaviconUrl = settings.FaviconUrl ?? "/favicon.png",

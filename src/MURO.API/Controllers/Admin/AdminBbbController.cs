@@ -17,11 +17,13 @@ public class AdminBbbController : ControllerBase
 {
     private readonly IBbbService _bbbService;
     private readonly MuroDbContext _context;
+    private readonly ICacheService _cache;
 
-    public AdminBbbController(IBbbService bbbService, MuroDbContext context)
+    public AdminBbbController(IBbbService bbbService, MuroDbContext context, ICacheService cache)
     {
         _bbbService = bbbService;
         _context = context;
+        _cache = cache;
     }
 
     [HttpGet("recordings")]
@@ -139,6 +141,7 @@ public class AdminBbbController : ControllerBase
             }
 
             await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync("courses:");
 
             return Ok(new { success = true, recordingId = recording.Id });
         }
@@ -209,6 +212,7 @@ public class AdminBbbController : ControllerBase
             });
 
             await _context.SaveChangesAsync();
+            await _cache.RemoveByPrefixAsync("courses:");
 
             return Ok(new { success = true, mediaAssetId = asset.Id });
         }
