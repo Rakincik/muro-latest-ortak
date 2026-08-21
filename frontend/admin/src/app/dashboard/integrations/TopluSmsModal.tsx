@@ -187,7 +187,7 @@ export function TopluSmsModal({ isOpen, onClose, integration, onSuccess }: Toplu
     const handleSaveTriggers = async () => {
         setSavingTriggers(true);
         try {
-            await adminSmsCenterApi.saveTriggers(token, tenantId, triggers);
+            await adminSmsCenterApi.updateTriggers(token, tenantId, triggers);
             success("Otomatik SMS tetikleyici ayarları başarıyla kaydedildi.");
         } catch (err: any) {
             toastError(err.message || "Tetikleyici ayarları kaydedilemedi.");
@@ -206,7 +206,7 @@ export function TopluSmsModal({ isOpen, onClose, integration, onSuccess }: Toplu
         setTestResult(null);
 
         try {
-            const res = await adminSmsCenterApi.sendDirectSms(token, tenantId, {
+            const res = await adminIntegrationApi.sendTestSms(token, tenantId, {
                 phone: testPhone.trim(),
                 message: testMessage.trim(),
                 sender: sender.trim() || undefined
