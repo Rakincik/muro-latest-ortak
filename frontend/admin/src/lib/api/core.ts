@@ -54,6 +54,11 @@ export const getApiUrl = () => {
         return `https://${tenant}-api.okinar.com/api/v1`;
     }
     
+    // 4takademi.com -> 3u backend API
+    if (hostname.endsWith("4takademi.com")) {
+        return "https://3u-ap.muro.click/api/v1";
+    }
+
     const domain = hostname.split(".").slice(1).join(".");
     const sub = hostname.split(".")[0];
 
