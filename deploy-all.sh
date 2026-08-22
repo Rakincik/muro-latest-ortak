@@ -98,6 +98,19 @@ docker build -t muro-student-3u:latest \
 echo "✅ 3U özel imajları hazır."
 echo ""
 
+# 4.9. MVZ (uzem.mevzuatadam.com) Özel İmajları (Tek Domain Mimarisi)
+echo "📦 5.9. MVZ (uzem.mevzuatadam.com) özel imajları derleniyor..."
+docker build -t muro-admin-mvz:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.mevzuatadam.com/api/v1" \
+  --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
+  -f frontend/admin/Dockerfile ./frontend/admin
+
+docker build -t muro-student-mvz:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.mevzuatadam.com/api/v1" \
+  -f frontend/student/Dockerfile ./frontend/student
+echo "✅ MVZ özel imajları hazır."
+echo ""
+
 # 5. Bütün Kurumları Sırayla Recreate Etme
 echo "🔄 6. Kurum klasörlerine gidilip kodlar güncelleniyor ve konteynerlar yeniden başlatılıyor..."
 

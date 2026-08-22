@@ -68,14 +68,14 @@ services:
       - Bbb__WebhookSharedSecret=${BBB_WEBHOOK_SECRET:-placeholder}
       - Bbb__DefaultAttendeePw=attendee123
       - Bbb__DefaultModeratorPw=moderator123
-      - Bbb__Defaults__LogoutURL=${ADMIN_URL:-https://mvz-adm.muro.click}/dashboard/courses
-      - Cors__AllowedOrigins__0=https://mvz.muro.click
-      - Cors__AllowedOrigins__1=https://mvz-adm.muro.click
-      - Cors__AllowedOrigins__2=https://mvz-api.muro.click
-      - Cors__AllowedOrigins__3=http://mvz.muro.click
-      - Cors__AllowedOrigins__4=http://mvz-adm.muro.click
-      - Cors__AllowedOrigins__5=http://mvz-api.muro.click
-      - Tenant__BaseDomain=${BASE_DOMAIN:-muro.click}
+      - Bbb__Defaults__LogoutURL=https://uzem.mevzuatadam.com/dashboard/courses
+      - Cors__AllowedOrigins__0=https://uzem.mevzuatadam.com
+      - Cors__AllowedOrigins__1=https://mvz.muro.click
+      - Cors__AllowedOrigins__2=https://mvz-adm.muro.click
+      - Cors__AllowedOrigins__3=https://mvz-api.muro.click
+      - Cors__AllowedOrigins__4=http://uzem.mevzuatadam.com
+      - Cors__AllowedOrigins__5=http://mvz.muro.click
+      - Tenant__BaseDomain=${BASE_DOMAIN:-mevzuatadam.com}
       - Gemini__ApiKey=${GEMINI_API_KEY:-}
       - Webhook__Secret=${WEBHOOK_SECRET:-CHANGE_THIS}
     volumes:
@@ -119,7 +119,7 @@ services:
 
   # --- Admin Frontend (Next.js) ---
   admin:
-    image: muro-admin:latest
+    image: muro-admin-mvz:latest
 
     volumes:
 
@@ -137,7 +137,7 @@ services:
 
   # --- Student Frontend (Next.js) ---
   student:
-    image: muro-student:latest
+    image: muro-student-mvz:latest
 
     volumes:
 
