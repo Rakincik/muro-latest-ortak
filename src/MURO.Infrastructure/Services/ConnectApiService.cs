@@ -587,6 +587,144 @@ public class ConnectApiService : IConnectApiService
         return result;
     }
 
+    public async Task<List<ConnectGroupDto>> GetGroupsAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        var groups = await _context.Groups
+            .AsNoTracking()
+            .Where(g => !g.IsDeleted)
+            .Include(g => g.CourseGroups)
+                .ThenInclude(cg => cg.Course)
+            .Include(g => g.Members)
+            .OrderBy(g => g.Name)
+            .ToListAsync(ct);
+
+        return groups.Select(g => new ConnectGroupDto
+        {
+            Id = g.Id,
+            Name = g.Name,
+            Code = g.Code,
+            Description = g.Description,
+            EducationType = g.EducationType,
+            MemberCount = g.Members.Count(m => m.Status == "active"),
+            CourseTitles = g.CourseGroups
+                .Where(cg => !cg.Course.IsDeleted)
+                .Select(cg => cg.Course.Title)
+                .Distinct()
+                .ToList()
+        }).ToList();
+    }
+
+    public async Task<ConnectPackageSyncResponse> SyncPackagesAsync(Guid tenantId, List<ConnectPackageSyncItem> items, CancellationToken ct = default)
+    {
+        if (items == null || items.Count == 0)
+        {
+            return new ConnectPackageSyncResponse { Success = true, SyncedCount = 0, Message = "İçe aktarılacak paket bulunamadı." };
+        }
+
+        int synced = 0;
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Name) || string.IsNullOrWhiteSpace(item.Code))
+                continue;
+
+            var cleanCode = item.Code.Trim();
+            var existing = await _context.Packages
+                .Include(p => p.PackageGroups)
+                .FirstOrDefaultAsync(p => p.Code == cleanCode, ct);
+
+            if (existing == null)
+            {
+                var newPkg = new Package
+                {
+                    Id = Guid.NewGuid(),
+                    Name = item.Name.Trim(),
+                    Code = cleanCode,
+                    Description = item.Description?.Trim(),
+                    Price = item.Price,
+                    DurationDays = item.DurationDays > 0 ? item.DurationDays : 365,
+                    IsActive = item.IsActive,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                if (item.GroupIds != null && item.GroupIds.Count > 0)
+                {
+                    foreach (var gid in item.GroupIds.Distinct())
+                    {
+                        var groupExists = await _context.Groups.AnyAsync(g => g.Id == gid && !g.IsDeleted, ct);
+                        if (groupExists)
+                        {
+                            newPkg.PackageGroups.Add(new PackageGroup
+                            {
+                                Id = Guid.NewGuid(),
+                                PackageId = newPkg.Id,
+                                GroupId = gid
+                            });
+                        }
+                    }
+                }
+
+                _context.Packages.Add(newPkg);
+            }
+            else
+            {
+                existing.Name = item.Name.Trim();
+                existing.Description = item.Description?.Trim();
+                existing.Price = item.Price;
+                existing.DurationDays = item.DurationDays > 0 ? item.DurationDays : existing.DurationDays;
+                existing.IsActive = item.IsActive;
+
+                if (item.GroupIds != null)
+                {
+                    // Existing groups
+                    var currentGroupIds = existing.PackageGroups.Select(pg => pg.GroupId).ToHashSet();
+                    var targetGroupIds = item.GroupIds.ToHashSet();
+
+                    // Remove missing
+                    var toRemove = existing.PackageGroups.Where(pg => !targetGroupIds.Contains(pg.GroupId)).ToList();
+                    foreach (var rm in toRemove)
+                    {
+                        _context.PackageGroups.Remove(rm);
+                    }
+
+                    // Add new
+                    foreach (var gid in targetGroupIds)
+                    {
+                        if (!currentGroupIds.Contains(gid))
+                        {
+                            var groupExists = await _context.Groups.AnyAsync(g => g.Id == gid && !g.IsDeleted, ct);
+                            if (groupExists)
+                            {
+                                existing.PackageGroups.Add(new PackageGroup
+                                {
+                                    Id = Guid.NewGuid(),
+                                    PackageId = existing.Id,
+                                    GroupId = gid
+                                });
+                            }
+                        }
+                    }
+                }
+
+                _context.Packages.Update(existing);
+            }
+
+            synced++;
+        }
+
+        await _context.SaveChangesAsync(ct);
+
+        var currentCatalog = await GetPackagesCatalogAsync(tenantId, ct);
+
+        return new ConnectPackageSyncResponse
+        {
+            Success = true,
+            SyncedCount = synced,
+            Message = $"{synced} paket başarıyla eşitlendi ve gruplara bağlandı.",
+            Packages = currentCatalog
+        };
+    }
+
+
     public async Task<ConnectStatsDto> GetStatsAsync(Guid tenantId, CancellationToken ct = default)
     {
         var totalStudents = await _context.Users.CountAsync(u => u.Role == UserRole.Student && u.IsActive && !u.IsDeleted, ct);

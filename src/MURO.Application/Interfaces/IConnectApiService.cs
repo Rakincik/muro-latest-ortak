@@ -18,6 +18,8 @@ public interface IConnectApiService
     Task<string> GenerateMagicLoginUrlAsync(Guid tenantId, Guid userId, CancellationToken ct = default);
     Task<Guid?> ConsumeMagicLoginTokenAsync(string token, CancellationToken ct = default);
     Task<List<ConnectPackageItemDto>> GetPackagesCatalogAsync(Guid tenantId, CancellationToken ct = default);
+    Task<List<ConnectGroupDto>> GetGroupsAsync(Guid tenantId, CancellationToken ct = default);
+    Task<ConnectPackageSyncResponse> SyncPackagesAsync(Guid tenantId, List<ConnectPackageSyncItem> items, CancellationToken ct = default);
     Task<ConnectStatsDto> GetStatsAsync(Guid tenantId, CancellationToken ct = default);
     Task<TenantApiKeyDto> GetOrCreateApiKeyAsync(Guid tenantId, CancellationToken ct = default);
     Task<TenantApiKeyDto> RegenerateApiKeyAsync(Guid tenantId, string? name = null, CancellationToken ct = default);

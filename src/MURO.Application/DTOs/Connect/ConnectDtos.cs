@@ -178,3 +178,34 @@ public class ConnectApiLogDto
     public long DurationMs { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public class ConnectGroupDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Code { get; set; }
+    public string? Description { get; set; }
+    public string? EducationType { get; set; }
+    public int MemberCount { get; set; }
+    public List<string> CourseTitles { get; set; } = new();
+}
+
+public class ConnectPackageSyncItem
+{
+    public string Name { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public decimal Price { get; set; }
+    public int DurationDays { get; set; } = 365;
+    public bool IsActive { get; set; } = true;
+    public List<Guid>? GroupIds { get; set; }
+}
+
+public class ConnectPackageSyncResponse
+{
+    public bool Success { get; set; }
+    public int SyncedCount { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public List<ConnectPackageItemDto> Packages { get; set; } = new();
+}
+

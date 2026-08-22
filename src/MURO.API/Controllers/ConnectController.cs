@@ -199,6 +199,32 @@ public class ConnectController : ControllerBase
         return Ok(status);
     }
 
+    [HttpGet("groups")]
+    public async Task<IActionResult> GetGroups()
+    {
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        var groups = await _connectService.GetGroupsAsync(tenantId.Value, HttpContext.RequestAborted);
+        return Ok(groups);
+    }
+
+    [HttpPost("packages/sync")]
+    public async Task<IActionResult> SyncPackages([FromBody] List<ConnectPackageSyncItem> items)
+    {
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        var result = await _connectService.SyncPackagesAsync(tenantId.Value, items, HttpContext.RequestAborted);
+        return Ok(result);
+    }
+
     [HttpGet("packages")]
     public async Task<IActionResult> GetPackages()
     {
