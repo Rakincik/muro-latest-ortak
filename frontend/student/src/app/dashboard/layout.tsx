@@ -102,16 +102,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     const isDev = window.location.hostname === "localhost";
                     if (isDev) {
                         window.location.href = `http://localhost:3001/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
-                    } else if (!window.location.hostname.endsWith("muro.click") && !window.location.hostname.endsWith("4takademi.com")) {
+                    } else if (window.location.hostname.endsWith("4takademi.com") || window.location.hostname.startsWith("3u.")) {
+                        window.location.href = `https://3u-ad.muro.click/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
+                    } else if (!window.location.hostname.endsWith("muro.click")) {
                         // Custom / Single-domain setup -> redirect to local subpath
                         window.location.href = `/admin/dashboard?_token=${encodeURIComponent(t || "")}&_refresh=${encodeURIComponent(r || "")}`;
                     } else {
                         // Subdomain architecture for demo and other tenants
                         const currentHost = window.location.hostname;
                         let adminHost = currentHost;
-                        if (currentHost.startsWith("3u.")) {
-                          adminHost = currentHost.replace("3u.", "3u-ad.");
-                        } else if (currentHost.split('.').length > 2) {
+                        if (currentHost.split('.').length > 2) {
                            const parts = currentHost.split('.');
                            parts[0] = parts[0] + '-adm';
                            adminHost = parts.join('.');

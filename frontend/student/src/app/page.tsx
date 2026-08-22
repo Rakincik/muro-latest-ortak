@@ -55,16 +55,16 @@ export default function StudentLoginPage() {
         
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else if (sub === "online" || sub === "uzem" || sub === "lms" || (!currentHost.endsWith("muro.click") && !currentHost.endsWith("4takademi.com"))) {
+        } else if (currentHost.endsWith("4takademi.com") || currentHost.startsWith("3u.")) {
+          targetUrl = `https://3u-ad.muro.click/dashboard`;
+        } else if (sub === "online" || sub === "uzem" || sub === "lms" || !currentHost.endsWith("muro.click")) {
           // Custom / Single domain setup -> redirect to local subpath
           targetUrl = `/admin/dashboard`;
         } else {
-          // Subdomain architecture: e.g. 3u.muro.click -> 3u-ad.muro.click
+          // Subdomain architecture: e.g. akm.muro.click -> akm-adm.muro.click
           let adminHost = currentHost;
           
-          if (currentHost.startsWith("3u.")) {
-            adminHost = currentHost.replace("3u.", "3u-ad.");
-          } else if (currentHost.split('.').length > 2) {
+          if (currentHost.split('.').length > 2) {
              const parts = currentHost.split('.');
              parts[0] = parts[0] + '-adm';
              adminHost = parts.join('.');
