@@ -138,17 +138,36 @@ public class ConnectApiService : IConnectApiService
 
         // 1. Hedef Paketi veya Grubu Çözümle
         Package? targetPackage = null;
+        MURO.Domain.Entities.Group? targetDirectGroup = null;
+
         if (!string.IsNullOrWhiteSpace(request.PackageCode))
         {
+            var cleanCode = request.PackageCode.Trim();
             targetPackage = await _context.Packages
                 .Include(p => p.PackageGroups)
-                .FirstOrDefaultAsync(p => p.Code == request.PackageCode && p.IsActive, ct);
+                .FirstOrDefaultAsync(p => (p.Code == cleanCode || p.Name == cleanCode) && p.IsActive, ct);
+
+            if (targetPackage == null && Guid.TryParse(cleanCode, out var parsedGuid))
+            {
+                targetPackage = await _context.Packages
+                    .Include(p => p.PackageGroups)
+                    .FirstOrDefaultAsync(p => p.Id == parsedGuid && p.IsActive, ct);
+
+                if (targetPackage == null)
+                {
+                    targetDirectGroup = await _context.Groups.FirstOrDefaultAsync(g => g.Id == parsedGuid && !g.IsDeleted, ct);
+                }
+            }
         }
         else if (request.PackageId.HasValue)
         {
             targetPackage = await _context.Packages
                 .Include(p => p.PackageGroups)
                 .FirstOrDefaultAsync(p => p.Id == request.PackageId.Value && p.IsActive, ct);
+        }
+        else if (request.GroupId.HasValue)
+        {
+            targetDirectGroup = await _context.Groups.FirstOrDefaultAsync(g => g.Id == request.GroupId.Value && !g.IsDeleted, ct);
         }
 
         // 2. Mevcut Kullanıcıyı Ara
@@ -266,22 +285,24 @@ public class ConnectApiService : IConnectApiService
 
             await _context.SaveChangesAsync(ct);
         }
-        else if (request.GroupId.HasValue)
+        else if (targetDirectGroup != null || request.GroupId.HasValue)
         {
-            var isMember = await _context.GroupMembers.AnyAsync(gm => gm.UserId == user.Id && gm.GroupId == request.GroupId.Value, ct);
+            var targetGid = targetDirectGroup?.Id ?? request.GroupId!.Value;
+            var isMember = await _context.GroupMembers.AnyAsync(gm => gm.UserId == user.Id && gm.GroupId == targetGid, ct);
             if (!isMember)
             {
                 _context.GroupMembers.Add(new GroupMember
                 {
                     Id = Guid.NewGuid(),
                     UserId = user.Id,
-                    GroupId = request.GroupId.Value,
+                    GroupId = targetGid,
                     Role = UserRole.Student,
                     Status = "active",
                     AddedAt = DateTime.UtcNow
                 });
                 await _context.SaveChangesAsync(ct);
             }
+            assignedPackageName = targetDirectGroup?.Name ?? "Ders Grubu";
         }
 
         // 4. Magic Login URL Üret
