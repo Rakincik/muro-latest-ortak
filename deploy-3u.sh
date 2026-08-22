@@ -13,9 +13,15 @@ echo "📦 2. Backend API & Worker derleniyor..."
 docker build -t muro-api:latest -f Dockerfile.api .
 docker build -t muro-worker:latest -f Dockerfile.worker .
 
-echo "📦 3. Admin ve Öğrenci Panelleri derleniyor..."
-docker build -t muro-admin:latest -f frontend/admin/Dockerfile ./frontend/admin
-docker build -t muro-student:latest -f frontend/student/Dockerfile ./frontend/student
+echo "📦 3. Admin ve Öğrenci Panelleri (Tek Domain /admin) derleniyor..."
+docker build -t muro-admin-3u:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.4takademi.com/api/v1" \
+  --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
+  -f frontend/admin/Dockerfile ./frontend/admin
+
+docker build -t muro-student-3u:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.4takademi.com/api/v1" \
+  -f frontend/student/Dockerfile ./frontend/student
 
 echo "🔄 4. 3U Konteynerları yeniden başlatılıyor..."
 docker compose -f docker-compose.3u.yml up -d --force-recreate

@@ -55,8 +55,6 @@ export default function StudentLoginPage() {
         
         if (isDev) {
           targetUrl = `http://localhost:3001/dashboard`;
-        } else if (currentHost.endsWith("4takademi.com") || currentHost.startsWith("3u.")) {
-          targetUrl = `https://3u-ad.muro.click/dashboard`;
         } else if (sub === "online" || sub === "uzem" || sub === "lms" || !currentHost.endsWith("muro.click")) {
           // Custom / Single domain setup -> redirect to local subpath
           targetUrl = `/admin/dashboard`;

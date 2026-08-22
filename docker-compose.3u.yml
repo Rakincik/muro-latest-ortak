@@ -127,10 +127,8 @@ services:
 
   # --- Admin Frontend (Next.js) ---
   admin:
-    image: muro-admin:latest
-
+    image: muro-admin-3u:latest
     volumes:
-
       - /opt/3u/logo.png:/app/public/logo.png
     container_name: muro_3u_admin
     restart: unless-stopped
@@ -145,7 +143,7 @@ services:
 
   # --- Student Frontend (Next.js) ---
   student:
-    image: muro-student:latest
+    image: muro-student-3u:latest
 
     volumes:
 

@@ -85,6 +85,19 @@ docker build -t muro-student-trk:latest \
 echo "✅ TRK özel imajları hazır."
 echo ""
 
+# 4.8. 3U (uzem.4takademi.com) Özel İmajları (Tek Domain Mimarisi)
+echo "📦 5.8. 3U (uzem.4takademi.com) özel imajları derleniyor..."
+docker build -t muro-admin-3u:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.4takademi.com/api/v1" \
+  --build-arg NEXT_PUBLIC_BASE_PATH="/admin" \
+  -f frontend/admin/Dockerfile ./frontend/admin
+
+docker build -t muro-student-3u:latest \
+  --build-arg NEXT_PUBLIC_API_URL="https://uzem.4takademi.com/api/v1" \
+  -f frontend/student/Dockerfile ./frontend/student
+echo "✅ 3U özel imajları hazır."
+echo ""
+
 # 5. Bütün Kurumları Sırayla Recreate Etme
 echo "🔄 6. Kurum klasörlerine gidilip kodlar güncelleniyor ve konteynerlar yeniden başlatılıyor..."
 
