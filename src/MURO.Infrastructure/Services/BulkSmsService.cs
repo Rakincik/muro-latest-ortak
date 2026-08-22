@@ -212,10 +212,53 @@ public class BulkSmsService : IBulkSmsService
                 }
             }
         }
+        else if (request.TargetType == "individual" || request.TargetType == "user" || request.TargetType == "custom")
+        {
+            if (request.TargetIds.Any())
+            {
+                var specificUsers = await _context.Users
+                    .Where(u => request.TargetIds.Contains(u.Id) && !u.IsDeleted)
+                    .ToListAsync(ct);
+
+                foreach (var u in specificUsers)
+                {
+                    list.Add((u, "Bireysel"));
+                }
+            }
+
+            if (request.CustomPhones != null && request.CustomPhones.Any())
+            {
+                foreach (var rawPhone in request.CustomPhones)
+                {
+                    var p = NormalizePhone(rawPhone);
+                    if (!string.IsNullOrWhiteSpace(p))
+                    {
+                        // Check if a real user exists with this phone
+                        var existing = await _context.Users.FirstOrDefaultAsync(u => u.Phone != null && u.Phone.Contains(p) && !u.IsDeleted, ct);
+                        if (existing != null)
+                        {
+                            list.Add((existing, "Bireysel"));
+                        }
+                        else
+                        {
+                            var virtualUser = new User
+                            {
+                                Id = Guid.NewGuid(),
+                                FirstName = "Öğrenci",
+                                LastName = "",
+                                Phone = p,
+                                Username = p
+                            };
+                            list.Add((virtualUser, "Doğrudan Numara"));
+                        }
+                    }
+                }
+            }
+        }
         else if (request.TargetType == "all")
         {
             var students = await _context.Users
-                .Where(u => u.Role == UserRole.Student && u.IsActive)
+                .Where(u => u.Role == UserRole.Student && u.IsActive && !u.IsDeleted)
                 .ToListAsync(ct);
 
             foreach (var s in students)

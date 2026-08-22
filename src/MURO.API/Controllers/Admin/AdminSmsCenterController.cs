@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MURO.Application.DTOs.Integrations;
 using MURO.Application.Interfaces;
+using MURO.Domain.Enums;
 using MURO.Infrastructure.Persistence;
 
 namespace MURO.API.Controllers.Admin;
@@ -58,6 +59,40 @@ public class AdminSmsCenterController : ControllerBase
             groups,
             packages
         });
+    }
+
+    [HttpGet("search-students")]
+    public async Task<IActionResult> SearchStudents([FromQuery] string? q)
+    {
+        var query = _context.Users
+            .AsNoTracking()
+            .Where(u => u.Role == UserRole.Student && !u.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var clean = q.Trim().ToLowerInvariant();
+            query = query.Where(u => 
+                u.FirstName.ToLower().Contains(clean) ||
+                u.LastName.ToLower().Contains(clean) ||
+                (u.Phone != null && u.Phone.Contains(clean)) ||
+                (u.Email != null && u.Email.ToLower().Contains(clean)) ||
+                (u.Username != null && u.Username.ToLower().Contains(clean)));
+        }
+
+        var students = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Take(25)
+            .Select(u => new
+            {
+                u.Id,
+                FullName = $"{u.FirstName} {u.LastName}".Trim(),
+                u.Phone,
+                u.Email,
+                u.Username
+            })
+            .ToListAsync(HttpContext.RequestAborted);
+
+        return Ok(students);
     }
 
     [HttpPost("preview")]

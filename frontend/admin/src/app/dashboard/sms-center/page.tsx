@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
     MessageSquare, Send, Users, BookOpen, Layers, Package, 
     Sparkles, CheckCircle2, AlertCircle, Clock, Calendar, 
     RefreshCw, ShieldCheck, ChevronRight, Search, Check, 
-    Smartphone, FileText, ArrowRight, Loader2, AlertTriangle
+    Smartphone, FileText, ArrowRight, Loader2, AlertTriangle,
+    UserCheck, Plus, X, PhoneCall, Key, BookmarkCheck
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
@@ -15,10 +17,51 @@ import {
     type SmsTargetsResponse, 
     type BulkSmsPreviewResult,
     type BulkSmsExecutionResult,
-    type SmsAccountInfo
+    type SmsAccountInfo,
+    type SmsStudentSearchResult
 } from "@/lib/api";
 
+const TEMPLATE_PRESETS = [
+    {
+        title: "🎓 Canlı Ders Başlıyor",
+        badge: "Canlı Yayın",
+        color: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+        text: "Sayın {ad}, {kurs} canlı dersiniz 15 dakika sonra başlıyor! Canlı yayına katılmak için: {giris_linki}"
+    },
+    {
+        title: "🔑 Şifre & Giriş Bilgileri",
+        badge: "Hesap",
+        color: "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100",
+        text: "Sayın {ad} {soyad}, {kurum_adi} öğrenci paneli giriş bilgileriniz: Kullanıcı Adınız: {kullanici_adi}, Giriş Linki: {giris_linki}"
+    },
+    {
+        title: "📝 Yeni Deneme / Sınav",
+        badge: "Sınav",
+        color: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100",
+        text: "Sayın {ad}, {kurs} için 1. Genel Deneme Sınavı panelinize yüklendi! Başarılar dileriz."
+    },
+    {
+        title: "🎬 Ders Kaydı Yüklendi",
+        badge: "Video",
+        color: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+        text: "Sayın {ad}, {kurs} dersinin tekrar video kaydı sisteme yüklendi. Panelinizden izleyebilirsiniz: {giris_linki}"
+    },
+    {
+        title: "💳 Paket Tanımlandı",
+        badge: "Satış",
+        color: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+        text: "Merhaba {ad}, {kurs} eğitim paketiniz hesabınıza başarıyla tanımlandı. Hemen derslerinize başlamak için: {giris_linki}"
+    },
+    {
+        title: "📢 Genel Duyuru",
+        badge: "Duyuru",
+        color: "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100",
+        text: "Sayın {ad} {soyad}, {kurum_adi} hakkında önemli bilgilendirme: {giris_linki}"
+    }
+];
+
 export default function SmsCenterPage() {
+    const searchParams = useSearchParams();
     const { token, currentTenantId: tenantId } = useAuth();
     const { success, error: toastError } = useToast();
 
@@ -29,8 +72,17 @@ export default function SmsCenterPage() {
     const [loadingInit, setLoadingInit] = useState(true);
 
     // Form state
-    const [targetType, setTargetType] = useState<"all" | "course" | "group" | "package">("all");
+    const [targetType, setTargetType] = useState<"all" | "course" | "group" | "package" | "individual">("all");
     const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>([]);
+    
+    // Individual student search & custom phones
+    const [studentSearchQuery, setStudentSearchQuery] = useState("");
+    const [searchingStudents, setSearchingStudents] = useState(false);
+    const [studentSearchResults, setStudentSearchResults] = useState<SmsStudentSearchResult[]>([]);
+    const [selectedStudents, setSelectedStudents] = useState<SmsStudentSearchResult[]>([]);
+    const [customPhoneInput, setCustomPhoneInput] = useState("");
+    const [customPhones, setCustomPhones] = useState<string[]>([]);
+
     const [messageTemplate, setMessageTemplate] = useState<string>("Sayın {ad} {soyad}, {kurs} hakkında önemli bilgilendirme: Giriş linki: {giris_linki}");
     const [selectedSender, setSelectedSender] = useState<string>("");
     const [isScheduled, setIsScheduled] = useState(false);
@@ -73,9 +125,95 @@ export default function SmsCenterPage() {
         loadInitialData();
     }, [loadInitialData]);
 
+    // Handle deep link query params (e.g. from users list page)
+    useEffect(() => {
+        const studentIdParam = searchParams.get("studentId");
+        const phoneParam = searchParams.get("phone");
+        const nameParam = searchParams.get("name");
+
+        if (studentIdParam || phoneParam) {
+            setTargetType("individual");
+            if (studentIdParam) {
+                const prefilled: SmsStudentSearchResult = {
+                    id: studentIdParam,
+                    fullName: nameParam ? decodeURIComponent(nameParam) : "Öğrenci",
+                    phone: phoneParam || undefined
+                };
+                setSelectedStudents([prefilled]);
+                setSelectedTargetIds([studentIdParam]);
+            } else if (phoneParam) {
+                setCustomPhones([phoneParam]);
+            }
+        }
+    }, [searchParams]);
+
+    // Search students when query changes
+    useEffect(() => {
+        if (targetType !== "individual" || !token || !tenantId) return;
+        if (!studentSearchQuery.trim()) {
+            setStudentSearchResults([]);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setSearchingStudents(true);
+            try {
+                const results = await adminSmsCenterApi.searchStudents(token, tenantId, studentSearchQuery.trim());
+                setStudentSearchResults(results);
+            } catch {
+                setStudentSearchResults([]);
+            } finally {
+                setSearchingStudents(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [studentSearchQuery, targetType, token, tenantId]);
+
+    const addStudent = (st: SmsStudentSearchResult) => {
+        if (!selectedStudents.some(s => s.id === st.id)) {
+            const updated = [...selectedStudents, st];
+            setSelectedStudents(updated);
+            setSelectedTargetIds(updated.map(s => s.id));
+        }
+        setStudentSearchQuery("");
+        setStudentSearchResults([]);
+    };
+
+    const removeStudent = (id: string) => {
+        const updated = selectedStudents.filter(s => s.id !== id);
+        setSelectedStudents(updated);
+        setSelectedTargetIds(updated.map(s => s.id));
+    };
+
+    const addCustomPhone = () => {
+        const clean = customPhoneInput.trim().replace(/\s/g, "");
+        if (!clean) return;
+        if (!customPhones.includes(clean)) {
+            setCustomPhones(prev => [...prev, clean]);
+        }
+        setCustomPhoneInput("");
+    };
+
+    const removeCustomPhone = (phone: string) => {
+        setCustomPhones(prev => prev.filter(p => p !== phone));
+    };
+
     // Insert variable tag into template
     const insertTag = (tag: string) => {
         setMessageTemplate(prev => prev + tag);
+    };
+
+    // Apply template preset
+    const applyPreset = (presetText: string) => {
+        setMessageTemplate(presetText);
+    };
+
+    // Toggle target checkbox
+    const toggleTargetId = (id: string) => {
+        setSelectedTargetIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
     };
 
     // Calculate characters & SMS count
@@ -92,7 +230,12 @@ export default function SmsCenterPage() {
             return;
         }
 
-        if (targetType !== "all" && selectedTargetIds.length === 0) {
+        if (targetType === "individual" && selectedStudents.length === 0 && customPhones.length === 0) {
+            toastError("Alıcı Seçilmedi", "Lütfen en az bir öğrenci seçin veya telefon numarası ekleyin.");
+            return;
+        }
+
+        if (targetType !== "all" && targetType !== "individual" && selectedTargetIds.length === 0) {
             toastError("Hedef Kitle Seçilmedi", "Lütfen en az bir kurs, grup veya paket seçin.");
             return;
         }
@@ -103,7 +246,8 @@ export default function SmsCenterPage() {
         try {
             const res = await adminSmsCenterApi.preview(token, tenantId, {
                 targetType,
-                targetIds: selectedTargetIds,
+                targetIds: targetType === "individual" ? selectedStudents.map(s => s.id) : selectedTargetIds,
+                customPhones: targetType === "individual" ? customPhones : undefined,
                 messageTemplate: messageTemplate.trim(),
                 sender: selectedSender || undefined
             });
@@ -121,7 +265,7 @@ export default function SmsCenterPage() {
         }
     };
 
-    // Send Bulk SMS Campaign
+    // Send Bulk / Individual SMS Campaign
     const handleSendCampaign = async () => {
         if (!token || !tenantId) return;
         if (!messageTemplate.trim()) {
@@ -130,12 +274,17 @@ export default function SmsCenterPage() {
         }
 
         if (!preview || preview.validPhonesCount === 0) {
-            toastError("Önizleme Gereklidir", "Lütfen önce 'Alıcıları Önizle' butonuna tıklayın.");
+            toastError("Önizleme Gerekli", "Lütfen önce 'Alıcıları Önizle' butonuna basarak kitleyi kontrol edin.");
             return;
         }
 
-        const confirmMsg = `${preview.validPhonesCount} öğrenciye yaklaşık ${preview.estimatedSmsUnits} SMS kredisi harcanarak mesaj gönderilecektir. Onaylıyor musunuz?`;
-        if (!window.confirm(confirmMsg)) return;
+        const confirmMsg = targetType === "individual"
+            ? `Seçtiğiniz ${preview.validPhonesCount} kişiye bireysel SMS gönderilecek. Onaylıyor musunuz?`
+            : `Toplam ${preview.validPhonesCount} geçerli öğrenciye yaklaşık ${preview.estimatedSmsUnits} SMS kredisi kullanılarak kampanya başlatılacaktır. Onaylıyor musunuz?`;
+
+        if (!confirm(confirmMsg)) {
+            return;
+        }
 
         setSending(true);
         setExecutionResult(null);
@@ -143,86 +292,95 @@ export default function SmsCenterPage() {
         try {
             const res = await adminSmsCenterApi.sendBulk(token, tenantId, {
                 targetType,
-                targetIds: selectedTargetIds,
+                targetIds: targetType === "individual" ? selectedStudents.map(s => s.id) : selectedTargetIds,
+                customPhones: targetType === "individual" ? customPhones : undefined,
                 messageTemplate: messageTemplate.trim(),
                 sender: selectedSender || undefined,
-                sendTime: isScheduled && scheduledDateTime ? scheduledDateTime : undefined
+                sendTime: isScheduled && scheduledDateTime.trim() ? scheduledDateTime.trim() : undefined
             });
 
             setExecutionResult(res);
             if (res.success) {
-                success("Kampanya Başarılı", res.message || "Toplu SMS gönderimi tamamlandı.");
-                // Refresh balance
-                adminIntegrationApi.getAccountInfo(token, tenantId).then(setAccountInfo);
+                success("SMS Başarıyla Gönderildi", `${res.sentCount} kişiye SMS gönderildi.`);
+                loadInitialData(); // Reload balance
             } else {
-                toastError("Gönderim Hatası", res.message || "SMS gönderilemedi.");
+                toastError("Gönderim Uyarısı", res.message || "Gönderim tamamlanamadı.");
             }
         } catch (err: any) {
-            toastError("Hata", err.message || "Kampanya gönderimi sırasında bir sorun oluştu.");
+            toastError("Kritik Hata", err.message || "SMS servisi yanıt vermedi.");
         } finally {
             setSending(false);
         }
     };
 
-    // Target Selection Helper
-    const toggleTargetId = (id: string) => {
-        setSelectedTargetIds(prev => 
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        );
-    };
-
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            {/* ── Header ────────────────────────────────────────────── */}
-            <div className="relative overflow-hidden bg-gradient-to-r from-[#0A1931] via-[#1B3B6F] to-[#0A1931] rounded-3xl p-6 sm:p-8 text-white shadow-xl">
-                <div className="absolute right-0 top-0 translate-x-1/4 -translate-y-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="space-y-6 animate-in fade-in duration-300 pb-16 max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#0A1931] via-[#15284A] to-[#1E3E62] p-6 sm:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+                
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <span className="px-3 py-1 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full text-[10px] font-extrabold tracking-widest uppercase flex items-center gap-1.5">
-                                <MessageSquare size={12} className="text-emerald-400" /> TOPLU SMS MERKEZİ
-                            </span>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold tracking-wide text-sky-200">
+                            <Smartphone size={14} className="text-sky-300" />
+                            <span>MURO SMS Kampanya & İletişim Merkezi</span>
                         </div>
-                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-                            Toplu SMS Kampanya Merkezi
-                        </h1>
-                        <p className="text-sm text-slate-300 max-w-2xl font-normal leading-relaxed">
-                            Kursa, gruba veya pakete kayıtlı öğrencilerinize kişiselleştirilmiş canlı ders, sınav ve kayıt bilgilendirme SMS'leri gönderin.
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Toplu & Bireysel SMS Merkezi</h1>
+                        <p className="text-sm text-slate-300 max-w-2xl font-medium">
+                            Kursa, gruba, pakete kayıtlı veya tekil öğrencilerinize kişiselleştirilmiş canlı ders, sınav ve şifre bilgilendirme SMS'leri gönderin.
                         </p>
                     </div>
 
-                    {accountInfo && (
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl flex flex-col items-end shrink-0">
-                            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300">Vatan SMS Kredisi</span>
-                            <span className="text-2xl font-black text-emerald-400 mt-0.5">{accountInfo.balance || "0"} <span className="text-xs font-normal text-white">SMS</span></span>
-                            <span className="text-[11px] text-slate-300 mt-1">{accountInfo.customerName || "Vatan SMS"}</span>
+                    {/* Account Balance Widget */}
+                    <div className="bg-white/10 backdrop-blur-md border border-white/15 p-4 rounded-2xl flex items-center gap-4 shrink-0 shadow-inner">
+                        <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
+                            <Sparkles size={24} />
                         </div>
-                    )}
+                        <div>
+                            <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-300">SMS Kredisi / Bakiye</div>
+                            <div className="text-xl font-black text-white">
+                                {loadingInit ? (
+                                    <span className="text-sm text-slate-300 font-bold">Yükleniyor...</span>
+                                ) : accountInfo?.balance ? (
+                                    <span>{accountInfo.balance} <span className="text-xs font-bold text-amber-300">Kredi</span></span>
+                                ) : (
+                                    <span className="text-xs font-bold text-slate-300">Aktif Başlık Bağlı</span>
+                                )}
+                            </div>
+                            {accountInfo?.customerName && (
+                                <div className="text-[10px] text-slate-300 truncate max-w-[180px]">{accountInfo.customerName}</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* ── Main Grid ─────────────────────────────────────────── */}
+            {/* Main Content Grid (12 Cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* ── Left Column: Campaign Form (7 cols) ───────────── */}
+                {/* ── Left Column: Composer Form (7 cols) ───── */}
                 <div className="lg:col-span-7 space-y-5">
                     
-                    {/* Step 1: Target Audience */}
+                    {/* Step 1: Target Audience Selection */}
                     <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 className="text-sm font-extrabold text-[#0A1931] flex items-center gap-2">
                                 <span className="w-6 h-6 rounded-full bg-[#0A1931] text-white text-xs flex items-center justify-center font-black">1</span>
                                 Hedef Kitle Seçimi
                             </h3>
-                            {targetType !== "all" && (
-                                <span className="text-xs text-indigo-600 font-bold">
+                            {targetType === "individual" ? (
+                                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                                    {selectedStudents.length + customPhones.length} Bireysel Alıcı
+                                </span>
+                            ) : targetType !== "all" && (
+                                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                                     {selectedTargetIds.length} Seçili
                                 </span>
                             )}
                         </div>
 
-                        {/* Target Type Pills */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {/* Target Type Selector (5 Tabs) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                             <button
                                 type="button"
                                 onClick={() => { setTargetType("all"); setSelectedTargetIds([]); }}
@@ -274,9 +432,122 @@ export default function SmsCenterPage() {
                                 <Package size={16} />
                                 <span>Pakete Göre</span>
                             </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setTargetType("individual"); setSelectedTargetIds([]); }}
+                                className={`p-3 rounded-2xl border text-xs font-bold transition-all flex flex-col items-center gap-1.5 col-span-2 sm:col-span-1 relative overflow-hidden ${
+                                    targetType === "individual"
+                                        ? "bg-[#0A1931] text-white border-[#0A1931] shadow-md ring-2 ring-indigo-400/40"
+                                        : "bg-indigo-50/50 text-indigo-900 border-indigo-200 hover:bg-indigo-100"
+                                }`}
+                            >
+                                <UserCheck size={16} className={targetType === "individual" ? "text-indigo-300" : "text-indigo-600"} />
+                                <span>Bireysel SMS</span>
+                            </button>
                         </div>
 
-                        {/* List Selector when specific target type selected */}
+                        {/* Individual Student / Custom Phone Selector */}
+                        {targetType === "individual" && (
+                            <div className="space-y-4 pt-2 border-t border-slate-100 animate-in fade-in">
+                                {/* Student Search Box */}
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                                        Öğrenci Ara & Ekle (İsim, Telefon veya E-posta)
+                                    </label>
+                                    <div className="relative">
+                                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={studentSearchQuery}
+                                            onChange={e => setStudentSearchQuery(e.target.value)}
+                                            placeholder="Örn: Mustafa Çakmak veya 0555..."
+                                            className="w-full pl-10 pr-10 py-2.5 text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0A1931]/10 focus:border-[#0A1931]"
+                                        />
+                                        {searchingStudents && (
+                                            <Loader2 size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin text-slate-400" />
+                                        )}
+                                    </div>
+
+                                    {/* Search Dropdown Results */}
+                                    {studentSearchResults.length > 0 && (
+                                        <div className="border border-slate-200 rounded-2xl p-1 bg-white shadow-lg max-h-48 overflow-y-auto space-y-0.5 animate-in slide-in-from-top-2">
+                                            {studentSearchResults.map(st => (
+                                                <div
+                                                    key={st.id}
+                                                    onClick={() => addStudent(st)}
+                                                    className="flex items-center justify-between p-2 rounded-xl hover:bg-indigo-50/80 cursor-pointer transition-all text-xs"
+                                                >
+                                                    <div>
+                                                        <span className="font-extrabold text-slate-900">{st.fullName}</span>
+                                                        <span className="text-[11px] text-slate-500 font-medium ml-2">{st.phone || st.email || st.username}</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                        <Plus size={12} /> Ekle
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Custom Phone Number Input */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                                        veya Doğrudan Telefon Numarası Yaz
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <PhoneCall size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                value={customPhoneInput}
+                                                onChange={e => setCustomPhoneInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomPhone(); } }}
+                                                placeholder="05xx xxx xx xx"
+                                                className="w-full pl-10 pr-3.5 py-2 text-xs font-mono font-bold border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:border-[#0A1931]"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={addCustomPhone}
+                                            className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1 active:scale-95"
+                                        >
+                                            <Plus size={14} /> Ekle
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Selected Students & Phones Badges */}
+                                {(selectedStudents.length > 0 || customPhones.length > 0) && (
+                                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                                            Seçilen Bireysel Alıcılar ({selectedStudents.length + customPhones.length}):
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                                            {selectedStudents.map(st => (
+                                                <span key={st.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-900 text-xs font-bold shadow-2xs">
+                                                    <span>{st.fullName} {st.phone && `(${st.phone})`}</span>
+                                                    <button type="button" onClick={() => removeStudent(st.id)} className="text-slate-400 hover:text-rose-600 transition-colors">
+                                                        <X size={13} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {customPhones.map(phone => (
+                                                <span key={phone} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-mono font-bold shadow-2xs">
+                                                    <span>{phone}</span>
+                                                    <button type="button" onClick={() => removeCustomPhone(phone)} className="text-emerald-500 hover:text-rose-600 transition-colors">
+                                                        <X size={13} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* List Selector when course/group/package selected */}
                         {targetType === "course" && (
                             <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-2xl p-2 space-y-1 bg-slate-50/50">
                                 {targets.courses.length === 0 ? (
@@ -338,25 +609,46 @@ export default function SmsCenterPage() {
                         )}
                     </div>
 
-                    {/* Step 2: Message Template & Variables */}
+                    {/* Step 2: Message Template & Quick Presets */}
                     <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 className="text-sm font-extrabold text-[#0A1931] flex items-center gap-2">
                                 <span className="w-6 h-6 rounded-full bg-[#0A1931] text-white text-xs flex items-center justify-center font-black">2</span>
-                                Mesaj Metni & Dinamik Değişkenler
+                                Mesaj Metni & Hazır Şablonlar
                             </h3>
                             <span className="text-[11px] font-bold text-slate-400">
                                 {charCount} Karakter ({smsUnitsPerPerson} SMS Boyutu)
                             </span>
                         </div>
 
+                        {/* Quick Presets Library */}
+                        <div className="space-y-1.5">
+                            <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <BookmarkCheck size={13} className="text-amber-500" />
+                                Hazır Şablonlar (Tek Tıkla Doldur):
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {TEMPLATE_PRESETS.map((preset, idx) => (
+                                    <button
+                                        key={idx}
+                                        type="button"
+                                        onClick={() => applyPreset(preset.text)}
+                                        className={`px-3 py-1.5 border text-[11px] font-bold rounded-xl transition-all shadow-2xs active:scale-95 flex items-center gap-1.5 ${preset.color}`}
+                                    >
+                                        <span>{preset.title}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Tag Insert Buttons */}
-                        <div>
+                        <div className="pt-1">
                             <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Tıkla & Değişken Ekle:</p>
                             <div className="flex flex-wrap gap-1.5">
                                 {[
                                     { label: "Öğrenci Adı", tag: " {ad} " },
                                     { label: "Soyadı", tag: " {soyad} " },
+                                    { label: "Ad Soyad", tag: " {ad_soyad} " },
                                     { label: "Kurs / Paket", tag: " {kurs} " },
                                     { label: "Giriş Linki", tag: " {giris_linki} " },
                                     { label: "Kullanıcı Adı", tag: " {kullanici_adi} " },
@@ -476,7 +768,7 @@ export default function SmsCenterPage() {
                                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
                             >
                                 {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                                Kampanyayı Başlat ({preview ? preview.validPhonesCount : 0} Kişi)
+                                {targetType === "individual" ? "Bireysel SMS Gönder" : "Kampanyayı Başlat"} ({preview ? preview.validPhonesCount : 0} Kişi)
                             </button>
                         </div>
                     </div>

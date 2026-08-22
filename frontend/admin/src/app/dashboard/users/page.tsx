@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
     Users, UserPlus, UserCheck, Search, Download, Upload, Trash2, Edit3,
     ChevronLeft, ChevronRight, X, Check, Shield, ArrowUpDown, ArrowUp, ArrowDown,
@@ -8,7 +9,7 @@ import {
     BookOpen, ClipboardList, Activity, ToggleLeft, ToggleRight,
     KeyRound, Clock, TrendingUp, Award, BarChart3, ChevronUp, ChevronDown, Lock, RefreshCw, Copy,
     ArrowLeft, Flame, Target, CreditCard, Eye, EyeOff, Zap, MessageCircle, AlertTriangle, ExternalLink,
-    SlidersHorizontal, FileText
+    SlidersHorizontal, FileText, MessageSquare
 } from "lucide-react";
 import { API_URL } from "@/lib/api/core";
 import { KpiGrid } from "@/components/ui/KpiGrid";
@@ -745,6 +746,13 @@ export default function UsersPage() {
                                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                                             <div className="flex items-center justify-center gap-2">
                                                 <Tooltip content="Detay"><button onClick={() => setDetailUser(u)} className="p-2 rounded-lg hover:bg-[#E2E8F0]/30 text-[#A0AEC0] hover:text-[#1B3B6F]"><Eye size={18} /></button></Tooltip>
+                                                {u.phone && (
+                                                    <Tooltip content="SMS Gönder">
+                                                        <Link href={`/dashboard/sms-center?studentId=${u.id}&phone=${encodeURIComponent(u.phone)}&name=${encodeURIComponent(u.firstName + ' ' + u.lastName)}`} className="p-2 rounded-lg hover:bg-sky-50 text-[#A0AEC0] hover:text-sky-600">
+                                                            <MessageSquare size={18} />
+                                                        </Link>
+                                                    </Tooltip>
+                                                )}
                                                 {canEditUser(u) ? (
                                                     <>
                                                         <Tooltip content="Düzenle"><button onClick={() => { setEditUser(u); setShowAddModal(true); }} className="p-2 rounded-lg hover:bg-amber-50 text-[#A0AEC0] hover:text-amber-600"><Edit3 size={18} /></button></Tooltip>

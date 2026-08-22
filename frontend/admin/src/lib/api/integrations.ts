@@ -99,8 +99,16 @@ export interface BulkSmsExecutionResult {
     message?: string;
 }
 
+export interface SmsStudentSearchResult {
+    id: string;
+    fullName: string;
+    phone?: string | null;
+    email?: string | null;
+    username?: string | null;
+}
+
 export interface BulkSmsCampaignPayload {
-    targetType: "course" | "group" | "package" | "all" | "custom";
+    targetType: "course" | "group" | "package" | "all" | "individual" | "custom";
     targetIds: string[];
     customPhones?: string[];
     messageTemplate: string;
@@ -149,6 +157,9 @@ export const adminIntegrationApi = {
 export const adminSmsCenterApi = {
     getTargets: (token: string, tenantId: string) =>
         api<SmsTargetsResponse>('/admin/sms/targets', { token, tenantId }),
+
+    searchStudents: (token: string, tenantId: string, q?: string) =>
+        api<SmsStudentSearchResult[]>(`/admin/sms/search-students${q ? `?q=${encodeURIComponent(q)}` : ''}`, { token, tenantId }),
 
     preview: (token: string, tenantId: string, data: BulkSmsCampaignPayload) =>
         api<BulkSmsPreviewResult>('/admin/sms/preview', {
