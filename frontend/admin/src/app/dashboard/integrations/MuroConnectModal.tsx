@@ -6,7 +6,7 @@ import {
     X, Key, Copy, Check, RefreshCw, Terminal, Shield, Play, 
     AlertCircle, CheckCircle2, Loader2, Code2, Globe, Clock, 
     Layers, ExternalLink, Zap, ArrowRight, Smartphone, BookOpen,
-    Send
+    Send, Sparkles, UserMinus, UserPlus, Radio
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/toast";
@@ -14,13 +14,18 @@ import {
     adminConnectApi, 
     type TenantApiKeyInfo, 
     type ConnectApiLogItem,
-    type ConnectEnrollResult
+    type ConnectEnrollResult,
+    type ConnectPackageDto,
+    type ConnectDemoResult,
+    type ConnectUnenrollResult
 } from "@/lib/api";
 
 interface MuroConnectModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
+
+type SimulatorMode = "enroll" | "demo" | "unenroll";
 
 export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
     const { token, currentTenantId: tenantId } = useAuth();
@@ -35,9 +40,16 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
     const [regenerating, setRegenerating] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    // Packages state
+    const [packages, setPackages] = useState<ConnectPackageDto[]>([]);
+    const [loadingPackages, setLoadingPackages] = useState(false);
+
     // Logs state
     const [logs, setLogs] = useState<ConnectApiLogItem[]>([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
+
+    // Simulator mode
+    const [simMode, setSimMode] = useState<SimulatorMode>("enroll");
 
     // Test form state
     const [testFirstName, setTestFirstName] = useState("Ahmet");
@@ -47,15 +59,21 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
     const [testPackageCode, setTestPackageCode] = useState("");
     const [testOrderId, setTestOrderId] = useState("TEST-ORDER-" + Math.floor(1000 + Math.random() * 9000));
     const [testSendSms, setTestSendSms] = useState(true);
-    const [testingEnroll, setTestingEnroll] = useState(false);
-    const [testResult, setTestResult] = useState<ConnectEnrollResult | null>(null);
+    const [testDemoDays, setTestDemoDays] = useState(7);
+    const [testUnenrollReason, setTestUnenrollReason] = useState("Müşteri İade Talebi");
+    
+    const [testing, setTesting] = useState(false);
+    const [testResult, setTestResult] = useState<any>(null);
 
     // Selected code tab
     const [codeLanguage, setCodeLanguage] = useState<"js" | "php" | "curl" | "shopier">("js");
 
     const apiBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://uzem.ataniyorumhocam.com";
     const enrollEndpointUrl = `${apiBaseUrl}/api/v1/connect/enroll`;
+    const demoEndpointUrl = `${apiBaseUrl}/api/v1/connect/demo-lead`;
+    const unenrollEndpointUrl = `${apiBaseUrl}/api/v1/connect/unenroll`;
     const packagesEndpointUrl = `${apiBaseUrl}/api/v1/connect/packages`;
+    const liveStatusEndpointUrl = `${apiBaseUrl}/api/v1/connect/live-status`;
 
     useEffect(() => {
         setMounted(true);
@@ -74,6 +92,22 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
         }
     }, [token, tenantId, toastError]);
 
+    const loadPackages = useCallback(async () => {
+        if (!token || !tenantId) return;
+        setLoadingPackages(true);
+        try {
+            const data = await adminConnectApi.getPackages(token, tenantId);
+            setPackages(data || []);
+            if (data && data.length > 0 && !testPackageCode) {
+                setTestPackageCode(data[0].code || "");
+            }
+        } catch {
+            // silent fallback
+        } finally {
+            setLoadingPackages(false);
+        }
+    }, [token, tenantId, testPackageCode]);
+
     const loadLogs = useCallback(async () => {
         if (!token || !tenantId) return;
         setLoadingLogs(true);
@@ -90,9 +124,10 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
     useEffect(() => {
         if (isOpen) {
             loadKey();
+            loadPackages();
             if (activeTab === "logs") loadLogs();
         }
-    }, [isOpen, activeTab, loadKey, loadLogs]);
+    }, [isOpen, activeTab, loadKey, loadPackages, loadLogs]);
 
     const handleCopyKey = (textToCopy: string) => {
         navigator.clipboard.writeText(textToCopy);
@@ -120,24 +155,44 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
 
     const handleRunTest = async (e: React.FormEvent) => {
         e.preventDefault();
-        setTestingEnroll(true);
+        setTesting(true);
         setTestResult(null);
 
         try {
-            const res = await adminConnectApi.testEnroll(token!, tenantId!, {
-                firstName: testFirstName,
-                lastName: testLastName,
-                email: testEmail,
-                phone: testPhone,
-                packageCode: testPackageCode || undefined,
-                orderId: testOrderId,
-                sendWelcomeSms: testSendSms
-            });
+            let res: any;
+            if (simMode === "enroll") {
+                res = await adminConnectApi.testEnroll(token!, tenantId!, {
+                    firstName: testFirstName,
+                    lastName: testLastName,
+                    email: testEmail,
+                    phone: testPhone,
+                    packageCode: testPackageCode || undefined,
+                    orderId: testOrderId,
+                    sendWelcomeSms: testSendSms
+                });
+            } else if (simMode === "demo") {
+                res = await adminConnectApi.testDemo(token!, tenantId!, {
+                    firstName: testFirstName,
+                    lastName: testLastName,
+                    email: testEmail,
+                    phone: testPhone,
+                    packageCode: testPackageCode || undefined,
+                    demoDays: Number(testDemoDays) || 7,
+                    sendWelcomeSms: testSendSms
+                });
+            } else if (simMode === "unenroll") {
+                res = await adminConnectApi.testUnenroll(token!, tenantId!, {
+                    email: testEmail,
+                    phone: testPhone,
+                    packageCode: testPackageCode || undefined,
+                    reason: testUnenrollReason
+                });
+            }
 
             setTestResult(res);
             if (res.success) {
                 success(res.message);
-                loadLogs(); // Refresh logs
+                loadLogs();
             } else {
                 toastError(res.message);
             }
@@ -145,15 +200,10 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
             toastError(err.message || "Test isteği başarısız oldu.");
             setTestResult({
                 success: false,
-                action: "error",
-                userId: "",
-                username: "",
-                email: testEmail,
-                phone: testPhone,
                 message: err.message || "İstek hatası."
             });
         } finally {
-            setTestingEnroll(false);
+            setTesting(false);
         }
     };
 
@@ -175,7 +225,7 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-bold text-white tracking-wide">MURO Connect Developer Gateway</h3>
+                                <h3 className="text-lg font-bold text-white tracking-wide">MURO Connect Growth Suite</h3>
                                 <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> REST API v1
                                 </span>
@@ -301,14 +351,62 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
                                             </span>
                                             <code className="text-xs text-white font-mono">{enrollEndpointUrl}</code>
                                         </div>
-                                        <span className="text-[11px] text-slate-400 font-medium">Öğrenci Kaydı & Pakete Ekleme</span>
+                                        <span className="text-[11px] text-emerald-400 font-medium">✨ Magic Login Destekli</span>
                                     </div>
                                     <p className="text-xs text-slate-400">
-                                        Shopier veya web sitenizde ödeme tamamlandığında öğrenci hesabı açar, pakete/kursa atar ve otomatik hoş geldin SMS'i atar.
+                                        Shopier veya web sitenizde ödeme tamamlandığında öğrenci hesabı açar, pakete atar, Magic Login URL üretir ve hoş geldin SMS'i atar.
                                     </p>
                                 </div>
 
-                                {/* Endpoint 2: Packages Catalog */}
+                                {/* Endpoint 2: Demo Lead */}
+                                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 text-[11px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded">
+                                                POST
+                                            </span>
+                                            <code className="text-xs text-white font-mono">{demoEndpointUrl}</code>
+                                        </div>
+                                        <span className="text-[11px] text-amber-400 font-medium">🧲 Ücretsiz Demo Funnel'ı</span>
+                                    </div>
+                                    <p className="text-xs text-slate-400">
+                                        Web sitenizdeki ücretsiz deneme formlarından 7 günlük demo öğrenci hesabı açar ve tek tıkla şifresiz giriş linki döner.
+                                    </p>
+                                </div>
+
+                                {/* Endpoint 3: Unenroll */}
+                                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 text-[11px] font-mono font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded">
+                                                POST
+                                            </span>
+                                            <code className="text-xs text-white font-mono">{unenrollEndpointUrl}</code>
+                                        </div>
+                                        <span className="text-[11px] text-rose-400 font-medium">🛑 İade & Paket İptali</span>
+                                    </div>
+                                    <p className="text-xs text-slate-400">
+                                        İade veya iptal durumlarında öğrencinin paket ve canlı ders grup erişimlerini anında otomatik iptal eder.
+                                    </p>
+                                </div>
+
+                                {/* Endpoint 4: Live Status */}
+                                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 text-[11px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded">
+                                                GET
+                                            </span>
+                                            <code className="text-xs text-white font-mono">{liveStatusEndpointUrl}</code>
+                                        </div>
+                                        <span className="text-[11px] text-purple-400 font-medium">🔴 Canlı Yayın Durum Bandı</span>
+                                    </div>
+                                    <p className="text-xs text-slate-400">
+                                        Web sitenizin üstünde <i>"Şu An Çağrı Hoca ile Canlı Ders Başladı"</i> şeridi göstermek için anlık canlı yayın durumunu sorgular.
+                                    </p>
+                                </div>
+
+                                {/* Endpoint 5: Packages Catalog */}
                                 <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
@@ -330,37 +428,75 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
                     {/* TAB 2: LIVE TEST SIMULATOR */}
                     {activeTab === "test" && (
                         <div className="space-y-5">
-                            <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs flex items-start gap-2.5">
-                                <Zap className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
-                                <div>
-                                    Bu simülatör, harici web sitenizden veya Shopier'den bir sipariş gelmiş gibi MURO API'sine canlı test isteği atar. Kaydın anında nasıl işlendiğini buradan deneyimleyebilirsiniz.
-                                </div>
+                            {/* Mode Selector */}
+                            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                                <button
+                                    type="button"
+                                    onClick={() => { setSimMode("enroll"); setTestResult(null); }}
+                                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        simMode === "enroll" 
+                                            ? "bg-blue-600 text-white shadow-md shadow-blue-600/20" 
+                                            : "text-slate-400 hover:text-slate-200"
+                                    }`}
+                                >
+                                    <UserPlus size={14} />
+                                    1. Satış Kaydı (Enroll)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setSimMode("demo"); setTestResult(null); }}
+                                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        simMode === "demo" 
+                                            ? "bg-amber-600 text-white shadow-md shadow-amber-600/20" 
+                                            : "text-slate-400 hover:text-slate-200"
+                                    }`}
+                                >
+                                    <Sparkles size={14} />
+                                    2. Ücretsiz Demo Lead
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setSimMode("unenroll"); setTestResult(null); }}
+                                    className={`py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                        simMode === "unenroll" 
+                                            ? "bg-rose-600 text-white shadow-md shadow-rose-600/20" 
+                                            : "text-slate-400 hover:text-slate-200"
+                                    }`}
+                                >
+                                    <UserMinus size={14} />
+                                    3. İade / İptal (Unenroll)
+                                </button>
                             </div>
 
                             <form onSubmit={handleRunTest} className="p-5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {simMode !== "unenroll" && (
+                                        <>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-300 mb-1">Öğrenci Adı *</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={testFirstName}
+                                                    onChange={(e) => setTestFirstName(e.target.value)}
+                                                    required
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-300 mb-1">Öğrenci Soyadı *</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={testLastName}
+                                                    onChange={(e) => setTestLastName(e.target.value)}
+                                                    required
+                                                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Ad *</label>
-                                        <input 
-                                            type="text" 
-                                            value={testFirstName}
-                                            onChange={(e) => setTestFirstName(e.target.value)}
-                                            required
-                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Soyad *</label>
-                                        <input 
-                                            type="text" 
-                                            value={testLastName}
-                                            onChange={(e) => setTestLastName(e.target.value)}
-                                            required
-                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">E-posta *</label>
+                                        <label className="block text-xs font-semibold text-slate-300 mb-1">E-posta Adresi *</label>
                                         <input 
                                             type="email" 
                                             value={testEmail}
@@ -370,7 +506,7 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Telefon *</label>
+                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Telefon Numarası *</label>
                                         <input 
                                             type="tel" 
                                             value={testPhone}
@@ -380,66 +516,129 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
                                             className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
                                         />
                                     </div>
+
+                                    {/* Dynamic Package Dropdown */}
                                     <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Paket Kodu (package_code)</label>
-                                        <input 
-                                            type="text" 
+                                        <label className="block text-xs font-semibold text-slate-300 mb-1">
+                                            Tanımlanacak Paket (package_code)
+                                        </label>
+                                        <select
                                             value={testPackageCode}
                                             onChange={(e) => setTestPackageCode(e.target.value)}
-                                            placeholder="Örn: KPSS-2026 veya boş"
-                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-mono uppercase focus:outline-none focus:border-blue-500"
-                                        />
+                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                                        >
+                                            <option value="">-- Paket Seçin veya Boş Bırakın --</option>
+                                            {packages.map(p => (
+                                                <option key={p.id} value={p.code || p.name}>
+                                                    {p.name} {p.code ? `(${p.code})` : ''} - {p.price} ₺
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-slate-300 mb-1">Sipariş No (order_id)</label>
-                                        <input 
-                                            type="text" 
-                                            value={testOrderId}
-                                            onChange={(e) => setTestOrderId(e.target.value)}
-                                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
-                                        />
-                                    </div>
+
+                                    {simMode === "enroll" && (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-300 mb-1">Sipariş No (order_id)</label>
+                                            <input 
+                                                type="text" 
+                                                value={testOrderId}
+                                                onChange={(e) => setTestOrderId(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {simMode === "demo" && (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-300 mb-1">Demo Süresi (Gün)</label>
+                                            <input 
+                                                type="number" 
+                                                value={testDemoDays}
+                                                onChange={(e) => setTestDemoDays(Number(e.target.value))}
+                                                min={1}
+                                                max={30}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {simMode === "unenroll" && (
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-300 mb-1">İptal / İade Sebebi</label>
+                                            <input 
+                                                type="text" 
+                                                value={testUnenrollReason}
+                                                onChange={(e) => setTestUnenrollReason(e.target.value)}
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center justify-between pt-2 border-t border-slate-800">
-                                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                                        <input 
-                                            type="checkbox"
-                                            checked={testSendSms}
-                                            onChange={(e) => setTestSendSms(e.target.checked)}
-                                            className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <span>Öğrenciye Hoş Geldin SMS'i Gönder</span>
-                                    </label>
+                                    {simMode !== "unenroll" ? (
+                                        <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={testSendSms}
+                                                onChange={(e) => setTestSendSms(e.target.checked)}
+                                                className="w-4 h-4 rounded border-slate-700 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <span>Öğrenciye Otomatik Bilgilendirme SMS'i Gönder</span>
+                                        </label>
+                                    ) : <div />}
 
                                     <button
                                         type="submit"
-                                        disabled={testingEnroll}
-                                        className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50"
+                                        disabled={testing}
+                                        className={`px-5 py-2.5 text-white text-xs font-bold rounded-xl transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 ${
+                                            simMode === "enroll" ? "bg-blue-600 hover:bg-blue-500 shadow-blue-600/20" :
+                                            simMode === "demo" ? "bg-amber-600 hover:bg-amber-500 shadow-amber-600/20" :
+                                            "bg-rose-600 hover:bg-rose-500 shadow-rose-600/20"
+                                        }`}
                                     >
-                                        {testingEnroll ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={14} />}
-                                        Canlı Satış Simülasyonu Başlat
+                                        {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send size={14} />}
+                                        {simMode === "enroll" && "Canlı Satış Simülasyonu Başlat"}
+                                        {simMode === "demo" && "Demo Kayıt Simülasyonu Başlat"}
+                                        {simMode === "unenroll" && "Paket İptali Simülasyonu Başlat"}
                                     </button>
                                 </div>
                             </form>
 
                             {/* Result Display */}
                             {testResult && (
-                                <div className={`p-4 rounded-xl border space-y-2 text-xs ${
+                                <div className={`p-4 rounded-xl border space-y-3 text-xs ${
                                     testResult.success 
                                         ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300" 
                                         : "bg-rose-950/30 border-rose-500/30 text-rose-300"
                                 }`}>
-                                    <div className="flex items-center gap-2 font-bold text-sm">
-                                        {testResult.success ? <CheckCircle2 size={16} className="text-emerald-400" /> : <AlertCircle size={16} className="text-rose-400" />}
-                                        <span>{testResult.message}</span>
+                                    <div className="flex items-center justify-between font-bold text-sm">
+                                        <div className="flex items-center gap-2">
+                                            {testResult.success ? <CheckCircle2 size={16} className="text-emerald-400" /> : <AlertCircle size={16} className="text-rose-400" />}
+                                            <span>{testResult.message}</span>
+                                        </div>
+
+                                        {/* Magic Login Link Button */}
+                                        {testResult.magicLoginUrl && (
+                                            <a
+                                                href={testResult.magicLoginUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-600/30 animate-pulse"
+                                            >
+                                                <Sparkles size={13} />
+                                                🪄 Tek Tıkla Derse Başla (Magic Login)
+                                                <ExternalLink size={12} />
+                                            </a>
+                                        )}
                                     </div>
+
                                     {testResult.success && (
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 text-slate-300 border-t border-emerald-500/20 font-mono text-[11px]">
-                                            <div>Kullanıcı Adı: <span className="text-white font-bold">{testResult.username}</span></div>
+                                            <div>Kullanıcı Adı: <span className="text-white font-bold">{testResult.username || testEmail}</span></div>
                                             <div>Şifre: <span className="text-white font-bold">{testResult.generatedPassword || "******"}</span></div>
-                                            <div>İşlem Türü: <span className="text-emerald-400 font-bold">{testResult.action}</span></div>
-                                            <div>Paket: <span className="text-white font-bold">{testResult.packageName || "Genel"}</span></div>
+                                            <div>İşlem: <span className="text-emerald-400 font-bold">{testResult.action || simMode}</span></div>
+                                            <div>Paket: <span className="text-white font-bold">{testResult.packageName || "Aktif"}</span></div>
                                         </div>
                                     )}
                                 </div>
@@ -479,7 +678,7 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
                                                 <div className="flex items-center gap-2">
                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
                                                         log.statusCode >= 200 && log.statusCode < 300 
-                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
                                                             : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                                                     }`}>
                                                         {log.statusCode} {log.httpMethod}
@@ -530,8 +729,8 @@ export function MuroConnectModal({ isOpen, onClose }: MuroConnectModalProps) {
 
                             <div className="relative bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto">
                                 {codeLanguage === "js" && (
-                                    <pre>{`// Next.js / Node.js ile Öğrenci Kaydı Açma
-const response = await fetch("${enrollEndpointUrl}", {
+                                    <pre>{`// 1. Next.js / Node.js ile Öğrenci Kaydı Açma & Magic Login Alma
+const res = await fetch("${enrollEndpointUrl}", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
@@ -548,13 +747,23 @@ const response = await fetch("${enrollEndpointUrl}", {
   })
 });
 
-const data = await response.json();
-console.log(data);`}</pre>
+const data = await res.json();
+// data.magic_login_url -> Kullanıcıyı şifresiz derse sokan link!
+console.log(data);
+
+// 2. Canlı Yayın Durumu Sorgulama (Canlı Yayın Şeridi İçin)
+const liveRes = await fetch("${liveStatusEndpointUrl}", {
+  headers: { "X-Muro-Key": "${keyInfo?.fullKey || keyInfo?.keyPrefix || "muro_live_..."}" }
+});
+const liveData = await liveRes.json();
+if (liveData.is_live_now) {
+  console.log("Şu an canlı ders var:", liveData.session_title);
+}`}</pre>
                                 )}
 
                                 {codeLanguage === "php" && (
                                     <pre>{`<?php
-// PHP / WordPress cURL ile Öğrenci Kaydı Açma
+// PHP / WordPress cURL ile Otomatik Satış Kaydı Açma
 $curl = curl_init();
 
 $payload = json_encode([
@@ -580,12 +789,17 @@ curl_setopt_array($curl, [
 
 $response = curl_exec($curl);
 curl_close($curl);
+$data = json_decode($response, true);
+
+// Müşteriye "Hemen Eğitime Git" butonu vermek için:
+// $magicUrl = $data['magic_login_url'];
 echo $response;
 ?>`}</pre>
                                 )}
 
                                 {codeLanguage === "curl" && (
-                                    <pre>{`curl -X POST "${enrollEndpointUrl}" \\
+                                    <pre>{`# 1. Kurs Satışı Kaydı & Magic Login
+curl -X POST "${enrollEndpointUrl}" \\
   -H "Content-Type: application/json" \\
   -H "X-Muro-Key: ${keyInfo?.fullKey || keyInfo?.keyPrefix || "muro_live_..."}" \\
   -d '{
@@ -595,15 +809,26 @@ echo $response;
     "phone": "05551234567",
     "package_code": "KPSS-2026-FULL",
     "send_welcome_sms": true
+  }'
+
+# 2. Ücretsiz 7 Günlük Demo Lead Kaydı
+curl -X POST "${demoEndpointUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Muro-Key: ${keyInfo?.fullKey || keyInfo?.keyPrefix || "muro_live_..."}" \\
+  -d '{
+    "first_name": "Ayşe",
+    "last_name": "Demir",
+    "phone": "05559876543",
+    "demo_days": 7
   }'`}</pre>
                                 )}
 
                                 {codeLanguage === "shopier" && (
-                                    <pre>{`// Shopier Webhook Karşılayıcı
+                                    <pre>{`// Shopier Webhook & Callback Entegrasyonu
 // 1. Shopier Panelinde Geri Dönüş (Callback) URL olarak şu adresi tanımlayın:
 // URL: https://sizin-web-siteniz.com/api/shopier-callback
 
-// 2. Callback fonksiyonunuz içinde ödeme onaylandığı an MURO'ya POST atın:
+// 2. Callback dosyanızda ödeme onaylandığı an MURO'ya POST fırlatın:
 if ($status == "success") {
     $muroData = [
         "first_name" => $buyer_name,
@@ -614,7 +839,9 @@ if ($status == "success") {
         "order_id" => $order_id,
         "send_welcome_sms" => true
     ];
-    // MURO Enroll API'sine POST isteği gönderin...
+
+    // MURO Enroll API'sine POST isteği gönderilir...
+    // Öğrenci hesabı açılır, SMS gider, dönen magic_login_url ile teşekkür sayfasına yönlendirilir.
 }`}</pre>
                                 )}
                             </div>

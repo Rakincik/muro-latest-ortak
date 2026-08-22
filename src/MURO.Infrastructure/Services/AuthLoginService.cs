@@ -174,6 +174,60 @@ public class AuthLoginService : AuthServiceBase, IAuthLoginService
         return new AuthResponse(token, refreshToken, DateTime.UtcNow.AddHours(AccessTokenExpiryHours), MapToDto(user));
     }
 
+    public async Task<AuthResponse> LoginWithMagicTokenAsync(string magicToken, string? ipAddress = null, string? userAgent = null, string? deviceId = null)
+    {
+        if (string.IsNullOrWhiteSpace(magicToken))
+        {
+            throw new UnauthorizedAccessException("Geçersiz veya süresi dolmuş sihirli giriş anahtarı.");
+        }
+
+        var cleanToken = magicToken.Trim();
+        var cacheKey = $"muro:magic:{cleanToken}";
+        
+        // Check Redis for user id
+        string? cachedUserId = null;
+        if (_redis != null)
+        {
+            var db = _redis.GetDatabase();
+            var val = await db.StringGetDeleteAsync(cacheKey); // Atomic get and delete
+            if (val.HasValue) cachedUserId = val.ToString();
+        }
+
+        if (string.IsNullOrEmpty(cachedUserId) || !Guid.TryParse(cachedUserId, out var userId))
+        {
+            throw new UnauthorizedAccessException("Sihirli giriş bağlantısının süresi dolmuş veya daha önce kullanılmış.");
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+        if (user == null || !user.IsActive)
+        {
+            throw new UnauthorizedAccessException("Kullanıcı hesabı bulunamadı veya pasif durumda.");
+        }
+
+        var newDeviceInfo = ParseDeviceInfo(userAgent);
+        var deviceSession = new DeviceSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            IpAddress = ipAddress,
+            UserAgent = userAgent,
+            DeviceInfo = newDeviceInfo,
+            LoginAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        _context.DeviceSessions.Add(deviceSession);
+        await _context.SaveChangesAsync();
+
+        await LogSecurityEventAsync(user.Id, "MAGIC_LOGIN_SUCCESS", ipAddress, userAgent,
+            JsonSerializer.Serialize(new { deviceInfo = deviceSession.DeviceInfo, sessionId = deviceSession.Id }));
+
+        var token = GenerateJwtToken(user, deviceSession.Id);
+        var refreshToken = GenerateRefreshToken();
+        await StoreRefreshTokenAsync(user.Id, refreshToken, deviceSession.Id);
+
+        return new AuthResponse(token, refreshToken, DateTime.UtcNow.AddHours(AccessTokenExpiryHours), MapToDto(user));
+    }
+
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
         var maxStudentsStr = Environment.GetEnvironmentVariable("MAX_STUDENTS");

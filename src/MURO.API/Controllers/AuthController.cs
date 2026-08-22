@@ -66,6 +66,25 @@ public class AuthController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Sihirli giriş bağlantısı ile tek tıkla şifresiz giriş.</summary>
+    [HttpPost("magic-login")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingConfig.AuthPolicy)]
+    [ProducesResponseType(typeof(AuthResponse), 200)]
+    [ProducesResponseType(401)]
+    public async Task<ActionResult<AuthResponse>> MagicLogin([FromBody] MagicLoginRequest request)
+    {
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var userAgent = Request.Headers["User-Agent"].ToString();
+        var deviceId = Request.Headers["X-Device-Id"].ToString();
+
+        var result = await _loginService.LoginWithMagicTokenAsync(request.MagicToken, ipAddress, userAgent, deviceId);
+        CookieAuthMiddleware.SetAuthCookie(HttpContext, result.Token, result.ExpiresAt);
+
+        await _jobQueue.EnqueueAsync(new AuditLogJob(result.User.Id, $"{result.User.FirstName} {result.User.LastName}", "MagicLogin", "User", result.User.Id.ToString(), $"{result.User.FirstName} {result.User.LastName}", $"Rol: {result.User.Role}", ipAddress));
+        return Ok(result);
+    }
+
     /// <summary>Yeni kullanıcı kaydı oluşturur.</summary>
     /// <response code="201">Kayıt başarılı — JWT + RefreshToken</response>
     /// <response code="409">E-posta adresi zaten kayıtlı</response>

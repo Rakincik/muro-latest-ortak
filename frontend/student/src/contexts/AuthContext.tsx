@@ -81,6 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const init = async () => {
             if (typeof window !== "undefined") {
                 const params = new URLSearchParams(window.location.search);
+                const magicToken = params.get("magicToken");
+                if (magicToken) {
+                    try {
+                        const res = await authApi.magicLogin(magicToken);
+                        applyAuth(res);
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        return;
+                    } catch (mErr) {
+                        console.error("Magic login failed:", mErr);
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }
+                }
+
                 if (params.get("action") === "logout") {
                     localStorage.removeItem("muro_student_token");
                     localStorage.removeItem("muro_student_refresh");

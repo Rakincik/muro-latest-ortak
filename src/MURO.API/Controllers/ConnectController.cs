@@ -80,6 +80,125 @@ public class ConnectController : ControllerBase
         }
     }
 
+    [HttpPost("unenroll")]
+    public async Task<IActionResult> UnenrollStudent([FromBody] ConnectUnenrollRequest request)
+    {
+        var sw = Stopwatch.StartNew();
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        string reqJson = "";
+        try { reqJson = JsonSerializer.Serialize(request); } catch { }
+
+        try
+        {
+            var result = await _connectService.UnenrollStudentAsync(tenantId.Value, request, HttpContext.RequestAborted);
+            sw.Stop();
+
+            var resJson = JsonSerializer.Serialize(result);
+            _ = _connectService.LogRequestAsync(tenantId.Value, null, "/api/v1/connect/unenroll", "POST", HttpContext.Connection.RemoteIpAddress?.ToString(), 200, reqJson, resJson, sw.ElapsedMilliseconds);
+
+            return Ok(result);
+        }
+        catch (ArgumentException aEx)
+        {
+            sw.Stop();
+            _ = _connectService.LogRequestAsync(tenantId.Value, null, "/api/v1/connect/unenroll", "POST", HttpContext.Connection.RemoteIpAddress?.ToString(), 400, reqJson, aEx.Message, sw.ElapsedMilliseconds);
+            return BadRequest(new { error = aEx.Message });
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            _ = _connectService.LogRequestAsync(tenantId.Value, null, "/api/v1/connect/unenroll", "POST", HttpContext.Connection.RemoteIpAddress?.ToString(), 500, reqJson, ex.Message, sw.ElapsedMilliseconds);
+            return StatusCode(500, new { error = "İptal işlemi sırasında bir hata oluştu: " + ex.Message });
+        }
+    }
+
+    [HttpPost("demo-lead")]
+    public async Task<IActionResult> RegisterDemoLead([FromBody] ConnectDemoLeadRequest request)
+    {
+        var sw = Stopwatch.StartNew();
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        string reqJson = "";
+        try { reqJson = JsonSerializer.Serialize(request); } catch { }
+
+        try
+        {
+            var result = await _connectService.RegisterDemoLeadAsync(tenantId.Value, request, HttpContext.RequestAborted);
+            sw.Stop();
+
+            var resJson = JsonSerializer.Serialize(result);
+            _ = _connectService.LogRequestAsync(tenantId.Value, null, "/api/v1/connect/demo-lead", "POST", HttpContext.Connection.RemoteIpAddress?.ToString(), 200, reqJson, resJson, sw.ElapsedMilliseconds);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            _ = _connectService.LogRequestAsync(tenantId.Value, null, "/api/v1/connect/demo-lead", "POST", HttpContext.Connection.RemoteIpAddress?.ToString(), 400, reqJson, ex.Message, sw.ElapsedMilliseconds);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("batch-enroll")]
+    public async Task<IActionResult> BatchEnroll([FromBody] ConnectBatchEnrollRequest request)
+    {
+        var sw = Stopwatch.StartNew();
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        string reqJson = "";
+        try { reqJson = JsonSerializer.Serialize(request); } catch { }
+
+        var result = await _connectService.BatchEnrollStudentsAsync(tenantId.Value, request, HttpContext.RequestAborted);
+        sw.Stop();
+
+        var resJson = JsonSerializer.Serialize(result);
+        _ = _connectService.LogRequestAsync(tenantId.Value, null, "/api/v1/connect/batch-enroll", "POST", HttpContext.Connection.RemoteIpAddress?.ToString(), 200, reqJson, resJson, sw.ElapsedMilliseconds);
+
+        return Ok(result);
+    }
+
+    [HttpGet("students/status")]
+    public async Task<IActionResult> GetStudentStatus([FromQuery] string? email, [FromQuery] string? phone)
+    {
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        var status = await _connectService.GetStudentStatusAsync(tenantId.Value, email, phone, HttpContext.RequestAborted);
+        return Ok(status);
+    }
+
+    [HttpGet("live-status")]
+    public async Task<IActionResult> GetLiveStatus()
+    {
+        var (tenantId, authError) = await AuthenticateRequestAsync();
+        if (authError != null || !tenantId.HasValue)
+        {
+            return Unauthorized(new { error = authError });
+        }
+
+        var status = await _connectService.GetLiveStatusAsync(tenantId.Value, HttpContext.RequestAborted);
+        return Ok(status);
+    }
+
     [HttpGet("packages")]
     public async Task<IActionResult> GetPackages()
     {

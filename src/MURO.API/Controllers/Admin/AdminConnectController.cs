@@ -54,11 +54,35 @@ public class AdminConnectController : ControllerBase
         return Ok(logs);
     }
 
+    [HttpGet("packages")]
+    public async Task<IActionResult> GetPackages()
+    {
+        var tenantId = GetTenantId();
+        var packages = await _connectService.GetPackagesCatalogAsync(tenantId, HttpContext.RequestAborted);
+        return Ok(packages);
+    }
+
     [HttpPost("test-enroll")]
     public async Task<IActionResult> TestEnroll([FromBody] ConnectEnrollRequest request)
     {
         var tenantId = GetTenantId();
         var result = await _connectService.EnrollStudentAsync(tenantId, request, HttpContext.RequestAborted);
+        return Ok(result);
+    }
+
+    [HttpPost("test-demo")]
+    public async Task<IActionResult> TestDemo([FromBody] ConnectDemoLeadRequest request)
+    {
+        var tenantId = GetTenantId();
+        var result = await _connectService.RegisterDemoLeadAsync(tenantId, request, HttpContext.RequestAborted);
+        return Ok(result);
+    }
+
+    [HttpPost("test-unenroll")]
+    public async Task<IActionResult> TestUnenroll([FromBody] ConnectUnenrollRequest request)
+    {
+        var tenantId = GetTenantId();
+        var result = await _connectService.UnenrollStudentAsync(tenantId, request, HttpContext.RequestAborted);
         return Ok(result);
     }
 }

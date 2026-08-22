@@ -425,6 +425,8 @@ export const getDownloadUrl = (path: string | null | undefined, fileName?: strin
 export const authApi = {
     login: (email: string, password: string) =>
         api<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    magicLogin: (magicToken: string) =>
+        api<AuthResponse>("/auth/magic-login", { method: "POST", body: JSON.stringify({ magicToken }) }),
     me: (token: string) => api<UserDto>("/auth/me", { token }),
     refresh: (refreshToken: string) =>
         api<AuthResponse>("/auth/refresh", { method: "POST", body: JSON.stringify({ refreshToken }) }),

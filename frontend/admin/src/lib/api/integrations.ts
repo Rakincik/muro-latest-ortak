@@ -214,6 +214,33 @@ export interface ConnectEnrollResult {
     magicLoginUrl?: string | null;
 }
 
+export interface ConnectPackageDto {
+    id: string;
+    name: string;
+    code?: string | null;
+    description?: string | null;
+    price: number;
+    durationDays: number;
+    courseCount: number;
+    courseTitles: string[];
+}
+
+export interface ConnectUnenrollResult {
+    success: boolean;
+    username: string;
+    packageName?: string | null;
+    message: string;
+}
+
+export interface ConnectDemoResult {
+    success: boolean;
+    userId: string;
+    username: string;
+    demoExpiresAt: string;
+    message: string;
+    magicLoginUrl?: string | null;
+}
+
 export const adminConnectApi = {
     getKey: (token: string, tenantId: string) =>
         api<TenantApiKeyInfo>('/admin/connect/key', { token, tenantId }),
@@ -229,8 +256,27 @@ export const adminConnectApi = {
     getLogs: (token: string, tenantId: string, take: number = 50) =>
         api<ConnectApiLogItem[]>(`/admin/connect/logs?take=${take}`, { token, tenantId }),
 
+    getPackages: (token: string, tenantId: string) =>
+        api<ConnectPackageDto[]>('/admin/connect/packages', { token, tenantId }),
+
     testEnroll: (token: string, tenantId: string, data: any) =>
         api<ConnectEnrollResult>('/admin/connect/test-enroll', {
+            method: 'POST',
+            token,
+            tenantId,
+            body: JSON.stringify(data)
+        }),
+
+    testDemo: (token: string, tenantId: string, data: any) =>
+        api<ConnectDemoResult>('/admin/connect/test-demo', {
+            method: 'POST',
+            token,
+            tenantId,
+            body: JSON.stringify(data)
+        }),
+
+    testUnenroll: (token: string, tenantId: string, data: any) =>
+        api<ConnectUnenrollResult>('/admin/connect/test-unenroll', {
             method: 'POST',
             token,
             tenantId,

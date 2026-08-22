@@ -1,6 +1,7 @@
 namespace MURO.Application.DTOs.Auth;
 
 public record LoginRequest(string Email, string Password);
+public record MagicLoginRequest(string MagicToken);
 
 public record RegisterRequest(
     string FirstName,

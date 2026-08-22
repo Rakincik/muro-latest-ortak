@@ -10,6 +10,13 @@ public interface IConnectApiService
 {
     Task<Guid?> ValidateApiKeyAsync(string apiKeyHeader, CancellationToken ct = default);
     Task<ConnectEnrollResponse> EnrollStudentAsync(Guid tenantId, ConnectEnrollRequest request, CancellationToken ct = default);
+    Task<ConnectUnenrollResponse> UnenrollStudentAsync(Guid tenantId, ConnectUnenrollRequest request, CancellationToken ct = default);
+    Task<ConnectDemoLeadResponse> RegisterDemoLeadAsync(Guid tenantId, ConnectDemoLeadRequest request, CancellationToken ct = default);
+    Task<ConnectBatchEnrollResponse> BatchEnrollStudentsAsync(Guid tenantId, ConnectBatchEnrollRequest request, CancellationToken ct = default);
+    Task<ConnectStudentStatusResponse> GetStudentStatusAsync(Guid tenantId, string? email, string? phone, CancellationToken ct = default);
+    Task<ConnectLiveStatusDto> GetLiveStatusAsync(Guid tenantId, CancellationToken ct = default);
+    Task<string> GenerateMagicLoginUrlAsync(Guid tenantId, Guid userId, CancellationToken ct = default);
+    Task<Guid?> ConsumeMagicLoginTokenAsync(string token, CancellationToken ct = default);
     Task<List<ConnectPackageItemDto>> GetPackagesCatalogAsync(Guid tenantId, CancellationToken ct = default);
     Task<ConnectStatsDto> GetStatsAsync(Guid tenantId, CancellationToken ct = default);
     Task<TenantApiKeyDto> GetOrCreateApiKeyAsync(Guid tenantId, CancellationToken ct = default);

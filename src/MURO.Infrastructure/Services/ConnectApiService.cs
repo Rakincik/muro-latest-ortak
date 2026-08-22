@@ -64,6 +64,38 @@ public class ConnectApiService : IConnectApiService
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
+    private string GetPortalBaseUrl()
+    {
+        return _config["App:StudentUrl"] ?? _config["App:AdminUrl"] ?? "https://uzem.ataniyorumhocam.com";
+    }
+
+    public async Task<string> GenerateMagicLoginUrlAsync(Guid tenantId, Guid userId, CancellationToken ct = default)
+    {
+        var token = $"magic_{Guid.NewGuid():N}{GenerateRandomHex(16)}";
+        var cacheKey = $"muro:magic:{token}";
+        await _cache.SetAsync(cacheKey, userId.ToString(), TimeSpan.FromMinutes(15));
+
+        var baseUrl = GetPortalBaseUrl().TrimEnd('/');
+        return $"{baseUrl}/login?magicToken={token}";
+    }
+
+    public async Task<Guid?> ConsumeMagicLoginTokenAsync(string token, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return null;
+
+        var cleanToken = token.Trim();
+        var cacheKey = $"muro:magic:{cleanToken}";
+        var cachedUserId = await _cache.GetAsync<string>(cacheKey);
+
+        if (!string.IsNullOrEmpty(cachedUserId) && Guid.TryParse(cachedUserId, out var uid))
+        {
+            await _cache.RemoveAsync(cacheKey); // Single-use consumption
+            return uid;
+        }
+
+        return null;
+    }
+
     public async Task<Guid?> ValidateApiKeyAsync(string apiKeyHeader, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(apiKeyHeader)) return null;
@@ -119,7 +151,7 @@ public class ConnectApiService : IConnectApiService
                 .FirstOrDefaultAsync(p => p.Id == request.PackageId.Value && p.IsActive, ct);
         }
 
-        // 2. Mevcut Kullanıcıyı Ara (Telefon veya E-posta)
+        // 2. Mevcut Kullanıcıyı Ara
         User? existingUser = null;
         if (!string.IsNullOrWhiteSpace(cleanEmail))
         {
@@ -137,11 +169,10 @@ public class ConnectApiService : IConnectApiService
 
         var sysSettings = await _context.SystemSettings.AsNoTracking().FirstOrDefaultAsync(ct);
         var tenantName = sysSettings?.TenantName ?? "MURO";
-        var loginUrl = _config["App:AdminUrl"] ?? "https://uzem.ataniyorumhocam.com";
+        var loginUrl = GetPortalBaseUrl();
 
         if (isNewUser)
         {
-            // Kullanıcı adı üret
             var baseUsername = Regex.Replace(
                 (request.FirstName + request.LastName)
                     .ToLowerInvariant()
@@ -162,7 +193,6 @@ public class ConnectApiService : IConnectApiService
                 uniqueUsername = $"{baseUsername}{counter++}";
             }
 
-            // Şifre üret
             if (string.IsNullOrWhiteSpace(rawPassword))
             {
                 var phoneLast2 = cleanPhone.Length >= 2 ? cleanPhone.Substring(cleanPhone.Length - 2) : "12";
@@ -191,7 +221,6 @@ public class ConnectApiService : IConnectApiService
         else
         {
             user = existingUser!;
-            // Bilgileri güncelle
             if (!string.IsNullOrWhiteSpace(request.FirstName)) user.FirstName = request.FirstName.Trim();
             if (!string.IsNullOrWhiteSpace(request.LastName)) user.LastName = request.LastName.Trim();
             if (!string.IsNullOrWhiteSpace(cleanPhone) && string.IsNullOrWhiteSpace(user.Phone)) user.Phone = cleanPhone;
@@ -218,7 +247,6 @@ public class ConnectApiService : IConnectApiService
                 });
             }
 
-            // Pakete bağlı gruplara öğrenciyi ekle
             foreach (var pg in targetPackage.PackageGroups)
             {
                 var isMember = await _context.GroupMembers.AnyAsync(gm => gm.UserId == user.Id && gm.GroupId == pg.GroupId, ct);
@@ -256,7 +284,10 @@ public class ConnectApiService : IConnectApiService
             }
         }
 
-        // 4. Hoş Geldin SMS'i Fırlat
+        // 4. Magic Login URL Üret
+        var magicUrl = await GenerateMagicLoginUrlAsync(tenantId, user.Id, ct);
+
+        // 5. Hoş Geldin SMS'i Fırlat
         if (request.SendWelcomeSms && !string.IsNullOrWhiteSpace(user.Phone))
         {
             try
@@ -283,9 +314,214 @@ public class ConnectApiService : IConnectApiService
             Phone = user.Phone ?? "",
             PackageName = assignedPackageName,
             GeneratedPassword = isNewUser ? rawPassword : null,
+            MagicLoginUrl = magicUrl,
             Message = isNewUser 
                 ? $"Yeni öğrenci hesabı açıldı ({user.Username}) ve {assignedPackageName ?? "kurs"} paketine kaydedildi."
                 : $"Mevcut öğrenci ({user.Username}) bulundu ve {assignedPackageName ?? "kurs"} paketine kaydedildi."
+        };
+    }
+
+    public async Task<ConnectUnenrollResponse> UnenrollStudentAsync(Guid tenantId, ConnectUnenrollRequest request, CancellationToken ct = default)
+    {
+        var cleanEmail = request.Email?.Trim().ToLowerInvariant();
+        var cleanPhone = NormalizePhone(request.Phone ?? "");
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => (!string.IsNullOrEmpty(cleanEmail) && u.Email == cleanEmail) ||
+                                      (!string.IsNullOrEmpty(cleanPhone) && u.Phone != null && u.Phone.Contains(cleanPhone)), ct);
+
+        if (user == null)
+        {
+            throw new ArgumentException("İptal edilecek öğrenci bulunamadı.");
+        }
+
+        Package? pkg = null;
+        if (!string.IsNullOrWhiteSpace(request.PackageCode))
+        {
+            pkg = await _context.Packages.Include(p => p.PackageGroups).FirstOrDefaultAsync(p => p.Code == request.PackageCode, ct);
+        }
+        else if (request.PackageId.HasValue)
+        {
+            pkg = await _context.Packages.Include(p => p.PackageGroups).FirstOrDefaultAsync(p => p.Id == request.PackageId.Value, ct);
+        }
+
+        if (pkg != null)
+        {
+            var userPkg = await _context.UserPackages.FirstOrDefaultAsync(up => up.UserId == user.Id && up.PackageId == pkg.Id, ct);
+            if (userPkg != null)
+            {
+                userPkg.Status = "cancelled";
+                userPkg.ExpiresAt = DateTime.UtcNow;
+                _context.UserPackages.Update(userPkg);
+            }
+
+            var groupIds = pkg.PackageGroups.Select(pg => pg.GroupId).ToList();
+            var members = await _context.GroupMembers.Where(gm => gm.UserId == user.Id && groupIds.Contains(gm.GroupId)).ToListAsync(ct);
+            _context.GroupMembers.RemoveRange(members);
+
+            await _context.SaveChangesAsync(ct);
+        }
+
+        return new ConnectUnenrollResponse
+        {
+            Success = true,
+            Username = user.Username,
+            PackageName = pkg?.Name,
+            Message = $"Öğrencinin ({user.Username}) {pkg?.Name ?? "kurs"} paket erişimi başarıyla iptal edildi."
+        };
+    }
+
+    public async Task<ConnectDemoLeadResponse> RegisterDemoLeadAsync(Guid tenantId, ConnectDemoLeadRequest request, CancellationToken ct = default)
+    {
+        var enrollReq = new ConnectEnrollRequest
+        {
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Phone = request.Phone,
+            Email = request.Email ?? "",
+            PackageCode = request.PackageCode,
+            SendWelcomeSms = request.SendWelcomeSms,
+            Notes = "Web Sitesi Ücretsiz Demo Talebi"
+        };
+
+        var enrollRes = await EnrollStudentAsync(tenantId, enrollReq, ct);
+
+        var user = await _context.Users.FindAsync(new object[] { enrollRes.UserId }, ct);
+        if (user != null)
+        {
+            user.StudentType = StudentType.Demo;
+            user.DemoExpiresAt = DateTime.UtcNow.AddDays(request.DemoDays > 0 ? request.DemoDays : 7);
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync(ct);
+        }
+
+        return new ConnectDemoLeadResponse
+        {
+            Success = true,
+            UserId = enrollRes.UserId,
+            Username = enrollRes.Username,
+            DemoExpiresAt = user?.DemoExpiresAt ?? DateTime.UtcNow.AddDays(7),
+            Message = $"{request.DemoDays} Günlük ücretsiz demo erişimi tanımlandı ({enrollRes.Username}).",
+            MagicLoginUrl = enrollRes.MagicLoginUrl
+        };
+    }
+
+    public async Task<ConnectBatchEnrollResponse> BatchEnrollStudentsAsync(Guid tenantId, ConnectBatchEnrollRequest request, CancellationToken ct = default)
+    {
+        var results = new List<ConnectEnrollResponse>();
+        int successCount = 0;
+        int failCount = 0;
+
+        foreach (var s in request.Students)
+        {
+            try
+            {
+                var res = await EnrollStudentAsync(tenantId, new ConnectEnrollRequest
+                {
+                    FirstName = s.FirstName,
+                    LastName = s.LastName,
+                    Email = s.Email,
+                    Phone = s.Phone,
+                    PackageCode = s.PackageCode,
+                    Password = s.Password,
+                    Notes = request.CorporateName != null ? $"Kurumsal Kayıt: {request.CorporateName}" : "Toplu Kayıt",
+                    SendWelcomeSms = request.SendWelcomeSms
+                }, ct);
+
+                results.Add(res);
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                failCount++;
+                results.Add(new ConnectEnrollResponse
+                {
+                    Success = false,
+                    Username = s.Email,
+                    Email = s.Email,
+                    Phone = s.Phone,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        return new ConnectBatchEnrollResponse
+        {
+            Success = failCount == 0,
+            TotalSubmitted = request.Students.Count,
+            SuccessCount = successCount,
+            FailureCount = failCount,
+            Results = results,
+            Message = $"{successCount} öğrenci başarıyla kaydedildi, {failCount} hatalı."
+        };
+    }
+
+    public async Task<ConnectStudentStatusResponse> GetStudentStatusAsync(Guid tenantId, string? email, string? phone, CancellationToken ct = default)
+    {
+        var cleanEmail = email?.Trim().ToLowerInvariant();
+        var cleanPhone = NormalizePhone(phone ?? "");
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => (!string.IsNullOrEmpty(cleanEmail) && u.Email == cleanEmail && !u.IsDeleted) ||
+                                      (!string.IsNullOrEmpty(cleanPhone) && u.Phone != null && u.Phone.Contains(cleanPhone) && !u.IsDeleted), ct);
+
+        if (user == null)
+        {
+            return new ConnectStudentStatusResponse { UserExists = false };
+        }
+
+        var packages = await _context.UserPackages
+            .Where(up => up.UserId == user.Id && up.Status == "active")
+            .Include(up => up.Package)
+            .Select(up => new ConnectUserPackageDto
+            {
+                PackageId = up.PackageId,
+                PackageName = up.Package.Name,
+                PackageCode = up.Package.Code,
+                EnrolledAt = up.CreatedAt,
+                ExpiresAt = up.ExpiresAt
+            })
+            .ToListAsync(ct);
+
+        var magicUrl = await GenerateMagicLoginUrlAsync(tenantId, user.Id, ct);
+
+        return new ConnectStudentStatusResponse
+        {
+            UserExists = true,
+            UserId = user.Id,
+            FullName = $"{user.FirstName} {user.LastName}",
+            Username = user.Username,
+            Email = user.Email,
+            Phone = user.Phone,
+            StudentType = user.StudentType?.ToString() ?? "Active",
+            DemoExpiresAt = user.DemoExpiresAt,
+            ActivePackages = packages,
+            MagicLoginUrl = magicUrl
+        };
+    }
+
+    public async Task<ConnectLiveStatusDto> GetLiveStatusAsync(Guid tenantId, CancellationToken ct = default)
+    {
+        var liveSession = await _context.Sessions
+            .Include(s => s.Course)
+                .ThenInclude(c => c.Instructor)
+            .FirstOrDefaultAsync(s => s.Status == SessionStatus.Live, ct);
+
+        if (liveSession == null)
+        {
+            return new ConnectLiveStatusDto { IsLiveNow = false };
+        }
+
+        var instructor = liveSession.Course?.Instructor;
+        return new ConnectLiveStatusDto
+        {
+            IsLiveNow = true,
+            SessionTitle = liveSession.Title,
+            CourseTitle = liveSession.Course?.Title,
+            InstructorName = instructor != null ? $"{instructor.FirstName} {instructor.LastName}" : null,
+            StartedAt = liveSession.ScheduledStart,
+            ViewerCount = 0,
+            JoinUrl = GetPortalBaseUrl()
         };
     }
 
@@ -359,7 +595,7 @@ public class ConnectApiService : IConnectApiService
             {
                 Id = existing.Id,
                 KeyPrefix = existing.KeyPrefix,
-                FullKey = null, // Do not expose full key on subsequent gets for security
+                FullKey = null,
                 Name = existing.Name,
                 Scopes = existing.Scopes,
                 IsEnabled = existing.IsEnabled,
@@ -373,14 +609,12 @@ public class ConnectApiService : IConnectApiService
 
     public async Task<TenantApiKeyDto> RegenerateApiKeyAsync(Guid tenantId, string? name = null, CancellationToken ct = default)
     {
-        // 1. Eski anahtarları devre dışı bırak
         var oldKeys = await _context.TenantApiKeys.Where(k => k.TenantId == tenantId).ToListAsync(ct);
         foreach (var k in oldKeys)
         {
             k.IsEnabled = false;
         }
 
-        // 2. Yeni kriptografik anahtar üret
         var rawKey = $"muro_live_{GenerateRandomHex(16)}";
         var hash = HashKey(rawKey);
         var prefix = $"{rawKey.Substring(0, 18)}...";
@@ -400,7 +634,6 @@ public class ConnectApiService : IConnectApiService
         _context.TenantApiKeys.Add(newKey);
         await _context.SaveChangesAsync(ct);
 
-        // Redis önbelleğini temizle ve yenisini yaz
         await _cache.RemoveAsync($"muro:connect:key:{hash}");
         await _cache.SetAsync($"muro:connect:key:{hash}", tenantId.ToString(), TimeSpan.FromHours(12));
 
@@ -408,7 +641,7 @@ public class ConnectApiService : IConnectApiService
         {
             Id = newKey.Id,
             KeyPrefix = newKey.KeyPrefix,
-            FullKey = rawKey, // Tam anahtar sadece ilk oluşturulduğunda kullanıcıya döner
+            FullKey = rawKey,
             Name = newKey.Name,
             Scopes = newKey.Scopes,
             IsEnabled = newKey.IsEnabled,
@@ -466,4 +699,14 @@ public class ConnectApiService : IConnectApiService
             _logger.LogError(ex, "ConnectApiLog kaydedilemedi.");
         }
     }
+}
+
+public class ConnectDemoLeadAsyncResponseDto
+{
+    public bool Success { get; set; }
+    public Guid UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public DateTime DemoExpiresAt { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string? MagicLoginUrl { get; set; }
 }
