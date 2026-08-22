@@ -141,6 +141,8 @@ public class ConnectPackageItemDto
     public string? Description { get; set; }
     public decimal Price { get; set; }
     public int DurationDays { get; set; }
+    public List<Guid> GroupIds { get; set; } = new();
+    public List<string> GroupNames { get; set; } = new();
     public int CourseCount { get; set; }
     public List<string> CourseTitles { get; set; } = new();
 }

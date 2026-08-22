@@ -561,10 +561,20 @@ public class ConnectApiService : IConnectApiService
             .Include(cg => cg.Course)
             .ToListAsync(ct);
 
+        var allGroups = await _context.Groups
+            .AsNoTracking()
+            .Where(g => groupIds.Contains(g.Id) && !g.IsDeleted)
+            .ToListAsync(ct);
+
         var result = new List<ConnectPackageItemDto>();
         foreach (var p in packages)
         {
-            var pGroupIds = p.PackageGroups.Select(pg => pg.GroupId).ToHashSet();
+            var pGroupIds = p.PackageGroups.Select(pg => pg.GroupId).ToList();
+            var pGroupNames = allGroups
+                .Where(g => pGroupIds.Contains(g.Id))
+                .Select(g => g.Name)
+                .ToList();
+
             var titles = courseGroups
                 .Where(cg => pGroupIds.Contains(cg.GroupId) && cg.Course != null && !cg.Course.IsDeleted)
                 .Select(cg => cg.Course.Title)
@@ -579,6 +589,8 @@ public class ConnectApiService : IConnectApiService
                 Description = p.Description,
                 Price = p.Price,
                 DurationDays = p.DurationDays,
+                GroupIds = pGroupIds,
+                GroupNames = pGroupNames,
                 CourseCount = titles.Count,
                 CourseTitles = titles
             });
